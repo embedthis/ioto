@@ -12,15 +12,10 @@
 
 int main(int argc, char **argv)
 {
-    if (rInit(NULL, NULL, 0) < 0) {
+    if (rInit(ioInit, NULL, 0) < 0) {
         fprintf(stderr, "Cannot initialize runtime");
-        exit(2);
-    }
-    if (rSpawnFiber((RFiberProc) ioInit, NULL) < 0) {
-        fprintf(stderr, "ioto: Cannot initialize runtime\n");
         exit(1);
     }
-
     //  Block until instructed to exit
     rServiceEvents();
 
@@ -35,8 +30,7 @@ int main(int argc, char **argv)
 PUBLIC int ioStart()
 {
     rInfo("sample", "Hello World\n");
-    //  Exit the sample
-    rStop();
+    //  Your code here
     return 0;
 }
 
