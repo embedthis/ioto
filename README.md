@@ -1,13 +1,11 @@
-Embedthis Ioto Samples
+Embedthis Ioto
 ===
 
-This is the repository for the Ioto samples.
+This is the repository for the Ioto project and code samples.
 
-It does not contain the Ioto source code and is not used for issue tracking.
+It does not contain the Ioto source code.
 
 To download Ioto, go to the [Embedthis Builder](https://admin.embedthis.com).
-
-For issues, go to the [Builder Product Security Center](https://admin.embedthis.com/#/products).
 
 ## To read documentation:
 
