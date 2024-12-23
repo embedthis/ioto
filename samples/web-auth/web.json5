@@ -1,0 +1,6 @@
+{
+    web: {
+        listen: ['http://:80'],
+        routes: [{match: '/login.html'}, {match: '/', role: 'user'}],
+    },
+}

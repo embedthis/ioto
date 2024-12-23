@@ -1,0 +1,15 @@
+/*
+    DemoSchema.json5 -- Demo schema
+ */
+{
+    process: {
+        Demo: { enable: 'device', show: true, actions: true },
+    },
+    models: {
+        Demo: {
+            sk:         { type: 'string', value: 'demo#', hidden: true },
+            deviceId:   { type: 'string', required: true, readonly: true },
+            counter:    { type: 'number', default: 0 },
+        },
+    }
+}

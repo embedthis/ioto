@@ -1,0 +1,93 @@
+{
+    version: '1.0.0',
+    profile: 'dev',
+    app: 'demo',
+    conditional: {
+        profile: {
+            dev: {
+                directories: {
+                    log: '.',
+                    state: 'state',
+                },
+                optimize: 'debug',
+                log: {
+                    path: 'stdout',
+                    format: '%S: %M',
+                    types: 'error,info',
+                    sources: 'all,!mbedtls',
+                    show: '',
+                },
+            },
+            prod: {
+                directories: {
+                    log: '/var/log',
+                    state: '/var/lib/ioto',
+                },
+                log: {
+                    path: 'ioto.log'
+                },
+                optimize: 'release',
+            },
+        },
+    },
+    database: {
+        path: '@db/device.db',
+        schema: '@config/schema.json5',
+        maxJournalSize: '50k',
+        maxJournalAge: '15secs',
+        maxSyncSize: '10k',
+        service: '1hr',
+    },
+    demo: {
+        count: 50,
+        delay: '15sec',
+        enable: true,
+        type: 'service',
+    },
+    limits: {
+        reprovision: 5,
+        _stack: '64k'
+    },
+    log: {
+        path: 'stdout',
+        format: '%D %H %A[%P] (%T, %S): %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+        show: '',
+    },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        schedule: '* * * * *',
+        delay: 15,
+        timeout: 0,
+    },
+    services: {
+        database: true,
+        keys: false,
+        logs: false,
+        mqtt: true,
+        provision: true,
+        register: true,
+        serialize: 'auto',
+        shadow: false,
+        sync: true,
+        update: true,
+        url: true,
+        web: true,
+    },
+    scripts: {
+        update: 'scripts/update',
+    },
+    tls: {
+        authority: '@certs/roots.crt',
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+    update: {
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
+}

@@ -1,0 +1,86 @@
+#
+#   Ioto Services
+#
+
+menu "Ioto"
+
+    config IOTO_DATABASE
+        bool "Ioto Database support"
+        default y
+        help
+            Enable the in-memory JSON database. Required for most functions.
+
+    config IOTO_KEYS
+        bool "Download AWS access keys"
+        default n
+        help
+            Generate and download AWS IAM temporary keys to use with AWS APIs
+            Define maximum number of partitions that can be mounted.
+
+    config IOTO_LOGS
+        bool "Send device logs to AWS CloudWatch"
+        default n
+        help
+            Send the ESP-32 and Ioto logs to AWS CloudWatch.
+
+    config IOTO_MQTT
+        bool "Enable MQTT messaging with the cloud"
+        default y
+        help
+            Enable MQTT messaging. Required for cloud integration.
+
+    config IOTO_PROVISION
+        bool "Provision Ioto with an X509 certificate"
+        default y
+        help
+            Generates and provisions the ESP32 with a unique X.509 certificate and key.
+
+    config IOTO_REGISTER
+        bool "Register with the EmbedThis Ioto service"
+        default y
+        help
+            Register the device with the Ioto cloud service so it can be claimed / paired for management.
+
+    config IOTO_SERIALIZE
+        string "Serialize the device"
+        default "auto"
+        help
+            Generate and save a unique serial number for the device. This number is then used when pairing / claiming the device for management.
+
+    config IOTO_SHADOW
+        bool "AWS IoT Core Shadows"
+        default n
+        help
+            Enable to support and integrate with AWS IoT Core Shadows.
+
+    config IOTO_SYNC
+        bool "Transparent database synchronization"
+        default y
+        help
+            Enable to transparently synchronize device database data with the cloud.
+            This is a bi-directional synchronization that can controlled on a per-table basis via the database schema.
+
+    config IOTO_UPDATE
+        bool "Device Updates"
+        default "y"
+        help
+            Enable device OTA updates distributed via the EmbedThis Builder.
+    
+    config IOTO_URL
+        bool "Ioto HTTP Client"
+        default "y"
+        help
+            Enable the Ioto URL API to support simple client-side HTTP requests.
+            Required for cloud integration.
+
+    config IOTO_WEB
+        bool "Ioto HTTP Server"
+        default "y"
+        help
+            Enable the Ioto high performance embedded web server for local device management.
+
+#    config SPIRAM_MALLOC_ALWAYSINTERNAL
+#        int "Allocate internal memory for SPIRAM"
+#        default 8192 
+
+endmenu

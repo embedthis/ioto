@@ -1,0 +1,86 @@
+{
+    version: '1.0.0',
+    profile: 'dev',
+    app: 'eco',
+    conditional: {
+        profile: {
+            dev: {
+                directories: {
+                    log: '.',
+                    state: 'state',
+                },
+                optimize: 'debug',
+                log: {
+                    path: 'stdout',
+                    format: '%S: %M',
+                    types: 'error,info',
+                    sources: 'all,!mbedtls',
+                    show: '',
+                },
+            },
+            prod: {
+                directories: {
+                    log: '/var/log',
+                    state: '/var/lib/ioto',
+                },
+                log: {
+                    path: 'ioto.log',
+                },
+                optimize: 'release',
+            },
+        },
+    },
+    database: {
+        path: '@db/device.db',
+        schema: '@config/schema.json5',
+        maxJournalAge: '15secs',
+        maxJournalSize: '50k',
+        maxSyncSize: '10k',
+        service: '1hr',
+    },
+    demo: {
+        count: 60,
+        delay: '5sec',
+        enable: true,
+    },
+    limits: {
+        reprovision: 5,
+    },
+    log: {
+        path: 'stdout',
+        format: '%D %H %A[%P] (%T, %S): %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+        show: '',
+    },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        timeout: 0,
+    },
+    services: {
+        database: true,
+        keys: false,
+        logs: false,
+        mqtt: true,
+        provision: true,
+        register: true,
+        serialize: 'auto',
+        shadow: false,
+        sync: true,
+        update: true,
+        url: true,
+        web: false,
+    },
+    tls: {
+        authority: '@certs/roots.crt',
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+    update: {
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
+}

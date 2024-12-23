@@ -1,0 +1,9 @@
+#!/bin/bash
+#
+#   Copy the Ioto ESP32 Makefile to the top project directory
+#
+if [ ! -d projects ] ; then
+    echo "setup-esp32: not invoked in the right directory. Invoke in the ioto directory."
+    exit 2
+fi
+cp projects/esp32/Makefile ../..

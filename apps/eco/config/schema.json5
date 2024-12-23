@@ -1,0 +1,14 @@
+/*
+    schema.json5 -- Schema for the Eco House App
+ */
+{
+    version: 'latest',
+    description: 'Eco House database schema',
+    blend: [
+        '../../schemas/OneTable.json5',
+        '../../schemas/CloudSchema.json5',
+        'EcoSchema.json5',
+    ],
+    process: { },
+    models: { },
+}

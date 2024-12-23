@@ -1,0 +1,12 @@
+/*
+    schema.json5 -- Schema for the blink App
+ */
+{
+    version: 'latest',
+    description: 'blink app schema',
+    blend: [
+        '../../schemas/OneTable.json5',
+    ],
+    process: { },
+    models: { },
+}

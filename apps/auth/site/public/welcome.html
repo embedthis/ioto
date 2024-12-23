@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="data:;base64,=" />
+        <link href="/public/style.css" rel="stylesheet" type="text/css" />
+        <title>index.html</title>
+    </head>
+    <body>
+        <div class="toolbar">
+            <a href="https://www.embedthis.com/ioto" target="_blank">
+                <img src="/public/ioto-tm.png" class="logo" alt="Ioto logo" />
+            </a>
+            <a href="/"><button class="active">Home Page</button></a>
+            <a href="/public/welcome.html"><button>Public</button></a>
+            <a href="/user/welcome.html"><button>User</button></a>
+            <a href="/admin/welcome.html"><button>Admin</button></a>
+            <a href="/public/login.html" id="username" class="right">Login</a>
+        </div>
+        <div class="main">
+            <h1>Public Page</h1>
+            <h2 id="notes" />
+        </div>
+    </body>
+</html>
+
+<script async>
+    async function getAuth() {
+        let response = await fetch('/api/public/getAuth')
+        let auth = await response.json()
+        let el = document.getElementById('username')
+        if (auth && auth.username) {
+            el.innerHTML = auth.username
+            el.href = '/public/logout.html'
+            document.getElementById('notes').innerHTML = `Logged in as "${auth.username}"`
+        } else {
+            el.innerHTML = 'Login'
+            el.href = '/public/login.html'
+            document.getElementById('notes').innerHTML = `Not logged in`
+        }
+    }
+    getAuth()
+</script>

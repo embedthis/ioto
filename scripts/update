@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+#   Script to apply an OTA update image
+#
+
+IMAGE=`pwd`/$1
+
+# Apply the IMAGE
+
+(
+    echo "Extracting $IMAGE"
+    # Put code here to apply update
+
+) >/tmp/install.log 2>&1
+
+#
+#   Emit instructions for Ioto to: exit, restart or continue
+#
+#   echo "restart"
+#
+echo "continue"
+exit 0

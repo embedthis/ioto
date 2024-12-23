@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+#   Conditional copy: ccp from to
+#
+#   This is used to copy files so that Make does not rebuild the target
+#
+
+if [ "$1" = "" -o "$2" = "" ] ; then
+    echo "Usage: ccp from to"
+    exit 2
+fi
+if [ -d "$1" ] ; then
+    mkdir -p "$2"
+elif [ -f "$1" ] ; then
+    if [ ! -f "$1" ] ; then
+        echo "Cannot find source $1"
+        exit 2
+    fi
+    cmp $1 $2 >/dev/null 2>&1
+    if [ $? != 0 ] ; then
+        mkdir -p `dirname $2`
+        cp $1 $2 
+        echo "      [Copy] ${1}"
+    fi
+fi

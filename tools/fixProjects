@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+#   Change arch/x86_64 back to $(CC_ARCH) in projects
+#
+
+for f in projects/*.mk
+do
+    cp $f $f.old
+    sed -e 's/arch\/x86_64/arch\/$(CC_ARCH)/g' <$f.old >$f
+    rm $f.old
+done

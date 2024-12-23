@@ -1,0 +1,72 @@
+{
+    version: '1.0.0',
+    app: "blink",
+    profile: 'dev',
+    conditional: {
+        profile: {
+            dev: {
+                optimize: 'debug',
+            },
+            prod: {
+                optimize: 'release',
+            },
+        },
+    },
+    database: {
+        path: '@db/device.db',
+        schema: '@config/schema.json5',
+        maxJournalAge: '15secs',
+        maxJournalSize: '50k',
+        maxSyncSize: '10k',
+        service: '1hr',
+    },
+    demo: {
+        count: 60,
+        delay: '2sec',
+        enable: true,
+    },
+    directories: {
+        log: '/state',
+        state: '/state',
+    },
+    limits: {
+        reprovision: 5,
+    },
+    log: {
+        path: 'stdout:all:all,!mbedtls',
+        format: '%S: %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+        show: '',
+    },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        timeout: 0,
+    },
+    services: {
+        database: false,
+        keys: false,
+        logs: false,
+        mqtt: false,
+        provision: false,
+        register: false,
+        serialize: false,
+        shadow: false,
+        sync: false,
+        update: false,
+        url: false,
+        web: false,
+    },
+    tls: {
+        authority: '@certs/roots.crt',
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+    update: {
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
+}

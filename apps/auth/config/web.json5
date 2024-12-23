@@ -1,0 +1,40 @@
+/*
+    web.json5 - Web server configuration file
+*/
+{
+    auth: {
+        roles: ['user', 'admin', 'owner', 'super'],
+        login: '/api/public/login',
+        logout: '/api/public/logout',
+    },
+    documents: '@site',
+    headers: {},
+    index: 'index.html',
+    limits: {
+        body: '100K',
+        connections: '100',
+        header: '10K',
+        sessions: '20',
+        upload: '20MB',
+    },
+    listen: ['http://:80', 'https://:443'],
+    redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
+    routes: [
+        {match: '/api/user/', handler: 'action', role: 'user'},
+        {match: '/api/public/', handler: 'action'},
+        {match: '/admin/', handler: 'file', role: 'admin'},
+        {match: '/user/', handler: 'file', role: 'user'},
+        {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
+    ],
+    timeouts: {
+        inactivity: '300 secs',
+        parse: '10 secs',
+        request: '10 mins',
+        session: '30 mins',
+        tls: '1 day',
+    },
+    upload: {
+        dir: 'tmp',
+        remove: true,
+    },
+}

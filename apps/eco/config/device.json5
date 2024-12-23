@@ -1,0 +1,6 @@
+{
+    product: 'PUT-YOUR-PRODUCT-ID-HERE',
+    name: 'EcoHouse',
+    description: 'Eco House Device Agent',
+    model: 'EcoHouse-01',
+}

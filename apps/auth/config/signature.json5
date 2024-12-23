@@ -1,0 +1,48 @@
+{
+    user: {
+        getAuth: {
+            task: "public",
+            request: {
+            },
+            response: {
+                username: {
+                    type: "string"
+                },
+                role: {
+                    type: "string"
+                }
+            }
+        },
+        login: {
+            task: "public",
+            request: {
+            },
+            response: {
+                sk: {
+                    type: "string"
+                },
+                id: {
+                    type: "string"
+                },
+                username: {
+                    type: "string",
+                    required: true
+                },
+                password: {
+                    type: "string",
+                    discard: true
+                },
+                role: {
+                    type: "string",
+                    required: true
+                }
+            }
+        },
+        logout: {
+            task: "user",
+            request: {
+            },
+            response: "string"
+        }
+    }
+}

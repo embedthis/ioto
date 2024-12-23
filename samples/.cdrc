@@ -1,0 +1,26 @@
+#
+#   .cdrc -- Setup the PATH and CDPATH to work in a source directory
+#
+
+_PRODUCT=`basename $PWD`
+if [ "${PATH/$_PRODUCT\/build//}" = "${PATH}" ] ; then
+    _OS=`uname | sed 's/CYGWIN.*/windows/;s/Darwin/macosx/' | tr '[A-Z]' '[a-z]'`
+    _ARCH=`uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/arm.*/arm/;s/mips.*/mips/'`
+    export PATH="$PWD/build/${_OS}-${_ARCH}-debug/bin:$PATH"
+    export PATH="$PWD/build/${_OS}-${_ARCH}-release/bin:$PATH"
+    export CDPATH="$CDPATH:$PWD:$PWD/src"
+    echo
+    echo Setup \"${_PRODUCT}\" Environment
+    echo
+fi
+
+if [ -z "${CI}" -a "${PROFILE}" = "" ] ; then
+    if [ -f .profile ] ; then
+        PROFILE=$(cat .profile)
+    else
+        PROFILE=dev
+        echo "${PROFILE}" >.profile
+        echo "Using default profile \"${PROFILE}\". Edit \".profile\" to change"
+    fi
+    export PROFILE
+fi

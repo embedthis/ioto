@@ -1,0 +1,126 @@
+/*
+    KickstartSchema -- Schema for the Kickstart and CloudKick apps
+ */
+{
+    /*  
+        When deployed locally in Kickstart - enabled only on the device
+        When deployed in the cloud in CloudKick - enabled as per instructions
+     */
+    process: {
+        Event:      { enable: 'both', sync: 'up', notify: 'default' },
+        Notice:     { enable: 'both', sync: 'down' },
+        Mapping:    { enable: 'both', sync: 'up', notify: 'default' },
+        Port:       { enable: 'both', sync: 'up', notify: 'default' },
+        PortStats:  { 
+                        enable: 'both', 
+                        sync: 'up', 
+                        period: 5,
+                        metrics: [{ 
+                            fields: ['rxBytes', 'txBytes'], 
+                            dimensions: [null, 'id'] 
+                        }]
+                    },
+        Settings:   { enable: 'device' },
+        Stats:      { enable: 'both', sync: 'up', period: 5 },
+        Vlan:       { enable: 'both', sync: 'up', notify: 'default' },
+    },
+    models: {
+        Event: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'event#${id}' },
+            id:               { type: 'string', generate: 'uid' },
+            deviceId:         { type: 'string', required: true },
+            message:          { type: 'string', required: true },
+            severity:         { type: 'string', required: true, enum: ['info', 'warn', 'error', 'critical', 'fatal'] },
+            source:           { type: 'string', required: true },
+            subject:          { type: 'string', required: true },
+            timestamp:        { type: 'date', required: true },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Notice: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'notice#${id}' },
+            id:               { type: 'string', generate: 'uid' },
+            deviceId:         { type: 'string', required: true },
+            message:          { type: 'string', required: true },
+            timestamp:        { type: 'date', required: true },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Mapping: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'mapping#${id}' },
+            id:               { type: 'string', generate: 'uid' },
+            deviceId:         { type: 'string', required: true },
+            portId:           { type: 'string', required: true },
+            vlanId:           { type: 'string', required: true },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Port: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'port#${id}' },
+            id:               { type: 'string', generate: 'uid' },
+            deviceId:         { type: 'string', required: true },
+            enable:           { type: 'boolean', default: true },
+            duplex:           { type: 'string', default: 'full' },
+            flowControl:      { type: 'boolean', default: true },
+            jumbo:            { type: 'boolean', default: true },
+            name:             { type: 'string' },
+            negotiate:        { type: 'boolean', default: true },
+            speed:            { type: 'number', default: 1000 },
+            status:           { type: 'string', enum: [ 'online', 'offline' ], default: 'online' },
+            rxBytes:          { type: 'number', default: 0 },
+            rxPackets:        { type: 'number', default: 0 },
+            txBytes:          { type: 'number', default: 0 },
+            txPackets:        { type: 'number', default: 0 },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        PortStats: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'ptats#${id}' },
+            id:               { type: 'string' },
+            deviceId:         { type: 'string', required: true },
+            rxBytes:          { type: 'number', default: 0 },
+            rxPackets:        { type: 'number', default: 0 },
+            txBytes:          { type: 'number', default: 0 },
+            txPackets:        { type: 'number', default: 0 },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Settings: {
+            pk:               { type: 'string', value: 'settings#${deviceId}' },
+            sk:               { type: 'string', value: 'settings#' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Stats: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'stats#' },
+            deviceId:         { type: 'string', required: true },
+            io:               { type: 'number', default: 0 },
+            temperature:      { type: 'number', default: 0 },
+            activePorts:      { type: 'number', default: 0 },
+            activeVlans:      { type: 'number', default: 0 },
+            vlanStatus:       { type: 'array' },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        },
+        Vlan: {
+            pk:               { type: 'string', value: 'device#${deviceId}' },
+            sk:               { type: 'string', value: 'vlan#${id}' },
+            id:               { type: 'string', generate: 'uid' },
+            deviceId:         { type: 'string', required: true },
+            name:             { type: 'string', required: true },
+            description:      { type: 'string' },
+            status:           { type: 'string', required: true, enum: ['online', 'offline'], default: 'online' },
+            rxBytes:          { type: 'number', default: 0 },
+            rxPackets:        { type: 'number', default: 0 },
+            txBytes:          { type: 'number', default: 0 },
+            txPackets:        { type: 'number', default: 0 },
+            updated:          { type: 'date' },
+            _source:          { type: 'string', hidden: true },
+        }
+    }
+}

@@ -1,0 +1,33 @@
+/*
+    web.json5 - Web server configuration file
+
+    For a full list of properties: https://www.embedthis.com/agent/doc/web/properties/
+*/
+{
+    documents: '@site',
+    headers: {},
+    index: 'index.html',
+    limits: {
+        body: '100K',
+        connections: '100',
+        header: '10K',
+        sessions: '20',
+        upload: '20MB',
+    },
+    listen: ['http://:80', 'https://:443'],
+    redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
+    routes: [
+        {match: '', handler: 'file', methods: ['GET']},
+    ],
+    timeouts: {
+        inactivity: '300 secs',
+        parse: '10 secs',
+        request: '10 mins',
+        session: '30 mins',
+        tls: '1 day',
+    },
+    upload: {
+        dir: 'tmp',
+        remove: true,
+    },
+}

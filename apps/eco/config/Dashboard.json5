@@ -1,0 +1,425 @@
+{
+    css: [
+        {
+            name: 'background',
+            value: 'linear-gradient(#4bc5f4, 15%, #041e16)',
+        },
+    ],
+    emulate: null,
+    fixed: true,
+    framed: false,
+    full: true,
+    layout: 'flow',
+    live: true,
+    name: 'EcoHouse',
+    range: {
+        anchor: 'relative',
+        period: 604800,
+        refresh: 60,
+        timezone: 'local',
+    },
+    refresh: 10,
+    snap: true,
+    widgetCss: [],
+    widgets: [
+        {
+            css: [
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'text.font-size',
+                    value: '48px',
+                },
+            ],
+            dimensions: {},
+            fixed: false,
+            height: '68',
+            id: 'a031f4262de7c99aa24ebdb120a1f41d',
+            left: '0',
+            text: 'Eco House',
+            top: '16',
+            type: 'text',
+            width: '1',
+            z: '0',
+        },
+        {
+            css: [],
+            fixed: false,
+            height: '324',
+            id: '7be1d69a19945e54a894b28d5fbffe2b',
+            left: '0',
+            top: '88',
+            type: 'image',
+            url: 'https://www.embedthis.com/images/design/t-house.avif',
+            width: '1',
+            z: '0',
+        },
+        {
+            action: {
+                type: 'trigger',
+                target: 'Database Poll'
+            },
+            css: [
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.bottom',
+                    value: '14cqh',
+                },
+                {
+                    name: 'footer.color',
+                    value: 'rgb(100, 255, 100)',
+                },
+                {
+                    name: 'footer.text-transform',
+                    value: 'uppercase',
+                },
+                {
+                    name: 'header.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value.font-size',
+                    value: '24px',
+                },
+            ],
+            dimensions: {},
+            field: 'solar',
+            fixed: false,
+            footer: 'Generating',
+            header: 'Solar',
+            height: '120',
+            id: '1c7687e69225c17899c7eb1e17bddc78',
+            left: '0',
+            max: 100,
+            model: 'Flow',
+            namespace: 'Database',
+            suffix: 'kw',
+            top: '428',
+            type: 'numeric',
+            units: 'week',
+            width: '0.32710280373831774',
+            z: '0',
+        },
+        {
+            cloudId: 'replace',
+            css: [
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.bottom',
+                    value: '14cqh',
+                },
+                {
+                    name: 'footer.text-transform',
+                    value: 'uppercase',
+                },
+                {
+                    name: 'header.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value<0:footer.--w-content',
+                    value: 'EXPORT:IMPORT',
+                },
+                {
+                    name: 'value<0:footer.color',
+                    value: 'rgb(100, 255, 100):yellow',
+                },
+                {
+                    name: 'value<0:footer.font-weight',
+                    value: 'bold',
+                },
+            ],
+            dimensions: {},
+            field: 'grid',
+            fixed: false,
+            footer: 'Not Required',
+            header: 'Grid',
+            height: '120',
+            id: '13d8804c6aeb7106a648a64c1d9a59ed',
+            left: '0.3364485981308411',
+            max: 100,
+            model: 'Flow',
+            namespace: 'Database',
+            prefix: '',
+            suffix: 'kw',
+            top: '428',
+            type: 'numeric',
+            units: 'week',
+            width: '0.32710280373831774',
+            z: '0',
+        },
+        {
+            cloudId: 'replace',
+            css: [
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.bottom',
+                    value: '14cqh',
+                },
+                {
+                    name: 'footer.text-transform',
+                    value: 'uppercase',
+                },
+                {
+                    name: 'header.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value<0:footer.--w-content',
+                    value: 'DISCHARGING:CHARGING',
+                },
+                {
+                    name: 'value<0:footer.color',
+                    value: 'yellow:rgb(100, 255, 100)',
+                },
+                {
+                    name: 'value<0:footer.font-weight',
+                    value: 'bold',
+                },
+            ],
+            dimensions: {},
+            field: 'battery',
+            fixed: false,
+            footer: 'Idle',
+            header: 'Battery',
+            height: '120',
+            id: '94b284287e503aee9df3f4fafbabd664',
+            left: '0.6728971962616822',
+            max: 100,
+            model: 'Flow',
+            namespace: 'Database',
+            prefix: '',
+            suffix: 'kw',
+            top: '428',
+            type: 'numeric',
+            units: 'week',
+            width: '0.32710280373831774',
+            z: '0',
+        },
+        {
+            cloudId: 'replace',
+            css: [
+                {
+                    name: 'footer.color',
+                    value: 'yellow',
+                },
+                {
+                    name: 'footer.font-weight',
+                    value: 'bold',
+                },
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.bottom',
+                    value: '14cqh',
+                },
+                {
+                    name: 'footer.text-transform',
+                    value: 'uppercase',
+                },
+                {
+                    name: 'header.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value.font-size',
+                    value: '24px',
+                },
+            ],
+            dimensions: {},
+            field: 'house',
+            fixed: false,
+            footer: 'CONSUMING',
+            format: '-0#,###.#^',
+            header: 'House',
+            height: '108',
+            id: '6b8747a47c0b754ba3095f343f99a957',
+            left: '0',
+            max: 100,
+            model: 'Flow',
+            namespace: 'Database',
+            suffix: 'kw',
+            top: '552',
+            type: 'numeric',
+            units: 'week',
+            width: '0.4953271028037383',
+            z: '0',
+        },
+        {
+            cloudId: 'replace',
+            css: [
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.bottom',
+                    value: '14cqh',
+                },
+                {
+                    name: 'footer.text-transform',
+                    value: 'uppercase',
+                },
+                {
+                    name: 'header.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'value<0:footer.--w-content',
+                    value: 'CHARGING:DRIVING',
+                },
+                {
+                    name: 'value<0:footer.color',
+                    value: 'yellow:rgb(100, 255, 100)',
+                },
+                {
+                    name: 'value<0:footer.font-weight',
+                    value: 'bold',
+                },
+            ],
+            dimensions: {},
+            field: 'car',
+            fixed: false,
+            footer: '',
+            header: 'Auto',
+            height: '108',
+            id: '3ede04544df41e019c8b02818f8590eb',
+            left: '0.5046728971962616',
+            max: 100,
+            model: 'Flow',
+            namespace: 'Database',
+            suffix: 'kw',
+            top: '552',
+            type: 'numeric',
+            units: 'week',
+            width: '0.4953271028037383',
+            z: '0',
+        },
+        {
+            action: {
+                type: 'trigger',
+                target: 'ChargeCar',
+                conditions: [
+                    {
+                        params: '{car: false}',
+                        expression: 'value'
+                    },
+                    {
+                        params: '{car: true}'
+                    }
+                ]
+            },
+            cloudId: 'replace',
+            css: [
+                {
+                    name: '--w-prepend-icon',
+                    value: '$clock',
+                },
+                {
+                    name: '--w-rounded',
+                    value: 'pill',
+                },
+                {
+                    name: 'background',
+                    value: 'transparent',
+                },
+                {
+                    name: 'button.background',
+                    value: 'linear-gradient(#09383d, #3bb4d1)',
+                },
+                {
+                    name: 'button.class',
+                    value: 'pulse',
+                },
+                {
+                    name: 'button.font-size',
+                    value: '24px',
+                },
+                {
+                    name: 'color',
+                    value: 'white',
+                },
+                {
+                    name: 'footer.font-size',
+                    value: '16px',
+                },
+                {
+                    name: 'value:footer.--w-content',
+                    value: 'CHARGING:NOT CHARGING',
+                },
+                {
+                    name: 'value:footer.color',
+                    value: 'white:black',
+                },
+                {
+                    name: 'value:footer.font-weight',
+                    value: 'bold',
+                },
+            ],
+            dimensions: {},
+            field: 'car',
+            fixed: false,
+            footer: 'Unplugged',
+            height: '104',
+            id: '24ffde3c4127131084d4b8322e84c5e7',
+            left: '0',
+            model: 'Desired',
+            namespace: 'Database',
+            text: 'Charge Auto',
+            top: '684',
+            type: 'button',
+            units: 'week',
+            width: '1',
+            z: '0',
+        },
+    ],
+}

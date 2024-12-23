@@ -1,0 +1,9 @@
+{
+    web: {
+        listen: [ "http://:80" ]
+        upload: {
+            dir: '/tmp',
+            remove: true,
+        }
+    }
+}

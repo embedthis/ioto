@@ -1,0 +1,73 @@
+/*
+    - Is it better to define metrics in the UI 
+    - Can client bypass buffering in agent and in service?
+ */
+{
+    process: {
+        Capacity: {enable: 'both', sync: 'up', pivot: true},
+        Charge: {enable: 'both', sync: 'up', pivot: true, actions: true},
+        Desired: {enable: 'both', sync: 'down', pivot: true},
+        Flow: {
+            enable: 'both',
+            sync: 'up',
+            metrics: [{
+                fields: [ 'car', 'battery', 'grid', 'house', 'solar' ], 
+                buffer: {count: 10, elapsed: 30}
+            }],
+            pivot: true,
+            actions: true,
+        },
+        State: {enable: 'both', sync: 'up', pivot: true, actions: true},
+    },
+    models: {
+        Capacity: {
+            pk: {type: 'string', value: 'device#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'capacity#', hidden: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+            car: {type: 'number', default: 13500},
+            battery: {type: 'number', default: 57500},
+            solar: {type: 'number', default: 10000},
+            updated: {type: 'date', readonly: true, hidden: true},
+            _source: {type: 'string', hidden: true},
+        },
+        Charge: {
+            pk: {type: 'string', value: 'device#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'charge#', hidden: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+            car: {type: 'number', default: 0},
+            battery: {type: 'number', default: 0},
+            updated: {type: 'date', readonly: true, hidden: true},
+            _source: {type: 'string', hidden: true},
+        },
+        Desired: {
+            pk: {type: 'string', value: 'device#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'desired#', hidden: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+            car: {type: 'boolean', notes: 'True if charging'},
+            created: {type: 'date', readonly: true},
+            updated: {type: 'date', readonly: true, hidden: true},
+            _source: {type: 'string', hidden: true},
+        },
+        //  Current flow
+        Flow: {
+            pk: {type: 'string', value: 'device#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'flow#', hidden: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+            car: {type: 'number', default: 0, note: 'Car consuming in Kw'},
+            battery: {type: 'number', default: 0, note: 'Battery supply in Kw'},
+            grid: {type: 'number', default: 0, note: 'Grid supply in Kw'},
+            house: {type: 'number', default: 0, note: 'House consuming in Kw'},
+            solar: {type: 'number', default: 0, note: 'Solar supply in Kw'},
+            updated: {type: 'date', readonly: true, hidden: true},
+            _source: {type: 'string', hidden: true},
+        },
+        State: {
+            pk: {type: 'string', value: 'device#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'state#', hidden: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+            car: {type: 'boolean'},
+            updated: {type: 'date', readonly: true, hidden: true},
+            _source: {type: 'string', hidden: true},
+        },
+    },
+}

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+      <ItemDefinitionGroup>
+        <ClCompile>
+          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=/path/to/openssl;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+          <AdditionalIncludeDirectories>$(IncDir);$(ME_COM_OPENSSL_PATH)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+          <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+          <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+          <SubSystem>Console</SubSystem>
+    </Link>
+      </ItemDefinitionGroup>
+
+      <PropertyGroup Label="Globals">
+        <ProjectGuid>{bed388ef-8768-4149-a22d-4083a4404b3d}</ProjectGuid>
+        <RootNamespace />
+        <Keyword>Win32Proj</Keyword>
+      </PropertyGroup>
+
+      <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+          <Configuration>Debug</Configuration>
+          <Platform>Win32</Platform>
+        </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+          <Configuration>Release</Configuration>
+          <Platform>Win32</Platform>
+        </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+          <Configuration>Debug</Configuration>
+          <Platform>x64</Platform>
+        </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+          <Configuration>Release</Configuration>
+          <Platform>x64</Platform>
+        </ProjectConfiguration>
+  </ItemGroup>
+    
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+        <ConfigurationType>StaticLibrary</ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+        <ConfigurationType>StaticLibrary</ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+        <ConfigurationType>StaticLibrary</ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+        <ConfigurationType>StaticLibrary</ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+
+      <Import Project="$(VCTargetsPath)Microsoft.Cpp.Default.props" />
+      <Import Project="$(VCTargetsPath)Microsoft.Cpp.props" />
+
+      <ImportGroup Label="PropertySheets" />
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="debug.props" />
+        <Import Project="x86.props" />
+      </ImportGroup>
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="release.props" />
+        <Import Project="x86.props" />
+      </ImportGroup>
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="debug.props" />
+        <Import Project="x64.props" />
+      </ImportGroup>
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="release.props" />
+        <Import Project="x64.props" />
+      </ImportGroup>
+
+      <PropertyGroup>
+        <_ProjectFileVersion>10</_ProjectFileVersion>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ObjDir)\libioto\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">PreBuildEvent</CustomBuildBeforeTargets>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ObjDir)\libioto\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">PreBuildEvent</CustomBuildBeforeTargets>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ObjDir)\libioto\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">PreBuildEvent</CustomBuildBeforeTargets>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ObjDir)\libioto\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PreBuildEvent</CustomBuildBeforeTargets>
+  </PropertyGroup>
+  
+      <ItemGroup>
+    <ClCompile Include="..\..\lib\cryptLib.c" />
+    <ClCompile Include="..\..\lib\dbLib.c" />
+    <ClCompile Include="..\..\lib\iotoLib.c" />
+    <ClCompile Include="..\..\lib\jsonLib.c" />
+    <ClCompile Include="..\..\lib\mqttLib.c" />
+    <ClCompile Include="..\..\lib\rLib.c" />
+    <ClCompile Include="..\..\lib\uctxAssembly.S" />
+    <ClCompile Include="..\..\lib\uctxLib.c" />
+    <ClCompile Include="..\..\lib\urlLib.c" />
+    <ClCompile Include="..\..\lib\webLib.c" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\crypt.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\db.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\ioto-config.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\ioto.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\json.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\me.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\mqtt.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\osdep.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\r.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\uctx-defs.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\uctx-os.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\uctx.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\url.h" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\web.h" />
+  </ItemGroup>
+
+      <ItemDefinitionGroup>
+        
+
+      <Link>
+        <AdditionalDependencies>libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+        <AdditionalLibraryDirectories>$(OutDir);build\$(Cfg)\bin;$(ME_COM_OPENSSL_PATH)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      </Link>
+
+      <CustomBuildStep>
+        <Command>cd ..\..
+copy /Y /B include\crypt.h $(IncDir)
+copy /Y /B include\db.h $(IncDir)
+copy /Y /B include\ioto-config.h $(IncDir)
+copy /Y /B include\ioto.h $(IncDir)
+copy /Y /B include\json.h $(IncDir)
+copy /Y /B include\me.h $(IncDir)
+copy /Y /B include\mqtt.h $(IncDir)
+copy /Y /B include\osdep.h $(IncDir)
+copy /Y /B include\r.h $(IncDir)
+copy /Y /B include\uctx-defs.h $(IncDir)
+copy /Y /B include\uctx-os.h $(IncDir)
+copy /Y /B include\uctx.h $(IncDir)
+copy /Y /B include\url.h $(IncDir)
+copy /Y /B include\web.h $(IncDir)
+cd projects\ioto-windows-default</Command>
+        <Outputs>$(BinDir)\libioto.lib</Outputs>
+      </CustomBuildStep>
+  </ItemDefinitionGroup>
+
+  <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+
+</Project>

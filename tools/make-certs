@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+#	make-certs - This script builds the following test certificates.
+#	
+#	WARNING: Do not use these in distributed products. You must obtain or generate your own certs.
+#
+#	aws.crt 	- AWS root certificate to use when validating talking to AWS cloud endpoints
+#	ca.crt 		- Local test certificate authority
+#	ec.crt		- Eliptic curve certificate for use by the Ioto web server
+#	roots.crt	- Top level root certificates to validate connecting to public internet sites
+#	self.crt	- Self-signed certificate for use by the Ioto web server
+#	test.crt	- Test certficate signed by the ca.crt for use by the Ioto web server
+#	
+if [ ! -f certs/openssl.conf ] ; then
+    echo "Must invoke from the top directory"
+    exit 2
+fi
+mkdir -p state/certs
+
+if [ ! -f certs/test.crt ] ; then
+(
+	cd certs >/dev/null
+	
+	set -e
+    rm -f *.pem ca.* *.csr ec.crt ec.key test.crt test.key self.crt self.key
+
+    if [ ! -f ca.srl ] ; then
+        echo 01 >ca.srl
+    fi
+    if [ ! -f ca.db ] ; then
+        touch ca.db
+    fi
+	echo ; echo
+	echo Make certificate authority
+	openssl genrsa -out ca.key 2048
+	openssl req -config openssl.conf -new -x509 -days 3650 -key ca.key -out ca.crt -extensions caExtensions
+
+	echo ; echo
+	echo Self-signed Certificate: self.crt
+	openssl genrsa -out self.key 2048
+	openssl req -new -x509 -days 3650 -key self.key -out self.crt <self.ans
+
+	echo ; echo
+	echo Test Certificate: test.crt
+	openssl genrsa -out test.key 2048
+	openssl req -new -key test.key -out test.csr <test.ans
+	openssl ca -batch -config openssl.conf -notext -in test.csr -out test.crt -extensions server
+
+	echo ; echo
+	echo Make test server certificate for web server
+	openssl ecparam -genkey -name prime256v1 -out ec.key
+	openssl req -new -key ec.key -out ec.csr <ec.ans
+	openssl req -x509 -days 365 -key ec.key -in ec.csr -out ec.crt
+
+	echo ; echo
+	echo Get root certificates
+	curl https://raw.githubusercontent.com/bagder/ca-bundle/master/ca-bundle.crt >roots.crt
+) >certs.log 2>&1
+fi
+
+if [ $? != 0 ] ; then
+	cat certs.log
+	exit 2
+fi
+rm -f certs.log
+
+#
+#	Install
+#
+cp certs/*.crt certs/*.key state/certs

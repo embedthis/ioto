@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="data:;base64,=" />
+        <link href="/public/style.css" rel="stylesheet" type="text/css" />
+        <title>index.html</title>
+    </head>
+    <body>
+        <div class="toolbar">
+            <a href="https://www.embedthis.com/ioto" target="_blank">
+                <img src="/public/ioto-tm.png" class="logo" alt="Ioto logo" />
+            </a>
+            <a href="/"><button class="active">Home Page</button></a>
+            <a href="/public/welcome.html"><button>Public</button></a>
+            <a href="/user/welcome.html"><button>User</button></a>
+            <a href="/admin/welcome.html"><button>Admin</button></a>
+            <a href="/public/login.html" id="username" class="right">Login</a>
+        </div>
+        <div class="main">
+            <h1>Home Page</h1>
+
+            <p>This mini-site demonstrates the use of the Ioto web server and basic user authentication.</p>
+            <p>
+                When logged in, you will have access to various portions of the site depending on the access role. If not logged in,
+                you only have access to the home page, public page and login page.
+            </p>
+            <p>Login as "admin" or "guest" with a password of "demo".</p>
+            <h2 id="notes"></h2>
+            <a id="log"><button id="logbutton"></button></a>
+        </div>
+    </body>
+</html>
+
+<script async>
+    async function getAuth() {
+        let response = await fetch('/api/public/getAuth')
+        let notes = document.getElementById('notes')
+        if (response.status != 200) {
+            notes.innerHTML = `ERROR: App not built correctly.`
+            document.getElementById('log').style.display = 'none'
+        } else {
+            let auth = await response.json()
+            let el = document.getElementById('username')
+            if (auth && auth.username) {
+                el.innerHTML = auth.username
+                el.href = '/public/logout.html'
+                notes.innerHTML = `You are logged in as "${auth.username}"`
+                document.getElementById('logbutton').innerHTML = 'Log Out'
+                document.getElementById('log').href = '/api/public/logout'
+            } else {
+                el.innerHTML = 'Login'
+                el.href = '/public/login.html'
+                notes.innerHTML = `You are not logged in`
+                document.getElementById('logbutton').innerHTML = 'Log In'
+                document.getElementById('log').href = '/public/login.html'
+            }
+        }
+    }
+    getAuth()
+</script>

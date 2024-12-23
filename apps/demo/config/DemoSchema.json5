@@ -1,0 +1,64 @@
+/*
+    DemoSchema.json5 -- Demo Schema
+    
+    Service - Singleton service-level table
+    Log - Log entries. Grows with automatic TTL expiry of entries.
+ */
+{
+    process: {
+        Service: { enable: 'both', sync: 'up', actions: true },
+        Settings: { enable: 'both', sync: 'up', actions: true },
+        Log: { enable: 'both', sync: 'up', actions: true },
+    },
+    models: {
+        /*
+            Singleton service-level table 
+         */
+        Service: {
+            pk: {type: 'string', value: 'service#', hidden: true},
+            sk: {type: 'string', value: 'service#', hidden: true},
+            value: {type: 'number' },
+            updated: {type: 'date', readonly: true},
+            _source: {type: 'string', hidden: true},
+        },
+
+        /*
+            Device settings - updated via form inputs
+        */
+        Settings: {
+            pk: {type: 'string', value: 'settings#${accountId}#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'settings#', hidden: true},
+            accountId: {type: 'string', required: true, readonly: true},
+            deviceId: {type: 'string', required: true, readonly: true},
+
+            name: {type: 'string'},
+            address: {type: 'string'},
+            phone: {type: 'string'},
+            enabled: {type: 'boolean'},
+            comments: {type: 'string'},
+            selection: {type: 'string'},
+            volume: {type: 'number'},
+            power: {type: 'boolean'},
+
+            expires: {type: 'date', ttl: true},
+            updated: {type: 'date', readonly: true},
+            _source: {type: 'string', hidden: true},
+        },
+
+        /*
+            Service Log table. New entries allocate new items.
+         */
+        Log: {
+            pk: {type: 'string', value: 'log#', hidden: true},
+            sk: {type: 'string', value: 'log#${id}', hidden: true},
+            id: {type: 'string', generate: 'ulid', notes: 'Unique account ID'},
+            message: {type: 'string' },
+            context: {type: 'object', default: {} },
+            expires: {type: 'date', ttl: true},
+            updated: {type: 'date', readonly: true},
+            _source: {type: 'string', hidden: true},
+        }
+    }
+}
+
+  
