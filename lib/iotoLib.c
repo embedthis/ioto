@@ -477,13 +477,16 @@ PUBLIC void ioUpdateDevice(void)
 
     assert(ioto->id);
 
+#if SERVICES_CLOUD
+    if (!ioto->account) {
+        return;
+    }
+#endif
     json = jsonAlloc(0);
     jsonSet(json, 0, "id", ioto->id, JSON_STRING);
-#if SERVICES_CLOUD
     if (ioto->account) {
         jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
     }
-#endif
     jsonSet(json, 0, "description", jsonGet(ioto->config, 0, "device.description", 0), JSON_STRING);
     jsonSet(json, 0, "model", jsonGet(ioto->config, 0, "device.model", 0), JSON_STRING);
     jsonSet(json, 0, "name", jsonGet(ioto->config, 0, "device.name", 0), JSON_STRING);

@@ -49,7 +49,7 @@ The default app is the "demo" app which sends device data and metrics to the
 cloud.
 The "eco" app emulates a simple Home charging network with a mobile app.
 
-Name | Directory | Description
+Name | Description
 -|-|-
 auth | Simple embedded web server user/group authentication.
 blink | Minimal ESP32 blink app to demonstrate linking with Ioto on ESP32
@@ -69,8 +69,7 @@ Site](https://admin.embedthis.com/product). To download, first create an
 account and login, then navigate to the product list, select the Ioto Eval and
 click the download link.
 
-[Download Source Package](https://admin.embedthis.com/product){ .md-button
-.md-button--primary }
+[Download Source Package](https://admin.embedthis.com/product)
 
 The Ioto source distribution contains all the required source files, headers,
 and build tools. 

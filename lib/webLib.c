@@ -1945,6 +1945,8 @@ static char *makeSessionID(Web *web)
 /*
     test.c - Test routines for debug mode only
 
+    Should NEVER be included in a production build
+
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
@@ -2165,11 +2167,28 @@ static void successAction(Web *web)
     webWriteResponse(web, URL_CODE_OK, "success\n");
 }
 
+#if ME_WEB_UPLOAD
 static void uploadAction(Web *web)
 {
+    WebUpload *file;
+    RName     *up;
+    char      *path;
+
     showRequest(web);
+    if (web->uploads) {
+        for (ITERATE_NAME_DATA(web->uploads, up, file)) {
+            path = rJoinFile("/tmp", file->clientFilename);
+            if (rCopyFile(file->filename, path, 0644) < 0) {
+                webError(web, 500, "Cant open output upload filename");
+                rFree(path);
+                break;
+            }
+            rFree(path);
+        }
+    }
     webFinalize(web);
 }
+#endif
 
 /*
     Read a streamed rx body
@@ -2198,8 +2217,10 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
     webAddAction(host, SFMT(url, "%s/error", prefix), errorAction, NULL);
     webAddAction(host, SFMT(url, "%s/success", prefix), successAction, NULL);
     webAddAction(host, SFMT(url, "%s/show", prefix), showAction, NULL);
-    webAddAction(host, SFMT(url, "%s/upload", prefix), uploadAction, NULL);
     webAddAction(host, SFMT(url, "%s/stream", prefix), streamAction, NULL);
+#if ME_WEB_UPLOAD
+    webAddAction(host, SFMT(url, "%s/upload", prefix), uploadAction, NULL);
+#endif
 }
 
 #else
@@ -2427,13 +2448,18 @@ static int processUploadData(Web *web, WebUpload *upload)
         }
         if (upload->filename) {
             /*
-                If webBufferUntil returned 0 (short), then the boundary was not seen.
-                In this case, write data and continue but preserve 2 bytes incase it is the \r\n before the boundary.
-
-                If the boundary is found, preserve it (and the \r\n) to be consumed by webProcessUpload.
+                If webBufferUntil returned 0 (short), then a complete boundary was not seen. In this case, 
+                write the data and continue but preserve a possible partial boundary.
+                If a full boundary is found, preserve it (and the \r\n) to be consumed by webProcessUpload.
              */
-            len = (nbytes ? nbytes - web->boundaryLen : rGetBufLength(web->rx)) - 2;
-
+            len = nbytes ? nbytes : rGetBufLength(web->rx);
+            if (nbytes) {
+                //  Preserve boundary and \r\n
+                len -= web->boundaryLen + 2;
+            } else if (memchr(buf->start, web->boundary[0], rGetBufLength(web->rx)) != NULL) {
+                //  Preserve a potential partial boundary
+                len -= web->boundaryLen + -1 + 2;
+            }
             if (len > 0) {
                 if ((upload->size + len) > web->host->maxUpload) {
                     return webError(web, 414, "Uploaded file exceeds maximum %lld", web->host->maxUpload);
