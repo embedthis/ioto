@@ -13,6 +13,8 @@
         header: '10K',
         sessions: '20',
         upload: '20MB',
+        maxFrame: '100K',
+        maxMessage: '100K',
     },
     listen: ['http://:80', 'https://:443'],
     redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
@@ -29,5 +31,10 @@
     upload: {
         dir: 'tmp',
         remove: true,
+    },
+    webSockets: {
+        ping: 'never',
+        protocol: 'chat',
+        validateUTF: false,
     },
 }
