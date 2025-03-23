@@ -1694,6 +1694,16 @@ PUBLIC bool rIsFileAbs(cchar *path)
     return isAbs(path);
 }
 
+PUBLIC cchar *rGetFileExt(cchar *path)
+{
+    cchar *cp;
+
+    if ((cp = srchr(path, '.')) != NULL) {
+        return ++cp;
+    }
+    return 0;
+}
+
 PUBLIC ssize rGetFileSize(cchar *path)
 {
     struct stat info;
@@ -5888,7 +5898,6 @@ static int loadKey(Rtls *tp, SSL_CTX *ctx, cchar *buf, ssize len, int type, ccha
         } else {
             loaded = 1;
         }
-    //  MOB - remove this section
     } else if (key) {
         if (SSL_CTX_use_RSAPrivateKey(ctx, key) != 1) {
             rSetSocketError(tp->sock, "Unable to use key %s", path);
@@ -7066,7 +7075,7 @@ PUBLIC RbNode *rbNext(RbTree *rbt, RbNode *node)
     return p;
 }
 
-#if UNUSED
+#if KEEP
 /*
     Recursive walk. The Safe runtime uses fiber coroutines and it is best to limit the fiber's stack
     size. So this API isn't ideal.
@@ -8635,7 +8644,6 @@ PUBLIC char *sfmtv(cchar *format, va_list arg)
     char *buf;
 
     buf = rVsnprintf(NULL, -1, format, arg);
-    // vasprintf(&s, format, arg);
     return buf;
 }
 
@@ -8649,7 +8657,6 @@ PUBLIC char *sfmtbuf(char *buf, ssize bufsize, cchar *fmt, ...)
 
     va_start(ap, fmt);
     rVsnprintf(buf, bufsize, fmt, ap);
-    // vsnprintf(buf, bufsize, fmt, ap);
     va_end(ap);
     return buf;
 }
@@ -8661,8 +8668,6 @@ PUBLIC char *sfmtbufv(char *buf, ssize bufsize, cchar *fmt, va_list arg)
     assert(bufsize > 0);
 
     return rVsnprintf(buf, bufsize, fmt, arg);
-    // vsnprintf(buf, bufsize, fmt, arg);
-    // return buf;
 }
 
 PUBLIC uint shash(cchar *cname, ssize len)
@@ -8722,7 +8727,6 @@ PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...)
 
     va_start(ap, fmt);
     buf = rVsnprintf(NULL, -1, fmt, ap);
-    // vasprintf(&buf, fmt, ap);
     va_end(ap);
     result = sjoin(str, buf, NULL);
     rFree(buf);
@@ -9494,7 +9498,7 @@ PUBLIC void szero(char *str)
     }
 }
 
-#if UNUSED
+#if KEEP
 /*
     String to list. This parses the string of space separated arguments. Single and double quotes are suppored.
     This returns a stable list.
@@ -9957,11 +9961,11 @@ time_t timegm(struct tm *tm)
 #if ME_WIN_LIKE
 PUBLIC Time rParseIsoDate(cchar *when)
 {
-    struct tm tm = {0};
-    char *pos;
-    int hours_offset = 0;
-    int minutes_offset = 0;
-    int sign = 1; // Positive offset
+    struct tm tm = { 0 };
+    char      *pos;
+    int       hours_offset = 0;
+    int       minutes_offset = 0;
+    int       sign = 1; // Positive offset
 
     if (sscanf(when, "%4d-%2d-%2dT%2d:%2d:%2d",
                &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
@@ -10976,8 +10980,8 @@ static LRESULT CALLBACK winProc(HWND hwnd, UINT msg, UINT wp, LPARAM lp);
 
 PUBLIC int rInitOs(void)
 {
-    WSADATA   wsaData;
-    WNDCLASS  wc;
+    WSADATA  wsaData;
+    WNDCLASS wc;
 
     if (WSAStarup(MAKEWORD(2, 2), &wsaData) != 0) {
         return -1;
@@ -11061,7 +11065,8 @@ PUBLIC void rWriteToOsLog(cchar *message, int level)
     if (once == 0) {
         // Initialize the registry
         once = 1;
-        sfmtbuf(logName, sizeof(logName), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s", rGetAppName());
+        sfmtbuf(logName, sizeof(logName), "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\%s",
+                rGetAppName());
         hkey = 0;
 
         if (RegCreateKeyEx(HKEY_LOCAL_MACHINE, logName, 0, NULL, 0, KEY_ALL_ACCESS, NULL,
@@ -11372,15 +11377,16 @@ PUBLIC int usleep(uint msec)
 /*
     Custom strptime to parse a HTTP if-modified string
  */
-static const char *weekdays[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static const char *weekdays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+static const char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
-PUBLIC char *strptime(const char *buf, const char *format, struct tm *tm) {
-    (void)format; // Unused parameter
+PUBLIC char *strptime(const char *buf, const char *format, struct tm *tm)
+{
+    (void) format; // Unused parameter
 
     char weekday[4], month[4], gmt[4];
-    int day, year, hour, minute, second;
+    int  day, year, hour, minute, second;
     memset(tm, 0, sizeof(struct tm));
 
     if (sscanf(buf, "%3s, %2d %3s %4d %2d:%2d:%2d %3s",
@@ -11420,7 +11426,7 @@ PUBLIC char *strptime(const char *buf, const char *format, struct tm *tm) {
     // Validate GMT
     if (strcmp(gmt, "GMT") != 0) return NULL;
 
-    return (char *)(buf + strlen(buf));
+    return (char*) (buf + strlen(buf));
 }
 
 #else
