@@ -2,7 +2,7 @@
     name: "ioto",
     title: "Ioto",
     description: "Ioto Device agent",
-    version: "2.5.0",
+    version: "2.6.0",
     keywords: [
         "ioto",
         "Embedthis"
@@ -15,11 +15,11 @@
     },
     repository: {
         type: "git",
-        url: "git://github.com/embedthis/agent.git"
+        url: "git://github.com/embedthis/ioto.git"
     },
     bugs: {
         email: "dev@embedthis.com",
-        url: "http://github.com/embedthis/agent/issues"
+        url: "http://github.com/embedthis/ioto/issues"
     },
     license: "Commercial",
     devDependencies: {
@@ -28,24 +28,24 @@
     },
     files: [
         "dist/",
-        "doc/api/"
+        "doc/api/ioto.*"
     ],
     import: true,
     dependencies: {
+        openai: "~1",
         certs: "~1",
         crypt: "~1",
         db: "~1",
         json: "~1",
         manager: "~1",
-        "me-dev": "~1.0",
-        "me-doc": "~1.0",
         mqtt: "~1",
         osdep: "~1",
         r: "~1",
         ssl: "~1",
         uctx: "~1",
         url: "~1",
-        web: "~1"
+        web: "~1",
+        websockets: "~1"
     },
     override: {
         manager: {
