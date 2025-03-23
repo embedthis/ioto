@@ -1,7 +1,7 @@
 {
     version: '1.0.0',
     profile: 'dev',
-    app: 'noapp',
+    app: 'ai',
     conditional: {
         profile: {
             dev: {
@@ -23,6 +23,9 @@
                     log: '/var/log',
                     state: '/var/lib/ioto',
                 },
+                log: {
+                    path: 'ioto.log'
+                },
                 optimize: 'release',
             },
         },
@@ -35,6 +38,17 @@
         maxSyncSize: '10k',
         service: '1hr',
     },
+    ai: {
+        enable: true,
+        provider: 'openai',
+        model: 'gpt-4o',
+        endpoint: 'https://api.openai.com/v1',
+        key: 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    },
+    limits: {
+        reprovision: 5,
+        _stack: '64k'
+    },
     log: {
         path: 'stdout',
         format: '%D %H %A[%P] (%T, %S): %M',
@@ -42,10 +56,15 @@
         sources: 'all,!mbedtls',
         show: '',
     },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        schedule: '* * * * *',
+        delay: 15,
+        timeout: 0,
+    },
     services: {
-        ai: false,
-        database: false,
-        demo: false,
+        ai: true,
+        database: true,
         keys: false,
         logs: false,
         mqtt: false,
@@ -56,11 +75,22 @@
         sync: false,
         update: false,
         url: true,
-        web: false,
+        web: true,
+    },
+    scripts: {
+        update: 'scripts/update',
     },
     tls: {
         authority: '@certs/roots.crt',
         certificate: '@certs/test.crt',
         key: '@certs/test.key',
     },
+    update: {
+        enable: false,
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
 }

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <script src="https://unpkg.com/marked/marked.min.js"></script>
+    </head>
+    <body>
+        <div id="app" class="chat">
+            <h1>Test OpenAI Responses API</h1>
+            <div _class="mb-5" v-for="item in page.questions">
+                <div class="question">{{ item.question}}</div>
+                <div class="answer" v-html="item.answer"></div>
+            </div>
+            <form @submit.prevent="onSubmit">
+                <div class="ask">
+                    <input
+                        ref="questionRef"
+                        v-model="page.question"
+                        type="text"
+                        name="question"
+                        id="question"
+                        size="80"
+                        placeholder="Ask any question about Ioto ..."
+                        required />
+                </div>
+                <div class="thinking" v-if="page.thinking">Thinking ...{{page.dots}}</div>
+            </form>
+        </div>
+    </body>
+</html>
+
+<script defer>
+    const {createApp, reactive, ref, onMounted} = Vue
+    createApp({
+        setup() {
+            const count = ref(0)
+            const questionRef = ref(null)
+
+            const page = reactive({
+                dots: '',
+                lifespan: 86400 * 1000 * 5,
+                previousResponseId: null,
+                question: null,
+                questions: [],
+                thinking: null,
+            })
+
+            onMounted(() => {
+                if (questionRef.value) {
+                    questionRef.value.focus()
+                }
+            })
+
+            async function onSubmit(event) {
+                event.preventDefault()
+                let question = page.question
+                if (question) {
+                    try {
+                        page.thinking = true
+                        let body = {
+                            tools: [{
+                                type: 'file_search', 
+                                vector_store_ids: ['vs_67a9c7bc4e148191be905286e03d624a'] },
+                            ],
+                            input: question,
+                            previous_response_id: page.previousResponseId ? page.previousResponseId : undefined,
+                        }
+                        let response = await fetch('http://localhost/ai/chat/response', {
+                            method: 'POST',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                                Origin: window.location.origin,
+                            },
+                            mode: 'cors',
+                            credentials: 'include',
+                            body: JSON.stringify(body),
+                        })
+                        if (response.status != 200) {
+                            throw new Error(await response.text())
+                        }
+                        let json = await response.json()
+
+                        page.previousResponseId = json.id
+                        let answer = json.output_text
+                        if (answer.indexOf('<html') >= 0) {
+                            answer = answer.replace(/```html\n/, '').replace(/\n```/, '')
+                        } else {
+                            answer = marked.parse(answer)
+                        }
+                        //  Remove cross-references
+                        answer = answer.replace(/.*<body>\n/s, '').replace(/<\/body>.*/, '').replace(/.\d+:\d+.source./g, '')
+                        page.questions.push({question: page.question, answer})
+                        page.question = null
+                        page.dots = ''
+                    } catch (err) {
+                        console.error(`Cannot submit form, please email`, {err})
+                        alert(`${err.message}.\n\nSorry, your question could not be submitted. ${err.message}`)
+                    } finally {
+                        page.thinking = false
+                    }
+                }
+            }
+            return {page, onSubmit}
+        }
+    }).mount('#app')
+</script>
+
+<style>
+.chat {
+    margin: 20px;
+    font-family:"Inter", ui-sans-serif, system-ui, sans-serif;
+    button {
+        margin-top: 20px;
+        background-color: #42b983;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+    }
+}
+.ask {
+    border: solid 1px rgb(103, 151, 228);
+    border-radius: 10px;
+    background-color: rgba(166, 220, 213, 0.15);
+    margin: 16px 0 0 0;
+    padding: 10px;
+    input {
+        font-size: 16px;
+        background-color: transparent;
+        outline: none !important;
+        border: none;
+        width: 100%;
+    }
+    input:focus-visible {
+        border: none;
+    }
+}
+.question {
+    margin: 10px 0;
+    padding: 10px;
+    border: solid 1px rgba(128, 128, 128, 0.4);
+    border-radius: 10px;
+    background-color: rgba(230, 230, 230, 0.1);
+}
+.answer {
+    margin: 20px 0 20px 0;
+    pre {
+        background-color: #eeeff48c;
+        border-radius: 4px;
+        padding: 10px;
+    }
+}
+.thinking {
+    margin-top: 16px;
+}
+</style>

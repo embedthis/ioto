@@ -43,6 +43,7 @@
         show: '',
     },
     services: {
+        ai: false,
         database: true,
         keys: false,
         logs: false,

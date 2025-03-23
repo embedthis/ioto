@@ -44,6 +44,7 @@
         timeout: 0,
     },
     services: {
+        ai: false,
         database: false,
         keys: false,
         logs: false,
@@ -63,6 +64,7 @@
         key: '@certs/test.key',
     },
     update: {
+        enable: false,
         schedule: '* * * * *',
         period: '24 hr',
         jitter: 0,

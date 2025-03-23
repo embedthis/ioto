@@ -1,0 +1,14 @@
+/*
+    schema.json5 -- Schema for the Demo App
+ */
+{
+    version: 'latest',
+    description: 'Demo app schema',
+    blend: [
+        '../../schemas/OneTable.json5',
+        // '../../schemas/CloudSchema.json5',
+        'DemoSchema.json5',
+    ],
+    process: { },
+    models: { },
+}
