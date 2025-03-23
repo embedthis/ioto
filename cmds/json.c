@@ -7,10 +7,10 @@
     json --stdin [cmd] <file
     json field=value    # assign
     json field          # query
-    json .              # convert
+    json .              # convert formats
 
     Options:
-    --blend | --check | --compress | --default | --env | --header |
+    --blend | --check | --compress | --default | --env | --export | --header |
     --json | --json5 | --profile name | --remove | --stdin
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
@@ -35,7 +35,6 @@
 #define TRACE_DEBUG_FILTER   "stderr:all:all"
 #define TRACE_FORMAT         "%S: %T: %M"
 
-#define JSON_FORMAT_COMPRESS 1
 #define JSON_FORMAT_ENV      1
 #define JSON_FORMAT_HEADER   2
 #define JSON_FORMAT_JSON     3
@@ -57,12 +56,14 @@ static int blend;
 static int check;
 static int cmd;
 static int compress;
+static int export;
 static int format;
 static int newline;
 static int overwrite;
 static int noerror;
 static int quiet;
 static int stdinput;
+static int strict;
 
 /***************************** Forward Declarations ***************************/
 
@@ -73,7 +74,8 @@ static int error(cchar *fmt, ...);
 static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
-static void output(Json *json, JsonNode *parent, char *base);
+static void outputAll(Json *json);
+static void outputNameValue(Json *json, JsonNode *parent, char *base);
 static char *readInput();
 static int run();
 
@@ -88,6 +90,7 @@ static int usage(void)
              "  --compress       # Emit without redundant white space.\n"
              "  --default value  # Default value to use if query not found.\n"
              "  --env            # Emit query result as shell env vars.\n"
+             "  --export         # Add 'export' prefix to shell env vars.\n"
              "  --header         # Emit query result as C header defines.\n"
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
@@ -95,6 +98,7 @@ static int usage(void)
              "  --profile name   # Merge the properties from the named profile.\n"
              "  --quiet          # Quiet mode with no error messages.\n"
              "  --stdin          # Read from stdin.\n"
+             "  --strict         # Enforce strict JSON format.\n"
              "  --remove         # Remove queried property.\n"
              "  --overwrite      # Overwrite file when converting instead of stdout.\n"
              "\n"
@@ -140,7 +144,7 @@ static int parseArgs(int argc, char **argv)
     int  nextArg;
 
     cmd = 0;
-    format = JSON_FORMAT_JSON5;
+    format = 0;
     newline = 1;
     path = 0;
     trace = TRACE_FILTER;
@@ -173,6 +177,9 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "--env")) {
             format = JSON_FORMAT_ENV;
 
+        } else if (smatch(argp, "--export")) {
+            export = 1;
+
         } else if (smatch(argp, "--header")) {
             format = JSON_FORMAT_HEADER;
 
@@ -203,6 +210,9 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--stdin")) {
             stdinput = 1;
+
+        } else if (smatch(argp, "--strict") || smatch(argp, "-s")) {
+            strict = 1;
 
         } else if (smatch(argp, "--trace") || smatch(argp, "-t")) {
             if (nextArg >= argc) {
@@ -260,13 +270,32 @@ static int parseArgs(int argc, char **argv)
 static int run()
 {
     JsonNode *node;
-    char     *data, *str, *value;
+    cchar    *ext;
+    char     *data, *value;
     int      flags;
 
     if ((data = readInput()) == 0) {
         return R_ERR_CANT_READ;
     }
-    json = jsonParse(data, JSON_PASS_TEXT);
+    if (!format) {
+        if (path) {
+            ext = rGetFileExt(path);
+            if (scaselessmatch(ext, "json")) {
+                format = JSON_FORMAT_JSON;
+            } else if (scaselessmatch(ext, "json5")) {
+                format = JSON_FORMAT_JSON5;
+            } else {
+                format = JSON_FORMAT_JSON5;
+            }
+        } else {
+            format = JSON_FORMAT_JSON5;
+        }
+    }
+    flags = JSON_PASS_TEXT;
+    if (strict) {
+        flags |= JSON_STRICT;
+    }
+    json = jsonParse(data, flags);
     if (json == 0) {
         error("Cannot parse input");
         return R_ERR_CANT_READ;
@@ -282,9 +311,6 @@ static int run()
         }
     }
     flags = 0;
-    if (format == JSON_FORMAT_JSON) {
-        flags |= JSON_STRICT;
-    }
     if (compress) {
         flags |= JSON_SINGLE;
     } else {
@@ -310,7 +336,7 @@ static int run()
     } else if (cmd == JSON_CMD_QUERY) {
         if (!check) {
             node = jsonGetNode(json, 0, property);
-            output(json, node, property);
+            outputNameValue(json, node, property);
         }
 
     } else if (cmd == JSON_CMD_CONVERT) {
@@ -319,9 +345,7 @@ static int run()
                 return error("Cannot save \"%s\"", path);
             }
         } else if (!check) {
-            str = jsonToString(json, 0, 0, flags);
-            rPrintf("%s\n", str);
-            rFree(str);
+            outputAll(json);
         }
     }
     return 0;
@@ -405,7 +429,10 @@ static char *readInput()
             }
             error("Cannot locate file %s", path);
         }
-        return rReadFile(path, NULL);
+        if ((buf = rReadFile(path, NULL)) == 0) {
+            error("Cannot read input from %s", path);
+            return 0;
+        }
     } else {
         buf = malloc(ME_BUFSIZE + 1);
         pos = 0;
@@ -419,11 +446,40 @@ static char *readInput()
     return buf;
 }
 
-static void output(Json *json, JsonNode *node, char *name)
+static void outputAll(Json *json)
+{
+    JsonNode *child, *node;
+    char     *name, *output, *property;
+    int      id;
+
+    if (format == JSON_FORMAT_JSON) {
+        output = jsonToString(json, 0, 0, 0);
+        rPrintf("%s", output);
+        rFree(output);
+    } else if (format == JSON_FORMAT_JSON5) {
+        rPrintf("%s\n", jsonString(json));
+    } else if (format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
+        name = "";
+        for (ITERATE_JSON(json, NULL, node, id)) {
+            if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
+                for (ITERATE_JSON(json, node, child, id)) {
+                    property = sjoin(name, ".", child->name, NULL);
+                    outputNameValue(json, child, property);
+                    rFree(property);
+                }
+                return;
+            } else {
+                outputNameValue(json, node, node->name);
+            }
+        }
+    }
+}
+
+static void outputNameValue(Json *json, JsonNode *node, char *name)
 {
     JsonNode *child;
     cchar    *value;
-    char     *property;
+    char     *exp, *property;
     int      id, type;
 
     if (node) {
@@ -432,7 +488,7 @@ static void output(Json *json, JsonNode *node, char *name)
         if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
             for (ITERATE_JSON(json, node, child, id)) {
                 property = sjoin(name, ".", child->name, NULL);
-                output(json, child, property);
+                outputNameValue(json, child, property);
                 rFree(property);
             }
             return;
@@ -446,10 +502,11 @@ static void output(Json *json, JsonNode *node, char *name)
     }
     property = makeName(name);
     if (format == JSON_FORMAT_ENV) {
+        exp = export ? "export " : "";
         if (type & JSON_STRING) {
-            rPrintf("%s='%s'", property, value);
+            rPrintf("%s%s='%s'", exp, property, value);
         } else {
-            rPrintf("%s=%s", property, value);
+            rPrintf("%s%s=%s", exp, property, value);
         }
     } else if (format == JSON_FORMAT_HEADER) {
         if (smatch(value, "true")) {
@@ -484,16 +541,17 @@ static char *makeName(cchar *name)
 
 static ssize mapChars(char *dest, cchar *src)
 {
-    char *dp;
+    char  *dp;
+    cchar *sp;
 
-    for (dp = dest; *src; src++, dp++) {
-        if (isupper(*src)) {
+    for (dp = dest, sp = src; *sp; sp++, dp++) {
+        if (isupper(*sp) && sp != src) {
             *dp++ = '_';
         }
-        if (*src == '.') {
+        if (*sp == '.') {
             *dp = '_';
         } else {
-            *dp = toupper(*src);
+            *dp = toupper(*sp);
         }
     }
     *dp = '\0';
