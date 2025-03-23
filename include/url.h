@@ -15,6 +15,10 @@
 #include "r.h"
 #include "json.h"
 
+#if ME_COM_WEBSOCKETS
+#include "websockets.h"
+#endif
+
 /*********************************** Defines **********************************/
 #if ME_COM_URL
 
@@ -43,6 +47,7 @@ struct Url;
 #define URL_CODE_NOT_MODIFIED           304  /**< The requested resource has changed since the last request */
 #define URL_CODE_USE_PROXY              305  /**< The requested resource must be accessed via the location proxy */
 #define URL_CODE_TEMPORARY_REDIRECT     307  /**< The request should be repeated at another URI location */
+#define URL_CODE_PERMANENT_REDIRECT     308  /**< The request has been permanently redirected to a new location */
 #define URL_CODE_BAD_REQUEST            400  /**< The request is malformed */
 #define URL_CODE_UNAUTHORIZED           401  /**< Authentication for the request has failed */
 #define URL_CODE_PAYMENT_REQUIRED       402  /**< Reserved for future use */
@@ -80,6 +85,7 @@ struct Url;
 #define URL_SHOW_RESP_HEADERS           0x10 /**< Trace response headers */
 #define URL_HTTP_0                      0x20 /**< Use HTTP/1.0 */
 
+#if KEEP
 /*
     UrlProc events
  */
@@ -93,54 +99,60 @@ struct Url;
     @param event Type of event. Set to URL_NOTIFY_IO, URL_NOTIFY_RETRY or URL_NOTIFY_DONE.
     @param buf Associated data
     @param len Associated data length
-    @ingroup Url
     @stability Evolving
  */
 typedef void (*UrlProc)(struct Url *up, int event, char *buf, ssize len);
+#endif
 
 /**
     Url request object
     @description The Url service is a streaming HTTP request client. This service requires the use of fibers from the
         portable runtime.
-    @defgroup Url Url
     @stability Evolving
  */
 typedef struct Url {
-    uint status : 10;               /**< Response (rx) status */
-    uint retries : 4;               /**< Client implemented retry field */
-    uint chunked : 4;               /**< Request is using transfer chunk encoding */
-    uint close : 1;                 /**< Connection should be closed on completion of the current request */
-    uint certsDefined : 1;          /**< Certificates have been defined */
-    uint protocol : 2;              /**< Use HTTP/1.0 without keep-alive. Defaults to HTTP/1.1. */
-    uint gotResponse : 1;           /**< Response has been read */
-    uint wroteHeaders : 1;          /**< Tx headers have been written */
-    uint flags;                     /**< Alloc flags */
+    uint status : 10;              /**< Response (rx) status */
+    uint chunked : 4;              /**< Request is using transfer chunk encoding */
+    uint close : 1;                /**< Connection should be closed on completion of the current request */
+    uint certsDefined : 1;         /**< Certificates have been defined */
+    uint finalized : 1;            /**< The request has been finalized */
+    uint gotResponse : 1;          /**< Response has been read */
+    uint protocol : 2;             /**< Use HTTP/1.0 without keep-alive. Defaults to HTTP/1.1. */
+    uint upgraded : 1;             /**< WebSocket upgrade has been completed */
+    uint wroteHeaders : 1;         /**< Tx headers have been written */
+    uint flags;                    /**< Alloc flags */
 
-    char *method;                   /** HTTP request method */
-    char *urlbuf;                   /**< Parsed and tokenized url */
-    char *boundary;                 /**< Multipart mime upload file boundary */
-    ssize txLen;                    /**< Length of tx body */
+    char *url;                     /**< Request URL*/
+    char *urlbuf;                  /**< Parsed and tokenized URL*/
+    char *method;                  /** HTTP request method */
+    char *boundary;                /**< Multipart mime upload file boundary */
+    ssize txLen;                   /**< Length of tx body */
 
-    RBuf *rx;                       /**< Buffer for progressive reading response data */
-    char *response;                 /**< Response as a string */
-    RBuf *responseBuf;              /**< Buffer to hold complete response */
-    ssize rxLen;                    /**< Length of rx body */
-    ssize rxRemaining;              /**< Remaining rx data to read from the socket */
+    RBuf *rx;                      /**< Buffer for progressive reading response data */
+    char *response;                /**< Response as a string */
+    RBuf *responseBuf;             /**< Buffer to hold complete response */
+    ssize rxLen;                   /**< Length of rx body */
+    ssize rxRemaining;             /**< Remaining rx data to read from the socket */
 
-    RBuf *rxHeaders;                /**< Buffer for Rx headers */
+    RBuf *rxHeaders;               /**< Buffer for Rx headers */
+    RBuf *txHeaders;               /**< Buffer for Tx headers */
 
-    char *error;                    /**< Error message */
-    cchar *host;                    /**< Request host */
-    cchar *path;                    /**< Request path without leading "/" and query/ref */
-    cchar *query;                   /**< Request query portion */
-    cchar *hash;                    /**< Request hash portion */
-    cchar *scheme;                  /**< Request scheme */
-    cchar *redirect;                /**< Redirect location */
-    int port;                       /**< Request port */
+    char *error;                   /**< Error message */
+    cchar *host;                   /**< Request host */
+    cchar *path;                   /**< Request path without leading "/" and query/ref */
+    cchar *query;                  /**< Request query portion */
+    cchar *hash;                   /**< Request hash portion */
+    cchar *scheme;                 /**< Request scheme */
+    cchar *redirect;               /**< Redirect location */
+    int port;                      /**< Request port */
 
-    RSocket *sock;                  /**< Network socket */
-    Ticks deadline;                 /**< Request time limit expiry deadline */
-    Ticks timeout;                  /**< Request timeout */
+    RSocket *sock;                 /**< Network socket */
+    Ticks deadline;                /**< Request time limit expiry deadline */
+    Ticks timeout;                 /**< Request timeout */
+
+#if ME_COM_WEBSOCKETS
+    WebSocket *webSocket;          /**< WebSocket object */
+#endif
 } Url;
 
 /**
@@ -148,62 +160,59 @@ typedef struct Url {
     @description A URL object represents a network connection on which one or more HTTP client requests may be
         issued one at a time.
     @param flags Set flags to URL_SHOW_REQ_HEADERS | URL_SHOW_REQ_BODY | URL_SHOW_RESP_HEADERS | URL_SHOW_RESP_BODY.
-        Defaults to 0.
+        Defaults to 0. Can also call urlSetFlags to set flags.
     @return The url object
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC Url *urlAlloc(int flags);
-
-/**
-    Set the URL flags
-    @param up URL object.
-    @param flags Set flags to URL_SHOW_REQ_HEADERS | URL_SHOW_REQ_BODY | URL_SHOW_RESP_HEADERS | URL_SHOW_RESP_BODY.
-    @ingroup Url
-    @stability Prototype
- */
-PUBLIC void urlSetFlags(Url *up, int flags);
 
 /**
     Close the underlying network socket associated with the URL object.
     @description This is not normally necessary to invoke unless you want to force the socket
         connection to be recreated before issuing a subsequent request.
     @param up URL object.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlClose(Url *up);
 
 /**
+    Set the URL internal error message
+    @description This routine is used to set the URL internal error message. Use $urlGetError to get the error message.
+    @param up URL object
+    @param message Printf style message format string
+    @param ... Message arguments
+    @return Zero if successful, otherwise a negative status code.
+    @stability Evolving
+ */
+PUBLIC int urlError(Url *up, cchar *message, ...);
+
+/**
     Fetch a URL
     @description This routine issues a HTTP request with optional body data and returns the HTTP status
-    code. This routine will return before the response body data has been read. Use $urlRead or $urlGetResponse
-    to read the response body data.
+    code. This routine will return after the response status and headers have been read and before the response body
+    data has been read. Use $urlRead or $urlGetResponse to read the response body data.
     This routine will block the current fiber while waiting for the request to respond. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object.
     @param method HTTP method verb.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param size Size of body data for request. Set to 0 if none.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.
     @return Response HTTP status code. Use urlGetResponse or urlRead to read the response.
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC int urlFetch(Url *up, cchar *method, cchar *uri, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, ssize size, cchar *headers, ...);
 
 /**
     Fetch a URL and return a JSON response.
     @description This routine issues a HTTP request and reads and parses the response into a JSON object tree.
         This routine will block the current fiber while waiting for the request to complete. Other fibers continue to
            run.
-    @pre Must only be called from a fiber.
     @param up URL object.
     @param method HTTP method verb.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param size Size of body data for request. Set to 0 if none.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
@@ -213,25 +222,27 @@ PUBLIC int urlFetch(Url *up, cchar *method, cchar *uri, cvoid *data, ssize size,
     @return Parsed JSON response. If the request does not return a HTTP 200 status code or the response is not JSON,
         the request returns NULL. Use urlGetError to get any error string and urlGetStatus to get the HTTP status code.
         Caller must free via jsonFree().
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC Json *urlJson(Url *up, cchar *method, cchar *uri, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, ssize size, cchar *headers, ...);
 
 /**
-    Finalize request body.
-    @description This routine will call urlWrite(web, NULL, 0);
-    @param url Url object
-    @return Number of bytes written. Returns a negative status code on errors.
-    @ingroup Url
+    Finalize the request.
+    @description This routine finalizes the request and signifies that the entire request including any
+    request body data has been sent to the server. This routine must be called at the end of writing
+    the request body (if any). It will read the response status and headers before returning.
+    If using WebSockets, this should be called before calling urlRunSocket to verify the WebSocket handshake.
+    Internally, this function is implemented by calling urlWrite with a NULL buffer.
+    This call is idempotent.
+    @param up Url object
+    @return Zero if successful.
     @stability Evolving
  */
-PUBLIC ssize urlFinalize(Url *url);
+PUBLIC int urlFinalize(Url *up);
 
 /**
-    Free a URL object
+    Free a URL object and all resources
     @param up URL object
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlFree(Url *up);
@@ -240,16 +251,14 @@ PUBLIC void urlFree(Url *up);
     Get a URL using a HTTP GET request.
     @description This routine will block the current fiber while waiting for the request to complete.
         Other fibers continue to run.
-    @pre Must only be called from a fiber.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.
     @return Response body if successful, otherwise null. Caller must free.
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC char *urlGet(cchar *uri, cchar *headers, ...);
+PUBLIC char *urlGet(cchar *url, cchar *headers, ...);
 
 /**
     Get the URL internal error message
@@ -258,7 +267,6 @@ PUBLIC char *urlGet(cchar *uri, cchar *headers, ...);
     @param up URL object
     @return The URL error message for the most recent request. Returns NULL if no error message defined.
         Caller must NOT free this message.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC cchar *urlGetError(Url *up);
@@ -268,24 +276,21 @@ PUBLIC cchar *urlGetError(Url *up);
     @param up URL object
     @param header HTTP header name. This can be any case. For example: "Authorization".
     @return The value of the HTTP header. Returns NULL if not defined. Caller must NOT free the returned string.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC cchar *urlGetHeader(Url *up, cchar *header);
 
 /**
     Issue a HTTP GET request and return parsed JSON.
-    @pre Must only be called from a fiber.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.
     @return Parsed JSON response. If the request does not return a HTTP 200 status code or the response
         is not JSON, the request returns NULL. Caller must free via jsonFree().
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC Json *urlGetJson(cchar *uri, cchar *headers, ...);
+PUBLIC Json *urlGetJson(cchar *url, cchar *headers, ...);
 
 /**
     Get the response to a URL request as a JSON object tree.
@@ -295,10 +300,8 @@ PUBLIC Json *urlGetJson(cchar *uri, cchar *headers, ...);
         \n\n
         This routine will block the current fiber while waiting for the request to complete.
         Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @return The response body as parsed JSON object. Caller must free the result via jsonFree.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC Json *urlGetJsonResponse(Url *up);
@@ -314,10 +317,8 @@ PUBLIC Json *urlGetJsonResponse(Url *up);
         Other fibers continue to run.
         \n\n
         If receiving a binary response, use urlGetResponseBuf instead.
-    @pre Must only be called from a fiber.
     @param up URL object
     @return The response body as a string. Caller must NOT free. Will return an empty string on errors.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC cchar *urlGetResponse(Url *up);
@@ -331,10 +332,8 @@ PUBLIC cchar *urlGetResponse(Url *up);
         \n\n
         This routine will block the current fiber while waiting for the request to complete.
         Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @return The response body as runtime buffer. Caller must NOT free.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC RBuf *urlGetResponseBuf(Url *up);
@@ -343,62 +342,56 @@ PUBLIC RBuf *urlGetResponseBuf(Url *up);
     Get the HTTP response status code for a request.
     @param up URL object
     @return The HTTP status code for the most recently completed request.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC int urlGetStatus(Url *up);
 
 /**
     Parse a URL into its constituent components in the Url structure.
+    @description This should not be manually called while a URL request is in progress as it will invalidate the
+        current request.
     @param up URL object
-    @param uri Uri to parse.
-    @return Zero if the uri parses successfully.
-    @ingroup Url
+    @param url Url to parse.
+    @return Zero if the url parses successfully.
     @stability Evolving
  */
-PUBLIC int urlParse(Url *up, cchar *uri);
+PUBLIC int urlParse(Url *up, cchar *url);
 
 /**
     Issue a HTTP POST request.
-    @pre Must only be called from a fiber.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param size Size of body data for request.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
        arguments. Individual header lines must be terminated with "\r\n".
     @param ... Headers arguments
     @return Response body if successful, otherwise null. Caller must free.
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC char *urlPost(cchar *uri, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC char *urlPost(cchar *url, cvoid *data, ssize size, cchar *headers, ...);
 
 /**
     Issue a HTTP POST request and return parsed JSON.
-    @pre Must only be called from a fiber.
-    @param uri HTTP URL to fetch
+    @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param len Size of body data for request.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @return Parsed JSON response. If the request does not return a HTTP 200 status code or the response is not JSON,
         the request returns NULL. Caller must free via jsonFree().
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC Json *urlPostJson(cchar *uri, cvoid *data, ssize len, cchar *headers, ...);
+PUBLIC Json *urlPostJson(cchar *url, cvoid *data, ssize len, cchar *headers, ...);
 
 /**
     Low level read routine to read response data for a request.
     @description This routine may be called to progressively read response data. It should not be called
-        if using urlGetResponse directly or indirectly via urlGet, urlPost, urlPostJson or urlJson.
+        if using $urlGetResponse directly or indirectly via urlGet, urlPost, urlPostJson or urlJson.
         This routine will block the current fiber if necessary. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @param buf Buffer to read into
     @param bufsize Size of the buffer
     @return The number of bytes read. Returns < 0 on errors. Returns 0 when there is no more data to read.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
@@ -410,7 +403,6 @@ PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
     @param key Certificate private key
     @param cert Certificate text
     @param revoke Certificates to revoke
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revoke);
@@ -419,56 +411,39 @@ PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revo
     Set the list of available ciphers to use
     @param up URL object
     @param ciphers String list of available ciphers
-    @ingroup Url
-    @stability Prototype
- */
-PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
-
-/**
-    Set the default number of retries for requests.
-    @description This does not change the number of retries for existing Url objects.
-    @param retries Number of retries.
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC void urlSetDefaultRetries(int retries);
+PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
 
 /**
     Set the default request timeout to use for future URL instances.
     @description This does not change the timeout for existing Url objects.
     @param timeout Timeout in milliseconds.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlSetDefaultTimeout(Ticks timeout);
 
 /**
-    Set the URL internal error message
-    @param up URL object
-    @param message Printf style message format string
-    @param ... Message arguments
-    @ingroup Url
+    Set the URL flags
+    @param up URL object.
+    @param flags Set flags to URL_SHOW_REQ_HEADERS | URL_SHOW_REQ_BODY | URL_SHOW_RESP_HEADERS | URL_SHOW_RESP_BODY.
     @stability Evolving
  */
-PUBLIC void urlSetError(Url *up, cchar *message, ...);
+PUBLIC void urlSetFlags(Url *up, int flags);
 
 /**
-    Set the URL internal error message and HTTP response status
+    Set the HTTP response status
     @param up URL object
     @param status HTTP status code
-    @param message Printf style message format string
-    @param ... Message arguments
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC void urlSetStatusError(Url *up, int status, cchar *message, ...);
+PUBLIC void urlSetStatus(Url *up, int status);
 
 /**
     Set the HTTP protocol to use
     @param up URL object
     @param protocol Set to 0 for HTTP/1.0 or 1 for HTTP/1.1. Defaults to 1.
-    @ingroup Url
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC void urlSetProtocol(Url *up, int protocol);
 
@@ -476,7 +451,6 @@ PUBLIC void urlSetProtocol(Url *up, int protocol);
     Set the request timeout to use for the specific URL object.
     @param up URL object
     @param timeout Timeout in milliseconds.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlSetTimeout(Url *up, Ticks timeout);
@@ -486,7 +460,6 @@ PUBLIC void urlSetTimeout(Url *up, Ticks timeout);
     @param up URL object
     @param verifyPeer Set to true to verify the certificate of the remote peer.
     @param verifyIssuer Set to true to verify the issuer of the peer certificate.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC void urlSetVerify(Url *up, int verifyPeer, int verifyIssuer);
@@ -494,32 +467,28 @@ PUBLIC void urlSetVerify(Url *up, int verifyPeer, int verifyIssuer);
 /**
     Start a Url request.
     @description This is a low level API that initiates a connection to a remote HTTP resource.
-        Use urlWriteHeaders and urlWrite to send the request.
-    @pre Must only be called from a fiber.
+        Use $urlWriteHeaders to write headers and $urlWrite to write any request body.
+        Must call $urlFinalize to signify the end of the request body.
     @param up URL object
     @param method HTTP method verb.
-    @param uri HTTP URL to fetch
-    @param txLen Content length of request body. This must match the length of data written with urlWrite. Set to -1 if
-       the content length is not known.
+    @param url HTTP URL to fetch
     @return Zero if successful.
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC int urlStart(Url *up, cchar *method, cchar *uri, ssize txLen);
+PUBLIC int urlStart(Url *up, cchar *method, cchar *url);
 
 /**
     Upload files in a request.
-    @description This is a low level API that initiates a connection to a remote HTTP resource.
-        Use urlWriteHeaders and urlWrite to send the request.
-    @pre Must only be called from a fiber.
+    @description This constructs and writes the HTTP request headers for a multipart/form-data request.
+        Use this routine instead of $urlWriteHeaders to write headers.
+        Use $urlStart to initiate the request before calling $urlUpload.
     @param up URL object
     @param files List of filenames to upload.
     @param forms Hash of key/value form values to add to the request.
-    @param headers Optional request headers. This parameter is a printf style formatted pattern with following
-       arguments. Individual header lines must be terminated with "\r\n".
-    @param ... Headers arguments
+    @param headers Printf style formatted pattern with following arguments. Individual header lines must be
+       terminated with "\r\n".
+    @param ... Optional header arguments.
     @return Zero if successful.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...);
@@ -527,12 +496,10 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...);
 /**
     Write body data for a request
     @description This routine will block the current fiber. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
-    @param data Buffer of data to write
+    @param data Buffer of data to write. Set to NULL to finalize the request body.
     @param size Length of data to write. Set to -1 to calculate the length of data as a null terminated string.
     @return The number of bytes actually written. On errors, returns a negative status code.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC ssize urlWrite(Url *up, cvoid *data, ssize size);
@@ -540,12 +507,10 @@ PUBLIC ssize urlWrite(Url *up, cvoid *data, ssize size);
 /**
     Write formatted body data for a request
     @description This routine will block the current fiber. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @param fmt Printf style format string
     @param ... Format arguments
     @return The number of bytes actually written. On errors, returns a negative status code.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC ssize urlWriteFmt(Url *up, cchar *fmt, ...);
@@ -554,30 +519,67 @@ PUBLIC ssize urlWriteFmt(Url *up, cchar *fmt, ...);
     Write a file contents for a request
     @description This routine will read the file contents and write to the client.
         It will block the current fiber. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @param path File pathname.
     @return The number of bytes actually written. On errors, returns a negative status code.
-    @ingroup Url
     @stability Evolving
  */
 PUBLIC ssize urlWriteFile(Url *up, cchar *path);
 
 /**
-    Write request headers
+    Write request headers using a printf style formatted pattern
     @description This will write the HTTP request line and supplied headers. If Host and/or Content-Length are
-        not supplied, they will be added if known.
+        not supplied, they will be added if known. This routine will add a Transfer-Encoding: chunked header if
+        the Content-Length is not supplied and the request method is not a GET. If the HTTP scheme is ws or wss,
+        this routine will add the WebSocket upgrade headers. Request headers will be traced if the flags have
+        URL_SHOW_REQ_HEADERS set.
         This routine will block the current fiber. Other fibers continue to run.
-    @pre Must only be called from a fiber.
     @param up URL object
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.
     @return Zero if successful
-    @ingroup Url
     @stability Evolving
  */
-PUBLIC int urlWriteHeaders(Url *up, cchar *headers, ...);
+PUBLIC int urlWriteHeaders(Url *up, cchar *headers);
+
+#if ME_COM_WEBSOCKETS
+/**
+    Issue a simple WebSocket request.
+    @param url HTTP URL
+    @param callback Callback function to invoke for read data.
+    @param arg Argument to pass to the callback function.
+    @param headers Optional request headers. Individual header lines must be terminated with "\r\n".
+    @return Zero when closed, otherwise a negative status code.
+ */
+PUBLIC int urlWebSocket(cchar *url, WebSocketProc callback, void *arg, cchar *headers);
+
+/**
+    Get the WebSocket object for a URL request.
+    @param up URL object
+    @return The WebSocket object for the URL request.
+    @stability Evolving
+ */
+PUBLIC WebSocket *urlGetWebSocket(Url *up);
+
+/**
+    Define the async callbacks.
+    @description This will invoke the callback function with an OPEN event.
+    @param up URL object
+    @param callback Callback function to invoke for read data.
+    @param arg Argument to pass to the callback function.
+    @stability Evolving
+ */
+PUBLIC void urlAsync(Url *up, WebSocketProc callback, void *arg);
+
+/**
+    Wait for the WebSockets connection to be closed
+    @param up URL object
+    @return Zero if successful.
+    @stability Evolving
+ */
+PUBLIC int urlWait(Url *up);
+#endif
 
 #ifdef __cplusplus
 }
