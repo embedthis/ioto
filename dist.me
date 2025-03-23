@@ -1,0 +1,20 @@
+/*
+    ioto.me -- MakeMe File to build the Ioto library when embedded in another product
+ */
+
+Me.load({
+    targets: {
+        ioto: {
+            configurable: true,
+            depends: [ 'libioto' ],
+        },
+
+        libioto: {
+            type: 'lib',
+            sources: [ 'ioto.c' ],
+            headers: [ '*.h' ],
+            depends: [ 'ssl' ],
+            ifdef: [ 'ioto' ],
+        },
+    }
+})
