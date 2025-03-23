@@ -9,7 +9,7 @@
  */
 PUBLIC int ioStart(void)
 {
-    char    *path;
+    char *path;
 
     if (!dbFindOne(ioto->db, "User", NULL, NULL)) {
         rInfo("app", "Load db.json5");

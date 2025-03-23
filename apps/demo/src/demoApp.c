@@ -48,14 +48,14 @@ void ioStop(void)
  */
 static void demo(void)
 {
-    Ticks       delay;
-    cchar       *demo;
-    int         count, i;
-    static int  once = 0;
-    static int  counter = 0;
-    
+    Ticks      delay;
+    cchar      *demo;
+    int        count, i;
+    static int once = 0;
+    static int counter = 0;
+
     if (once++ > 0) return;
-    
+
     /*
         Get demo control parameters (delay, count)
      */
@@ -85,7 +85,7 @@ static void demo(void)
         }
 
         /*
-            Perform the selected demo as selected via the ioto.json5 demo collection. 
+            Perform the selected demo as selected via the ioto.json5 demo collection.
             These demonstrate different aspects of the Ioto service.
          */
         rInfo("demo", "Send counter %d/%d using demo \"%s\" with delay %d", counter, count, demo, (int) delay);
@@ -101,8 +101,8 @@ static void demo(void)
                 Update the cloud Store table's counter item via database sync
              */
             if (dbUpdate(ioto->db, "Store",
-                DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
-                DB_PARAMS(.upsert = 1)) == 0) {
+                         DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
+                         DB_PARAMS(.upsert = 1)) == 0) {
                 rError("demo", "Cannot update store item in database: %s", dbGetError(ioto->db));
             }
         } else if (smatch(demo, "mqtt")) {
@@ -144,13 +144,13 @@ static void demo(void)
 }
 
 /*
-    Receive device commands from Device automations. 
-    These are sent via updates to the Command table. 
+    Receive device commands from Device automations.
+    These are sent via updates to the Command table.
  */
 static void deviceCommand(void *ctx, DbItem *item)
 {
-    cchar    *command;
-    int      level;
+    cchar *command;
+    int   level;
 
     command = dbField(item, "command");
     level = (int) stoi(dbField(item, "args.level"));
