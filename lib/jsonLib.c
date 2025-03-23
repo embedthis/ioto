@@ -51,9 +51,11 @@
 static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value);
 static char *copyProperty(Json *json, cchar *key);
 static void freeNode(JsonNode *node);
+static bool isfnumber(cchar *s, ssize len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
 static int parseJson(Json *json, cchar *atext, int flags);
+static int sleuthValueType(cchar *value, ssize len);
 static void spaces(RBuf *buf, int count);
 
 /************************************* Code ***********************************/
@@ -350,7 +352,10 @@ PUBLIC Json *jsonParseFmt(cchar *fmt, ...)
     return json;
 }
 
-PUBLIC char *jsonFmtToString(cchar *fmt, ...)
+/*
+    Convert a string into strict json. Caller must free.
+ */
+PUBLIC char *jsonConvert(cchar *fmt, ...)
 {
     va_list ap;
     Json    *json;
@@ -363,6 +368,27 @@ PUBLIC char *jsonFmtToString(cchar *fmt, ...)
     msg = jsonToString(json, 0, 0, JSON_STRICT);
     jsonFree(json);
     return msg;
+}
+
+/*
+    Convert a string into a strict json string.
+ */
+PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
+{
+    va_list ap;
+    Json    *json;
+    char    *msg;
+
+    va_start(ap, fmt);
+    sfmtbufv(buf, size, fmt, ap);
+    va_end(ap);
+    json = jsonParse(buf, 0);
+    va_end(ap);
+    msg = jsonToString(json, 0, 0, JSON_STRICT);
+    sncopy(buf, size, msg, slen(msg));
+    rFree(msg);
+    jsonFree(json);
+    return buf;
 }
 
 /*
@@ -430,8 +456,8 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
  */
 PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int flags)
 {
-    char  *text, *tmp;
-    int   fd, len;
+    char *text, *tmp;
+    int  fd, len;
 
     assert(json);
     assert(path && *path);
@@ -763,19 +789,32 @@ static int parseJson(Json *json, cchar *atext, int flags)
             break;
 
         case '"':
+            type = JSON_STRING;
+            value = json->next + 1;
+            rc = parseString(json);
+            goto value;
+
         case '\'':
         case '`':
+            if (flags & JSON_STRICT) {
+                return jerror(json, "Single quotes are not allowed in strict mode");
+            }
             type = JSON_STRING;
             value = json->next + 1;
             rc = parseString(json);
             goto value;
 
         default:
-            type = JSON_PRIMITIVE;
             value = json->next;
             rc = parsePrimitive(json);
             if (*value == 0) {
                 return jerror(json, "Empty primitive token");
+            }
+            type = sleuthValueType(value, json->next - value + 1);
+            if (type != JSON_PRIMITIVE) {
+                if (flags & JSON_STRICT) {
+                    return jerror(json, "Invalid primitive token");
+                }
             }
             goto value;
 
@@ -808,7 +847,7 @@ value:
     return 0;
 }
 
-static int sleuthValueType(cchar *value)
+static int sleuthValueType(cchar *value, ssize len)
 {
     uchar c;
     int   type;
@@ -819,17 +858,13 @@ static int sleuthValueType(cchar *value)
         return JSON_PRIMITIVE;
     }
     c = value[0];
-    type = JSON_PRIMITIVE;
-    if ((c == 't' && smatch(value, "true")) ||
-        (c == 'f' && smatch(value, "false")) ||
-        (c == 'n' && smatch(value, "null")) ||
-        (c == 'u' && smatch(value, "undefined"))) {
+    if ((c == 't' && sncmp(value, "true", len) == 0) ||
+        (c == 'f' && sncmp(value, "false", len) == 0) ||
+        (c == 'n' && sncmp(value, "null", len) == 0) ||
+        (c == 'u' && sncmp(value, "undefined", len) == 0)) {
+        type = JSON_PRIMITIVE;
 
-#if UNUSED
-    } else if (c == '/') {
-        type = JSON_REGEXP;
-#endif
-    } else if (sfnumber(value)) {
+    } else if (isfnumber(value, len)) {
         type = JSON_PRIMITIVE;
 
     } else {
@@ -1196,12 +1231,25 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
         return jerror(json, "Cannot set value in a locked JSON object");
     }
     if (type <= 0 && value) {
-        type = sleuthValueType(value);
+        type = sleuthValueType(value, slen(value));
     }
     if (!value) {
         value = "undefined";
     }
     return jquery(json, nid, key, value, type);
+}
+
+PUBLIC int jsonSetJson(Json *json, int nid, cchar *key, cchar *value)
+{
+    Json    *jvalue;
+
+    if (value == 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    if ((jvalue = jsonParseString(value, 0, 0)) == 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    return jsonBlend(json, nid, key, jvalue, 0, 0, JSON_OVERWRITE);
 }
 
 PUBLIC int jsonSetBool(Json *json, int nid, cchar *key, bool value)
@@ -1247,7 +1295,7 @@ PUBLIC int jsonSetFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
         rFree(value);
         value = sclone("null");
     }
-    result = jsonSet(json, nid, key, value, sleuthValueType(value));
+    result = jsonSet(json, nid, key, value, sleuthValueType(value, slen(value)));
     rFree(value);
     return result;
 }
@@ -1489,6 +1537,9 @@ PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags)
 
 PUBLIC cchar *jsonString(Json *json)
 {
+    if (!json) {
+        return 0;
+    }
     rFree(json->value);
     json->value = jsonToString(json, 0, 0, JSON_PRETTY);
     return json->value;
@@ -1501,6 +1552,7 @@ PUBLIC void jsonPrint(Json *json)
 {
     char *str;
 
+    if (!json) return;
     str = jsonToString(json, 0, 0, JSON_PRETTY);
     rPrintf("%s\n", str);
     rFree(str);
@@ -1790,6 +1842,35 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str)
         result = sclone("");
     }
     return result;
+}
+
+static bool isfnumber(cchar *s, ssize len)
+{
+    cchar *cp;
+    int   dots;
+
+    if (!s || !*s) {
+        return 0;
+    }
+    if (schr("+-1234567890", *s) == 0) {
+        return 0;
+    }
+    for (cp = s; cp < s + len; cp++) {
+        if (schr("1234567890.+-eE", *cp) == 0) {
+            return 0;
+        }
+    }
+    /*
+        Some extra checks
+     */
+    for (cp = s, dots = 0; cp < s + len; cp++) {
+        if (*cp == '.') {
+            if (dots++ > 0) {
+                return 0;
+            }
+        }
+    }
+    return 1;
 }
 
 #else
