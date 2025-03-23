@@ -1,14 +1,14 @@
-# Embedthis Ioto License
+# EmbedThis Ioto License
 
 This software is distributed under three licenses:
 
 * [GPL License](http://www.gnu.org/licenses/gpl-2.0.html)
-* [Embedthis Commercial License](https://www.embedthis.com/about/terms/)
-* [Embedthis Evaluation License](./EVAL.md)
+* [EmbedThis Commercial License](https://www.embedthis.com/about/terms/)
+* [EmbedThis Evaluation License](./EVAL.md)
 
 The GPL License does not generally permit incorporating this software into
 non-open source programs. Commercial licenses for this software and support
-services are available from Embedthis Software.
+services are available from EmbedThis Software.
 
 The commercial license enables you to embed the software and distribute and
 sell your products containing the software. With a paid-up subscription you can
@@ -18,15 +18,15 @@ commerical patches from the software to your products.
 
 The eval license is for shorter-term commercial evaluations.
 
-The Embedthis Ioto service is provided subject to a commercial license and
+The EmbedThis Ioto service is provided subject to a commercial license and
 subscription as described in the [Terms of
 Use](https://www.embedthis.com/about/terms.html).
 
 Please read the following document for more information or contact
 [sales@embedthis.com](mailto:sales@embdthis.com) if you have questions.
 
-- [Embedthis License
-Plans](https://www.embedthis.com/builder/doc/plans/overview/)
+- [EmbedThis License
+Plans](https://www.embedthis.com/doc/builder/plans/overview/)
 
 ## Third Party Licenses
 
@@ -64,12 +64,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-### DB, JSON, MQTT, OSDEP, R, URL, UCTX and WEB libraries
+## UTF-8 Decoder
+
+Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
+    See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
+
+
+## DB, CRYPT, JSON, MQTT, OSDEP, R, URL, UCTX and WEB libraries
 
 - Commercial license, Michael O'Brien
 
 ## Trademarks and Copyrights
 
-Copyright (c) Embedthis Software. All Rights Reserved.
-Embedthis and Ioto are a registered trademarks of Embedthis Software.
+Copyright (c) EmbedThis Software. All Rights Reserved.
+EmbedThis and Ioto are a registered trademarks of EmbedThis Software.
 Other brands and their products are trademarks of their respective holders.

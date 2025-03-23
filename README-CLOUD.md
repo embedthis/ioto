@@ -13,10 +13,7 @@ database sync and over-the-air device upgrading.
 
 Full documentation is available at:
 
-* https://www.embedthis.com/agent/doc/index.html
-* https://www.embedthis.com/builder/doc/index.html
-* https://www.embedthis.com/manager/doc/index.html
-* https://www.embedthis.com/ioto/doc/index.html
+* https://www.embedthis.com/doc/
 
 ## Apps
 
@@ -24,8 +21,7 @@ The Ioto distribution build includes two demo apps for cloud-based management.
 These Apps demonstrate the required device-side logic to communicate with the
 cloud.
 
-The **demo** app sends device data and metrics to the cloud. The "eco" app
-emulates a simple Home charging networks and a mobile app.
+The **demo** app sends device data and metrics to the cloud.
 
 ## Configuration
 
@@ -80,13 +76,12 @@ The product ID is defined via the **"product"** property in the device.json5
 file. 
 
 During evalution, it is easiest to manage your divice use the pre-existing
-**Eval cloud** and **Eval Device Manager**. The Eval cloud is a multi-tenant,
-shared cloud for evaluating Ioto. The Eval Device Manager is a developer device
-manager web app suitable for examining and monitoring device data. You can use
-the eval product token **"01H4R15D3478JD26YDYK408XE6"** which will be used when
-registering your device with the eval cloud. Later, you can change this to be a
-product definition of your own when you wish to use your own device cloud. For
-example:
+**Eval cloud** and **Eval Device App**. The Eval cloud is a multi-tenant,
+shared cloud for evaluating Ioto. The Eval Device App is a developer device app
+suitable for examining and monitoring device data. You can use the eval product
+token **"01H4R15D3478JD26YDYK408XE6"** which will be used when registering your
+device with the eval cloud. Later, you can change this to be a product
+definition of your own when you wish to use your own device cloud. For example:
 
 ```javascript
 {
@@ -105,27 +100,27 @@ Until claimed, the device can only be locally managed via the embedded web
 server.
 
 An Ioto enabled device can be claimed by any user with the claim ID. When
-claimed, the device is associated with a user, device manager and underlying
-device cloud. 
+claimed, the device is associated with a user, device app and underlying device
+cloud. 
 
-## Launching the Eval Device Manager
+## Launching the Eval Device App
 
-To launch the Eval Manager, navigate to the Builder and select the **App** page.
+To launch the Eval App, navigate to the Builder and select the **App** page.
 
 [![App
 List](../../images/builder/app-list.png){.screen}](https://admin.embedthis.com/apps)
 
-Then click the **Launch** icon for the **Eval** manager. This will run the Eval
-[Device Manager](https://www.embedthis.com/manager/doc/overview/)
+Then click the **Launch** icon for the **Eval** app. This will run the Eval
+[Device App](https://www.embedthis.com/doc/apps/)
 
-When you log into the Device Manager, you are logging in as a device user. This
-is a different account to your Builder login account. Device Manager logins are
-unique for each device cloud.
+When you log into the device app, you are logging in as a device user. This is
+a different account to your Builder login account. Device app logins are unique
+for each device cloud.
 
-![Manager Login](../../images/manager/developer-login.png){.screen .width-40}
+![App Login](../../images/manager/developer-login.png){.screen .width-40}
 
 Enter your desired username and password and click **Register**. You will be
-sent an email confirmation code to complete your manager login.
+sent an email confirmation code to complete your login.
 
 ## Claiming the Device
 
@@ -133,7 +128,7 @@ After logging in, you will see the device list, which will be initially empty.
 Click the **Claim Device** button and enter your device claim ID to claim your
 device for management.
 
-![Manager Login](../../images/manager/device-claim.png){.screen}
+![App Login](../../images/manager/device-claim.png){.screen}
 
 The Claim ID is the unique device ID displayed by Ioto when run. This ID is
 dynamically allocated when first run, but can be initialized via the
@@ -141,7 +136,7 @@ dynamically allocated when first run, but can be initialized via the
 claim ID is typically printed on the device packaging and device label. 
 
 Read more in the [Builder Claiming
-Devices](https://www.embedthis.com/builder/doc/devices/claiming/) documentation.
+Devices](https://www.embedthis.com/doc/builder/devices/claiming/) documentation.
 
 ```
 ...
@@ -151,7 +146,7 @@ app: info: Device Claim ID: M72DANY8BZ
 While an Ioto-enabled device is waiting to be claimed, the Ioto agent will
 periodically check with the cloud service to see if it has been claimed. 
 
-Once the device is claimed via the Manager, Ioto will display provisioning
+Once the device is claimed via the device app, Ioto will display provisioning
 information. For example:
 
 ```bash
@@ -179,11 +174,11 @@ the MQTT protocol. These will be saved under the **state** directory as
 
 ## Demo Cloud Messaging
 
-The apps will typically send device data to the cloud for display via the
-Device Manager. To view, 
-select the claimed device from the device list in the Device Manager.
+The apps will typically send device data to the cloud for display in the app.
+To view, 
+select the claimed device from the device list.
 
-![Manager Login](../../images/manager/device-list-1.png){.screen}
+![Device List](../../images/manager/device-list-1.png){.screen}
 
 This will then display the database tables and dashboard for this device.
 
@@ -202,10 +197,10 @@ place by clicking on a teal color cell and updating the value and then clicking
 
 You can reload the table contents by clicking the table reload icon.
 
-## Manager Dashboard
+## App Dashboard
 
-The Device Manager includes the ability to display one or more dashboards with
-data widgets.
+Device apps includes the ability to display one or more dashboards with data
+widgets.
 
 Click the **Dashboard** tab to display the default dashboard, then click the
 **Add Widget** icon to display the add widget panel.
@@ -265,8 +260,8 @@ static void demo(void)
 ### Create Your Own Device Cloud
 
 As you gain experience with Ioto, you may wish to create your own device cloud
-and Device Manager for your product with your logo, product name and device
-specific data, screens, panels and inputs.
+and apps your product with your logo, product name and device specific data,
+screens, panels and inputs.
 
 To do this, you must define a product definition via the Builder. To define
 your own product, navigate to the [Builder
@@ -282,11 +277,12 @@ can choose to create a **hosted** device cloud which is hosted by EmbedThis in
 an AWS account managed by EmbedThis.  Alternatively, you can create a dedicated
 device cloud in an AWS account that you own.
 
-## Creating a Device Manager
+## Creating a Device App
 
-Once the device cloud is created, you can create a device manager which can be
+Once the device cloud is created, you can create a device app which can be
 extensively customized with your product name, logo, UI components and logic.
-The Eval Device Manager is supplied with a **Developer** UI skin.
+The Eval device app is supplied with a **Developer** UI skin.
 
-To create a device manager, download the Ioto Manager Apps pakcage from the
-[Builder Products Page](https://admin.embedthis.com/products).
+To download sample apps, download the Ioto Apps package from the [Builder
+Products Page](https://admin.embedthis.com/products).
+

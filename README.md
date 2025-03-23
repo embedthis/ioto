@@ -1,4 +1,4 @@
-# Embedthis Ioto Device Agent
+# EmbedThis Ioto Device Agent
 
 The Ioto agent is an embedded device management agent that can be used for
 cloud-based management or direct management over a local network. 
@@ -28,10 +28,7 @@ for the FreeRTOS platform.
 Full documentation for the Ioto Agent, the Builder, Device Manager and Ioto
 service is available at:
 
-* https://www.embedthis.com/agent/doc/index.html
-* https://www.embedthis.com/builder/doc/index.html
-* https://www.embedthis.com/manager/doc/index.html
-* https://www.embedthis.com/ioto/doc/index.html
+* https://www.embedthis.com/doc/
 
 ## Licensing
 
@@ -47,16 +44,15 @@ use cases.
 
 The default app is the "demo" app which sends device data and metrics to the
 cloud.
-The "eco" app emulates a simple Home charging network with a mobile app.
 
 Name | Description
 -|-|-
+ai | Demonstrate using the OpenAI APIs.
 auth | Simple embedded web server user/group authentication.
 blink | Minimal ESP32 blink app to demonstrate linking with Ioto on ESP32
 microcontrollers.
 demo | Cloud-based management of a device. Demonstrates simple data
 synchronization and metrics.
-eco | Customized cloud-based device management of an "EV Charger" demo app.
 noapp | Stubs to build Ioto without an app
 
 Each application has a README.md in the apps/APP directory that describes the
@@ -99,6 +95,7 @@ build via makefile command variables. See below for details.
 
 The selectable Ioto services are:
 
+* ai -- Enable the AI service
 * database -- Enable the embedded database
 * keys -- Get AWS IAM keys for local AWS API invocation (dedicated clouds only)
 * logs -- Capture log files and send to AWS CloudWatch logs (dedicated clouds
@@ -331,8 +328,8 @@ You can override the **"optimize"** property by building with a
 
 | Directory     | Purpose                                                      
            |
-| ------------- |
------------------------------------------------------------------------- |
+| :------------ |
+:----------------------------------------------------------------------- |
 | apps          | Directory of applications examples                           
            |
 | build         | Build output objects and executables                         
@@ -361,7 +358,7 @@ web server |
 Some of these files may not be present unless the built app requires.
 
 | File             | Purpose                                                |
-| -----------------| -------------------------------------------------------|
+| :----------------| :------------------------------------------------------|
 | LICENSE.md       | License information                                    |
 | device.json5     | Device registration file                               |
 | display.json5    | UI display configuration for management apps           |
@@ -372,6 +369,7 @@ Some of these files may not be present unless the built app requires.
 
 ## Resources
 
--   [Embedthis web site](http://www.embedthis.com/)
--   [Embedthis Ioto Documentation GitHub
+-   [EmbedThis web site](http://www.embedthis.com/)
+-   [EmbedThis Ioto Documentation GitHub
 repository](https://github.com/embedthis/ioto-doc)
+

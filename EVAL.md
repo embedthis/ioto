@@ -1,6 +1,6 @@
-# Embedthis Software Evaluation License
+# EmbedThis Software Evaluation License
 
-This is a License Agreement between Embedthis Software LLC. ("Embedthis") and
+This is a License Agreement between EmbedThis Software LLC. ("EmbedThis") and
 you ("You"), the Licensee.
 
 PLEASE READ THESE TERMS AND CONDITIONS CAREFULLY BEFORE INSTALLING OR USING THE
@@ -15,7 +15,7 @@ LICENSEE USE OF THE SOFTWARE AND MAY GIVE RISE TO UNSPECIFIED DAMAGES.
 Software in binary form only, together with other hardware or software of
 significant value-add.
 
-**"Software"** means the Embedthis Ioto agent software including source code,
+**"Software"** means the EmbedThis Ioto agent software including source code,
 headers, documentation and data files.
 
 ### 1\. License to Use
@@ -26,36 +26,36 @@ non-commercial purposes when creating Integrated Products.
 
 1.2. You are prohibited from distributing, selling, renting or providing remote
 access to Integrated Products containing any portion of the Software. You
-acknowledge that a separate Embedthis license is required for further
+acknowledge that a separate EmbedThis license is required for further
 development after this Agreement has terminated or for the distribution and
 selling Integrated Products.
 
 ### 2\. Copyright and Ownership
 
-2.1. The Software is owned by Embedthis and is protected by international
+2.1. The Software is owned by EmbedThis and is protected by international
 copyright, trademark and any other applicable laws. You must comply with the
 terms of the copyright notice in the Software and must never remove any notice
 or product identification from the Software or the accompanying documentation.
 You acknowledge that the copyright, patent, trade secret and all other
 intellectual property rights in the Software shall remain the exclusive
-property of Embedthis. You also acknowledge that Embedthis owns the Embedthis,
-Appweb, Ioto and Embedthis GoAhead trademarks and logos.
+property of EmbedThis. You also acknowledge that EmbedThis owns the EmbedThis,
+Appweb, Ioto and EmbedThis GoAhead trademarks and logos.
 
 ### 3\. Warranties and Limitations
 
-3.1. Embedthis DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+3.1. EmbedThis DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT
 LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 PARTICULAR PURPOSE, RELATED TO THE Software, ITS USE OR ANY INABILITY TO USE
 IT, THE RESULTS OF ITS USE AND THIS Agreement. The Software and any
 accompanying written materials are supplied "AS IS", without warranty of any
-kind. Embedthis does not warrant, guarantee or make any representations
+kind. EmbedThis does not warrant, guarantee or make any representations
 regarding the use of or the results of the use of the Software or as to its
 correctness, accuracy, reliability, currentness or otherwise. You assume the
 entire risk as to the results and performance of the Software.
 
 ### 4\. Notices
 
-4.1. Embedthis may, at its sole discretion, terminate this Agreement at any
+4.1. EmbedThis may, at its sole discretion, terminate this Agreement at any
 time without notice.
 
 ### 5\. Applicable Law

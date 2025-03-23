@@ -10,10 +10,7 @@ management.
 Full documentation for the Ioto Agent, the Builder, Device Manager and Ioto
 service is available at:
 
-* https://www.embedthis.com/agent/doc/index.html
-* https://www.embedthis.com/builder/doc/index.html
-* https://www.embedthis.com/manager/doc/index.html
-* https://www.embedthis.com/ioto/doc/index.html
+* https://www.embedthis.com/doc/
 
 ## Requirements
 
@@ -55,7 +52,7 @@ Extract the Ioto source code into the components directory. Then rename the
     tar xvfz ioto-VERSION.tgz
     mv ioto-* ioto
     cd ioto
-    tools/setup-esp32
+    bin/setup-esp32
     cd ../..
 
 ### Sample apps
@@ -197,3 +194,4 @@ Ioto uses its own optimized printf implementation which uses less stack (<1K)
 and is more secure, being tolerant of errant NULL arguments.
 
 The PlatformIO and Arduino build frameworks are not (yet) supported.
+

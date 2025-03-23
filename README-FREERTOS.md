@@ -69,11 +69,9 @@ blink | Minimal ESP32 blink app to demonstrate linking with Ioto on ESP32
 microcontrollers.
 demo | Cloud-based management of a device. Demonstrates simple data
 synchronization and metrics.
-eco | Customized cloud-based device management of an **Eco House** demo app.
 
 The default app is the **demo** app which sends device data and metrics to the
-cloud. The **eco** app emulates a simple Home charging networks and a mobile
-app.
+cloud. 
 
 To select an app, invoke **make config** with your desired APP:
 
@@ -187,3 +185,4 @@ fiber tasks. Observationally, the minimum stack for the core Ioto is ~14K.
 
 Ioto uses its own optimized printf implementation which uses less stack (<1K)
 and is more secure, being tolerant of errant NULL arguments.
+
