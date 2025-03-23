@@ -10,7 +10,7 @@
 #
 
 SHELL		:= /bin/bash
-TOOLS		:= $(shell tools/prep-build)
+TOOLS		:= $(shell bin/prep-build)
 NAME		:= ioto
 PROFILE 	:= dev
 TOP			:= $(shell realpath .)
@@ -21,27 +21,25 @@ DB			:= $(STATE)/db
 CERTS 		:= $(STATE)/certs
 SITE		:= $(STATE)/site
 BUILD		:= build
+BIN			:= $(BASE)/$(BUILD)/bin
+PATH		:= $(BASE)/bin:$(BIN):$(PATH)
+CDPATH		:=
 OS			:= $(shell uname | sed 's/CYGWIN.*/windows/;s/Darwin/macosx/' | tr '[A-Z]' '[a-z]')
-VERSION		:= $(shell ./tools/json version pak.json)
-OPTIMIZE	:= $(shell ./tools/json -n --profile $(PROFILE) --default debug optimize $(CONFIG)/ioto.json5)
-APP			:= $(shell ./tools/json -n --default demo app $(CONFIG)/ioto.json5)
+VERSION		:= $(shell ./bin/json version pak.json)
+OPTIMIZE	:= $(shell ./bin/json -n --profile $(PROFILE) --default debug optimize $(CONFIG)/ioto.json5)
+APP			:= $(shell ./bin/json -n --default demo app $(CONFIG)/ioto.json5)
 LAPP		:= $(shell echo $(APP) | tr a-z A-Z)
+MAKE		:= $(shell if which gmake >/dev/null 2>&1; then echo gmake ; else echo make ; fi) --no-print-directory
+PROJECT		:= projects/$(NAME)-$(OS)-default.mk
 
 ifeq ($(ARCH),)
 	ARCH	:= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/;s/aarch/arm/')
 endif
 
-MAKE		:= $(shell if which gmake >/dev/null 2>&1; then echo gmake ; else echo make ; fi) --no-print-directory
-
-PROJECT		:= projects/$(NAME)-$(OS)-default.mk
-BIN			:= $(BASE)/$(BUILD)/bin
-PATH		:= $(BASE)/tools:$(BIN):$(PATH)
-CDPATH		:=
-
 #
 #	Dynamically create the build control environment from ioto.json5
 #
-ENV			:= $(shell ./tools/json -q --env services $(CONFIG)/ioto.json5 >.env)
+ENV			:= $(shell ./bin/json -q --env services $(CONFIG)/ioto.json5 >.env)
 
 include		.env
 
@@ -105,20 +103,20 @@ compile-app:
 #	Create the ioto-config.h header from the app's ioto.json5
 #
 include/ioto-config.h: $(CONFIG)/ioto.json5
-	@echo '       [Create] ioto-config.h'
-	./tools/json --header services $(CONFIG)/ioto.json5 >include/ioto-config.h
+	@echo '    [Create] ioto-config.h'
+	./bin/json --header services $(CONFIG)/ioto.json5 >include/ioto-config.h
 	rm -f $(BUILD)/obj/*.o
 
 certs: certs/test.crt
 
 certs/test.crt:
 	@echo '      [Info] Generate test certs'
-	tools/make-certs
+	bin/make-certs
 	mkdir -p $(BUILD)/bin
 	cp state/certs/roots.crt $(BUILD)/bin
 
 config-esp32:
-	@./tools/config-esp32 $(APP)
+	@./bin/config-esp32 $(APP)
 
 clean clobber:
 	@echo '       [Run] $@'
@@ -169,7 +167,6 @@ help:
 	@echo 'Select from the following apps:' >&2
 	@echo '  auth	Test user login and authentication app.' >&2
 	@echo '  demo   Cloud-based Ioto demo sample app.' >&2
-	@echo '  eco    Cloud-based Eco House sample app.' >&2
 	@echo '  noapp	Build without an app.' >&2
 	@echo '' >&2
 	@echo 'To select your App, add APP=NAME:' >&2
