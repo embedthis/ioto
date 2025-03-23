@@ -93,6 +93,8 @@
 #include "mqtt.h"
 #include "url.h"
 #include "web.h"
+#include "websockets.h"
+#include "openai.h"
 
 /*********************************** Defines **********************************/
 
@@ -129,7 +131,6 @@ struct IotoLog;
 /************************************* Ioto ***********************************/
 /**
     Ioto control structure
-    @defgroup Ioto Ioto
     @stability Evolving
  */
 typedef struct Ioto {
@@ -175,13 +176,14 @@ typedef struct Ioto {
     int cmdCount;              /** Test iterations */
 
     bool connected : 1;        /** Connected to the cloud over MQTT */
-    bool ready : 1;            /** Ioto fully initialized and ready for requests (may not be connected to the cloud) */
+    bool ready : 1;            /** Ioto initialized and ready (may not be connected to the cloud) */
     bool dbService : 1;        /** Embedded database service */
     bool keyService : 1;       /** AWS IAM key generation */
     bool logService : 1;       /** Log file ingest to CloudWatch logs */
     bool mqttService : 1;      /** MQTT service */
     bool nosave : 1;           /** Do not save. i.e. run in-memory */
     bool provisioned : 1;      /** Provisioned with the cloud */
+    bool aiService : 1;        /** AI service */
     bool provisionService : 1; /** Cloud provisioning service */
     bool registerService : 1;  /** Device registration service */
     bool shadowService : 1;    /** AWS IoT core shadows */
@@ -227,41 +229,37 @@ typedef struct Ioto {
 #endif
 
     struct IotoLog *log;       /**< Cloud Watch Log object */
+    // RHash *keys;            /**< Key distribution store */
 #endif
 } Ioto;
 
 /**
     Ioto global object.
     @description Created via ioInitIoto
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC_DATA Ioto *ioto;
 
 /**
     Allocate the Ioto global object.
-    @ingroup Ioto
     @stability Internal
  */
 PUBLIC Ioto *ioAlloc(void);
 
 /**
     Free the Ioto global object.
-    @ingroup Ioto
     @stability Internal
  */
 PUBLIC void ioFree(void);
 
 /**
     Initialize Ioto
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioInit(void);
 
 /**
     Terminate Ioto
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioTerm(void);
@@ -272,7 +270,6 @@ PUBLIC void ioTerm(void);
     @param key Property key value. May contain dots.
     @param defaultValue Default value to return if the key is not found
     @return Returns and allocated string. Caller must free.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC cchar *ioGetShadow(cchar *key, cchar *defaultValue);
@@ -282,14 +279,12 @@ PUBLIC cchar *ioGetShadow(cchar *key, cchar *defaultValue);
     @param key Property key value. May contain dots.
     @param value Value to set.
     @param save Set to true to persist immediately.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSetShadow(cchar *key, cchar *value, bool save);
 
 /**
     Save the shadow state immediately.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSaveShadow(void);
@@ -300,7 +295,6 @@ PUBLIC void ioSaveShadow(void);
     @description The ioStart function is invoked when Ioto is fully initialized and ready to start.
         Users can provide their own ioStart and ioStop functions and link with the Ioto library. Ioto will then
         invoke the user's ioStart for custom initialization.
-    @ingroup Ioto
     @stability Evolving
     @see ioStop, ioConfig
  */
@@ -312,7 +306,6 @@ PUBLIC int ioStart(void);
         and before Ioto initializes services.
         Users can provide their own ioConfig function and link with the Ioto library. Ioto will then
         invoke the user's ioConfig for custom configuratoiun.
-    @ingroup Ioto
     @stability Evolving
     @see ioStart, ioStop
  */
@@ -323,7 +316,6 @@ PUBLIC int ioConfig(Json *config);
     @description The ioStop function is invoked when Ioto is shutting down.
         Users can provide their own ioStart function and link with the Ioto library. Ioto will then
         invoke the user's ioStop for custom shutdown cleanup.
-    @ingroup Ioto
     @stability Evolving
     @see ioConfig, ioStart
  */
@@ -338,7 +330,6 @@ PUBLIC void ioStop(void);
     @param statistic Set to avg, min, max, count or current
     @param period Number of seconds for the statistic period.
     @returns The metric value or NAN if it cannot be found.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, int period);
@@ -352,7 +343,6 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
         the properties of that dimension. The empty object {} denotes All.
     @param elapsed Number of seconds to optimize and buffer metric updates before committing
         to the database.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
@@ -362,7 +352,6 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
     @description This call defines a value in the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
     @param value Value to assign to the key
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSet(cchar *key, cchar *value);
@@ -372,7 +361,6 @@ PUBLIC void ioSet(cchar *key, cchar *value);
     @description This call defines a numeric value in the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
     @param value Double value to assign to the key
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSetNum(cchar *key, double value);
@@ -382,7 +370,6 @@ PUBLIC void ioSetNum(cchar *key, double value);
     @description This call retrieves a value from the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
     @return value Key's string value. Caller must free.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC char *ioGet(cchar *key);
@@ -392,7 +379,6 @@ PUBLIC char *ioGet(cchar *key);
     @description This call retrieves a value from the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
     @return value Key's numeric value.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC double ioGetNum(cchar *key);
@@ -405,7 +391,6 @@ PUBLIC double ioGetNum(cchar *key);
     @param defaultValue If the key is not defined, return a copy of the defaultValue. The defaultValue
         can be NULL in which case the return value will be an allocated empty string.
     @return An string reference into the config store or defaultValue if not defined. Caller must not free.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue);
@@ -415,19 +400,9 @@ PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue);
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The integer value from the config store or defaultValue if not defined.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioGetConfigInt(cchar *key, int defaultValue);
-
-/**
-    Return a path by expanding "@" directives.
-    @param path Path to expand
-    @return An allocated string. Caller must free.
-    @ingroup Ioto
-    @stability Prototype
- */
-PUBLIC char *rGetFilePath(cchar *path);
 
 /*
     Run function when connected to the cloud
@@ -438,7 +413,6 @@ PUBLIC char *rGetFilePath(cchar *path);
     @param fn Function to invoke
     @param arg Argument to supply
     @param direct Set to true to invoke the function directly without spawning a fiber.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct);
@@ -447,15 +421,13 @@ PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct);
     Disable running function when connected to the cloud
     @param fn Function to invoke
     @param arg Argument to supply
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioOnConnectOff(RWatchProc fn, void *arg);
 
 /**
     Schedule a cloud connection based on the mqtt.schedule
-    @ingroup Ioto
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC void ioScheduleConnect(void);
 
@@ -476,7 +448,6 @@ PUBLIC void ioSerialize(void);
 #if SERVICES_SYNC
 /**
     Subscribe for DB sync messages after connecting to the cloud
-    @ingroup Ioto
     @stability Internal
  */
 PUBLIC void ioConnectSync(void);
@@ -486,7 +457,6 @@ PUBLIC void ioConnectSync(void);
     @description Database changes are buffered before being flushed to the cloud. This forces all
         pending changes to be sent to the cloud.
     @param force Set to true to flush items that are not yet due to be sync'd.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioFlushSync(bool force);
@@ -496,7 +466,6 @@ PUBLIC void ioFlushSync(bool force);
     @description This call can be used to force a full sync-up of the local database to the cloud.
     @param guarantee Set to true to true, peform a reliable sync by waiting for the cloud to send
     a receipt acknowlegement for each item.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSyncUp(bool guarantee);
@@ -505,7 +474,6 @@ PUBLIC void ioSyncUp(bool guarantee);
     Sync items from the cloud down to the device
     @description This call can be used to retrieve all items updated after the requested timestamp
     @param timestamp Retrieve items updated after this time.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioSyncDown(Time timestamp);
@@ -514,7 +482,6 @@ PUBLIC void ioSyncDown(Time timestamp);
 #if SERVICES_DATABASE
 /**
     Restart the database
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioRestartDb(void);
@@ -523,12 +490,12 @@ PUBLIC void ioRestartDb(void);
 #if SERVICES_WEB
 /**
     Restart the web server
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void ioRestartWeb(void);
 #endif
 
+/********************************* MQTT Extensions *****************************/
 /**
     Issue a MQTT request and wait for a response
     @description This call sends a MQTT message to the Ioto service and waits for a response. If the response is not
@@ -542,7 +509,6 @@ PUBLIC void ioRestartWeb(void);
         before sending.
     @param ... Topic string arguments
     @return Response message or NULL if the request times out. Caller must free.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC char *mqttRequest(Mqtt *mq, cchar *data, Ticks timeout, cchar *topic, ...);
@@ -553,11 +519,11 @@ PUBLIC char *mqttRequest(Mqtt *mq, cchar *data, Ticks timeout, cchar *topic, ...
     @param mq MQTT connection object
     @param topic Printf style topic format string used in prior mqttRequest
     @param ... Topic string arguments
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void mqttRequestFree(Mqtt *mq, cchar *topic, ...);
 
+/********************************* Web Extensions *****************************/
 /*
     These APIs extend the Web API with database support
  */
@@ -570,7 +536,6 @@ PUBLIC void mqttRequestFree(Mqtt *mq, cchar *topic, ...);
     @param web Web object
     @param item Database item
     @return The number of bytes written.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item);
@@ -582,7 +547,6 @@ PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item);
     @param web Web object
     @param item Database item
     @return The number of bytes written.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC ssize webWriteItem(Web *web, const DbItem *item);
@@ -593,7 +557,6 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item);
     @param web Web object
     @param items Grid of database items
     @return The number of bytes written.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC ssize webWriteItems(Web *web, RList *items);
@@ -605,7 +568,6 @@ PUBLIC ssize webWriteItems(Web *web, RList *items);
     @param web Web object
     @param items Grid of database items
     @return The number of bytes written.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC ssize webWriteItemsResponse(Web *web, RList *items);
@@ -617,7 +579,6 @@ PUBLIC ssize webWriteItemsResponse(Web *web, RList *items);
         HTTP 302 status.  If the user fails to authenticate, a HTTP 401 response will be returned.
         This routine should be installed using: webAddAction(host, "/api/public/login", webLoginUser, NULL);
     @param web Web object
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void webLoginUser(Web *web);
@@ -627,7 +588,6 @@ PUBLIC void webLoginUser(Web *web);
     @description Log out a logged in user. This call will generate a redirect response to "/" with a 302 HTTP status.
         This routine should be installed using: webAddAction(host, "/api/public/logout", webLogoutUser, NULL);
     @param web Web object
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC void webLogoutUser(Web *web);
@@ -637,10 +597,6 @@ PUBLIC void webLogoutUser(Web *web);
 /*********************************** Cloud ************************************/
 #if SERVICES_CLOUD || DOXYGEN
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define IO_LOG_GROUP      "ioto"                    /**< AWS log group name */
 #define IO_LOG_STREAM     "agent"                   /**< AWS log stream name */
 #define IO_LOG_MAX_EVENTS 1000                      /**< Max log events to buffer */
@@ -648,11 +604,25 @@ extern "C" {
 #define IO_LOG_LINGER     5000                      /**< Delay before flushing log events to the cloud */
 #define IO_SAVE_DELAY     5000                      /**< Delay before saving updated shadow state */
 
+
+/************************************* AI **************************************/
+/**
+    Initialize the AI service
+    @return Returns 0 on success, or -1 on failure
+    @stability Evolving
+ */
+PUBLIC int ioInitAI(void);
+
+/**
+    Terminate the AI service
+    @stability Evolving
+ */
+PUBLIC void ioTermAI(void);
+
 /************************************* AWS *************************************/
 /**
     AWS Support.
     @description This is suite of AWS helper routines that implement AWS SigV4 signed REST API requests.
-    @defgroup Aws Aws
     @stability Evolving
     @see aws, awsPutToS3, awsPutFileToS3, awsSign
  */
@@ -663,9 +633,9 @@ extern "C" {
         use the AWS REST APIs and avoid the AWS SDK. This routine processes HTTP request parameters to create a set of
         signed HTTP headers that can be used with the URL HTTP client.
     @param region AWS Region to target
-    @param service AWS Service name. E.g. "s3".
+    @param service AWS Service name (s3)
     @param target AWS Target name. If not supplied, this is deduced from the service name and the
-        "x-amz-target" header.
+        x-amz-target header
     @param method HTTP method to utilize.
     @param path URL request path.
     @param query URL request query.
@@ -676,7 +646,6 @@ extern "C" {
         The header format is of the form: "Key:Value\n..." with an extra new line at the end.
     @param ... Headers arguments.
     @return The HTTP headers to use with a URL HTTP client request. Caller must free.
-    @ingroup Aws
     @stability Evolving
     @see aws, awsPutToS3, awsPutFileToS3
  */
@@ -695,7 +664,6 @@ PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method
     that will be expanded to form the HTTP headers.
     The header format is of the form: "Key:Value\n..." with an extra new line at the end.
     @param ... Headers arguments.
-    @ingroup Aws
     @stability Evolving
     @see awsPutToS3, awsPutFileToS3, awsSign
  */
@@ -708,7 +676,6 @@ PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *bod
     @param key AWS S3 bucket key (filename)
     @param data Data block to write to S3.
     @param dataLen Length of the data block.
-    @ingroup Aws
     @stability Evolving
     @see aws, awsPutFileToS3, awsSign
  */
@@ -720,7 +687,6 @@ PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, ssi
     @param bucket AWS S3 bucket name.
     @param key AWS S3 bucket key (filename). If set to null, the key is set to the filename
     @param filename File name to put to S3.
-    @ingroup Aws
     @stability Evolving
     @see aws, awsPutToS3, awsSign
  */
@@ -730,7 +696,6 @@ PUBLIC int awsPutFileToS3(cchar *region, cchar *bucket, cchar *key, cchar *filen
 /*
     Log to Cloud Watch logs
     @description Used to send log data to AWS Cloud Watch
-    @ingroup Ioto
     @stability Internal
  */
 typedef struct IotoLog {
@@ -760,7 +725,6 @@ typedef struct IotoLog {
     @param time Current wall clock time
     @param msg Message to log
     @return Zero if successful.
-    @ingroup Ioto
     @stability Internal
  */
 PUBLIC int ioLogMessage(IotoLog *log, Time time, cchar *msg);
@@ -772,7 +736,6 @@ PUBLIC int ioLogMessage(IotoLog *log, Time time, cchar *msg);
         uses an exponential delay while the device has not been claimed. This increases gradually
         up to a 24 hour delay. If called while another call to ioProvision is executing, the second
         call waits for the first to complete.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioProvision();
@@ -792,12 +755,14 @@ PUBLIC IotoLog *ioAllocLog(cchar *name, cchar *region, int create, cchar *group,
 PUBLIC int ioEnableCloudLog(void);
 PUBLIC void ioFreeLog(IotoLog *log);
 PUBLIC bool ioUpdate(void);
+PUBLIC void ioUpdateDevice(void);
 
 #endif /* SERVICES_CLOUD */
 
 /*
-    Internal API
+    Internal APIs
  */
+PUBLIC int ioInitAI(void);
 PUBLIC int ioInitConfig(void);
 PUBLIC int ioInitCloud(void);
 PUBLIC int ioInitDb(void);
@@ -816,7 +781,6 @@ PUBLIC void ioTermShadow(void);
 PUBLIC void ioTermSync(void);
 PUBLIC void ioTermWeb(void);
 
-//  Internal
 PUBLIC int ioRegister(void);
 PUBLIC int ioUpdateLog(bool force);
 PUBLIC int ioGetFileMode(void);
@@ -824,16 +788,13 @@ PUBLIC char *ioExpand(cchar *s);
 PUBLIC void ioSetTemplateVar(cchar *key, cchar *value);
 PUBLIC void ioGetKeys(void);
 PUBLIC int ioLoadConfig(void);
-PUBLIC void ioUpdateDevice(void);
 PUBLIC void webCheckRequest(Web *web, cchar *controller, cchar *action);
-PUBLIC void ioSetConfig(cchar *base, cchar *path);
 PUBLIC Ticks cronUntil(cchar *spec, Time when);
 
 /**
     Initialize the Ioto runtime
     @param verbose Set to 1 to enable verbose output. Set to 2 for debug output.
     @return Zero if successful, otherwise a negative error code.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioStartRuntime(int verbose);
@@ -844,7 +805,6 @@ PUBLIC void ioStopRuntime(void);
     @description This routine blocks and services Ioto requests until commanded to exit via rStop()
     @param fn Start function. This is used to ensure the build system links with the supplied function.
     @return Zero if successful, otherwise a negative error code.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioRun(void *fn);
@@ -861,7 +821,6 @@ PUBLIC int ioRun(void *fn);
     @param password WIFI password
     @param hostname Network hostname for the device
     @return Zero if successful, otherwise a negative error code.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioWIFI(cchar *ssid, cchar *password, cchar *hostname);
@@ -871,8 +830,7 @@ PUBLIC int ioWIFI(cchar *ssid, cchar *password, cchar *hostname);
     @param path Mount point for the file system
     @param storage Name of the LittleFS partition
     @return Zero if successful, otherwise a negative error code
-    @ingroup Ioto
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int ioStorage(cchar *path, cchar *storage);
 
@@ -880,7 +838,6 @@ PUBLIC int ioStorage(cchar *path, cchar *storage);
     Start the SNTP time service
     @param wait Set to true to wait for the time to be established.
     @return Zero if successful, otherwise a negative error code.
-    @ingroup Ioto
     @stability Evolving
  */
 PUBLIC int ioSetTime(bool wait);

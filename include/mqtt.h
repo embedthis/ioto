@@ -16,7 +16,6 @@
 #if ME_COM_MQTT
 /**
     MQTT Protocol. A high-performance library for IoT publish/subscribe communications.
-    @defgroup Mqtt Mqtt
     @stability Evolving
  */
 
@@ -50,37 +49,33 @@ struct MqttRecv;
 
 /**
     Protocol version 3.1.1
-    @ingroup Mqtt
     @stability Internal
  */
 #define MQTT_PROTOCOL_LEVEL   0x04
 
 /**
     Message States
-    @ingroup Mqtt
     @stability Internal
  */
 typedef enum MqttMsgState {
-    MQTT_UNSENT       = 1,
-    MQTT_AWAITING_ACK = 2,
-    MQTT_COMPLETE     = 3
+    MQTT_UNSENT       = 1,   /**< Unsent */
+    MQTT_AWAITING_ACK = 2,   /**< Awaiting ack */
+    MQTT_COMPLETE     = 3    /**< Complete */
 } MqttMsgState;
 
 /**
     Wait flags
-    @ingroup Mqtt
     @stability Evolving
  */
-#define MQTT_WAIT_NONE 0x0
-#define MQTT_WAIT_SENT 0x1
-#define MQTT_WAIT_ACK  0x2
-#define MQTT_WAIT_FAST 0x4
+#define MQTT_WAIT_NONE 0x0   /**< No wait */
+#define MQTT_WAIT_SENT 0x1   /**< Wait for sent */
+#define MQTT_WAIT_ACK  0x2   /**< Wait for ack */
+#define MQTT_WAIT_FAST 0x4   /**< Fast callback */
 
 typedef int MqttWaitFlags;
 
 /**
     MQTT packet types
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef enum MqttPacketType {
@@ -102,7 +97,6 @@ typedef enum MqttPacketType {
 
 /**
     Subscription acknowledgement return codes.
-    @ingroup Mqtt
     @stability Internal
  */
 typedef enum MqttSubackCode {
@@ -114,7 +108,6 @@ typedef enum MqttSubackCode {
 
 /**
     Connect flags
-    @ingroup Mqtt
     @stability Internal
  */
 typedef enum MqttConnectFlags {
@@ -131,7 +124,6 @@ typedef enum MqttConnectFlags {
 
 /**
     Publish flags
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef enum MqttPubFlags {
@@ -145,7 +137,6 @@ typedef enum MqttPubFlags {
 
 /**
     Return code returned in a CONN ACK packet.
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef enum MqttConnCode {
@@ -160,7 +151,6 @@ typedef enum MqttConnCode {
 /**
     Message receipt callback
     @param resp Message received structure
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef void (*MqttCallback)(struct MqttRecv *resp);
@@ -174,7 +164,6 @@ typedef void (*MqttCallback)(struct MqttRecv *resp);
     MQTt event callback
     @param mq Mqtt object created via #mqttAlloc
     @param event Event type, set to MQTT_EVENT_CONNECT, MQTT_EVENT_DISCONNECT or MQTT_EVENT_STOPPING.
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef void (*MqttEventProc)(struct Mqtt *mq, int event);
@@ -189,7 +178,6 @@ typedef struct MqttTopic {
 
 /**
     Fixed header of a packet
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef struct MqttHdr {
@@ -201,7 +189,6 @@ typedef struct MqttHdr {
 
 /**
     A struct used to deserialize/interpret an incoming packet from the broker.
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef struct MqttRecv {
@@ -231,7 +218,6 @@ typedef struct MqttRecv {
 
 /**
     Mqtt message
-    @ingroup Mqtt
     @stability Internal
  */
 typedef struct MqttMsg {
@@ -254,7 +240,6 @@ typedef struct MqttMsg {
 
 /**
     MQTT instance
-    @ingroup Mqtt
     @stability Evolving
  */
 typedef struct Mqtt {
@@ -298,7 +283,6 @@ typedef struct Mqtt {
     Allocate an MQTT object
     @param clientId Unique client identifier string.
     @param proc Event notification callback procedure.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc);
@@ -316,7 +300,6 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc);
         or not the broker should retain the will_message, MQTT_CONNECT_WILL_RETAIN.
    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
    @returns Zero if successful.
-   @ingroup Mqtt
    @stability Evolving
  */
 PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags waitFlags);
@@ -326,7 +309,6 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags waitFla
     @description This will not close the socket. The peer, upon receiving the disconnection
         will close the connection.
     @returns Zero if successful.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC int mqttDisconnect(Mqtt *mq);
@@ -341,7 +323,6 @@ PUBLIC void mqttFree(Mqtt *mq);
     Returns an error message for error code, error.
     @param mq Mqtt object.
     @return The associated error message.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC cchar *mqttGetError(struct Mqtt *mq);
@@ -349,7 +330,6 @@ PUBLIC cchar *mqttGetError(struct Mqtt *mq);
 /**
     Return the time of last I/O activity
     @return The time in Ticks of the last I/O.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC Ticks mqttGetLastActivity(Mqtt *mq);
@@ -358,7 +338,6 @@ PUBLIC Ticks mqttGetLastActivity(Mqtt *mq);
     Get the number of messages in the queue
     @param mq The MQTT mq.
     @return The number of messages in the queue
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC int mqttMsgsToSend(Mqtt *mq);
@@ -367,14 +346,12 @@ PUBLIC int mqttMsgsToSend(Mqtt *mq);
     Ping the broker.
     @param mq The MQTT mq.
     @returns Zero if successful.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC int mqttPing(Mqtt *mq);
 
 /**
     Publish an application message to the MQTT broker
-    @ingroup Mqtt
     @param mq The Mqtt object.
     @param msg The data to be published.
     @param size The size of application_message in bytes.
@@ -388,7 +365,6 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, ssize size, int qos, MqttWaitFlags 
 
 /**
     Publish a retained message to the MQTT broker
-    @ingroup Mqtt
     @param mq The Mqtt object.
     @param msg The data to be published.
     @param size The size of application_message in bytes.
@@ -404,7 +380,6 @@ PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, ssize size, int qos,
 
 /*
     Define the username and password to use when connecting
-    @ingroup Mqtt
     @param username The username to use when establishing the session with the MQTT broker.
         Set to NULL if a username is not required.
     @param password The password to use when establishing the session with the MQTT broker.
@@ -418,7 +393,6 @@ PUBLIC void mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password);
     @description AWS supports a smaller maximum message size
     @param mq The MQTT mq.
     @param size The maximum message size
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
@@ -429,7 +403,6 @@ PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
     @param topic Will message topic.
     @param msg Message to send
     @param length Message size.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC void mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
@@ -443,7 +416,6 @@ PUBLIC void mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
     @param topic Printf style topic string.
     @param ... Topic args.
     @returns Zero if successful.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos,
@@ -461,7 +433,6 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos,
     @param topic Printf style topic string.
     @param ... Topic args.
     @returns Zero if successful.
-    @ingroup Mqtt
     @stability Prototype
  */
 PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cchar *topic, ...);
@@ -472,7 +443,6 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cc
     @param topic The name of the topic to unsubscribe from.
     @param wait Wait flags
     @returns Zero if successful.
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
@@ -481,7 +451,6 @@ PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
     Set the keep-alive timeout
     @param mq The MQTT mq.
     @param keepAlive Time to wait in milliseconds before sending a keep-alive message
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC void mqttSetKeepAlive(Mqtt *mq, Ticks keepAlive);
@@ -490,7 +459,6 @@ PUBLIC void mqttSetKeepAlive(Mqtt *mq, Ticks keepAlive);
     Set the idle connection timeout
     @param mq The MQTT mq.
     @param timeout Time to wait in milliseconds before closing the connection
-    @ingroup Mqtt
     @stability Evolving
  */
 PUBLIC void mqttSetTimeout(Mqtt *mq, Ticks timeout);
@@ -499,7 +467,6 @@ PUBLIC void mqttSetTimeout(Mqtt *mq, Ticks timeout);
     Return true if the MQTT instance is connected to a peer
     @param mq The MQTT mq.
     @return True if connected
-    @ingroup Mqtt
     @stability prototype
  */
 PUBLIC bool mqttIsConnected(Mqtt *mq);

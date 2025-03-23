@@ -117,8 +117,6 @@ struct RLog;
 struct RSocket;
 struct RString;
 struct Rtls;
-struct RMD5;
-struct RSHA256;
 
 #ifndef ME_R_DEBUG_LOGGING
     #if ME_DEBUG
@@ -250,7 +248,6 @@ struct RSHA256;
 /**
     R execution state.
     @description Set to R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC_DATA int rState;
@@ -258,7 +255,6 @@ PUBLIC_DATA int rState;
 /**
     Gracefully stop the app
     @description Queued events will be serviced.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rGracefulStop(void);
@@ -267,7 +263,6 @@ PUBLIC void rGracefulStop(void);
     Immediately stop the app
     @description This API is thread safe and can be called from a foreign thread.
     @description Queued events will not be serviced.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rStop(void);
@@ -275,7 +270,6 @@ PUBLIC void rStop(void);
 /**
     Get the current R state
     @return Returns R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC int rGetState(void);
@@ -284,7 +278,6 @@ PUBLIC int rGetState(void);
     Set the R state
     @description This API is thread safe and can be called from a foreign thread.
     @param state Set to R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rSetState(int state);
@@ -294,7 +287,6 @@ PUBLIC void rSetState(int state);
     Trigger a breakpoint.
     @description This routine is invoked for asserion errors from rAssert and errors from rError.
         It is useful in debuggers as breakpoint location for detecting errors.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rBreakpoint(void);
@@ -304,7 +296,6 @@ PUBLIC void rBreakpoint(void);
 /**
     Asser that a condition is true
     @param cond Boolean result of a conditional test
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void assert(bool cond);
@@ -328,7 +319,6 @@ PUBLIC void assert(bool cond);
         this routine to signal the memory failure and run the allocation handler.
     @param cause Set to R_MEM_WARNING, R_MEM_LIMIT, R_MEM_FAIL or R_MEM_TO_BIG.
     @param size Size in bytes of the failing allocation
-    @ingroup RMem
     @stability Evolving
  */
 PUBLIC void rAllocException(int cause, size_t size);
@@ -342,7 +332,6 @@ typedef void*RType;
     @param type RType of the object to allocate
     @return Returns a pointer to the allocated block. If memory is not available the memory allocation handler will be
        invoked.
-    @ingroup RMem
     @stability Evolving
  */
 PUBLIC void *rAllocType(RType type);
@@ -354,7 +343,6 @@ PUBLIC void *rAllocType(RType type);
     @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion handler will be
        invoked.
     @remarks Do not mix calls to rAlloc and malloc.
-    @ingroup RMem
     @stability Evolving.
  */
 PUBLIC void *rAlloc(size_t size);
@@ -364,7 +352,6 @@ PUBLIC void *rAlloc(size_t size);
     @description This releases a block of memory allocated via rAllocMem.
     @param ptr Pointer to the block. If ptr is null, the call is skipped.
     @remarks The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.
-    @ingroup RMem
     @stability Evolving
  */
 PUBLIC void rFree(void *ptr);
@@ -377,7 +364,6 @@ PUBLIC void rFree(void *ptr);
     @return Returns a pointer to the reallocated block. If memory is not available the memory exhaustion handler will be
        invoked.
     @remarks Do not mix calls to rRealloc and malloc.
-    @ingroup RMem
     @stability Evolving.
  */
 PUBLIC void *rRealloc(void *ptr, size_t size);
@@ -407,7 +393,6 @@ PUBLIC void rFreeMem(void *ptr);
     @param ptr Pointer to the block to duplicate.
     @param size Size of the block to copy.
     @return Returns an allocated block.
-    @ingroup RMem
     @stability Evolving.
  */
 PUBLIC void *rMemdup(cvoid *ptr, size_t size);
@@ -416,7 +401,6 @@ PUBLIC void *rMemdup(cvoid *ptr, size_t size);
     Define a global memory exhaustion handler
     @description The memory handler will be invoked for memory allocation errors.
     @param handler Callback function invoked with the signature: void fn(int cause, size_t size)
-    @ingroup RMem
     @stability Evolving.
  */
 PUBLIC void rSetMemHandler(RMemProc handler);
@@ -425,7 +409,6 @@ PUBLIC void rSetMemHandler(RMemProc handler);
 /**
     Fiber entry point function
     @param data Custom function argument
-    @ingroup RFiber
     @stability Evolving
  */
 typedef void (*RFiberProc)(void *data);
@@ -439,7 +422,6 @@ typedef void (*RFiberProc)(void *data);
 
 /**
     Fiber state
-    @ingroup RFiber
     @stability Evolving
  */
 typedef struct RFiber {
@@ -459,7 +441,6 @@ typedef struct RFiber {
     Thread entry point function
     @param data Custom function argument
     @return Value to pass back from rSpawnThread.
-    @ingroup RFiber
     @stability Evolving
  */
 typedef void*(*RThreadProc)(void *data);
@@ -467,14 +448,12 @@ typedef void*(*RThreadProc)(void *data);
 /**
     Initialize the fiber coroutine module
     @return Zero if successful.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC int rInitFibers(void);
 
 /**
     Terminate the fiber coroutine module
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void rTermFibers(void);
@@ -486,7 +465,6 @@ PUBLIC void rTermFibers(void);
     @param fn Fiber entry point.
     @param arg Entry point argument.
     @return Zero if successful.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg);
@@ -498,7 +476,6 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg);
     @param fn Thread main function entry point.
     @param arg Argument provided to the thread.
     @return Value returned from spawned thread function.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void *rSpawnThread(RThreadProc fn, void *arg);
@@ -509,7 +486,6 @@ PUBLIC void *rSpawnThread(RThreadProc fn, void *arg);
         the target fiber is resumed via an event to the main fiber. THREAD SAFE
     @param fiber Fiber object
     @param result Result to pass to the fiber and will be the value returned from rYieldFiber.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
@@ -519,7 +495,6 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
     @description Pause a fiber until resumed by the main fiber.
         the target fiber is resumed via an event to the main fiber.
     @param value Value to provide as a result to the main fiber that called rResumeFiber.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void *rYieldFiber(void *value);
@@ -527,7 +502,6 @@ PUBLIC void *rYieldFiber(void *value);
 /**
     Get the current fiber object
     @return fiber Fiber object
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC RFiber *rGetFiber(void);
@@ -535,7 +509,6 @@ PUBLIC RFiber *rGetFiber(void);
 /**
     Test if a fiber is the main fiber
     @return True if the fiber is the main fiber
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC bool rIsMain(void);
@@ -544,7 +517,6 @@ PUBLIC bool rIsMain(void);
 /**
     CHECK fiber stack usage
     @description This will log peak fiber stack use to the log file
-    @ingroup RFiber
     @stability Internal
  */
 PUBLIC void rCheckFiber(void);
@@ -554,7 +526,6 @@ PUBLIC void rCheckFiber(void);
 /**
     Get the base address of the fiber stack
     @return A pointer to the base of the fiber stack
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void *rGetFiberStack(void);
@@ -565,7 +536,6 @@ PUBLIC ssize rGetFiberStackSize(void);
 /**
     Set the default fiber stack size
     @param size Size of fiber stack in bytes
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void rSetFiberStack(ssize size);
@@ -573,7 +543,6 @@ PUBLIC void rSetFiberStack(ssize size);
 /**
     Set the fiber limits
     @param maxFibers The maximum number of fibers (stacks). Set to zero for no limit.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void rSetFiberLimits(int maxFibers);
@@ -585,7 +554,6 @@ PUBLIC void rSetFiberLimits(int maxFibers);
     @param fn Fiber entry point.
     @param data Entry point argument.
     @return A fiber object
-    @ingroup RFiber
     @stability Internal
  */
 PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc fn, cvoid *data);
@@ -595,7 +563,6 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc fn, cvoid *data);
     @description The fiber must have already completed before invoking this routine. This routine is typically
         only called internally by the fiber module.
     @param fiber Fiber to free.
-    @ingroup RFiber
     @stability Internal
  */
 PUBLIC void rFreeFiber(RFiber *fiber);
@@ -607,7 +574,6 @@ PUBLIC void rFreeFiber(RFiber *fiber);
         a yielded fiber.
     @param fiber The fiber object.
     @param data Value to pass to the fiber entry point.
-    @ingroup RFiber
     @stability Internal
  */
 PUBLIC void rStartFiber(RFiber *fiber, void *data);
@@ -621,7 +587,6 @@ PUBLIC void rStartFiber(RFiber *fiber, void *data);
     @param access Pointer to a boolean initialized to false.
     @param deadline Time in ticks to wait for access. Set to zero for an infinite wait.
     @return Zero if access is granted.
-    @ingroup RFiber
     @stability Prototype
  */
 PUBLIC int rEnter(bool *access, Ticks deadline);
@@ -630,7 +595,6 @@ PUBLIC int rEnter(bool *access, Ticks deadline);
     Leave a fiber critical section
     @description This routine must be called on all exit paths from a fiber after calling rEnter.
     @param access Pointer to a boolean initialized to false.
-    @ingroup RFiber
     @stability Prototype
  */
 PUBLIC void rLeave(bool *access);
@@ -651,7 +615,6 @@ PUBLIC void rLeave(bool *access);
     @description Get the current CPU tick count. This is a system dependant high resolution timer. On some systems,
         this returns time in nanosecond resolution.
     @return Returns the CPU time in ticks. Will return the system time if CPU ticks are not available.
-    @ingroup Time
     @stability Internal
  */
 uint64 rGetHiResTicks(void);
@@ -662,7 +625,6 @@ uint64 rGetHiResTicks(void);
     @param format Time format string. See rFormatUniversalTime for time formats.
     @param time Time to format. Use rGetTime to retrieve the current time.
     @return The formatting time string. Caller msut free.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC char *rFormatLocalTime(cchar *format, Time time);
@@ -782,7 +744,6 @@ PUBLIC char *rFormatLocalTime(cchar *format, Time time);
    \n\n
     @param time Time to format. Use rGetTime to retrieve the current time.
     @return The formatting time string. Caller must free.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
@@ -793,7 +754,6 @@ PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
     @param format Date formatting string. See strftime for acceptable date format specifiers.
         If null, then this routine uses the R_DEFAULT_DATE format.
     @return A date string. Caller must free.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC char *rGetDate(cchar *format);
@@ -803,7 +763,6 @@ PUBLIC char *rGetDate(cchar *format);
     @description Get the date/time as an ISO string.
     @param time Given time to convert.
     @return A date string. Caller must free.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC char *rGetIsoDate(Time time);
@@ -812,7 +771,6 @@ PUBLIC char *rGetIsoDate(Time time);
     Get the elapsed time since a ticks mark. Create the ticks mark with rGetTicks()
     @param mark Staring time stamp
     @returns the time elapsed since the mark was taken.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC Ticks rGetElapsedTicks(Ticks mark);
@@ -822,7 +780,6 @@ PUBLIC Ticks rGetElapsedTicks(Ticks mark);
     @param mark Staring time stamp
     @param timeout Time in milliseconds
     @return Time in milliseconds until the timeout elapses
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC Ticks rGetRemainingTicks(Ticks mark, Ticks timeout);
@@ -832,7 +789,6 @@ PUBLIC Ticks rGetRemainingTicks(Ticks mark, Ticks timeout);
     @description Get the system time in milliseconds. This is a monotonically increasing time counter.
         It does not represent wall-clock time.
     @return Returns the system time in milliseconds.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC Ticks rGetTicks(void);
@@ -841,7 +797,6 @@ PUBLIC Ticks rGetTicks(void);
     Get the time.
     @description Get the date/time in milliseconds since Jan 1 1970.
     @return Returns the time in milliseconds since Jan 1 1970.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC Time rGetTime(void);
@@ -849,7 +804,6 @@ PUBLIC Time rGetTime(void);
 /**
     Parse an ISO date string
     @return The time in milliseconds since Jan 1, 1970.
-    @ingroup Time
     @stability Evolving
  */
 PUBLIC Time rParseIsoDate(cchar *when);
@@ -863,7 +817,6 @@ PUBLIC Time rParseIsoDate(cchar *when);
     Event Subsystem
     @description R provides a simple based eventing mechanism. Events are described by REvent objects
         which are created and queued via #rStartEvent. Events are scheduled once unless restarted via rRestartEvent.
-    @defgroup REvent REvent
     @stability Internal
  */
 typedef int64 REvent;
@@ -901,7 +854,6 @@ typedef int64 REvent;
 /**
     Callback function for events
     @param data Opaque data argument
-    @ingroup REvent
     @stability Evolving
  */
 typedef void (*REventProc)(void *data);
@@ -910,7 +862,6 @@ typedef void (*REventProc)(void *data);
     Callback function for watched events
     @param data Opaque data argument supplied via rWatchEvent
     @param arg Watched event arg passed via rSignal
-    @ingroup REvent
     @stability Evolving
  */
 typedef void (*RWatchProc)(cvoid *data, cvoid *arg);
@@ -932,7 +883,6 @@ typedef void (*RWatchProc)(cvoid *data, cvoid *arg);
         run directly off the main service fiber.
     @return Returns the event object. If called from a foreign thread, note that the event may have already run n
        return.
-    @ingroup R
     @stability Internal
  */
 PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *data, Ticks delay, int flags);
@@ -946,7 +896,6 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *data, Ticks dela
     @param data Data reference to pass to the callback
     @param delay Delay in milliseconds in which to run the callback
     @return A positive integer event ID
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC REvent rStartEvent(REventProc proc, void *data, Ticks delay);
@@ -955,7 +904,6 @@ PUBLIC REvent rStartEvent(REventProc proc, void *data, Ticks delay);
     Stop an event
     @param id Event id allocated by rStartEvent
     @return Integer handle index. Otherwise return -1 on allocation errors.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC int rStopEvent(REvent id);
@@ -964,7 +912,6 @@ PUBLIC int rStopEvent(REvent id);
     Run an event now
     @param id Event id allocated by rStartEvent
     @return Zero if the event is found and can be run.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC int rRunEvent(REvent id);
@@ -973,14 +920,12 @@ PUBLIC int rRunEvent(REvent id);
     Lookup an event ID
     @param id Event id allocated by rStartEvent
     @return True if the event exists.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC bool rLookupEvent(REvent id);
 
 /**
     Run due events
-    @ingroup REvent
     @return Time delay till the next event
     @stability Evolving
  */
@@ -992,7 +937,6 @@ PUBLIC bool rHasDueEvents(void);
     @description This call blocks and continually services events on the event loop until the app is instructed to exit
        via $rStop. An app should call rServiceEvents from the main program.
     @return The current R state.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC int rServiceEvents(void);
@@ -1002,7 +946,6 @@ PUBLIC int rServiceEvents(void);
     @param name Named event
     @param proc Function to call
     @param data Data argument to pass to the proc function as the first argument
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data);
@@ -1013,7 +956,6 @@ PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data);
     @param name Named event
     @param proc Function provided to a previous rWatch call.
     @param data Data argument supplied to a previous rWatch call.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data);
@@ -1022,7 +964,6 @@ PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data);
     Signal watches of a named event
     @param name Named event
     @param arg Data argument to pass to the watch function.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC void rSignal(cchar *name, cvoid *arg);
@@ -1031,7 +972,6 @@ PUBLIC void rSignal(cchar *name, cvoid *arg);
     Signal watches of a named event synchronously (blocking).
     @param name Named event
     @param arg Data argument to pass to the watch function.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC void rSignalSync(cchar *name, cvoid *arg);
@@ -1044,7 +984,6 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg);
     Callback function for IO wait events
     @param data Opaque data argument
     @param mask IO event selection mask
-    @ingroup RWait
     @stability Evolving
  */
 typedef void (*RWaitProc)(cvoid *data, int mask);
@@ -1052,7 +991,6 @@ typedef void (*RWaitProc)(cvoid *data, int mask);
 /**
     Wait object
     @description The RWait service provides a flexible IO waiting mechansim.
-    @defgroup RWait RWait
     @stability Evolving
  */
 typedef struct RWait {
@@ -1066,7 +1004,6 @@ typedef struct RWait {
 
 /**
     Initialize the I/O wait subsystem.
-    @ingroup RWait
     @return Zero if successful.
     @stability Evolving
  */
@@ -1074,7 +1011,6 @@ PUBLIC int rInitWait(void);
 
 /**
     Terminate the I/O wait subsystem.
-    @ingroup RWait
     @stability Evolving
  */
 PUBLIC void rTermWait(void);
@@ -1083,7 +1019,6 @@ PUBLIC void rTermWait(void);
     Allocate a wait object for a file descriptor.
     @param fd File descriptor
     @return A RWait object.
-    @ingroup RWait
     @stability Evolving
  */
 PUBLIC RWait *rAllocWait(int fd);
@@ -1091,7 +1026,6 @@ PUBLIC RWait *rAllocWait(int fd);
 /**
     Free a wait object
     @param wp RWait object
-    @ingroup RWait
     @stability Evolving
  */
 PUBLIC void rFreeWait(RWait *wp);
@@ -1101,7 +1035,6 @@ PUBLIC void rFreeWait(RWait *wp);
     @description This call may be used to waken a fiber in response to external events
     @param wp RWait object
     @param mask Event mask to pass to fiber on resume
-    @ingroup RWait
     @stability Evolving
  */
 PUBLIC void rResumeWait(RWait *wp, int mask);
@@ -1114,7 +1047,6 @@ PUBLIC void rResumeWait(RWait *wp, int mask);
     @param arg Parameter argument to pass to the handler
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline Optional deadline to wait system time. Set to zero for no deadline.
-    @ingroup RWait
     @stability Evolving
  */
 PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask, Ticks deadline);
@@ -1124,7 +1056,6 @@ PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask
     @param wp RWait object
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline System time in ticks to wait until.  Set to zero for no deadline.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline);
@@ -1141,7 +1072,6 @@ PUBLIC int rGetWaitFd(void);
     @description This is typically called by $rServiceEvents to wait for I/O events.
     @param timeout Maximum time in milliseconds to wait for an I/O event.
     @return Zero if successful.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC int rWait(Ticks timeout);
@@ -1154,14 +1084,12 @@ PUBLIC int rWait(Ticks timeout);
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline System time in ticks to wait until.  Set to zero for no deadline.
     @return A mask of I/O events with R_READABLE or R_WRITABLE or R_MODIFIED or R_TIMEOUT.
-    @ingroup REvent
     @stability Evolving
  */
 PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline);
 
 /**
     Wakeup the event loop
-    @ingroup REvent
     @stability Internal
  */
 PUBLIC void rWakeup(void);
@@ -1188,7 +1116,6 @@ PUBLIC void rWakeup(void);
     @param fmt Printf style format string
     @param args Variable arguments to format
     @return Returns the original buffer if supplied or else an allocated string
-    @ingroup printf
     @stability Prototype
  */
 PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
@@ -1203,7 +1130,6 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
     @param fmt Printf style format string
     @param ... Variable arguments to format
     @return Returns the original buffer if supplied or else an allocated string
-    @ingroup printf
     @stability Prototype
  */
 PUBLIC char *rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
@@ -1214,7 +1140,6 @@ PUBLIC char *rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
     @param fmt Printf style format string
     @param ... Variable arguments to format
     @return Returns the number of bytes written
-    @ingroup printf
     @stability Evolving
  */
 PUBLIC ssize rPrintf(cchar *fmt, ...);
@@ -1226,7 +1151,6 @@ PUBLIC ssize rPrintf(cchar *fmt, ...);
     @param fmt Printf style format string
     @param ... Variable arguments to format
     @return Returns the number of bytes written
-    @ingroup printf
     @stability Evolving
  */
 PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
@@ -1237,7 +1161,6 @@ PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
     R String Module
     @description The RT provides a suite of r ascii string manipulation routines to help prevent buffer overflows
         and other potential security traps.
-    @defgroup RString RString
     @see RString itos itosradix itosbuf rEprintf rPrintf scaselesscmp schr
         sclone scmp scontains scopy sends sfmt sfmtv sfmtbuf sfmtbufv shash shashlower sjoin sjoinv slen slower
         smatch sncaselesscmp snclone sncmp sncopy stitle spbrk srchr sreplace sspn sstarts ssub stemplate
@@ -1246,14 +1169,21 @@ PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
  */
 typedef struct RString { void *dummy; } RString;
 
+/*
+    Convenience macros for formatted string operations.
+ */
 #define SFMT(buf, ...) sfmtbuf(buf, sizeof(buf), __VA_ARGS__)
+
+/*
+    Convenience macros to declare static strings.
+ */
+#define SDEF(...) #__VA_ARGS__
 
 /**
     Convert an integer to a string.
     @description This call convers the supplied 64 bit integer to a string using base 10.
     @param value Integer value to conver
     @return An allocated string with the converted number. Caller must free.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sitos(int64 value);
@@ -1264,7 +1194,6 @@ PUBLIC char *sitos(int64 value);
     @param value Integer value to conver
     @param radix The base radix to use when encoding the number
     @return An allocated string with the converted number.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sitosradix(int64 value, int radix);
@@ -1278,7 +1207,6 @@ PUBLIC char *sitosradix(int64 value, int radix);
     @param value Integer value to conver
     @param radix The base radix to use when encoding the number. Supports 10 and 16.
     @return Returns a reference to the string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix);
@@ -1290,7 +1218,6 @@ PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix);
     @param s2 Second string to compare.
     @return Returns zero if the strings are equivalent, < 0 if s1 sors lower than s2 in the collating sequence
         or > 0 if it sors higher.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC int scaselesscmp(cchar *s1, cchar *s2);
@@ -1301,7 +1228,6 @@ PUBLIC int scaselesscmp(cchar *s1, cchar *s2);
     @param s1 First string to compare.
     @param s2 Second string to compare.
     @return Returns true if the strings are equivalent, otherwise false.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool scaselessmatch(cchar *s1, cchar *s2);
@@ -1311,7 +1237,6 @@ PUBLIC bool scaselessmatch(cchar *s1, cchar *s2);
     @description Copy a string into a newly allocated block and make the first character lower case
     @param str Pointer to the block to duplicate.
     @return Returns a newly allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *scamel(cchar *str);
@@ -1323,7 +1248,6 @@ PUBLIC char *scamel(cchar *str);
    @param c Character to search for
    @return If the character is found, the call returns a reference to the character position in the string. Otherwise,
         returns NULL.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *schr(cchar *str, int c);
@@ -1335,7 +1259,6 @@ PUBLIC char *schr(cchar *str, int c);
     Use scloneNull if you need to preserve NULLs.
     @param str Pointer to the block to duplicate.
     @return Returns a newly allocated string. Caller must free.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sclone(cchar *str);
@@ -1346,7 +1269,6 @@ PUBLIC char *sclone(cchar *str);
     If passed a NULL, this will return a NULL.
     @param str Pointer to the block to duplicate.
     @return Returns a newly allocated string or NULL. Caller must free.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *scloneNull(cchar *str);
@@ -1358,7 +1280,6 @@ PUBLIC char *scloneNull(cchar *str);
     @param s2 Second string to compare.
     @return Returns zero if the strings are identical. Return -1 if the first string is less than the second. Return 1
         if the first string is greater than the second.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC int scmp(cchar *s1, cchar *s2);
@@ -1369,7 +1290,6 @@ PUBLIC int scmp(cchar *s1, cchar *s2);
     @param str Pointer to the string to search.
     @param pattern String pattern to search for.
     @return Returns a reference to the start of the pattern in the string. If not found, returns NULL.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *scontains(cchar *str, cchar *pattern);
@@ -1384,7 +1304,6 @@ PUBLIC char *scontains(cchar *str, cchar *pattern);
     @param destMax Maximum size of the target string in characters.
     @param src String to copy. May be null.
     @return Returns the number of characters in the target string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
@@ -1394,7 +1313,6 @@ PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
     @param str String to examine
     @param suffix Pattern to search for
     @return Returns a pointer to the start of the pattern if found. Otherwise returns NULL.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC cchar *sends(cchar *str, cchar *suffix);
@@ -1402,7 +1320,6 @@ PUBLIC cchar *sends(cchar *str, cchar *suffix);
 /**
     Erase the contents of a string
     @param str String to erase
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC void szero(char *str);
@@ -1415,7 +1332,6 @@ PUBLIC void szero(char *str);
     @param fmt Printf style format string
     @param ... Variable arguments for the format string
     @return Returns a newly allocated string
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sfmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
@@ -1429,7 +1345,6 @@ PUBLIC char *sfmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
     @param fmt Printf style format string
     @param ... Variable arguments to format
     @return Returns the buffer.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sfmtbuf(char *buf, ssize maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
@@ -1443,7 +1358,6 @@ PUBLIC char *sfmtbuf(char *buf, ssize maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE
     @param fmt Printf style format string
     @param args Varargs argument obtained from va_start.
     @return Returns the buffer;
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sfmtbufv(char *buf, ssize maxSize, cchar *fmt, va_list args);
@@ -1456,7 +1370,6 @@ PUBLIC char *sfmtbufv(char *buf, ssize maxSize, cchar *fmt, va_list args);
     @param fmt Printf style format string
     @param args Varargs argument obtained from va_start.
     @return Returns a newly allocated string
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sfmtv(cchar *fmt, va_list args);
@@ -1466,18 +1379,15 @@ PUBLIC char *sfmtv(cchar *fmt, va_list args);
     @param str String to examine
     @param len Length in characters of the string to include in the hash code
     @return Returns an unsigned integer hash code
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC uint shash(cchar *str, ssize len);
 
 /**
-    Compute a caseless hash code for a string
-    @description This computes a hash code for the string after convering it to lower case.
+    Compute a hash code for a string after converting it to lower case.
     @param str String to examine
     @param len Length in characters of the string to include in the hash code
     @return Returns an unsigned integer hash code
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC uint shashlower(cchar *str, ssize len);
@@ -1490,7 +1400,6 @@ PUBLIC uint shashlower(cchar *str, ssize len);
     @param str First string to catentate
     @param ... Variable number of string arguments to append. Terminate list with NULL.
     @return Returns an allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sjoin(cchar *str, ...);
@@ -1501,7 +1410,6 @@ PUBLIC char *sjoin(cchar *str, ...);
     @param str First string to catentate
     @param args Varargs argument obtained from va_start.
     @return Returns an allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sjoinv(cchar *str, va_list args);
@@ -1513,7 +1421,6 @@ PUBLIC char *sjoinv(cchar *str, va_list args);
     @param fmt First string to catentate
     @param ... Varargs argument obtained from va_start.
     @return Returns an allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...);
@@ -1525,7 +1432,6 @@ PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...);
     @param sep Separator string to use. If NULL, then no separator is used.
     @return A single joined string. Caller must free.
     @stability Evolving
-    @ingroup RString
  */
 PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep);
 
@@ -1535,7 +1441,6 @@ PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep);
         less than a given maximum. It will return zero for NULL args.
     @param str String to measure.
     @return Returns the length of the string
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC ssize slen(cchar *str);
@@ -1544,7 +1449,6 @@ PUBLIC ssize slen(cchar *str);
     Convert a string to lower case.
     @description Convert a string to its lower case equivalent.
     @param str String to conver.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *slower(char *str);
@@ -1555,7 +1459,6 @@ PUBLIC char *slower(char *str);
     @param s1 First string to compare.
     @param s2 Second string to compare.
     @return Returns true if the strings are equivalent, otherwise false.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool smatch(cchar *s1, cchar *s2);
@@ -1569,7 +1472,6 @@ PUBLIC bool smatch(cchar *s1, cchar *s2);
     @param len Length of characters to compare.
     @return Returns zero if the strings are equivalent, < 0 if s1 sors lower than s2 in the collating sequence
         or > 0 if it sors higher.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize len);
@@ -1581,7 +1483,6 @@ PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize len);
     @param len Number of bytes to copy. The actual length copied is the minimum of the given length and the length of
         the supplied string. The result is null terminated.
     @return Returns a newly allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *snclone(cchar *str, ssize len);
@@ -1594,7 +1495,6 @@ PUBLIC char *snclone(cchar *str, ssize len);
     @param len Length of characters to compare.
     @return Returns zero if the strings are equivalent, < 0 if s1 sors lower than s2 in the collating sequence
         or > 0 if it sors higher.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC int sncmp(cchar *s1, cchar *s2, ssize len);
@@ -1607,7 +1507,6 @@ PUBLIC int sncmp(cchar *s1, cchar *s2, ssize len);
     @param pattern String pattern to search for.
     @param limit Count of characters in the string to search.
     @return Returns a reference to the start of the pattern in the string. If not found, returns NULL.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sncontains(cchar *str, cchar *pattern, ssize limit);
@@ -1621,7 +1520,6 @@ PUBLIC char *sncontains(cchar *str, cchar *pattern, ssize limit);
     @param pattern String pattern to search for.
     @param limit Count of characters in the string to search.
     @return Returns a reference to the start of the pattern in the string. If not found, returns NULL.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, ssize limit);
@@ -1637,7 +1535,6 @@ PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, ssize limit);
     @param src String to copy
     @param len Maximum count of characters to copy
     @return Returns a reference to the destination if successful or NULL if the string won't fit.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC ssize sncopy(char *dest, ssize destMax, cchar *src, ssize len);
@@ -1646,7 +1543,6 @@ PUBLIC ssize sncopy(char *dest, ssize destMax, cchar *src, ssize len);
     Test if a string is a floating point number
     @description The supported format is: [+|-][DIGITS][.][DIGITS][(e|E)[+|-]DIGITS]
     @return true if all characters are digits or '.', 'e', 'E', '+' or '-'
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool sfnumber(cchar *s);
@@ -1655,7 +1551,6 @@ PUBLIC bool sfnumber(cchar *s);
     Test if a string is a positive hexadecimal number
     @description The supported format is: [0][(x|X)][HEX_DIGITS]
     @return true if all characters are digits or 'x' or 'X'
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool shnumber(cchar *s);
@@ -1663,7 +1558,6 @@ PUBLIC bool shnumber(cchar *s);
 /*
     Test if a string is a number
     @return true if the string is a positive integer number.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool snumber(cchar *s);
@@ -1673,7 +1567,6 @@ PUBLIC bool snumber(cchar *s);
     @description Copy a string into a newly allocated block and make the first character upper case
     @param str Pointer to the block to duplicate.
     @return Returns a newly allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *stitle(cchar *str);
@@ -1684,7 +1577,6 @@ PUBLIC char *stitle(cchar *str);
     @param str String to examine
     @param set Set of characters to scan for
     @return Returns a reference to the first character from the given set. Returns NULL if none found.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *spbrk(cchar *str, cchar *set);
@@ -1695,7 +1587,6 @@ PUBLIC char *spbrk(cchar *str, cchar *set);
     @param str String to examine
     @param c Character to scan for
     @return Returns a reference in the string to the requested character. Returns NULL if none found.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *srchr(cchar *str, int c);
@@ -1707,7 +1598,6 @@ PUBLIC char *srchr(cchar *str, int c);
     @param buf Existing (allocated) string to reallocate. May be null. May not be a string literal.
     @param ... Variable number of string arguments to append. Terminate list with NULL.
     @return Returns an allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *srejoin(char *buf, ...);
@@ -1719,7 +1609,6 @@ PUBLIC char *srejoin(char *buf, ...);
     @param buf Existing (allocated) string to reallocate. May be null. May not be a string literal.
     @param args Varargs argument obtained from va_start.
     @return Returns an allocated string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *srejoinv(char *buf, va_list args);
@@ -1730,7 +1619,6 @@ PUBLIC char *srejoinv(char *buf, va_list args);
     @param pattern Pattern to search for. Can be null in which case the str is cloned.
     @param replacement Replacement pattern. If replacement is null, the pattern is removed.
     @return A new allocated string
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sreplace(cchar *str, cchar *pattern, cchar *replacement);
@@ -1738,7 +1626,6 @@ PUBLIC char *sreplace(cchar *str, cchar *pattern, cchar *replacement);
 /*
     Test if a string is all white space
     @return true if all characters are ' ', '\t', '\n', '\r'. True if the string is empty.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool sspace(cchar *s);
@@ -1755,7 +1642,6 @@ PUBLIC bool sspace(cchar *s);
     @param last Reference to the portion after the delimiters. Will return an empty string if is not trailing portion.
     @return Returns a pointer to the first par before the delimiters. If the string begins with delimiters, the empty
         string will be returned.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *ssplit(char *str, cchar *delim, char **last);
@@ -1768,7 +1654,6 @@ PUBLIC char *ssplit(char *str, cchar *delim, char **last);
     @param set Set of characters to span
     @return Returns an index to the first character after the spanning set. If not found, returns the index of the
         first null.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC ssize sspn(cchar *str, cchar *set);
@@ -1778,7 +1663,6 @@ PUBLIC ssize sspn(cchar *str, cchar *set);
     @param str String to examine
     @param prefix Pattern to search for
     @return Returns true if the pattern was found. Otherwise returns zero.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC bool sstarts(cchar *str, cchar *prefix);
@@ -1788,7 +1672,6 @@ PUBLIC bool sstarts(cchar *str, cchar *prefix);
     @param str String to expand
     @param tokens Hash table of token values to use
     @return An expanded string. May return the original string if no "$" references are present.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *stemplate(cchar *str, void *tokens);
@@ -1798,7 +1681,6 @@ PUBLIC char *stemplate(cchar *str, void *tokens);
     @description This call convers the supplied string to a double.
     @param str Pointer to the string to parse.
     @return Returns the double equivalent value of the string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC double stof(cchar *str);
@@ -1808,7 +1690,6 @@ PUBLIC double stof(cchar *str);
     @description This call convers the supplied string to a double.
     @param str Pointer to the string to parse. If passed null, returns NAN.
     @return Returns the double equivalent value of the string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC double stod(cchar *str);
@@ -1818,7 +1699,6 @@ PUBLIC double stod(cchar *str);
     @description This call convers the supplied string to an integer using base 10.
     @param str Pointer to the string to parse.
     @return Returns the integer equivalent value of the string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC int64 stoi(cchar *str);
@@ -1830,7 +1710,6 @@ PUBLIC int64 stoi(cchar *str);
     @param radix Base to use when parsing the string
     @param err Return error code. Set to 0 if successful.
     @return Returns the integer equivalent value of the string.
-    @ingroup RString
  */
 PUBLIC int64 stoiradix(cchar *str, int radix, int *err);
 
@@ -1842,7 +1721,6 @@ PUBLIC int64 stoiradix(cchar *str, int radix, int *err);
     @param last Last token pointer.
     @return Returns a pointer to the next token inside the original string.
         Caller must not free the result.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *stok(char *str, cchar *delim, char **last);
@@ -1854,7 +1732,6 @@ PUBLIC char *stok(char *str, cchar *delim, char **last);
     @param pattern String pattern to use for token delimiters.
     @param nextp Next token pointer.
     @return Returns a pointer to the string.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
@@ -1863,7 +1740,6 @@ PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
    String to list. This parses the string of space separated arguments. Single and double quotes are supported.
    @param src Source string to parse
    @return List of arguments
-   @ingroup RString
    @stability Evolving
  */
 PUBLIC struct RList *stolist(cchar *src);
@@ -1874,7 +1750,6 @@ PUBLIC struct RList *stolist(cchar *src);
     @param offset Staring offset within str for the beginning of the substring
     @param length Length of the substring in characters
     @return Returns a newly allocated substring
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *ssub(cchar *str, ssize offset, ssize length);
@@ -1894,7 +1769,6 @@ PUBLIC char *ssub(cchar *str, ssize offset, ssize length);
     @param set String of characters to remove.
     @param where Flags to indicate trim from the start, end or both. Use R_TRIM_START, R_TRIM_END, R_TRIM_BOTH.
     @return Returns a reference into the original string. Caller must not free.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *strim(char *str, cchar *set, int where);
@@ -1904,7 +1778,6 @@ PUBLIC char *strim(char *str, cchar *set, int where);
     @description Convert a string to its upper case equivalent.
     @param str String to conver.
     @return Returns a pointer to the converted string. Will always equal str.
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC char *supper(char *str);
@@ -1916,7 +1789,6 @@ PUBLIC char *supper(char *str);
     @param str1 First string
     @param str2 Second string to append
     @return Number of bytes in the destination buffer
-    @ingroup RString
     @stability Evolving
  */
 PUBLIC ssize sjoinbuf(char *buf, ssize bufsize, cchar *str1, cchar *str2);
@@ -1956,7 +1828,6 @@ PUBLIC uint64 svalue(cchar *value);
         rGetBufSize rGetBufSpace rGetBufStart rGetCharFromBuf rGrowBuf rInserCharToBuf
         rLookAtLastCharInBuf rLookAtNextCharInBuf rPutBlockToBuf rPutCharToBuf rPutToBuf
         rPutIntToBuf rPutStringToBuf rPutSubToBuf rResetBufIfEmpty rInitBuf
-    @defgroup RBuf RBuf
     @stability Internal.
  */
 typedef struct RBuf {
@@ -1975,7 +1846,6 @@ typedef struct RBuf {
     @param buf Buffer created via rAllocBuf
     @param size Size to make the buffer.
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rInitBuf(RBuf *buf, ssize size);
@@ -1983,9 +1853,8 @@ PUBLIC int rInitBuf(RBuf *buf, ssize size);
 /**
     Terminate a buffer
     @description This frees memory allocated by the buffer. This call should be used for buffers initialized via
-       #rInitBuf.
+ #rInitBuf.
     @param buf Buffer created via rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rTermBuf(RBuf *buf);
@@ -1995,7 +1864,6 @@ PUBLIC void rTermBuf(RBuf *buf);
     @description Create a new buffer.
     @param initialSize Initial size of the buffer
     @return a new buffer
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC RBuf *rAllocBuf(ssize initialSize);
@@ -2003,7 +1871,6 @@ PUBLIC RBuf *rAllocBuf(ssize initialSize);
 /**
     Free a buffer
     @param buf Buffere created via #rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rFreeBuf(RBuf *buf);
@@ -2014,7 +1881,6 @@ PUBLIC void rFreeBuf(RBuf *buf);
         "official" content length. This is useful when calling #rGetBufStart and using the returned pointer
         as a "C" string pointer.
     @param buf Buffer created via rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rAddNullToBuf(RBuf *buf);
@@ -2027,7 +1893,6 @@ PUBLIC void rAddNullToBuf(RBuf *buf);
         done automatically.
     @param buf Buffer created via rAllocBuf
     @param count Positive or negative count of bytes to adjust the end position.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rAdjustBufEnd(RBuf *buf, ssize count);
@@ -2040,7 +1905,6 @@ PUBLIC void rAdjustBufEnd(RBuf *buf, ssize count);
         done automatically.
     @param buf Buffer created via rAllocBuf
     @param count Positive or negative count of bytes to adjust the start position.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rAdjustBufStart(RBuf *buf, ssize count);
@@ -2049,7 +1913,6 @@ PUBLIC void rAdjustBufStart(RBuf *buf, ssize count);
     Return a reference to the buffer contents.
     @param buf Buffer created via rAllocBuf
     @returns A pointer into the buffer data. Caller must not free.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC cchar *rBufToString(RBuf *buf);
@@ -2058,7 +1921,6 @@ PUBLIC cchar *rBufToString(RBuf *buf);
     Convert the buffer contents to a string.  The string is allocated and the buffer is freed.
     @param buf Buffer created via rAllocBuf
     @returns Allocated string
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC char *rBufToStringAndFree(RBuf *buf);
@@ -2067,7 +1929,6 @@ PUBLIC char *rBufToStringAndFree(RBuf *buf);
     Compact the buffer contents
     @description Compact the buffer contents by copying the contents down to start the the buffer origin.
     @param buf Buffer created via rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rCompactBuf(RBuf *buf);
@@ -2076,7 +1937,6 @@ PUBLIC void rCompactBuf(RBuf *buf);
     Flush the buffer contents
     @description Discard the buffer contents and reset the start end content pointers.
     @param buf Buffer created via rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rFlushBuf(RBuf *buf);
@@ -2089,7 +1949,6 @@ PUBLIC void rFlushBuf(RBuf *buf);
     @param blk Destination block for the read data.
     @param count Count of bytes to read from the buffer.
     @return The count of bytes read into the block or -1 if the buffer is empty.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rGetBlockFromBuf(RBuf *buf, char *blk, ssize count);
@@ -2099,7 +1958,6 @@ PUBLIC ssize rGetBlockFromBuf(RBuf *buf, char *blk, ssize count);
     @description Get a pointer to the location immediately after the end of the buffer contents.
     @param buf Buffer created via rAllocBuf
     @returns Pointer to the end of the buffer data contents. Points to the location one after the last data byte.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC cchar *rGetBufEnd(RBuf *buf);
@@ -2109,7 +1967,6 @@ PUBLIC cchar *rGetBufEnd(RBuf *buf);
     @description Get the length of the buffer contents. This is not the same as the buffer size which may be larger.
     @param buf Buffer created via rAllocBuf
     @returns The length of the content stored in the buffer in bytes
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rGetBufLength(RBuf *buf);
@@ -2119,7 +1976,6 @@ PUBLIC ssize rGetBufLength(RBuf *buf);
     @description Get a pointer to the start of the buffer content storage. This is always and allocated block.
     @param buf Buffer created via rAllocBuf
     @returns A pointer to the buffer content storage.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC cchar *rGetBuf(RBuf *buf);
@@ -2129,7 +1985,6 @@ PUBLIC cchar *rGetBuf(RBuf *buf);
     @description This returns the size of the memory block allocated for storing the buffer contents.
     @param buf Buffer created via rAllocBuf
     @returns The size of the buffer content storage.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rGetBufSize(RBuf *buf);
@@ -2139,7 +1994,6 @@ PUBLIC ssize rGetBufSize(RBuf *buf);
     @description Get the number of bytes available to store content in the buffer
     @param buf Buffer created via rAllocBuf
     @returns The number of bytes available
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rGetBufSpace(RBuf *buf);
@@ -2150,7 +2004,6 @@ PUBLIC ssize rGetBufSpace(RBuf *buf);
         of the content. Use #rGetBufEnd to get a pointer to the location after the end of the content.
     @param buf Buffer created via rAllocBuf
     @returns Pointer to the start of the buffer data contents
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC cchar *rGetBufStart(RBuf *buf);
@@ -2160,7 +2013,6 @@ PUBLIC cchar *rGetBufStart(RBuf *buf);
     @description Get the next byte from the buffer start and advance the start position.
     @param buf Buffer created via rAllocBuf
     @return The character or -1 if the buffer is empty.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rGetCharFromBuf(RBuf *buf);
@@ -2172,7 +2024,6 @@ PUBLIC int rGetCharFromBuf(RBuf *buf);
     @param buf Buffer created via rAllocBuf
     @param count Count of bytes by which to grow the buffer content size.
     @returns Zero if successful and otherwise a negative error code.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rGrowBuf(RBuf *buf, ssize count);
@@ -2184,7 +2035,6 @@ PUBLIC int rGrowBuf(RBuf *buf, ssize count);
     @param buf Buffer created via rAllocBuf
     @param need Required free space in bytes.
     @returns Zero if successful and otherwise a negative error code.
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rReserveBufSpace(RBuf *buf, ssize need);
@@ -2195,7 +2045,6 @@ PUBLIC int rReserveBufSpace(RBuf *buf, ssize need);
     @param buf Buffer created via rAllocBuf
     @param c Character to append.
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rInserCharToBuf(RBuf *buf, int c);
@@ -2206,7 +2055,6 @@ PUBLIC int rInserCharToBuf(RBuf *buf, int c);
         The character is returned and the start position is not altered.
     @param buf Buffer created via rAllocBuf
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rLookAtNextCharInBuf(RBuf *buf);
@@ -2217,7 +2065,6 @@ PUBLIC int rLookAtNextCharInBuf(RBuf *buf);
         The character is returned and the end position is not altered.
     @param buf Buffer created via rAllocBuf
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rLookAtLastCharInBuf(RBuf *buf);
@@ -2229,7 +2076,6 @@ PUBLIC int rLookAtLastCharInBuf(RBuf *buf);
     @param ptr Block to append
     @param size Size of block to append
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rPutBlockToBuf(RBuf *buf, cchar *ptr, ssize size);
@@ -2240,7 +2086,6 @@ PUBLIC ssize rPutBlockToBuf(RBuf *buf, cchar *ptr, ssize size);
     @param buf Buffer created via rAllocBuf
     @param c Character to append
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC int rPutCharToBuf(RBuf *buf, int c);
@@ -2252,7 +2097,6 @@ PUBLIC int rPutCharToBuf(RBuf *buf, int c);
     @param fmt Printf style format string
     @param ... Variable arguments for the format string
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rPutToBuf(RBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
@@ -2263,7 +2107,6 @@ PUBLIC ssize rPutToBuf(RBuf *buf, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
     @param buf Buffer created via rAllocBuf
     @param i Integer to append to the buffer
     @returns Number of characters added to the buffer, otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rPutIntToBuf(RBuf *buf, int64 i);
@@ -2274,7 +2117,6 @@ PUBLIC ssize rPutIntToBuf(RBuf *buf, int64 i);
     @param buf Buffer created via rAllocBuf
     @param str String to append
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rPutStringToBuf(RBuf *buf, cchar *str);
@@ -2286,7 +2128,6 @@ PUBLIC ssize rPutStringToBuf(RBuf *buf, cchar *str);
     @param str String to append
     @param count Put at most count characters to the buffer
     @returns Zero if successful and otherwise a negative error code
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC ssize rPutSubToBuf(RBuf *buf, cchar *str, ssize count);
@@ -2295,7 +2136,6 @@ PUBLIC ssize rPutSubToBuf(RBuf *buf, cchar *str, ssize count);
     Reset the buffer
     @description If the buffer is empty, reset the buffer start and end pointers to the beginning of the buffer.
     @param buf Buffer created via rAllocBuf
-    @ingroup RBuf
     @stability Evolving
  */
 PUBLIC void rResetBufIfEmpty(RBuf *buf);
@@ -2323,7 +2163,6 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
         rGetNextItem rInsertItemAt rLookupItem rLookupStringItem
         rRemoveItem rRemoveItemAt rRemoveRangeOfItems rRemoveStringItem rSetItem
         rSetListLimits rSortList
-    @defgroup RList RList
     @stability Internal.
  */
 typedef struct RList {
@@ -2339,7 +2178,6 @@ typedef struct RList {
     @param arg1 First list item to compare
     @param arg2 Second list item to compare
     @returns Return zero if the items are equal. Return -1 if the first arg is less than the second. Otherwise return 1.
-    @ingroup RList
     @stability Evolving
  */
 typedef int (*RListCompareProc)(cvoid *arg1, cvoid *arg2);
@@ -2355,15 +2193,13 @@ typedef int (*RListCompareProc)(cvoid *arg1, cvoid *arg2);
         and ultimately free when the hash is free. Set to R_TEMPORAL_VALUE when providing a string value
         that the list must clone and free. Default is R_STATIC_VALUE.
     @return Returns a pointer to the list.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC RList *rAllocList(int size, int flags);
 
 /**
     Free a list.
-    @param list List pointer returned from #rAllocList
-    @ingroup RList
+    @param list List pointer returned from rAllocList
     @stability Evolving
  */
 PUBLIC void rFreeList(RList *list);
@@ -2372,11 +2208,10 @@ PUBLIC void rFreeList(RList *list);
     Add an item to a list
     @description Add the specified item to the list. The list must have been previously created via
         rAllocList. The list will grow as required to store the item
-    @param list List pointer returned from #rAllocList
+    @param list List pointer returned from rAllocList
     @param item Pointer to item to store
     @return Returns a positive list index for the insered item. If the item cannot be insered due
         to a memory allocation failure, -1 is returned
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rAddItem(RList *list, cvoid *item);
@@ -2385,7 +2220,6 @@ PUBLIC int rAddItem(RList *list, cvoid *item);
     Add a null item to the list.
     @description Add a null item to the list. This item does not count in the length returned by #rGetListLength
     and will not be visible when iterating using #rGetNextItem.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rAddNullItem(RList *list);
@@ -2394,7 +2228,6 @@ PUBLIC int rAddNullItem(RList *list);
     Clears the list of all items.
     @description Resets the list length to zero and clears all items.
     @param list List pointer returned from rAllocList.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void rClearList(RList *list);
@@ -2405,7 +2238,6 @@ PUBLIC void rClearList(RList *list);
     @description Get an list item specified by its index.
     @param list List pointer returned from rAllocList.
     @param index Item index into the list. Indexes have a range from zero to the lenghth of the list - 1.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void *rGetItem(RList *list, int index);
@@ -2417,7 +2249,6 @@ PUBLIC void *rGetItem(RList *list, int index);
     Get the number of items in the list.
     @description Returns the number of items in the list. This will always be less than or equal to the list capacity.
     @param list List pointer returned from rAllocList.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rGetListLength(RList *list);
@@ -2428,7 +2259,6 @@ PUBLIC int rGetListLength(RList *list);
     @param list List pointer returned from rAllocList.
     @param lastIndex Pointer to an integer that will hold the last index retrieved.
     @return Next item in list or null for an empty list or after the last item.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void *rGetNextItem(RList *list, int *lastIndex);
@@ -2437,12 +2267,11 @@ PUBLIC void *rGetNextItem(RList *list, int *lastIndex);
     Inser an item into a list at a specific position
     @description Insert the item into the list before the specified position. The list will grow as required
         to store the item
-    @param list List pointer returned from #rAllocList
+    @param list List pointer returned from rAllocList
     @param index Location at which to store the item. The previous item at this index is moved to make room.
     @param item Pointer to item to store
     @return Returns the position index (positive integer) if successful. If the item cannot be insered due
         to a memory allocation failure, -1 is returned
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rInsertItemAt(RList *list, int index, cvoid *item);
@@ -2452,7 +2281,6 @@ PUBLIC int rInsertItemAt(RList *list, int index, cvoid *item);
     @param list List pointer returned from rAllocList.
     @param join String to use as the element join string. May be null.
     @return An allocated string. Caller must free.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC char *rListToString(RList *list, cchar *join);
@@ -2463,7 +2291,6 @@ PUBLIC char *rListToString(RList *list, cchar *join);
     @param list List pointer returned from rAllocList.
     @param item Pointer to value stored in the list.
     @return Positive list index if found, otherwise a negative RT error code.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rLookupItem(RList *list, cvoid *item);
@@ -2474,7 +2301,6 @@ PUBLIC int rLookupItem(RList *list, cvoid *item);
     @param list List pointer returned from rAllocList.
     @param str Pointer to string to look for.
     @return Positive list index if found, otherwise a negative RT error code.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rLookupStringItem(RList *list, cchar *str);
@@ -2485,7 +2311,6 @@ PUBLIC int rLookupStringItem(RList *list, cchar *str);
     @param list List pointer returned from rAllocList.
     @param item Item pointer to remove.
     @return Returns the positive index of the removed item, otherwise a negative RT error code.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rRemoveItem(RList *list, cvoid *item);
@@ -2495,7 +2320,6 @@ PUBLIC int rRemoveItem(RList *list, cvoid *item);
     @description Removes the element specified by \a index, from the list. The
         list index is provided by rInsertItem.
     @return Returns the positive index of the removed item, otherwise a negative RT error code.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rRemoveItemAt(RList *list, int index);
@@ -2506,7 +2330,6 @@ PUBLIC int rRemoveItemAt(RList *list, int index);
     @param list List pointer returned from rAllocList.
     @param str String value to remove.
     @return Returns the positive index of the removed item, otherwise a negative RT error code.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC int rRemoveStringItem(RList *list, cchar *str);
@@ -2518,7 +2341,6 @@ PUBLIC int rRemoveStringItem(RList *list, cchar *str);
     @param index Location to update
     @param item Pointer to item to store
     @return Returns the old item previously at that location index
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void *rSetItem(RList *list, int index, cvoid *item);
@@ -2530,7 +2352,6 @@ PUBLIC void *rSetItem(RList *list, int index, cvoid *item);
     @param p2 Pointer to second element
     @param ctx Context argument to provide to comparison function
     @return -1, 0, or 1, depending on if the elements are p1 < p2, p1 == p2 or p1 > p2
-    @ingroup RList
     @stability Evolving
  */
 typedef int (*RSortProc)(cvoid *p1, cvoid *p2, void *ctx);
@@ -2544,7 +2365,6 @@ typedef int (*RSortProc)(cvoid *p1, cvoid *p2, void *ctx);
     @param compare Comparison function
     @param ctx Context argument to provide to comparison function
     @return The base array for chaining
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void *rSort(void *base, ssize num, ssize width, RSortProc compare, void *ctx);
@@ -2556,7 +2376,6 @@ PUBLIC void *rSort(void *base, ssize num, ssize width, RSortProc compare, void *
     @param compare Comparison function. If null, then a default string comparison is used.
     @param ctx Context to provide to comparison function
     @return The sorted list
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC RList *rSortList(RList *list, RSortProc compare, void *ctx);
@@ -2574,7 +2393,6 @@ PUBLIC int rGrowList(RList *list, int size);
     @description Treat the list as a stack and push the last pushed item
     @param list List pointer returned from rAllocList.
     @param item Item to push onto the list
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void rPushItem(RList *list, void *item);
@@ -2584,7 +2402,6 @@ PUBLIC void rPushItem(RList *list, void *item);
     @description Treat the list as a stack and pop the last pushed item
     @param list List pointer returned from rAllocList.
     @return Returns the last pushed item. If the list is empty, returns NULL.
-    @ingroup RList
     @stability Evolving
  */
 PUBLIC void *rPopItem(RList *list);
@@ -2617,7 +2434,6 @@ PUBLIC void *rPopItem(RList *list);
 
 /**
     Log Services
-    @defgroup RLog RLog
     @see RLogHandler rasser rGetLogFile rGetLogHandler rLog rError rSetLog
     @stability Internal
  */
@@ -2630,7 +2446,6 @@ typedef struct RLog { int dummy; } RLog;
     @param type The message type: 'code', 'error', 'info', 'log'
     @param source The message source.
     @param msg Log message
-    @ingroup RLog
     @stability Evolving
  */
 typedef void (*RLogHandler)(cchar *type, cchar *source, cchar *msg);
@@ -2646,7 +2461,6 @@ typedef void (*RLogHandler)(cchar *type, cchar *source, cchar *msg);
            type.
     @param force Set to true to overwrite a previous definition.
     @return Zero if successful, otherwise a negative R error code.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC int rSetLog(cchar *spec, cchar *format, bool force);
@@ -2658,7 +2472,6 @@ PUBLIC int rSetLog(cchar *spec, cchar *format, bool force);
         'H' for the system hostname, 'P' for the process ID , 'S' for the message source, and 'T' for the log message
            type.
     @param force Set to true to overwrite a previous definition.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rSetLogFormat(cchar *format, bool force);
@@ -2668,7 +2481,6 @@ PUBLIC void rSetLogFormat(cchar *format, bool force);
     @param path The destination for logging. The destination may be a filename, "stdout", "stderr" or "none".
     @param force Set to true to overwrite a previous definition.
     @return Zero if successful, otherwise a negative R error code.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC int rSetLogPath(cchar *path, bool force);
@@ -2676,7 +2488,6 @@ PUBLIC int rSetLogPath(cchar *path, bool force);
 /**
     Test if the log has been configured
     @return True if the log has been defined
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC bool rIsLogSet(void);
@@ -2689,21 +2500,18 @@ PUBLIC bool rIsLogSet(void);
         environment variable is defined, it sepecifies the log message format. If these environment variables
         are defined, the "force" parameter must be used with rSetLog, rSetLogFilter and rSetLogFormat to
         override.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC int rInitLog(void);
 
 /**
     Terminate logging
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rTermLog(void);
 
 /**
     Return the currently configured log handler defined via #rSetLogHandler
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC RLogHandler rGetLogHandler(void);
@@ -2713,7 +2521,6 @@ PUBLIC RLogHandler rGetLogHandler(void);
     @param type Log message type
     @param source Source of the message
     @param msg Log message
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rDefaultLogHandler(cchar *type, cchar *source, cchar *msg);
@@ -2725,7 +2532,6 @@ PUBLIC void rDefaultLogHandler(cchar *type, cchar *source, cchar *msg);
         with the extension trimmed and "-COUNT.EXT" appended where COUNT is the backup number
         and EXT is the original file extension. This call will keep up to ME_R_LOG_COUNT backups
         (defaults to 5). After backing up the log file, a new (empty) file will be opened.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rBackupLog(void);
@@ -2738,7 +2544,6 @@ PUBLIC void rBackupLog(void);
     @param source Log message source
     @param msg Message to log
     @return The buffer suitable for chaining calls.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC RBuf *rFormatLog(RBuf *buf, cchar *type, cchar *source, cchar *msg);
@@ -2749,7 +2554,6 @@ PUBLIC RBuf *rFormatLog(RBuf *buf, cchar *type, cchar *source, cchar *msg);
     @param type Log message type string. If null, check "all".
     @param source Log message source. If null, chek "all".
     @return True if the message should be logd.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC bool rEmitLog(cchar *type, cchar *source);
@@ -2758,7 +2562,6 @@ PUBLIC bool rEmitLog(cchar *type, cchar *source);
     Define a log handler routine that will be invoked to process log messages
     @param handler Log handler callback function
     @return The previous log handler function
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC RLogHandler rSetLogHandler(RLogHandler handler);
@@ -2783,7 +2586,6 @@ PUBLIC RLogHandler rSetLogHandler(RLogHandler handler);
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable number of arguments for printf data
     @remarks rLog is highly useful as a debugging aid.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rLog(char *type, cchar *source, cchar *fmt, ...);
@@ -2798,7 +2600,6 @@ PUBLIC void rLog(cchar *type, cchar *source, cchar *fmt, ...) PRINTF_ATTRIBUTE(3
     @param loc Source code location string. Use R_LOC to define a file name and line number string suitable for this
        parameter.
     @param msg Simple string message to output
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rAssert(cchar *loc, cchar *msg);
@@ -2822,7 +2623,6 @@ PUBLIC void rAssert(cchar *loc, cchar *msg);
     @param fmt Printf style format string. Variable number of arguments to
     @param args Variable arg list from va_list.
     @remarks rLog is highly useful as a debugging aid.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args);
@@ -2833,7 +2633,6 @@ PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args);
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rDebug(cchar *source, cchar *fmt, ...);
@@ -2843,7 +2642,6 @@ PUBLIC void rDebug(cchar *source, cchar *fmt, ...);
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rError(cchar *source, cchar *fmt, ...);
@@ -2853,7 +2651,6 @@ PUBLIC void rError(cchar *source, cchar *fmt, ...);
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rInfo(cchar *source, cchar *fmt, ...);
@@ -2863,7 +2660,6 @@ PUBLIC void rInfo(cchar *source, cchar *fmt, ...);
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rLog(cchar *source, cchar *fmt, ...);
@@ -2895,7 +2691,6 @@ PUBLIC void rLog(cchar *source, cchar *fmt, ...);
     @param dimensions Metric dimensions
     @param values Format string of values
     @param ... Arguments for values format string
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rMetrics(cchar *message, cchar *space, cchar *dimensions, cchar *values, ...);
@@ -2907,14 +2702,12 @@ PUBLIC void rMetrics(cchar *message, cchar *space, cchar *dimensions, cchar *val
     @param sources Comma separated list of sources to emit. Can prefix a type with "!" to subtract from the list.
         Defaults to "all".
     @param force Set to true to overwrite a previous definition.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rSetLogFilter(cchar *types, cchar *sources, bool force);
 
 /**
     Print the product configuration at the start of the log file
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rLogConfig(void);
@@ -2923,7 +2716,6 @@ PUBLIC void rLogConfig(void);
     Get the log file file handle
     @description Returns the file handle used for logging
     @returns An file handle
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC int rGetLogFile(void);
@@ -2933,7 +2725,6 @@ PUBLIC int rGetLogFile(void);
     Print to stdout and add a trailing newline
     @param fmt Printf style format string. Variable number of arguments to print
     @param ... Variable number of arguments for printf data
-    @ingroup RLog
     @stability Internal
  */
 PUBLIC void print(cchar *fmt, ...);
@@ -2944,7 +2735,6 @@ PUBLIC void print(cchar *fmt, ...);
     @param block Data block to dump. Set to null if no data block
     @param len Size of data block
     @param ... Variable number of arguments for printf data
-    @ingroup RLog
     @stability Internal
  */
 PUBLIC void dump(cchar *msg, uchar *block, ssize len);
@@ -2984,7 +2774,6 @@ typedef uint (*RHashProc)(cvoid *name, ssize len);
     @see RName RHashProc RHash rAddName rAddNameFmt rCreateHash
         rGetFirstName rGetHashLength rGetNextName rLookupName rLookupNameEntry
          rRemoveName
-    @defgroup RHash RHash
     @stability Evolving
  */
 typedef struct RHash {
@@ -3030,7 +2819,6 @@ typedef struct RName {
         the hash must clone and free. Set to R_HASH_CASELESS for case insensitive matching for names.
         The default flags is: R_STATIC_NAME | R_STATIC_VALUE.
     @return Returns a pointer to the allocated hash table.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RHash *rAllocHash(int size, int flags);
@@ -3038,7 +2826,6 @@ PUBLIC RHash *rAllocHash(int size, int flags);
 /**
     Free a hash table
     @param hash Hash table to free
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC void rFreeHash(RHash *hash);
@@ -3047,7 +2834,6 @@ PUBLIC void rFreeHash(RHash *hash);
     Copy a hash table
     @param master Original hash table
     @return Returns a pointer to the new allocated hash table.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RHash *rCloneHash(RHash *master);
@@ -3064,7 +2850,6 @@ PUBLIC RHash *rCloneHash(RHash *master);
         allocated values. Set to R_DYNAMIC_VALUE when providing allocated values that the hash may use, own
         and ultimately free when the hash is free. If flags are zero, the flags provided to rAllocHash are used.
     @return Added RName reference.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rAddName(RHash *table, cchar *name, void *ptr, int flags);
@@ -3079,7 +2864,6 @@ PUBLIC RName *rAddName(RHash *table, cchar *name, void *ptr, int flags);
     @param value Value string to store.
     @param valueSize Length of string value.
     @return Added RName reference.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, ssize nameSize, char *value, ssize valueSize);
@@ -3090,7 +2874,6 @@ PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, ssize nameSize, char *
     @param name String name to associate with the data.
     @param value A 64 bit integer value.
     @return Added RName reference.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rAddIntName(RHash *hash, cchar *name, int64 value);
@@ -3108,7 +2891,6 @@ PUBLIC RName *rAddIntName(RHash *hash, cchar *name, int64 value);
     @param fmt Printf style format string
     @param ... Variable arguments for the format string
     @return Added RName reference.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rAddFmtName(RHash *hash, cchar *name, int flags, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
@@ -3121,7 +2903,6 @@ PUBLIC RName *rAddFmtName(RHash *hash, cchar *name, int flags, cchar *fmt, ...) 
     @param hash Hash table hash returned via rAllocHash.
     @param next Index of next name
     @return Pointer to the first entry in the symbol table.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rGetNextName(RHash *hash, RName *next);
@@ -3131,7 +2912,6 @@ PUBLIC RName *rGetNextName(RHash *hash, RName *next);
     @description Returns the number of symbols currently existing in a symbol table.
     @param hash Symbol table returned via rAllocHash.
     @return Integer count of the number of entries.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC int rGetHashLength(RHash *hash);
@@ -3142,7 +2922,6 @@ PUBLIC int rGetHashLength(RHash *hash);
     @param hash Symbol table returned via rAllocHash.
     @param name String name of the symbole entry to delete.
     @return Value associated with the name when the entry was insered via rInserSymbol.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC void *rLookupName(RHash *hash, cchar *name);
@@ -3153,7 +2932,6 @@ PUBLIC void *rLookupName(RHash *hash, cchar *name);
     @param hash Symbol table returned via rAllocHash.
     @param name String name of the symbole entry to delete.
     @return RName for the entry
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RName *rLookupNameEntry(RHash *hash, cchar *name);
@@ -3164,7 +2942,6 @@ PUBLIC RName *rLookupNameEntry(RHash *hash, cchar *name);
     @param hash Symbol table returned via rAllocHash.
     @param name String name of the symbole entry to delete.
     @return Returns zero if successful, otherwise a negative RT error code is returned.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC int rRemoveName(RHash *hash, cchar *name);
@@ -3174,7 +2951,6 @@ PUBLIC int rRemoveName(RHash *hash, cchar *name);
     @param hash Hash pointer returned from rCreateHash.
     @param join String to use as the element join string.
     @return Buffer consisting of the joined hash values. Caller must free with rFreeBuf.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC RBuf *rHashToBuf(RHash *hash, cchar *join);
@@ -3184,7 +2960,6 @@ PUBLIC RBuf *rHashToBuf(RHash *hash, cchar *join);
     @param hash Hash pointer returned from rCreateHash.
     @param join String to use as the element join string.
     @return String consisting of the joined hash values. Caller must free.
-    @ingroup RHash
     @stability Evolving
  */
 PUBLIC char *rHashToString(RHash *hash, cchar *join);
@@ -3195,7 +2970,6 @@ PUBLIC char *rHashToString(RHash *hash, cchar *join);
     @param buf RBuf instance to store the json text
     @param pretty Set to true to have a prettier JSON representation
     @return The given buffer.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC RBuf *rHashToJsonBuf(RHash *hash, RBuf *buf, int pretty);
@@ -3204,7 +2978,6 @@ PUBLIC RBuf *rHashToJsonBuf(RHash *hash, RBuf *buf, int pretty);
     Convert a hash into JSON
     @param hash Hash table to use for the result.
     @param pretty Set to true to have a prettier JSON representation
-    @ingroup Json
     @return a JSON string. Caller must free.
     @stability Evolving
  */
@@ -3216,7 +2989,6 @@ PUBLIC char *rHashToJson(RHash *hash, int pretty);
 
 /**
     R File Module
-    @defgroup RFile RFile
     @see RFile
     @stability Internal
  */
@@ -3224,14 +2996,12 @@ typedef struct RFile { void *dummy; } RFile;
 
 /**
     Create and initialze the file subsystem
-    @ingroup R
     @stability Internal
  */
 PUBLIC int rInitFile(void);
 
 /**
     Stop the file subsystem
-    @ingroup R
     @stability Internal
  */
 PUBLIC void rTermFile(void);
@@ -3241,16 +3011,15 @@ PUBLIC void rTermFile(void);
     @param path Filename to read.
     @param mode Set to F_OK, R_OK, W_OK, or X_OK
     @return Zero if successful, otherwise a negative value.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC int rAccessFile(cchar *path, int mode);
 
 /**
     Add a directory to the directory lookup hash
+    @description Directory references using \@dir can then be expanded in rGetFilePath.
     @param prefix The directory prefix name
     @param path The corresponding directory
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC void rAddDirectory(cchar *prefix, cchar *path);
@@ -3262,17 +3031,24 @@ PUBLIC void rAddDirectory(cchar *prefix, cchar *path);
     @param to Destination file name
     @param mode Posix file mode on created file
     @return Number of bytes copied or negative error code.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC ssize rCopyFile(cchar *from, cchar *to, int mode);
 
 /**
+    Get the extension of a file path
+    @param path File path to get the extension of
+    @return The extension of the file path. Caller must NOT free.
+    @stability Evolving
+ */
+PUBLIC cchar *rGetFileExt(cchar *path);
+
+/**
     Get a file path name
-    @description Expand any "@token" prefix in the path
+    @description Expand any "@directory" prefix in the path that have been defined via
+        the rAddDirectories.
     @param path Source file path
     @return The expanded path. Caller must free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rGetFilePath(cchar *path);
@@ -3283,7 +3059,6 @@ PUBLIC char *rGetFilePath(cchar *path);
     @param dir Directory to contain the temporary file. If null, use system default temp directory (/tmp).
     @param prefix Optional filename prefix.
     @return An allocated string containing the file name. Caller must free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix);
@@ -3294,7 +3069,6 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix);
     @param path Filename to read.
     @param lenp Pointer to receive the length of the file read.
     @return The contents of the file in an allocated string
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rReadFile(cchar *path, ssize *lenp);
@@ -3303,7 +3077,6 @@ PUBLIC char *rReadFile(cchar *path, ssize *lenp);
     Flush file buffers
     @param fd O/S file descriptor
     @return Zero if successful.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC int rFlushFile(int fd);
@@ -3316,7 +3089,6 @@ PUBLIC int rFlushFile(int fd);
     @param len Length of the buffer.
     @param mode Create file mode.
     @return The length of bytes written to the file. Should equal len.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode);
@@ -3327,7 +3099,6 @@ PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode);
     @param base Directory filename to use as the base.
     @param other Other filename path to join to the base filename.
     @returns Allocated string containing the resolved filename. Caller must free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rJoinFile(cchar *base, cchar *other);
@@ -3340,7 +3111,6 @@ PUBLIC char *rJoinFile(cchar *base, cchar *other);
     @param base Directory filename to use as the base.
     @param other Other filename path to join to the base filename.
     @returns Allocated string containing the resolved filename.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rJoinFileBuf(char *buf, ssize bufsize, cchar *base, cchar *other);
@@ -3349,7 +3119,6 @@ PUBLIC char *rJoinFileBuf(char *buf, ssize bufsize, cchar *base, cchar *other);
     Determine if a file path is an absolute path
     @param path Filename path to test
     @returns True if the path is an absolute path.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC bool rIsFileAbs(cchar *path);
@@ -3377,7 +3146,6 @@ PUBLIC bool rIsFileAbs(cchar *path);
         Set R_FILES_RELATIVE to return files relative to the given base. Set R_FILES_NO_DIRS to omit directories.
         Use R_FILES_DIRS_ONLY to omit regular files.
     @returns A list (RList) of filenames.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC RList *rGetFiles(cchar *base, cchar *pattern, int flags);
@@ -3389,7 +3157,7 @@ PUBLIC RList *rGetFiles(cchar *base, cchar *pattern, int flags);
     The supported wildcard patterns are: "?" Matches any single character,
     "*" matches zero or more characters of the file or directory, "**"/ matches zero or more directories,
     "**" matches zero or more files or directories.
-    @param results Instance of RList. See #rAllocList.
+    @param results Instance of RList. See rAllocList.
     @param base Base directory from which to interpret the pattern. If the patternDirectory to list.
     @param pattern Wild card patterns to match.
     @param flags Set to R_FILES_HIDDEN to include hidden files that start with ".". Set to R_FILES_DEPTH_FIRST to do a
@@ -3397,7 +3165,6 @@ PUBLIC RList *rGetFiles(cchar *base, cchar *pattern, int flags);
         Set R_FILES_RELATIVE to return files relative to the given base. Set R_FILES_NO_DIRS to omit directories.
         Use R_FILES_DIRS_ONLY to omit regular files.
     @returns A list (RList) of filenames.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC RList *rGetFilesEx(RList *results, cchar *base, cchar *pattern, int flags);
@@ -3407,7 +3174,6 @@ PUBLIC RList *rGetFilesEx(RList *results, cchar *base, cchar *pattern, int flags
     @param arg Argument supplied to rWalkDir
     @param path Current filename path to walk.
     @param flags Flags supplied to rWalkDir
-    @ingroup RFile
     @stability Evolving
  */
 typedef int (*RWalkDirProc)(void *arg, cchar *path, int flags);
@@ -3427,7 +3193,6 @@ typedef int (*RWalkDirProc)(void *arg, cchar *path, int flags);
         depth-first traversal, i.e. traverse subdirectories before considering adding the directory to the list.
         Set R_FILES_RELATIVE to return files relative to the given base. Set R_FILES_NO_DIRS to omit directories.
         Use R_FILES_DIRS_ONLY to omit regular files.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC int rWalkDir(cchar *dir, cchar *pattern, RWalkDirProc callback, void *arg, int flags);
@@ -3443,7 +3208,6 @@ PUBLIC int rWalkDir(cchar *dir, cchar *pattern, RWalkDirProc callback, void *arg
     @param path Filename to test.
     @param pattern Wild card patterns to match.
     @returns True if the path matches the pattern.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC bool rMatchFile(cchar *path, cchar *pattern);
@@ -3451,7 +3215,6 @@ PUBLIC bool rMatchFile(cchar *path, cchar *pattern);
 /**
     Get the current application working directory
     @return An allocated string containing the working directory. Caller must free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rGetCwd(void);
@@ -3459,7 +3222,6 @@ PUBLIC char *rGetCwd(void);
 /**
     Get the directory containing the application executable.
     @return An allocated string containing the application directory. Caller must free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rGetAppDir(void);
@@ -3469,7 +3231,6 @@ PUBLIC char *rGetAppDir(void);
     @description this creates backup copies of the file using the form: filename-%d.ext.
     @param path Filename to backup.
     @param count Number of backup copies to keep.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC int rBackupFile(cchar *path, int count);
@@ -3478,7 +3239,6 @@ PUBLIC int rBackupFile(cchar *path, int count);
     Return the basename (filename) portion of a filename.
     @param path Filename to examine
     @return A pointer to the basename portion of the supplied filename path. This call does not allocate a new string.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC cchar *rBasename(cchar *path);
@@ -3489,7 +3249,6 @@ PUBLIC cchar *rBasename(cchar *path);
     @param path Filename to examine and modify
     @return A pointer to the dirname portion of the supplied filename path.
         This call does not allocate a new string and the caller must not free.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC char *rDirname(char *path);
@@ -3498,7 +3257,6 @@ PUBLIC char *rDirname(char *path);
     Return the size of a file.
     @param path Filename to test.
     @return The size of the file or a negative RT error code if the file does not exist.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC ssize rGetFileSize(cchar *path);
@@ -3507,7 +3265,6 @@ PUBLIC ssize rGetFileSize(cchar *path);
     Test if a file exists.
     @param path Filename to test.
     @return True if the file exists.
-    @ingroup RFile
     @stability Evolving
  */
 PUBLIC bool rFileExists(cchar *path);
@@ -3517,21 +3274,18 @@ PUBLIC bool rFileExists(cchar *path);
 /**
     Create and initialze the O/S dependent subsystem
     @description Called internally by the RT. Should not be called by users.
-    @ingroup R
     @stability Internal
  */
 PUBLIC int rInitOs(void);
 
 /**
     Stop the O/S dependent subsystem
-    @ingroup R
     @stability Internal
  */
 PUBLIC void rTermOs(void);
 
 /**
     For the current process and run as a daemon
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC int rDaemonize(void);
@@ -3539,7 +3293,6 @@ PUBLIC int rDaemonize(void);
 /**
     Get the application name defined via rSetAppName
     @returns the one-word lower case application name defined via rSetAppName
-    @ingroup R
     @stability Evolving
  */
 PUBLIC cchar *rGetAppName(void);
@@ -3548,7 +3301,6 @@ PUBLIC cchar *rGetAppName(void);
     Return a string representation of an R error code.
     @param error An R error code. These codes are always negative for errors and zero for R_OK.
     @return A static string error representation.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC cchar *rGetError(int error);
@@ -3558,7 +3310,6 @@ PUBLIC cchar *rGetError(int error);
     @description Returns an O/S error code from the most recent system call.
         This returns errno on Unix systems or GetLastError() on Windows..
     @return The O/S error code.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC int rGetOsError(void);
@@ -3566,7 +3317,6 @@ PUBLIC int rGetOsError(void);
 /**
     Get the application server name string
     @returns A string containing the application server name string.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC cchar *rGetServerName(void);
@@ -3574,7 +3324,6 @@ PUBLIC cchar *rGetServerName(void);
 /**
     Return true if timeouts are enabled
     @return True if timeouts are enabled
-    @ingroup R
     @stability Evolving
  */
 PUBLIC bool rGetTimeouts(void);
@@ -3585,7 +3334,6 @@ PUBLIC bool rGetTimeouts(void);
     @param fn Fiber function to start
     @param arg Argument to the fiber function
     @return Zero if successful
-    @ingroup R
     @stability Evolving
  */
 PUBLIC int rInit(RFiberProc fn, cvoid *arg);
@@ -3593,7 +3341,6 @@ PUBLIC int rInit(RFiberProc fn, cvoid *arg);
 /**
     Set the O/S error code.
     @description Set errno or equivalent.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rSetOsError(int error);
@@ -3601,7 +3348,6 @@ PUBLIC void rSetOsError(int error);
 /**
     Control timeouts
     @param on Set to false to disable timeouts for debugging.
-    @ingroup RLog
     @stability Evolving
  */
 PUBLIC void rSetTimeouts(bool on);
@@ -3612,7 +3358,6 @@ PUBLIC void rSetTimeouts(bool on);
     @description Pause a fiber for the requested duration and then resume via the main fiber. Other fibers continue to
        run.
     @param ticks Time period in milliseconds to sleep.
-    @ingroup RFiber
     @stability Evolving
  */
 PUBLIC void rSleep(Ticks ticks);
@@ -3620,8 +3365,6 @@ PUBLIC void rSleep(Ticks ticks);
 /**
     Write the current process pid to /var/run
     @return Zero on success, otherwise a negative status code.
-    @ingroup RLog
-    @ingroup Evolving
  */
 PUBLIC int rWritePid(void);
 
@@ -3629,7 +3372,6 @@ PUBLIC int rWritePid(void);
 /**
     Get the Windows window handle
     @return the windows HWND reference
-    @ingroup R
     @stability Evolving
  */
 PUBLIC HWND rGetHwnd(void);
@@ -3637,7 +3379,6 @@ PUBLIC HWND rGetHwnd(void);
 /**
     Get the windows application instance
     @return The application instance identifier
-    @ingroup R
     @stability Evolving
  */
 PUBLIC HINSTANCE rGetInst(void);
@@ -3645,7 +3386,6 @@ PUBLIC HINSTANCE rGetInst(void);
 /**
     Set the RT windows handle
     @param handle Set the RT default windows handle
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rSetHwnd(HWND handle);
@@ -3653,7 +3393,6 @@ PUBLIC void rSetHwnd(HWND handle);
 /**
     Set the windows application instance
     @param inst The new windows application instance to set
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rSetInst(HINSTANCE inst);
@@ -3662,7 +3401,6 @@ PUBLIC void rSetInst(HINSTANCE inst);
     Set the socket message number.
     @description Set the socket message number to use when using WSAAsyncSelect for windows.
     @param message Message number to use.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC void rSetSocketMessage(int message);
@@ -3673,7 +3411,6 @@ PUBLIC void rSetSocketMessage(int message);
     List the subkeys for a key in the Windows registry
     @param key Windows registry key to enumerate subkeys
     @return List of subkey string names
-    @ingroup R
     @stability Evolving
  */
 PUBLIC RList *rListRegistry(cchar *key);
@@ -3683,7 +3420,6 @@ PUBLIC RList *rListRegistry(cchar *key);
     @param key Windows registry key to read
     @param name Windows registry name to read.
     @return The key/name setting
-    @ingroup R
     @stability Evolving
  */
 PUBLIC char *rReadRegistry(cchar *key, cchar *name);
@@ -3694,7 +3430,6 @@ PUBLIC char *rReadRegistry(cchar *key, cchar *name);
     @param name Windows registry name to write.
     @param value Value to set the key/name to.
     @return Zero if successful. Otherwise return a negative RT error code.
-    @ingroup R
     @stability Evolving
  */
 PUBLIC int rWriteRegistry(cchar *key, cchar *name, cchar *value);
@@ -3759,7 +3494,6 @@ typedef struct RSocket {
 /**
     Allocate a socket object
     @return A socket object instance
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC RSocket *rAllocSocket(void);
@@ -3768,7 +3502,6 @@ PUBLIC RSocket *rAllocSocket(void);
     Close a socket
     @description Close a socket.
     @param sp Socket object returned from rAllocSocket
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rCloseSocket(RSocket *sp);
@@ -3776,7 +3509,6 @@ PUBLIC void rCloseSocket(RSocket *sp);
 /*
     Test if there is a good internet connection
     @return True if the internet can be reached
-    @ingroup RSocket
     @stability Prototype
  */
 PUBLIC bool rCheckInternet(void);
@@ -3791,14 +3523,12 @@ PUBLIC bool rCheckInternet(void);
     @param deadline Maximum system time for connect to wait until completion. Use rGetTicks() + elapsed to create a
        deadline. Set to 0 for no deadline.
     @return Zero if successful.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline);
 
 /**
     Free a socket object
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rFreeSocket(RSocket *sp);
@@ -3811,7 +3541,6 @@ PUBLIC void rFreeSocket(RSocket *sp);
     @param ipbufLen Size of the ipbuf.
     @param port Address of an integer to receive the port unumber.
     @return Zero if successful.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port);
@@ -3819,7 +3548,6 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port);
 /**
     Get the custom socket callback handler
     @return The custom socket callback handler
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC RSocketCustom rGetSocketCustom(void);
@@ -3828,7 +3556,6 @@ PUBLIC RSocketCustom rGetSocketCustom(void);
     Get the socket error
     @param sp Socket object returned from rAllocSocket
     @return The socket error message. Returns NULL if no error. Caller must NOT free.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC cchar *rGetSocketError(RSocket *sp);
@@ -3838,7 +3565,6 @@ PUBLIC cchar *rGetSocketError(RSocket *sp);
     @description Get the file descriptor associated with a socket.
     @param sp Socket object returned from rAllocSocket
     @return The Socket file descriptor used by the O/S for the socket.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC Socket rGetSocketHandle(RSocket *sp);
@@ -3846,7 +3572,6 @@ PUBLIC Socket rGetSocketHandle(RSocket *sp);
 /**
     Get the socket wait handler
     @return RWait reference
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC RWait *rGetSocketWait(RSocket *sp);
@@ -3856,7 +3581,6 @@ PUBLIC RWait *rGetSocketWait(RSocket *sp);
     @description Determine if rCloseSocket has been called.
     @param sp Socket object returned from rAllocSocket
     @return True if the socket is at end-of-file.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC bool rIsSocketClosed(RSocket *sp);
@@ -3865,7 +3589,6 @@ PUBLIC bool rIsSocketClosed(RSocket *sp);
     Determine if the socket has connected to a remote pper
     @param sp Socket object returned from rAllocSocket
     @return True if the socket is connected
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC bool rIsSocketConnected(RSocket *sp);
@@ -3875,7 +3598,6 @@ PUBLIC bool rIsSocketConnected(RSocket *sp);
     @description Determine if the other end of the socket has been closed and the socket is at end-of-file.
     @param sp Socket object returned from rAllocSocket
     @return True if the socket is at end-of-file.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC bool rIsSocketEof(RSocket *sp);
@@ -3885,7 +3607,6 @@ PUBLIC bool rIsSocketEof(RSocket *sp);
     @description Determine if the socket is using SSL to provide enhanced security.
     @param sp Socket object returned from rAllocSocket
     @return True if the socket is using SSL, otherwise zero.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC bool rIsSocketSecure(RSocket *sp);
@@ -3901,7 +3622,6 @@ PUBLIC bool rIsSocketSecure(RSocket *sp);
        coroutine.
     @param arg Argument to handler.
     @return Zero if successful.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler, void *arg);
@@ -3920,7 +3640,6 @@ PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler
     @return A count of bytes actually read. Return a negative R error code on errors.
     @return Return -1 for EOF and errors. On success, return the number of bytes read. Use rIsSocketEof to
         distinguision between EOF and errors.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline);
@@ -3937,7 +3656,6 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline);
     @return A count of bytes actually read. Return a negative R error code on errors.
     @return Return -1 for EOF and errors. On success, return the number of bytes read. Use rIsSocketEof to
         distinguision between EOF and errors.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize);
@@ -3947,7 +3665,6 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize);
     @description Reset a socket by closing the underlying socket file descriptor. The Socket instance can be
         reused by rConnectSocket.
     @param sp Socket object returned from rAllocSocket
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rResetSocket(RSocket *sp);
@@ -3960,17 +3677,14 @@ PUBLIC void rResetSocket(RSocket *sp);
     @param key Private key for the certificate
     @param cert Certificate to use for TLS
     @param revoke List of revoked certificates
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketCerts(RSocket *sp, cchar *ca, cchar *key, cchar *cert, cchar *revoke);
 
 /**
     Set the socket custom configuration callback
-    @param sp Socket object returned from rAllocSocket
     @param custom Custom callback function
     @return RWait reference
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketCustom(RSocketCustom custom);
@@ -3982,7 +3696,6 @@ PUBLIC void rSetSocketCustom(RSocketCustom custom);
     @param key Private key for the certificate
     @param cert Certificate to use for TLS
     @param revoke List of revoked certificates
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke);
@@ -3992,7 +3705,6 @@ PUBLIC void rSetSocketDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *re
     @description Sockets are opened in non-blocking mode by default.
     @param sp Socket object returned from rAllocSocket
     @param on Set to true to enable blocking mode.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketBlocking(RSocket *sp, bool on);
@@ -4001,7 +3713,6 @@ PUBLIC void rSetSocketBlocking(RSocket *sp, bool on);
     Set the ciphers to use for communications
     @param sp Socket object returned from rAllocSocket
     @param ciphers String of suitable ciphers
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketCiphers(RSocket *sp, cchar *ciphers);
@@ -4009,7 +3720,6 @@ PUBLIC void rSetSocketCiphers(RSocket *sp, cchar *ciphers);
 /**
     Set the default TLS ciphers to use for communications
     @param ciphers String of suitable ciphers
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers);
@@ -4019,7 +3729,6 @@ PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers);
     @param sp Socket object returned from rAllocSocket
     @param fmt Printf style format string
     @param ... Args for fmt
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
@@ -4030,7 +3739,6 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
     @param sp Socket object returned from rAllocSocket
     @param verifyPeer Set to true to verify peer certificates
     @param verifyIssuer Set to true to verify the issuer of the peer certificate
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer);
@@ -4040,7 +3748,6 @@ PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer);
     @description This call is a wrapper over rSetTlsCerts.
     @param verifyPeer Set to true to verify peer certificates
     @param verifyIssuer Set to true to verify the issuer of the peer certificate
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketDefaultVerify(int verifyPeer, int verifyIssuer);
@@ -4050,7 +3757,6 @@ PUBLIC void rSetSocketDefaultVerify(int verifyPeer, int verifyIssuer);
     @param sp Socket object returned from rAllocSocket
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
@@ -4071,7 +3777,6 @@ PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
        any
         more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
         or EWOULDBLOCK.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, ssize bufsize, Ticks deadline);
@@ -4090,7 +3795,6 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, ssize bufsize, Ticks deadline
        any
         more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
         or EWOULDBLOCK.
-    @ingroup RSocket
     @stability Evolving
  */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, ssize len);
@@ -4116,7 +3820,6 @@ PUBLIC void rTermThread(void);
 /**
     Multithreading lock control structure
     @description RLock is used for multithread locking in multithreaded applications.
-    @ingroup R
     @stability Evolving.
  */
 typedef struct RLock {
@@ -4139,7 +3842,6 @@ typedef struct RLock {
     Allocate a lock object.
     @description This call creates a lock object that can be used in rLock rTryLock and rUnlock calls.
     This routine is THREAD SAFE.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC RLock *rAllocLock(void);
@@ -4150,7 +3852,6 @@ PUBLIC RLock *rAllocLock(void);
         in rLock rTryLock and rUnlock calls.  This routine is THREAD SAFE.
     @param mutex Reference to an RLock structure to initialize
     @returns A reference to the supplied mutex. Returns null on errors.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC RLock *rInitLock(RLock *mutex);
@@ -4159,7 +3860,6 @@ PUBLIC RLock *rInitLock(RLock *mutex);
     Free a dynamically allocated lock object.
     @description  This routine is THREAD SAFE.
     @param mutex Reference to an RLock structure to initialize
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rFreeLock(RLock *mutex);
@@ -4168,7 +3868,6 @@ PUBLIC void rFreeLock(RLock *mutex);
     Terminate a statically allocated lock object.
     @description This routine is THREAD SAFE.
     @param mutex Reference to an RLock structure to initialize
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rTermLock(RLock *mutex);
@@ -4179,7 +3878,6 @@ PUBLIC void rTermLock(RLock *mutex);
         rLock or rTryLock will block until the current thread calls rUnlock.
         This routine is THREAD SAFE.
     @returns Returns zero if the successful in locking the mutex. Returns a negative error code if unsuccessful.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC bool rTryLock(RLock *lock);
@@ -4187,7 +3885,6 @@ PUBLIC bool rTryLock(RLock *lock);
 /**
     Perform a memory barrier where all queued writes are flushed to memory.
     @description Use this call before accessing data that is updated and read across multiple threads.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rMemoryBarrier(void);
@@ -4221,7 +3918,6 @@ PUBLIC void rMemoryBarrier(void);
         block until the current thread calls rUnlock.
     This routine is THREAD SAFE.
     @param lock object.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rLock(RLock *lock);
@@ -4231,7 +3927,6 @@ PUBLIC void rLock(RLock *lock);
     @description This call unlocks a mutex previously locked via rLock or rTryLock.
     This routine is THREAD SAFE.
     @param lock object.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rUnlock(RLock *lock);
@@ -4242,7 +3937,6 @@ PUBLIC void rUnlock(RLock *lock);
     @description This call asserts the application global lock so that other threads calling rGlobalLock will
         block until the current thread calls rGlobalUnlock.  WARNING: Use this API very sparingly.
     This routine is THREAD SAFE.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rGlobalLock(void);
@@ -4251,7 +3945,6 @@ PUBLIC void rGlobalLock(void);
     Unlock the global mutex.
     @description This call unlocks the global mutex previously locked via rGlobalLock.
     This routine is THREAD SAFE.
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC void rGlobalUnlock(void);
@@ -4261,7 +3954,6 @@ PUBLIC void rGlobalUnlock(void);
     @param name Descriptive name for the thread
     @param proc Thread main function to invoke
     @param data Argument to proc
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC int rCreateThread(cchar *name, void *proc, void *data);
@@ -4270,7 +3962,6 @@ PUBLIC int rCreateThread(cchar *name, void *proc, void *data);
     Get the current Thread
     @description This routine is THREAD SAFE.
     @return The currently executing thread
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC RThread rGetCurrentThread(void);
@@ -4279,7 +3970,6 @@ PUBLIC RThread rGetCurrentThread(void);
     Get the main Thread
     @description This routine is THREAD SAFE.
     @return The original main thread
-    @ingroup RThread
     @stability Evolving.
  */
 PUBLIC RThread rGetMainThread(void);
@@ -4293,7 +3983,6 @@ PUBLIC RThread rGetMainThread(void);
     Run a command using the system shell
     @param command Command string to run using popen()
     @param status Returns the command exit status
-    @ingroup RRun
     @stability Evolving.
  */
 PUBLIC char *rRun(cchar *command, int *status);
@@ -4333,7 +4022,6 @@ PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer);
 /**
     Red/Black Tree
     @description Self-balancing binary search tree.
-    @defgroup RbTree RbTree
     @stability Evolving
  */
 struct RbTree;
@@ -4351,7 +4039,6 @@ typedef struct RbNode {
 /**
     Callback to free a nodes associated data
     @param data Reference to the associated data for a node
-    @ingroup RbTree
     @stability Evolving
  */
 typedef void (*RbFree)(void *arg, void *data);
@@ -4366,7 +4053,6 @@ typedef void (*RbFree)(void *arg, void *data);
     @param n2 Reference to item to compare
     @param ctx Context provided to rbLookup.
     @return Return -1 if n1 is lexically less than n2. Zero if equal and 1 if n1 is greater than n2.
-    @ingroup RbTree
     @stability Evolving
  */
 typedef int (*RbCompare)(cvoid *n1, cvoid *n2, cvoid *ctx);
@@ -4383,7 +4069,6 @@ typedef struct {
 
 /**
         Traverse an index over all nodes
-    @ingroup RbTree
     @stability Evolving
  */
 #define ITERATE_TREE(rbt, node)             node = rbFirst(rbt); node; node = rbNext(rbt, node)
@@ -4397,7 +4082,6 @@ typedef struct {
     @param node The current node being traversed
     @param data User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.
     @param ctx Context to provide to the comparison callback
-    @ingroup RbTree
     @stability Evolving
  */
 #define ITERATE_INDEX(rbt, node, data, ctx) node = rbLookupFirst(rbt, data, ctx); node; node = rbLookupNext(rbt, node, \
@@ -4410,7 +4094,6 @@ typedef struct {
     @param free Callback to free a node's item data.
     @param arg Arg to pass to callback.
     @return An RbTree instance.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg);
@@ -4418,7 +4101,6 @@ PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg);
 /**
     Free a red/black tree
     @param rbt RbTree to free. Allocated via rbAlloc.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC void rbFree(RbTree *rbt);
@@ -4427,7 +4109,6 @@ PUBLIC void rbFree(RbTree *rbt);
     Return the lexically first node.
     @param rbt RbTree allocated via rbAlloc.
     @return The first node.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbFirst(RbTree *rbt);
@@ -4439,7 +4120,6 @@ PUBLIC RbNode *rbFirst(RbTree *rbt);
     @param ctx Context to provide to the comparison callback.
     @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
        returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbLookup(RbTree *rbt, cvoid *data, void *ctx);
@@ -4451,7 +4131,6 @@ PUBLIC RbNode *rbLookup(RbTree *rbt, cvoid *data, void *ctx);
     @param ctx Context to provide to the comparison callback.
     @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
        returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbLookupFirst(RbTree *rbt, cvoid *data, void *ctx);
@@ -4466,7 +4145,6 @@ PUBLIC RbNode *rbLookupFirst(RbTree *rbt, cvoid *data, void *ctx);
     @param ctx Context to provide to the comparison callback.
     @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
        returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbLookupNext(RbTree *rbt, RbNode *node, cvoid *data, void *ctx);
@@ -4476,7 +4154,6 @@ PUBLIC RbNode *rbLookupNext(RbTree *rbt, RbNode *node, cvoid *data, void *ctx);
     @param rbt RbTree allocated via rbAlloc.
     @param node Starting node
     @return The next node in the tree.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbNext(RbTree *rbt, RbNode *node);
@@ -4487,7 +4164,6 @@ PUBLIC RbNode *rbNext(RbTree *rbt, RbNode *node);
     @param data User data to store in the tree. The data should contain the lookup key value for the data.
         The comparison callback will be passed the data and it should be able to extract the key from the data.
     @return The inserted node.
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC RbNode *rbInsert(RbTree *rbt, void *data);
@@ -4498,7 +4174,6 @@ PUBLIC RbNode *rbInsert(RbTree *rbt, void *data);
     @param node Node to remove. The node is identified by calling rbLookup.
     @param keep If true, the data item will not be freed. Otherwise the free callback will be invoked on the data item.
     @return The node data item
-    @ingroup RbTree
     @stability Evolving
  */
 PUBLIC void *rbRemove(RbTree *rbt, RbNode *node, int keep);
@@ -4515,7 +4190,6 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 /**
     Initialize the NVM flags
     @return Zero if successful, otherwise a negative error code
-    @ingroup ESP32
     @stability Prototype
  */
 PUBLIC int rInitFlash(void);
@@ -4526,7 +4200,6 @@ PUBLIC int rInitFlash(void);
     @param password WIFI password
     @param hostname Network hostname for the device
     @return Zero if successful, otherwise a negative error code
-    @ingroup ESP32
     @stability Prototype
  */
 PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname);
@@ -4539,7 +4212,6 @@ PUBLIC cchar *rGetIP(void);
     @param path Mount point for the file system
     @param storage Name of the LittleFS partition
     @return Zero if successful, otherwise a negative error code
-    @ingroup ESP32
     @stability Prototype
  */
 PUBLIC int rInitFilesystem(cchar *path, cchar *storage);
@@ -4549,7 +4221,6 @@ PUBLIC int rInitFilesystem(cchar *path, cchar *storage);
     Print a task and memory report
     @description This should not be used in production
     @param label Text label to display before the report
-    @ingroup ESP32
     @stability Internal
  */
 PUBLIC void rPlatformReport(char *label);

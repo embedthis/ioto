@@ -4,6 +4,8 @@
     This module provides a portable cross-platform abstraction layer.
     By including "osdep.h", you will include most common O/S headers and define
     a set of useful cross-platform constants.
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 #ifndef _h_OSDEP
@@ -13,7 +15,6 @@
 
 /**
     Operating system dependent layer that provides a portable cross-platform abstraction layer.
-    @defgroup Osdep Osdep
     @stability Evolving
 */
 
@@ -643,7 +644,6 @@
             #define HAS_BOOL 1
             /**
                 Boolean data type.
-                @ingroup Osdep
                 @stability Stable
              */
             #if !WINDOWS || ((_MSC_VER < 1800) && !defined(bool))
@@ -658,7 +658,6 @@
     #define HAS_UCHAR 1
     /**
         Unsigned char data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned char uchar;
@@ -668,7 +667,6 @@
     #define HAS_SCHAR 1
     /**
         Signed char data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef signed char schar;
@@ -678,7 +676,6 @@
     #define HAS_CCHAR 1
     /**
         Constant char data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const char cchar;
@@ -688,7 +685,6 @@
     #define HAS_CUCHAR 1
     /**
         Unsigned char data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const unsigned char cuchar;
@@ -698,7 +694,6 @@
     #define HAS_USHORT 1
     /**
         Unsigned short data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned short ushort;
@@ -708,7 +703,6 @@
     #define HAS_CUSHORT 1
     /**
         Constant unsigned short data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const unsigned short cushort;
@@ -718,7 +712,6 @@
     #define HAS_CVOID 1
     /**
         Constant void data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const void cvoid;
@@ -728,7 +721,6 @@
     #define HAS_INT8 1
     /**
         Integer 8 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef char int8;
@@ -738,7 +730,6 @@
     #define HAS_UINT8 1
     /**
         Unsigned integer 8 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned char uint8;
@@ -748,7 +739,6 @@
     #define HAS_INT16 1
     /**
         Integer 16 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef short int16;
@@ -758,7 +748,6 @@
     #define HAS_UINT16 1
     /**
         Unsigned integer 16 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned short uint16;
@@ -768,7 +757,6 @@
     #define HAS_INT32 1
     /**
         Integer 32 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef int int32;
@@ -778,7 +766,6 @@
     #define HAS_UINT32 1
     /**
         Unsigned integer 32 bits data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned int uint32;
@@ -788,7 +775,6 @@
     #define HAS_UINT 1
     /**
         Unsigned integer (machine dependent bit size) data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned int uint;
@@ -798,7 +784,6 @@
     #define HAS_ULONG 1
     /**
         Unsigned long (machine dependent bit size) data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef unsigned long ulong;
@@ -808,7 +793,6 @@
     #define HAS_CINT 1
     /**
         Constant int data type.
-        @ingroup Osdep
         @stability Stable
      */
     typedef const int cint;
@@ -819,7 +803,6 @@
     #if ME_UNIX_LIKE || VXWORKS || DOXYGEN
         /**
             Signed integer size field large enough to hold a pointer offset.
-            @ingroup Osdep
             @stability Stable
          */
         typedef ssize_t ssize;
@@ -832,7 +815,6 @@
 
 /**
     Windows uses uint for write/read counts (Ugh!)
-    @ingroup Osdep
     @stability Stable
  */
 #if ME_WIN_LIKE
@@ -847,7 +829,6 @@
     #elif VXWORKS || DOXYGEN
         /**
             Integer 64 bit data type.
-            @ingroup Osdep
             @stability Stable
          */
         typedef long long int int64;
@@ -872,7 +853,6 @@
 
 /**
     Signed file offset data type. Supports large files greater than 4GB in size on all systems.
-    @ingroup Osdep
     @stability Stable
  */
 typedef int64 Offset;
@@ -880,7 +860,6 @@ typedef int64 Offset;
 #if DOXYGEN
     /**
         Size to hold the length of a socket address
-        @ingroup Osdep
         @stability Stable
      */
     typedef int Socklen;
@@ -893,7 +872,6 @@ typedef int64 Offset;
 #if DOXYGEN || ME_UNIX_LIKE || VXWORKS
     /**
         Argument for sockets
-        @ingroup Osdep
         @stability Stable
     */
     typedef int Socket;
@@ -921,21 +899,18 @@ typedef int64 Offset;
 
 /**
     Time in milliseconds since Jan 1, 1970.
-    @ingroup Osdep
     @stability Stable
 */
 typedef int64 Time;
 
 /**
     Elapsed time data type. Stores time in milliseconds from some arbitrary start epoch.
-    @ingroup Osdep
     @stability Stable
  */
 typedef int64 Ticks;
 
 /**
     Time/Ticks units per second (milliseconds)
-    @ingroup Osdep
     @stability Stable
  */
 #define TPS 1000

@@ -63,7 +63,6 @@ struct DbParams;
     @param params User params provided to the API that caused the change.
     @param cmd The nature of the change. Set to "create", "update" or "remove".
     @param events Events of interest mask. Set to DB_ON_CHANGE, DB_ON_COMMIT.
-    @ingroup Db
     @stability Evolving
  */
 typedef void (*DbCallbackProc)(void *arg, struct Db *db, struct DbModel *model, struct DbItem *item,
@@ -77,7 +76,6 @@ typedef void (*DbCallbackProc)(void *arg, struct Db *db, struct DbModel *model, 
        data fields and attributes. Data items are JSON documents and are accessed via a flexible API
        and dot notation queries. DB uses Red/black binary search indexes and has controllable
        persistency locally to disk and to the cloud on a per-table basis.
-    @defgroup Db Db
     @stability Evolving
  */
 typedef struct Db {
@@ -125,7 +123,6 @@ typedef struct DbField {
 /**
     Model schema
     @description The model schema defines an application entity and the supported entity fields.
-    @ingroup Db
     @stability Evolving
  */
 typedef struct DbModel {
@@ -141,7 +138,6 @@ typedef int (*DbWhere)(Json *json, int nid, cvoid *arg);
 
 /**
     Database parameters
-    @ingroup Db
     @stability Evolving
  */
 typedef struct DbParams {
@@ -163,7 +159,6 @@ typedef struct DbParams {
 
 /**
     Database items stored in RB indexes
-    @ingroup Db
     @stability Evolving
  */
 typedef struct DbItem {
@@ -179,14 +174,12 @@ typedef const DbItem CDbItem;
 
 /**
     Macro for supplying API parameters
-    @ingroup Db
     @stability Evolving
  */
 #define DB_PARAMS(...) & (DbParams) { __VA_ARGS__ }
 
 /**
     Macro for supplying API properties as key/value pairs.
-    @ingroup Db
     @stability Evolving
  */
 #define DB_PROPS(...)  dbPropsToJson((cchar*[]) { __VA_ARGS__, NULL })
@@ -194,7 +187,7 @@ typedef const DbItem CDbItem;
 /**
     Macro for supplying API properties as a string in JSON format.
     @description The parameters are a printf style format string with arguments.
-    @ingroup Db
+    The allocated Json object has JSON_USER_ALLOC set so the database knows to free it when done.
     @stability Evolving
  */
 #define DB_JSON(...)   dbStringToJson(__VA_ARGS__)
@@ -207,7 +200,6 @@ typedef const DbItem CDbItem;
     @param db Database instance
     @param name Name of the property
     @param value Property value to set.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbAddContext(Db *db, cchar *name, cchar *value);
@@ -216,7 +208,6 @@ PUBLIC void dbAddContext(Db *db, cchar *name, cchar *value);
     Close a database
     @description This will immediately save any unsaved changes and then close the database.
     @param db Database instance returned via #dbOpen
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbClose(Db *db);
@@ -241,7 +232,6 @@ PUBLIC void dbClose(Db *db);
        value "json" property
         contains the item values as a cached JSON object. Caller must not free the returned item.
         Returns null on errors. Use dbGetError to retrieve an error message.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbCreate(Db *db, cchar *model, Json *props, DbParams *params);
@@ -252,7 +242,6 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *model, Json *props, DbParams *param
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a string. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC cchar *dbField(const DbItem *item, cchar *fieldName);
@@ -263,7 +252,6 @@ PUBLIC cchar *dbField(const DbItem *item, cchar *fieldName);
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a 64 bit integer.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC int64 dbFieldNumber(const DbItem *item, cchar *fieldName);
@@ -275,7 +263,6 @@ PUBLIC int64 dbFieldNumber(const DbItem *item, cchar *fieldName);
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a boolean.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC bool dbFieldBool(const DbItem *item, cchar *fieldName);
@@ -288,7 +275,6 @@ PUBLIC bool dbFieldBool(const DbItem *item, cchar *fieldName);
     @param fieldName Name of the field to examine.
     @return The field value as a date in a Time value. This is the time in milliseconds
         since Jan 1 1970.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC Time dbFieldDate(const DbItem *item, cchar *fieldName);
@@ -300,7 +286,6 @@ PUBLIC Time dbFieldDate(const DbItem *item, cchar *fieldName);
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a double.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC double dbFieldDouble(const DbItem *item, cchar *fieldName);
@@ -329,7 +314,6 @@ PUBLIC double dbFieldDouble(const DbItem *item, cchar *fieldName);
     @return A list of matching items.  Items can be enumerated or accessed using ITERATE_ITEMS,
        rGetNextItem and rGetItem.
         Caller must free the result using rFreeList.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC RList *dbFind(Db *db, cchar *model, Json *props, DbParams *params);
@@ -351,7 +335,6 @@ PUBLIC RList *dbFind(Db *db, cchar *model, Json *props, DbParams *params);
         DbWhere where;    // Where query expression callback function.
         \n
     @return The first matching item. Returns null if no match found.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbFindOne(Db *db, cchar *model, Json *props, DbParams *params);
@@ -377,7 +360,6 @@ PUBLIC const DbItem *dbFindOne(Db *db, cchar *model, Json *props, DbParams *para
         If null, the "value" property contains the item's value as an unparsed JSON string.
         Use dbField to access the individual field values in the item.
         Caller must not free the returned item.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbGet(Db *db, cchar *model, Json *props, DbParams *params);
@@ -398,7 +380,6 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *model, Json *props, DbParams *params);
            supports "primary".
         \n
     @return A string containing the required field in the data item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC cchar *dbGetField(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params);
@@ -407,7 +388,6 @@ PUBLIC cchar *dbGetField(Db *db, cchar *model, cchar *fieldName, Json *props, Db
     Get a JSON object representing the item.
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
     @return A JSON object. This is an internal reference into the datbase. Caller must NOT free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC Json *dbJson(const DbItem *item);
@@ -416,7 +396,6 @@ PUBLIC Json *dbJson(const DbItem *item);
     Get a unique ID (ULID) based on the given time
     @param when Time to use
     @return A string ULID representation. Caller must free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC char *dbGetULID(Time when);
@@ -424,7 +403,6 @@ PUBLIC char *dbGetULID(Time when);
 /*
     Get a unique ID (UID) of the required size.
     @return A string UID representation. Caller must free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC char *dbGetUID(ssize size);
@@ -433,7 +411,6 @@ PUBLIC char *dbGetUID(ssize size);
     Convert a list of items to a JSON string representation
     @param list List result returned from dbFind.
     @return A JSON string. Caller must free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC char *dbListToString(RList *list);
@@ -442,7 +419,6 @@ PUBLIC char *dbListToString(RList *list);
     Convert an item to a JSON string representation
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
     @return A JSON string. Caller must free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC char *dbItemToString(const DbItem *item);
@@ -451,7 +427,6 @@ PUBLIC char *dbItemToString(const DbItem *item);
     Convert a list of keyword / value pairs into a JSON object
     @param props NULL terminated array of keyword / value pairs.
     @return A JSON object containing the supplied property values
-    @ingroup Db
     @stability Internal
  */
 PUBLIC Json *dbPropsToJson(cchar *props[]);
@@ -461,7 +436,6 @@ PUBLIC Json *dbPropsToJson(cchar *props[]);
     @param fmt Printf style format string
     @param ... Arguments to fmt
     @return A JSON object containing the supplied property values
-    @ingroup Db
     @stability Internal
  */
 PUBLIC Json *dbStringToJson(cchar *fmt, ...);
@@ -473,7 +447,6 @@ PUBLIC Json *dbStringToJson(cchar *fmt, ...);
         initial state data or debug data.
     @param db Database object returned via dbOpen
     @param path Filename of the data file.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC int dbLoadData(Db *db, cchar *path);
@@ -486,7 +459,6 @@ PUBLIC int dbLoadData(Db *db, cchar *path);
     @param db Database object returned via dbOpen
     @param json Json object
     @param parent Parent node of data items
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent);
@@ -503,7 +475,6 @@ PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent);
        an initial load is performed from the file at path.
     @param schema OneTable data schema describing the indexes and data models
     @param flags Reserved. Set to zero.
-    @ingroup Db
     @stability Evolving
     @see dbClose
  */
@@ -512,7 +483,6 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags);
 /*
     Print an item to stdout
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbPrintItem(const DbItem *item);
@@ -523,7 +493,6 @@ PUBLIC void dbPrintList(RList *list);
 /*
     Print all items in the database to stdout
     @param db Database object returned via dbOpen
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbPrint(Db *db);
@@ -531,7 +500,6 @@ PUBLIC void dbPrint(Db *db);
 /*
     Print all items in the database to stdout
     @param properties The JSON properties returned via dbGetJson
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbPrintProperties(Json *properties);
@@ -552,7 +520,6 @@ PUBLIC void dbPrintProperties(Json *properties);
            supports "primary".
         \n
     @return A count of the number of items removed.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC int dbRemove(Db *db, cchar *model, Json *props, DbParams *params);
@@ -562,7 +529,6 @@ PUBLIC int dbRemove(Db *db, cchar *model, Json *props, DbParams *params);
     @param db Database instance
     @param filename Optional filename to save data to. If set to NULL, the data is saved to the name
        given when opening the database via #dbOpen.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC int dbSave(Db *db, cchar *filename);
@@ -584,7 +550,6 @@ PUBLIC int dbSave(Db *db, cchar *filename);
            supports "primary".
         \n
     @return The updated item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool value, Json *props,
@@ -607,7 +572,6 @@ PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool valu
            supports "primary".
         \n
     @return The updated item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time value, Json *props,
@@ -630,7 +594,6 @@ PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time valu
            supports "primary".
         \n
     @return The updated item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double value, Json *props,
@@ -654,7 +617,6 @@ PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double 
            supports "primary".
         \n
     @return The updated item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *value, Json *props,
@@ -677,7 +639,6 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *v
            supports "primary".
         \n
     @return The updated item. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetNum(Db *db, cchar *model, cchar *fieldName, int64 value, Json *props,
@@ -691,7 +652,6 @@ PUBLIC const DbItem *dbSetNum(Db *db, cchar *model, cchar *fieldName, int64 valu
         persisted database file.
     @param size Maximum size of the database journal file before flushing to the persisted database
        file.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbSetJournalParams(Db *db, Ticks delay, ssize size);
@@ -705,7 +665,6 @@ PUBLIC void dbSetJournalParams(Db *db, Ticks delay, ssize size);
     @param model Target model. If null, then match all models.
     @param arg Argument to pass to the trigger function.
     @param events Events of interest. Set to DB_ON_CHANGE, DB_ON_COMMIT (or both).
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbAddCallback(Db *db, DbCallbackProc proc, cchar *model, void *arg, int events);
@@ -716,7 +675,6 @@ PUBLIC void dbAddCallback(Db *db, DbCallbackProc proc, cchar *model, void *arg, 
     @param proc Database trigger function
     @param model Target model. If null, then match all models.
     @param arg Argument to pass to the trigger function.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC void dbRemoveCallback(Db *db, DbCallbackProc proc, cchar *model, void *arg);
@@ -740,7 +698,6 @@ PUBLIC void dbRemoveCallback(Db *db, DbCallbackProc proc, cchar *model, void *ar
         \n
     @return The updated item. Caller must not free. Returns null on errors. Use dbGetError to
        retrieve an error message.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC const DbItem *dbUpdate(Db *db, cchar *model, Json *props, DbParams *params);
@@ -749,7 +706,6 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *model, Json *props, DbParams *param
     Get an error message for the most recent API call
     @param db Database instance returned via #dbOpen
     @return A static error message string. Caller must not free.
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC cchar *dbGetError(Db *db);
@@ -763,7 +719,6 @@ PUBLIC void dbReset(cchar *path);
     @param db Database instance
     @param name Model name
     @return A model instance
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC DbModel *dbGetModel(Db *db, cchar *name);
@@ -773,7 +728,6 @@ PUBLIC DbModel *dbGetModel(Db *db, cchar *name);
     @param db Database instance
     @param item Data item with a model type field.
     @return A model instance
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC DbModel *dbGetItemModel(Db *db, DbItem *item);
@@ -783,7 +737,6 @@ PUBLIC DbModel *dbGetItemModel(Db *db, DbItem *item);
     @param db Database instance
     @param list A list returned from a prior dbFind request
     @return A reference into the last item returned in the list
-    @ingroup Db
     @stability Evolving
  */
 PUBLIC cchar *dbNext(Db *db, RList *list);

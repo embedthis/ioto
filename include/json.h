@@ -1,6 +1,15 @@
 /*
     json.h -- Header for the JSON library
 
+    Supports JSON6 which is a strict JSON superset. Allows:
+
+    . Keyword undefined
+    . Multiline strings
+    . Backtick quotes
+    . Unquoted keys
+    . Trailing commas in objects and arrays
+    . Single and multiline comments
+
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -89,7 +98,6 @@ struct JsonNode;
         A locked JSON object is useful as it will not permit further updates via (jsonSet or jsonBlend)
         and the internal node structure will be stable such that references returned via
         jsonGetRef and jsonGetNode will remain valid.
-    @defgroup Json Json
     @stability Evolving
     @see
  */
@@ -119,7 +127,6 @@ typedef struct Json {
 
 /**
     JSON Node
-    @ingroup Json
     @stability Evolving
  */
 typedef struct JsonNode {
@@ -146,7 +153,6 @@ PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg);
     Allocate a json object
     @param flags Set to one JSON_STRICT for strict JSON parsing. Otherwise permits JSON/5.
     @return A json object
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonAlloc(int flags);
@@ -154,7 +160,6 @@ PUBLIC Json *jsonAlloc(int flags);
 /**
     Free a json object
     @param json A json object
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC void jsonFree(Json *json);
@@ -165,7 +170,6 @@ PUBLIC void jsonFree(Json *json);
         The jsonGet API returns a references into the JSON tree. Subsequent updates can grow
         the internal JSON structures and thus move references returned earlier.
     @param json A json object
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC void jsonLock(Json *json);
@@ -173,7 +177,6 @@ PUBLIC void jsonLock(Json *json);
 /**
     Unlock a json object to allow updates
     @param json A json object
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC void jsonUnlock(Json *json);
@@ -210,7 +213,6 @@ PUBLIC void jsonUnlock(Json *json);
         properies. Use the JSON_APPEND flag to override the default of overwriting arrays and strings and rather
         append to existing properies.
     @return Zero if successful.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar *skey, int flags);
@@ -220,7 +222,6 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
     @param src Input json object
     @param flags Reserved, set to zero.
     @return The copied JSON tree. Caller must free with #jsonFree.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonClone(Json *src, int flags);
@@ -235,11 +236,11 @@ PUBLIC Json *jsonClone(Json *src, int flags);
     @param defaultValue If the key is not defined, return a copy of the defaultValue. The defaultValue
     can be NULL in which case the return value will be an allocated empty string.
     @return An allocated string copy of the key value or defaultValue if not defined. Caller must free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC char *jsonGetClone(Json *json, int nid, cchar *key, cchar *defaultValue);
 
+#if DEPRECATED || 1
 /**
     Get a json node value as a string
     @description This call is DEPRECATED. Use jsonGet or jsonGetClone instead.
@@ -253,10 +254,10 @@ PUBLIC char *jsonGetClone(Json *json, int nid, cchar *key, cchar *defaultValue);
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The key value as a string or defaultValue if not defined. This is a reference into the
         JSON store. Caller must NOT free.
-    @ingroup Json
     @stability Deprecated
  */
 PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
+#endif
 
 /**
     Get a json node value as a string
@@ -270,7 +271,6 @@ PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The key value as a string or defaultValue if not defined. This is a reference into the
         JSON store. Caller must NOT free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue);
@@ -282,7 +282,6 @@ PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue);
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The key value as a boolean or defaultValue if not defined
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue);
@@ -294,7 +293,6 @@ PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue);
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The key value as an integer or defaultValue if not defined
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
@@ -306,7 +304,6 @@ PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
     @return The key value as a 64-bit integer or defaultValue if not defined
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue);
@@ -317,7 +314,6 @@ PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue);
     @param nid Base node ID from which to start the search. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @return The node ID for the specified key
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
@@ -330,7 +326,6 @@ PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
     @param nid Base node ID from which to start the search. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @return The node object for the specified key. Returns NULL if not found.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
@@ -342,7 +337,6 @@ PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
     @param json Source json
     @param node Node reference
     @return The node ID.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonGetNodeId(Json *json, JsonNode *node);
@@ -353,7 +347,6 @@ PUBLIC int jsonGetNodeId(Json *json, JsonNode *node);
     @param nid Base node ID to examine.
     @param nth Specify which child to return.
     @return The Nth child node object for the specified node.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC JsonNode *jsonGetChildNode(Json *json, int nid, int nth);
@@ -364,7 +357,6 @@ PUBLIC JsonNode *jsonGetChildNode(Json *json, int nid, int nth);
     @param nid Base node ID from which to start the search.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @return The data type. Set to JSON_OBJECT, JSON_ARRAY, JSON_COMMENT, JSON_STRING, JSON_PRIMITIVE or JSON_REGEXP.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonGetType(Json *json, int nid, cchar *key);
@@ -379,27 +371,47 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key);
     Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
     This will make returned references via jsonGetRef and jsonGetNode stable.
     @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonParse(cchar *text, int flags);
 
 /**
-    Format a string into strict json and return a strict JSON formatted string.
+    Convert a string into strict json
     @param fmt Printf style format string
     @param ... Args for format
-    @return A string. Caller must free.
-    @ingroup Json
+    @return A string. Returns NULL if the text will not parse. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonFmtToString(cchar *fmt, ...);
+PUBLIC char *jsonConvert(cchar *fmt, ...);
+
+#if DEPRECATED || 1
+#define jsonFmtToString jsonConvert
+#endif
+
+/**
+    Convert a string into strict json string in a buffer.
+    @param fmt Printf style format string
+    @param ... Args for format
+    @return The reference to the buffer
+    @stability Evolving
+ */
+PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
+
+/*
+    Convenience macro for converting a format and string into a strict json string in a buffer.
+ */
+#define JFMT(buf, ...) jsonConvertBuf(buf, sizeof(buf), __VA_ARGS__)
+
+/*
+    Convenience macro for converting a string into a strict json string in a buffer.
+ */
+#define JSON(buf, ...) jsonConvertBuf(buf, sizeof(buf), "%s", __VA_ARGS__)
 
 /**
     Parse a formatted string into a json object
     @param fmt Printf style format string
     @param ... Args for format
     @return A json object. Caller must free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
@@ -410,7 +422,6 @@ PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
     @param errorMsg Error message string set if the parse fails. Caller must not free.
     @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
     @return JSON object tree. Caller must free errorMsg via rFree on errors.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
@@ -425,7 +436,6 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
        transfer ownership of the text to json which will free when jsonFree is called.
     @return Returns a tree of Json objects. Each object represents a level in the JSON input stream.
         Caller must free errorMsg via rFree on errors.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC Json *jsonParseString(cchar *text, char **errorMsg, int flags);
@@ -437,7 +447,6 @@ PUBLIC Json *jsonParseString(cchar *text, char **errorMsg, int flags);
     @param key Property name to remove for. This may include ".". For example: "settings.mode".
     @return Returns a JSON object array of all removed properies. Array will be empty if not qualifying
         properies were found and removed.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonRemove(Json *obj, int nid, cchar *key);
@@ -451,7 +460,6 @@ PUBLIC int jsonRemove(Json *obj, int nid, cchar *key);
     @param flags Same flags as for #jsonToString: JSON_PRETTY, JSON_QUOTES.
     @param mode Permissions mode
     @return Zero if successful, otherwise a negative RT error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int flags);
@@ -465,10 +473,20 @@ PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int f
     @param value Character string value.
     @param type Set to JSON_ARRAY, JSON_OBJECT, JSON_PRIMITIVE or JSON_STRING.
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSet(Json *obj, int nid, cchar *key, cchar *value, int type);
+
+/**
+    Update a key in the JSON object with a JSON object value
+    @param json Parsed JSON object returned by jsonParse
+    @param nid Base node ID from which to start search for key. Set to zero for the top level.
+    @param key Property name to add/update. This may include ".". For example: "settings.mode".
+    @param value JSON string.
+    @return Positive node id if updated successfully. Otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC int jsonSetJson(Json *json, int nid, cchar *key, cchar *value);
 
 /**
     Update a property in the JSON object with a boolean value.
@@ -478,7 +496,6 @@ PUBLIC int jsonSet(Json *obj, int nid, cchar *key, cchar *value, int type);
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
     @param value Boolean string value.
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSetBool(Json *obj, int nid, cchar *key, bool value);
@@ -491,7 +508,6 @@ PUBLIC int jsonSetBool(Json *obj, int nid, cchar *key, bool value);
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
     @param value Double floating point value.
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSetDouble(Json *json, int nid, cchar *key, double value);
@@ -504,7 +520,6 @@ PUBLIC int jsonSetDouble(Json *json, int nid, cchar *key, double value);
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
     @param value Date value expressed as a Time (Elapsed milliseconds since Jan 1, 1970).
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value);
@@ -519,7 +534,6 @@ PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value);
     @param fmt Printf style format string
     @param ... Args for format
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...);
@@ -532,7 +546,6 @@ PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...);
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
     @param value Number to update.
     @return Positive node id if updated successfully. Otherwise a negative error code.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC int jsonSetNumber(Json *json, int nid, cchar *key, int64 value);
@@ -545,7 +558,6 @@ PUBLIC int jsonSetNumber(Json *json, int nid, cchar *key, int64 value);
     @param value String value to update with.
     @param type Json node type
     @param flags Set to JSON_PASS_TEXT to transfer ownership of a string. JSON will then free.
-    @ingroup Json
     @stability Internal
  */
 PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags);
@@ -556,7 +568,6 @@ PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags);
         to update node types.
     @param node Json node
     @param type Json node type
-    @ingroup Json
     @stability Internal
  */
 PUBLIC void jsonSetNodeType(JsonNode *node, int type);
@@ -566,7 +577,6 @@ PUBLIC void jsonSetNodeType(JsonNode *node, int type);
     @param buf Destination buffer
     @param value Value to convert.
     @param flags Json flags.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
@@ -581,7 +591,6 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
     JSON_QUOTES to wrap Property names in quotes. Use JSON_QUOTES to emit all Property values as quoted strings.
     Defaults to JSON_PRETTY if set to zero.
     @return Returns a serialized JSON character string. Caller must free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags);
@@ -590,7 +599,6 @@ PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags);
     Serialize an entire JSON object into a string using a human readable format (JSON_PRETTY).
     @param json Source json
     @return Returns a serialized JSON character string. Caller must NOT free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC cchar *jsonString(Json *json);
@@ -599,7 +607,6 @@ PUBLIC cchar *jsonString(Json *json);
     Print a JSON object
     @description Prints a JSON object in pretty format.
     @param json Source json
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC void jsonPrint(Json *json);
@@ -609,7 +616,6 @@ PUBLIC void jsonPrint(Json *json);
     @param json Json object
     @param str String template to expand
     @return An allocated expanded string. Caller must free.
-    @ingroup Json
     @stability Evolving
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str);
