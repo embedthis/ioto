@@ -12,15 +12,15 @@ for service in ${SERVICES} ; do
     value=`grep -i CONFIG_IOTO_${service} ../../sdkconfig | grep -v '^# ' | \
         sed 's/.*=//' | sed 's/"//g'`
     if [ "${value}" = "y" ] ; then
-        ./tools/json services.${service}=true ${CONFIG}/ioto.json5
+        ./bin/json services.${service}=true ${CONFIG}/ioto.json5
     elif [ "${value}" != "" ] ; then
-        ./tools/json services.${service}=${value} ${CONFIG}/ioto.json5
+        ./bin/json services.${service}=${value} ${CONFIG}/ioto.json5
     else
-        ./tools/json services.${service}=false ${CONFIG}/ioto.json5
+        ./bin/json services.${service}=false ${CONFIG}/ioto.json5
     fi
 done
 
 rm -f include/ioto-config.h
-./tools/json --header services ${CONFIG}/ioto.json5 >include/ioto-config.h
+./bin/json --header services ${CONFIG}/ioto.json5 >include/ioto-config.h
 
 exit 0

@@ -4,7 +4,7 @@
 #
 #   This builds the awesome "json" converter tool that can edit, query and convert JSON and JSON5 files.
 #
-if [ ! -d tools ] ; then
+if [ ! -d bin ] ; then
     echo "Must run from the top directory"
     exit 1
 fi
@@ -20,7 +20,7 @@ else
     JSON=src/json
     R=src/r
 fi
-if [ ! -f tools/json ] ; then
+if [ ! -f bin/json ] ; then
     cc -I . \
         -I src/json \
         -I src/r \
@@ -48,7 +48,7 @@ if [ ! -f tools/json ] ; then
         -DME_TITLE="\"Json parsing and query\"" \
         -DME_VERSION="\"1.0.0\"" \
         -DME_CONFIG_CMD="\"\"" \
-        -o tools/json ${CMDS}/json.c ${JSON}/jsonLib.c ${R}/rLib.c -lm
+        -o bin/json ${CMDS}/json.c ${JSON}/jsonLib.c ${R}/rLib.c -lm
 fi
 
 if [ ! -f state/config/ioto.json5 ] ; then 
@@ -61,4 +61,4 @@ if [ ! -f state/config/ioto.json5 ] ; then
     fi
 fi
 
-tools/make-certs
+bin/make-certs
