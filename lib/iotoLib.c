@@ -6,6 +6,48 @@
 
 
 
+/********* Start of file ../../../src/ai.c ************/
+
+/*
+    ai.c - AI support
+ */
+
+/********************************** Includes **********************************/
+
+
+
+/************************************ Code ************************************/
+#if SERVICES_AI
+
+PUBLIC int ioInitAI(void)
+{
+    cchar *endpoint, *key;
+
+    /*
+        FUTURE: key = rLookupName(ioto->keys, "OPENAI_KEY")
+     */
+    if ((key = getenv("OPENAI_API_KEY")) == NULL) {
+        if ((key = jsonGet(ioto->config, 0, "ai.key", 0)) == NULL) {
+            rInfo("openai", "OPENAI_API_KEY not set, define in environment or in config ai.key");
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    endpoint = jsonGet(ioto->config, 0, "endpoint", "https://api.openai.com/v1");
+    return openaiInit(endpoint, key, ioto->config);
+}
+
+PUBLIC void ioTermAI(void)
+{
+    openaiTerm();
+}
+#endif /* SERVICES_AI */
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
 /********* Start of file ../../../src/config.c ************/
 
 /*
@@ -435,7 +477,9 @@ PUBLIC int ioInitDb(void)
         return R_ERR_CANT_READ;
     }
 #endif
+#if SERVICES_CLOUD
     ioUpdateDevice();
+#endif
     if (service) {
         rStartEvent((RFiberProc) dbService, 0, service);
     }
@@ -473,15 +517,14 @@ static void dbService(void)
  */
 PUBLIC void ioUpdateDevice(void)
 {
+#if SERVICES_CLOUD
     Json *json;
 
     assert(ioto->id);
 
-#if SERVICES_CLOUD
     if (!ioto->account) {
         return;
     }
-#endif
     json = jsonAlloc(0);
     jsonSet(json, 0, "id", ioto->id, JSON_STRING);
     if (ioto->account) {
@@ -500,6 +543,7 @@ PUBLIC void ioUpdateDevice(void)
         rError("sync", "Cannot update device item in database: %s", dbGetError(ioto->db));
     }
     jsonFree(json);
+#endif
 }
 
 #else
@@ -650,7 +694,7 @@ PUBLIC void ioFree(void)
     if (ioto) {
         rFree(ioto);
     }
-    ioto = 0;
+    ioto = NULL;
 }
 
 /*
@@ -685,10 +729,11 @@ PUBLIC void ioTerm(void)
     char *output, *script;
     int  status;
 
-    script = 0;
     if (rGetState() == R_RESTART) {
         //  TermServices will release ioto->config. Get persistent reference to script.
         script = jsonGetClone(ioto->config, 0, "scripts.reset", 0);
+    } else {
+        script = 0;
     }
 #endif
     ioto->ready = 0;
@@ -710,6 +755,7 @@ PUBLIC void ioTerm(void)
         if (status != 0) {
             rError("ioto", "Reset script failure: %d, %s", status, output);
         }
+        rFree(output);
     }
     rFree(script);
 #endif
@@ -736,7 +782,9 @@ PUBLIC int ioStartRuntime(int verbose)
         rTerm();
         return R_ERR_CANT_INITIALIZE;
     }
-    ioAlloc();
+    if (ioAlloc() == NULL) {
+        return R_ERR_MEMORY;
+    }
     return 0;
 }
 
@@ -748,7 +796,7 @@ PUBLIC void ioStopRuntime(void)
 /*
     Run Ioto. This will block and service events forever (or till instructed to stop)
     Should be called from main()
-    The fn argument is not used, but helps build systems ensure it is included in the build.
+    The fn argument is not used, but helps build systems to ensure it is included in the build.
  */
 PUBLIC int ioRun(void *fn)
 {
@@ -821,11 +869,16 @@ static int initServices(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
-
 #if SERVICES_UPDATE
     if (ioto->updateService) {
         //  Delay to allow provisioning to complete
         rStartEvent((RFiberProc) ioUpdate, 0, 15 * TPS);
+    }
+#endif
+#if SERVICES_AI
+    ioto->aiService = 1;
+    if (ioto->aiService && ioInitAI() < 0) {
+        return R_ERR_CANT_INITIALIZE;
     }
 #endif
 #if ME_DEBUG
@@ -1151,7 +1204,7 @@ static int attachSocket(int retry)
     mqttSubscribeMaster(ioto->mqtt, 1, MQTT_WAIT_NONE, "ioto/account/%s/#", ioto->account);
 
     /*
-        Setup the device cloud throttle indicator. This is vital to ensure well behaved clients.
+        Setup the device cloud throttle indicator. This is important to optimize device fleets.
      */
     mqttSubscribe(ioto->mqtt, throttle, 1, MQTT_WAIT_NONE | MQTT_WAIT_FAST,
                   SFMT(topic, "ioto/device/%s/mqtt/throttle", ioto->id));
@@ -1703,7 +1756,7 @@ static bool getSerial(void)
             cchar *product;
             char  *command, *output;
             int   status;
-            
+
             product = jsonGet(config, did, "product", 0);
             command = sfmt("serialize \"%s\"", product);
             output = rRun(command, &status);
@@ -1955,8 +2008,9 @@ PUBLIC void ioTermConfig(void)
  */
 PUBLIC int ioLoadConfig(void)
 {
-    Json *json;
-    char *path;
+    Json  *json;
+    cchar *dir;
+    char  *path;
 
     json = ioto->config = jsonAlloc(0);
 
@@ -1976,9 +2030,6 @@ PUBLIC int ioLoadConfig(void)
     } else {
         rAddDirectory("config", "@state/config");
     }
-    rAddDirectory("db", "@state/db");
-    rAddDirectory("certs", "@state/certs");
-    rAddDirectory("site", "@state/site");
 
     if (loadJson(json, NULL, ioto->cmdIotoFile ? ioto->cmdIotoFile : IO_CONFIG_FILE, 0) < 0) {
         return R_ERR_CANT_READ;
@@ -2017,7 +2068,21 @@ PUBLIC int ioLoadConfig(void)
         rAddDirectory("state", stateDir);
     }
 #endif
-    //  Trace the resulting config
+    if ((dir = jsonGet(json, 0, "directories.db", 0)) != 0) {
+        rAddDirectory("db", dir);
+    } else {
+        rAddDirectory("db", "@state/db");
+    }
+    if ((dir = jsonGet(json, 0, "directories.certs", 0)) != 0) {
+        rAddDirectory("certs", dir);
+    } else {
+        rAddDirectory("certs", "@state/certs");
+    }
+    if ((dir = jsonGet(json, 0, "directories.site", 0)) != 0) {
+        rAddDirectory("site", dir);
+    } else {
+        rAddDirectory("site", "@state/site");
+    }
     if (rEmitLog("debug", "setup")) {
         rDebug("setup", "%s", jsonString(json));
     }
@@ -2053,9 +2118,10 @@ static void enableServices(void)
 
     } else {
         //  Defaults to true if no config.json
-        ioto->webService = jsonGetBool(config, sid, "web", 1);
+        ioto->aiService = jsonGetBool(config, sid, "ai", 0);
         ioto->dbService = jsonGetBool(config, sid, "database", 1);
         ioto->updateService = jsonGetBool(config, sid, "update", 0);
+        ioto->webService = jsonGetBool(config, sid, "web", 1);
 #if SERVICES_CLOUD
         ioto->logService = jsonGetBool(config, sid, "logs", 0);
         ioto->keyService = jsonGetBool(config, sid, "keys", 0);
@@ -2122,7 +2188,7 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
         rFree(path);
         return R_ERR_CANT_READ;
     }
-    rInfo("setup", "Loading %s", path);
+    rDebug("setup", "Loading %s", path);
 
     if (jsonBlend(json, 0, property, extra, 0, 0, 0) < 0) {
         rError("setup", "Cannot blend %s", path);
@@ -2170,7 +2236,7 @@ static int blendConditional(Json *json, cchar *property)
                 set = jsonGetId(json, jsonGetNodeId(json, collection), value);
                 if (set >= 0) {
                     //  WARNING: property references are not stable over a blend
-                    if (jsonBlend(json, 0, 0, json, set, 0, JSON_COMBINE) < 0) {
+                    if (jsonBlend(json, 0, property, json, set, 0, JSON_COMBINE) < 0) {
                         rError("setup", "Cannot blend %s", collection->name);
                         return R_ERR_CANT_COMPLETE;
                     }
@@ -2260,10 +2326,10 @@ static void reset(void)
  */
 
 
-/********* Start of file ../../../src/web.c ************/
+/********* Start of file ../../../src/webserver.c ************/
 
 /*
-    web.c - Configure the embedded web server
+    webserver.c - Configure the embedded web server
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -2310,7 +2376,7 @@ PUBLIC int ioInitWeb(void)
     jsonSet(ioto->config, 0, "web.upload.dir", path, JSON_STRING);
     rFree(path);
 
-    webShow = jsonGet(ioto->config, 0, "log.show", ioto->cmdWebShow);
+    webShow = ioto->cmdWebShow ? ioto->cmdWebShow : jsonGet(ioto->config, 0, "log.show", "");
 
     if ((webHost = webAllocHost(ioto->config, parseShow(webShow))) == 0) {
         return R_ERR_CANT_INITIALIZE;
@@ -2890,7 +2956,7 @@ static int logMessageStart(IotoLog *log, Time time)
     if (!log->bufStarted) {
         log->bufStarted = time;
 
-#if UNUSED
+#if KEEP
     } else if ((time - log->bufStarted) >= (23 * 3600 * TPS)) {
         //  Message is more than 23 hours after first message in buffer. AWS won't accept a span of > 24 hours.
         flushBuf(log);
@@ -4819,8 +4885,8 @@ PUBLIC void ioSyncUp(bool guarantee)
 
 PUBLIC void ioSyncDown(Time when)
 {
-    char  *lastSync;
-    char  msg[160];
+    char *lastSync;
+    char msg[160];
 
     //  Send SyncDown message
     if (when < 0) {
@@ -5427,10 +5493,12 @@ PUBLIC bool ioUpdate(void)
     Time  delay, jitter, lastUpdate, period;
     cchar *apply, *checksum, *image, *response, *schedule, *version;
     char  *body, *date, *headers, *path, url[160];
+    bool  enable;
 
     /*
         Protection incase update fails and device loops continually updating
      */
+    enable = jsonGetBool(ioto->config, 0, "update.enable", 0);
     schedule = jsonGet(ioto->config, 0, "update.schedule", "* * * * *");
     jitter = svalue(jsonGet(ioto->config, 0, "update.jitter", "0")) * TPS;
     period = svalue(jsonGet(ioto->config, 0, "update.period", "24 hrs")) * TPS;
@@ -5444,7 +5512,7 @@ PUBLIC bool ioUpdate(void)
         //  Not yet provisioned
         delay = 60 * TPS;
     }
-    if (delay > 0) {
+    if (delay > 0 || !enable) {
         if (jitter) {
             jitter = rand() % jitter;
             delay += jitter;
@@ -5587,7 +5655,7 @@ static int download(cchar *url, cchar *path)
     // If throttling, the download timeout may need to be increased
     urlSetTimeout(up, svalue(jsonGet(ioto->config, 0, "timeouts.download", "4 hrs")) * TPS);
 
-    if (urlStart(up, "GET", url, -1) < 0 || urlWrite(up, NULL, 0) < 0 || urlGetStatus(up) != 200) {
+    if (urlStart(up, "GET", url) < 0 || urlGetStatus(up) != 200) {
         rError("update", "Cannot fetch %s\n%s", url, urlGetResponse(up));
         urlFree(up);
         return R_ERR_CANT_READ;
