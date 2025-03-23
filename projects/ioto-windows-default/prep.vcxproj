@@ -2,7 +2,7 @@
     <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{12f23506-f8f2-4327-859e-675cbf059ce8}</ProjectGuid>
+        <ProjectGuid>{2024c893-3669-4472-b3e2-11c7491973f3}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -108,6 +108,7 @@ copy /Y /B ..\..\include\ioto.h $(IncDir)
 copy /Y /B ..\..\include\json.h $(IncDir)
 copy /Y /B ..\..\include\me.h $(IncDir)
 copy /Y /B ..\..\include\mqtt.h $(IncDir)
+copy /Y /B ..\..\include\openai.h $(IncDir)
 copy /Y /B ..\..\include\osdep.h $(IncDir)
 copy /Y /B ..\..\include\r.h $(IncDir)
 copy /Y /B ..\..\include\uctx-defs.h $(IncDir)
@@ -115,6 +116,7 @@ copy /Y /B ..\..\include\uctx-os.h $(IncDir)
 copy /Y /B ..\..\include\uctx.h $(IncDir)
 copy /Y /B ..\..\include\url.h $(IncDir)
 copy /Y /B ..\..\include\web.h $(IncDir)
+copy /Y /B ..\..\include\websockets.h $(IncDir)
 cd .</Command>
         <Outputs>always</Outputs>
       </CustomBuildStep>

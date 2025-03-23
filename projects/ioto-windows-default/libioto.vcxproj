@@ -14,7 +14,7 @@
       </ItemDefinitionGroup>
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{01fb21a5-05df-4b98-94ad-352904022d0b}</ProjectGuid>
+        <ProjectGuid>{14760500-6436-4fbc-969b-4b70493b8abe}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -110,11 +110,13 @@
     <ClCompile Include="..\..\lib\iotoLib.c" />
     <ClCompile Include="..\..\lib\jsonLib.c" />
     <ClCompile Include="..\..\lib\mqttLib.c" />
+    <ClCompile Include="..\..\lib\openaiLib.c" />
     <ClCompile Include="..\..\lib\rLib.c" />
     <ClCompile Include="..\..\lib\uctxAssembly.S" />
     <ClCompile Include="..\..\lib\uctxLib.c" />
     <ClCompile Include="..\..\lib\urlLib.c" />
     <ClCompile Include="..\..\lib\webLib.c" />
+    <ClCompile Include="..\..\lib\websocketsLib.c" />
   </ItemGroup>
 
       <ItemGroup>
@@ -146,6 +148,10 @@
   </ItemGroup>
 
       <ItemGroup>
+    <ClInclude Include="$(IncDir)\openai.h" />
+  </ItemGroup>
+
+      <ItemGroup>
     <ClInclude Include="$(IncDir)\osdep.h" />
   </ItemGroup>
 
@@ -173,6 +179,10 @@
     <ClInclude Include="$(IncDir)\web.h" />
   </ItemGroup>
 
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\websockets.h" />
+  </ItemGroup>
+
       <ItemDefinitionGroup>
         
 
@@ -190,6 +200,7 @@ copy /Y /B include\ioto.h $(IncDir)
 copy /Y /B include\json.h $(IncDir)
 copy /Y /B include\me.h $(IncDir)
 copy /Y /B include\mqtt.h $(IncDir)
+copy /Y /B include\openai.h $(IncDir)
 copy /Y /B include\osdep.h $(IncDir)
 copy /Y /B include\r.h $(IncDir)
 copy /Y /B include\uctx-defs.h $(IncDir)
@@ -197,6 +208,7 @@ copy /Y /B include\uctx-os.h $(IncDir)
 copy /Y /B include\uctx.h $(IncDir)
 copy /Y /B include\url.h $(IncDir)
 copy /Y /B include\web.h $(IncDir)
+copy /Y /B include\websockets.h $(IncDir)
 cd projects\ioto-windows-default</Command>
         <Outputs>$(BinDir)\libioto.lib</Outputs>
       </CustomBuildStep>

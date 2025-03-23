@@ -10,7 +10,7 @@
     #define ME_COMPANY "embedthis"
 #endif
 #ifndef ME_COMPATIBLE
-    #define ME_COMPATIBLE "2.5"
+    #define ME_COMPATIBLE "2.6"
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC
     #define ME_COMPILER_HAS_ATOMIC 0
@@ -88,7 +88,7 @@
     #define ME_USER "ioto"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "2.5.0"
+    #define ME_VERSION "2.6.0"
 #endif
 #ifndef ME_WEB_GROUP
     #define ME_WEB_GROUP "Administrator"
@@ -189,13 +189,13 @@
     #define ME_MAJOR_VERSION 2
 #endif
 #ifndef ME_MINOR_VERSION
-    #define ME_MINOR_VERSION 5
+    #define ME_MINOR_VERSION 6
 #endif
 #ifndef ME_PATCH_VERSION
     #define ME_PATCH_VERSION 0
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 200050000
+    #define ME_VNUM 200060000
 #endif
 
 /* Components */
@@ -223,6 +223,9 @@
 #ifndef ME_COM_MQTT
     #define ME_COM_MQTT 1
 #endif
+#ifndef ME_COM_OPENAI
+    #define ME_COM_OPENAI 1
+#endif
 #ifndef ME_COM_OPENSSL
     #define ME_COM_OPENSSL 1
 #endif
@@ -249,4 +252,7 @@
 #endif
 #ifndef ME_COM_WEB
     #define ME_COM_WEB 1
+#endif
+#ifndef ME_COM_WEBSOCKETS
+    #define ME_COM_WEBSOCKETS 1
 #endif
