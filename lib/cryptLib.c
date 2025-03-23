@@ -26,90 +26,38 @@
 /*
     Base 64 encoding map lookup
  */
-static char encodeMap[] = {
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-    'w', 'x', 'y', 'z', '0', '1', '2', '3',
-    '4', '5', '6', '7', '8', '9', '+', '/',
-};
-
+static const char encodeMap[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /*
     Base 64 decode map
  */
-static signed char decodeMap[] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
-    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
-    -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
-    -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-};
+static uchar decodeMap[256] = { 0 };
 
+static void buildDecodeMap(void)
+{
+    memset(decodeMap, 0x80, sizeof(decodeMap));
+    for (int i = 0; i < 64; i++) {
+        decodeMap[(uchar) encodeMap[i]] = i;
+    }
+#if 0
+    int i, j;
+    for (i = 0; i < 256; ) {
+        for (j = 0; j < 16; j++) {
+            printf("%02x ", decodeMap[i + j]);
+        }
+        i += j;
+        printf("\n");
+    }
+#endif
+}
 
 /*
     Encode a null terminated string. Returns a null terminated block.
  */
 PUBLIC char *cryptEncode64(cchar *s)
 {
-    return cryptEncode64Block(s, slen(s));
+    return cryptEncode64Block((cuchar*) s, slen(s));
 }
-
-
-/*
-    Encode a block of a given length. Returns a null terminated block.
- */
-PUBLIC char *cryptEncode64Block(cchar *s, ssize len)
-{
-    char  *buffer, *bp;
-    cchar *end;
-    ssize size;
-    uint  shiftbuf;
-    int   i, j, shift;
-
-    size = len * 2;
-    if ((buffer = rAlloc(size + 1)) == 0) {
-        return NULL;
-    }
-    bp = buffer;
-    *bp = '\0';
-    end = &s[len];
-    while (s < end && *s) {
-        shiftbuf = 0;
-        for (j = 2; j >= 0 && *s; j--, s++) {
-            shiftbuf |= ((*s & 0xff) << (j * 8));
-        }
-        shift = 18;
-        for (i = ++j; i < 4 && bp < &buffer[size]; i++) {
-            *bp++ = encodeMap[(shiftbuf >> shift) & 0x3f];
-            shift -= 6;
-        }
-        while (j-- > 0) {
-            *bp++ = '=';
-        }
-        *bp = '\0';
-    }
-    return buffer;
-}
-
 
 /*
     Decode a null terminated string and returns a null terminated string.
@@ -120,50 +68,103 @@ PUBLIC char *cryptDecode64(cchar *s)
     return cryptDecode64Block(s, NULL, CRYPT_DECODE_TOKEQ);
 }
 
-
-/*
-    Decode a null terminated string and return a block with length.
-    Stops decoding at the end of the block or '=' if CRYPT_DECODE_TOKEQ is specified.
- */
-PUBLIC char *cryptDecode64Block(cchar *s, ssize *len, int flags)
+char *cryptEncode64Block(cuchar *input, ssize len)
 {
-    uint  bitBuf;
-    char  *buffer, *bp;
-    cchar *end;
-    ssize size;
-    int   c, i, j, shift;
+    char   *encoded;
+    ssize  count, size;
+    uint32 a, b, c, combined;
+    int    i, j, prior;
 
-    size = strlen(s);
-    if ((buffer = rAlloc(size + 1)) == 0) {
+    if (input == NULL || len == 0) {
         return NULL;
     }
-    bp = buffer;
-    *bp = '\0';
-    end = &s[size];
-    while (s < end && (*s != '=' || !(flags & CRYPT_DECODE_TOKEQ))) {
-        bitBuf = 0;
-        shift = 18;
-        for (i = 0; i < 4 && (s < end && (*s != '=' || !(flags & CRYPT_DECODE_TOKEQ))); i++, s++) {
-            c = decodeMap[*s & 0xff];
-            if (c == -1) {
-                rFree(buffer);
+    size = 4 * ((len + 2) / 3);
+    if ((encoded = rAlloc(size + 1)) == 0) {
+        return NULL;
+    }
+    for (i = 0, j = 0; i < len;) {
+        prior = i;
+        a = i < len ? input[i++] : 0;
+        b = i < len ? input[i++] : 0;
+        c = i < len ? input[i++] : 0;
+
+        count = i - prior;
+        combined = (a << 16) | (b << 8) | c;
+
+        encoded[j++] = encodeMap[(combined >> 18) & 0x3F];
+        encoded[j++] = encodeMap[(combined >> 12) & 0x3F];
+        encoded[j++] = (count >= 2) ? encodeMap[(combined >> 6) & 0x3F] : '=';
+        encoded[j++] = (count == 3) ? encodeMap[combined & 0x3F] : '=';
+    }
+    encoded[j] = '\0';
+    return encoded;
+}
+
+
+PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
+{
+    char   *decoded;
+    ssize  len, size;
+    uint32 a, b, c, d, combined;
+    int    i, j, pad;
+
+    if (input == NULL) {
+        return NULL;
+    }
+    if (decodeMap[0] == 0) {
+        buildDecodeMap();
+    }
+    len = slen(input);
+    if (len % 4 != 0) {
+        return NULL;
+    }
+    pad = 0;
+    if (input[len - 1] == '=') pad++;
+    if (input[len - 2] == '=') pad++;
+
+
+    // Calculate the output length
+    size = len / 4 * 3 - pad;
+    
+    if ((decoded = rAlloc(size + 1)) == NULL) {
+        return NULL;
+    }
+    for (i = 0, j = 0; i < len;) {
+        a = decodeMap[(uchar) input[i++]];
+        b = decodeMap[(uchar) input[i++]];
+        c = decodeMap[(uchar) input[i++]];
+        d = decodeMap[(uchar) input[i++]];
+
+        // Check for invalid characters
+        if (a == 0x80 || b == 0x80 || c == 0x80 || d == 0x80) {
+            if (input[i - 2] == '=' && input[i - 1] == '=') {
+                c = d = 0;
+            }  else if (input[i - 1] == '=') {
+                d = 0;
+            } else {
+                rFree(decoded);
                 return NULL;
             }
-            bitBuf = bitBuf | (c << shift);
-            shift -= 6;
         }
-        --i;
-        assert((bp + i) < &buffer[size]);
-        for (j = 0; j < i; j++) {
-            *bp++ = (char) ((bitBuf >> (8 * (2 - j))) & 0xff);
+        combined = (a << 18) | (b << 12) | (c << 6) | d;
+
+        if (j < size) decoded[j++] = (combined >> 16) & 0xFF;
+        if (j < size) decoded[j++] = (combined >> 8) & 0xFF;
+        if (j < size) decoded[j++] = combined & 0xFF;
+
+        if (flags & CRYPT_DECODE_TOKEQ) {
+            if (input[i] == '=' && (input[i + 1] == '=' || input[i + 1] == '\0')) {
+                break;
+            }
         }
-        *bp = '\0';
     }
-    if (len) {
-        *len = bp - buffer;
+    decoded[j] = '\0';
+    if (outputLen) {
+        *outputLen = size;
     }
-    return buffer;
+    return decoded;
 }
+
 #endif /* BASE64 */
 
 /************************************* MD5 ************************************/
@@ -202,24 +203,24 @@ static uchar PADDING[64] = {
 #define ROTATE_LEFT(x, n)        (((x) << (n)) | ((x) >> (32 - (n))))
 
 #define FF(a, b, c, d, x, s, ac) { \
-        (a) += F((b), (c), (d)) + (x) + (uint) (ac); \
-        (a) = ROTATE_LEFT((a), (s)); \
-        (a) += (b); \
+            (a) += F((b), (c), (d)) + (x) + (uint) (ac); \
+            (a) = ROTATE_LEFT((a), (s)); \
+            (a) += (b); \
 }
 #define GG(a, b, c, d, x, s, ac) { \
-        (a) += G((b), (c), (d)) + (x) + (uint) (ac); \
-        (a) = ROTATE_LEFT((a), (s)); \
-        (a) += (b); \
+            (a) += G((b), (c), (d)) + (x) + (uint) (ac); \
+            (a) = ROTATE_LEFT((a), (s)); \
+            (a) += (b); \
 }
 #define HH(a, b, c, d, x, s, ac) { \
-        (a) += H((b), (c), (d)) + (x) + (uint) (ac); \
-        (a) = ROTATE_LEFT((a), (s)); \
-        (a) += (b); \
+            (a) += H((b), (c), (d)) + (x) + (uint) (ac); \
+            (a) = ROTATE_LEFT((a), (s)); \
+            (a) += (b); \
 }
 #define II(a, b, c, d, x, s, ac) { \
-        (a) += I((b), (c), (d)) + (x) + (uint) (ac); \
-        (a) = ROTATE_LEFT((a), (s)); \
-        (a) += (b); \
+            (a) += I((b), (c), (d)) + (x) + (uint) (ac); \
+            (a) = ROTATE_LEFT((a), (s)); \
+            (a) += (b); \
 }
 
 #if MOVED
@@ -415,7 +416,7 @@ PUBLIC void cryptGetMd5Block(uchar *buf, ssize buflen, uchar hash[CRYPT_MD5_SIZE
 {
     RMd5 ctx;
 
-    if (buflen < 0) {
+    if (buflen <= 0) {
         buflen = slen((char*) buf);
     }
     cryptMd5Init(&ctx);
@@ -430,7 +431,7 @@ PUBLIC char *cryptGetMd5(uchar *buf, ssize buflen)
     RMd5  ctx;
     uchar hash[CRYPT_MD5_SIZE];
 
-    if (buflen < 0) {
+    if (buflen <= 0) {
         buflen = slen((char*) buf);
     }
     cryptMd5Init(&ctx);
@@ -492,18 +493,215 @@ PUBLIC char *cryptGetFileMd5(cchar *path)
 
 #endif /* ME_CRYPT_MD5 */
 
+/************************************* Sha1 **********************************/
+#if ME_CRYPT_SHA1
+
+#define sha1Shift(bits, word) (((word) << (bits)) | ((word) >> (32 - (bits))))
+
+PUBLIC char *cryptGetSha1(cuchar *s, ssize ilen)
+{
+    return cryptGetSha1WithPrefix(s, ilen, NULL);
+}
+
+
+PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen)
+{
+    CryptSha1 sha;
+    uchar     hash[CRYPT_SHA1_SIZE + 1];
+
+    if (ilen <= 0) {
+        ilen = slen(s);
+    }
+    cryptSha1Init(&sha);
+    cryptSha1Update(&sha, (cuchar*) s, ilen);
+    cryptSha1Finalize(&sha, hash);
+    hash[CRYPT_SHA1_SIZE] = '\0';
+    return cryptEncode64Block((cuchar*) hash, CRYPT_SHA1_SIZE);
+}
+
+
+PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix)
+{
+    CryptSha1 sha;
+    uchar     hash[CRYPT_SHA1_SIZE];
+    cchar     *hex = "0123456789abcdef";
+    char      *r, *str;
+    char      result[(CRYPT_SHA1_SIZE * 2) + 1];
+    ssize     len;
+    int       i;
+
+    if (length <= 0) {
+        length = slen((char*) buf);
+    }
+    cryptSha1Init(&sha);
+    cryptSha1Update(&sha, (cuchar*) buf, length);
+    cryptSha1Finalize(&sha, hash);
+
+    for (i = 0, r = result; i < CRYPT_SHA1_SIZE; i++) {
+        *r++ = hex[hash[i] >> 4];
+        *r++ = hex[hash[i] & 0xF];
+    }
+    *r = '\0';
+    len = (prefix) ? slen(prefix) : 0;
+    str = rAlloc(sizeof(result) + len);
+    if (str) {
+        if (prefix) {
+            strcpy(str, prefix);
+        }
+        strcpy(str + len, result);
+    }
+    return str;
+}
+
+
+PUBLIC void cryptSha1Init(CryptSha1 *sha)
+{
+    sha->lowLength = 0;
+    sha->highLength = 0;
+    sha->index = 0;
+    sha->hash[0] = 0x67452301;
+    sha->hash[1] = 0xEFCDAB89;
+    sha->hash[2] = 0x98BADCFE;
+    sha->hash[3] = 0x10325476;
+    sha->hash[4] = 0xC3D2E1F0;
+}
+
+
+static void cryptSha1Process(CryptSha1 *sha)
+{
+    uint K[] = { 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6 };
+    uint temp, W[80], A, B, C, D, E;
+    int  t;
+
+    for (t = 0; t < 16; t++) {
+        W[t] = sha->block[t * 4] << 24;
+        W[t] |= sha->block[t * 4 + 1] << 16;
+        W[t] |= sha->block[t * 4 + 2] << 8;
+        W[t] |= sha->block[t * 4 + 3];
+    }
+    for (t = 16; t < 80; t++) {
+        W[t] = sha1Shift(1, W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]);
+    }
+    A = sha->hash[0];
+    B = sha->hash[1];
+    C = sha->hash[2];
+    D = sha->hash[3];
+    E = sha->hash[4];
+
+    for (t = 0; t < 20; t++) {
+        temp =  sha1Shift(5, A) + ((B & C) | ((~B) & D)) + E + W[t] + K[0];
+        E = D;
+        D = C;
+        C = sha1Shift(30, B);
+        B = A;
+        A = temp;
+    }
+    for (t = 20; t < 40; t++) {
+        temp = sha1Shift(5, A) + (B ^ C ^ D) + E + W[t] + K[1];
+        E = D;
+        D = C;
+        C = sha1Shift(30, B);
+        B = A;
+        A = temp;
+    }
+    for (t = 40; t < 60; t++) {
+        temp = sha1Shift(5, A) + ((B & C) | (B & D) | (C & D)) + E + W[t] + K[2];
+        E = D;
+        D = C;
+        C = sha1Shift(30, B);
+        B = A;
+        A = temp;
+    }
+    for (t = 60; t < 80; t++) {
+        temp = sha1Shift(5, A) + (B ^ C ^ D) + E + W[t] + K[3];
+        E = D;
+        D = C;
+        C = sha1Shift(30, B);
+        B = A;
+        A = temp;
+    }
+    sha->hash[0] += A;
+    sha->hash[1] += B;
+    sha->hash[2] += C;
+    sha->hash[3] += D;
+    sha->hash[4] += E;
+    sha->index = 0;
+}
+
+
+PUBLIC void cryptSha1Update(CryptSha1 *sha, cuchar *msg, ssize len)
+{
+    while (len--) {
+        sha->block[sha->index++] = (*msg & 0xFF);
+        sha->lowLength += 8;
+        if (sha->lowLength == 0) {
+            sha->highLength++;
+        }
+        if (sha->index == 64) {
+            cryptSha1Process(sha);
+        }
+        msg++;
+    }
+}
+
+
+static void cryptSha1Pad(CryptSha1 *sha)
+{
+    if (sha->index > 55) {
+        sha->block[sha->index++] = 0x80;
+        while (sha->index < 64) {
+            sha->block[sha->index++] = 0;
+        }
+        cryptSha1Process(sha);
+        while (sha->index < 56) {
+            sha->block[sha->index++] = 0;
+        }
+    } else {
+        sha->block[sha->index++] = 0x80;
+        while (sha->index < 56) {
+            sha->block[sha->index++] = 0;
+        }
+    }
+    sha->block[56] = sha->highLength >> 24;
+    sha->block[57] = sha->highLength >> 16;
+    sha->block[58] = sha->highLength >> 8;
+    sha->block[59] = sha->highLength;
+    sha->block[60] = sha->lowLength >> 24;
+    sha->block[61] = sha->lowLength >> 16;
+    sha->block[62] = sha->lowLength >> 8;
+    sha->block[63] = sha->lowLength;
+    cryptSha1Process(sha);
+}
+
+
+PUBLIC void cryptSha1Finalize(CryptSha1 *sha, uchar *digest)
+{
+    int i;
+
+    cryptSha1Pad(sha);
+    memset(sha->block, 0, 64);
+    sha->lowLength = 0;
+    sha->highLength = 0;
+    for (i = 0; i < CRYPT_SHA1_SIZE; i++) {
+        digest[i] = sha->hash[i >> 2] >> 8 * (3 - (i & 0x03));
+    }
+}
+
+#endif /* ME_CRYPT_SHA1 */
+
 /************************************ SHA256 **********************************/
 #if ME_CRYPT_SHA256
 
 #define GET(n, b, i) \
-    if (1) { \
-        (n) = ((uint32) b[i] << 24) | ((uint32) b[i + 1] << 16) | ((uint32) b[i + 2] << 8) | ((uint32) b[i + 3]); \
-    } else
+        if (1) { \
+            (n) = ((uint32) b[i] << 24) | ((uint32) b[i + 1] << 16) | ((uint32) b[i + 2] << 8) | ((uint32) b[i + 3]); \
+        } else
 
 #define PUT(n, b, i) \
-    if (1) { \
-        b[i] = (uchar) ((n) >> 24); b[i + 1] = (uchar) ((n) >> 16); b[i + 2] = (uchar) ((n) >> 8); b[i + 3] = (uchar) ((n)); \
-    } else
+        if (1) { \
+            b[i] = (uchar) ((n) >> 24); b[i + 1] = (uchar) ((n) >> 16); b[i + 2] = (uchar) ((n) >> 8); \
+            b[i + 3] = (uchar) ((n)); \
+        } else
 
 
 static const uint32 K256[] =
@@ -532,27 +730,27 @@ static const uint32 K256[] =
 #define S1(x)       (ROTR(x, 17) ^ ROTR(x, 19) ^  SHR(x, 10))
 #define S2(x)       (ROTR(x, 2) ^ ROTR(x, 13) ^ ROTR(x, 22))
 #define S3(x)       (ROTR(x, 6) ^ ROTR(x, 11) ^ ROTR(x, 25))
-#define F0(x, y, z) ((x & y) | (z & (x | y)))
+#define F0(x, y, z) ((x &y) | (z & (x | y)))
 #define F1(x, y, z) (z ^ (x & (y ^ z)))
 
 
-PUBLIC void cryptSha256Init(RSha256 *ctx)
+PUBLIC void cryptSha256Init(CryptSha256 *ctx)
 {
-    memset(ctx, 0, sizeof(RSha256));
+    memset(ctx, 0, sizeof(CryptSha256));
 }
 
 
-PUBLIC void cryptSha256Term(RSha256 *ctx)
+PUBLIC void cryptSha256Term(CryptSha256 *ctx)
 {
     if (ctx) {
-        memset(ctx, 0, sizeof(RSha256));
+        memset(ctx, 0, sizeof(CryptSha256));
     }
 }
 
 
-PUBLIC void cryptSha256Start(RSha256 *ctx)
+PUBLIC void cryptSha256Start(CryptSha256 *ctx)
 {
-    memset(ctx, 0, sizeof(RSha256));
+    memset(ctx, 0, sizeof(CryptSha256));
 
     ctx->count[0] = 0;
     ctx->count[1] = 0;
@@ -567,19 +765,19 @@ PUBLIC void cryptSha256Start(RSha256 *ctx)
 }
 
 
-static void sha256Process(RSha256 *ctx, cuchar data[64])
+static void sha256Process(CryptSha256 *ctx, cuchar data[64])
 {
     uint32 t1, t2, W[64], A[8];
     uint   i;
 
     #define P(a, b, c, d, e, f, g, h, x, K256) { \
-        t1 = h + S3(e) + F1(e, f, g) + K256 + x; \
-        t2 = S2(a) + F0(a, b, c); \
-        d += t1; \
-        h = t1 + t2; \
-    }
+                t1 = h + S3(e) + F1(e, f, g) + K256 + x; \
+                t2 = S2(a) + F0(a, b, c); \
+                d += t1; \
+                h = t1 + t2; \
+}
 
-    #define R(t) (W[t] = S1(W[t -  2]) + W[t -  7] + S0(W[t - 15]) + W[t - 16])
+    #define R(t)                               (W[t] = S1(W[t -  2]) + W[t -  7] + S0(W[t - 15]) + W[t - 16])
 
     for (i = 0; i < 8; i++) {
         A[i] = ctx->state[i];
@@ -613,7 +811,7 @@ static void sha256Process(RSha256 *ctx, cuchar data[64])
 }
 
 
-PUBLIC void cryptSha256Update(RSha256 *ctx, cuchar *input, int ilen)
+PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *input, ssize ilen)
 {
     uint32 left;
     int    fill;
@@ -648,7 +846,7 @@ PUBLIC void cryptSha256Update(RSha256 *ctx, cuchar *input, int ilen)
 }
 
 
-PUBLIC void cryptSha256Finalize(RSha256 *ctx, uchar output[CRYPT_SHA256_SIZE])
+PUBLIC void cryptSha256Finalize(CryptSha256 *ctx, uchar output[CRYPT_SHA256_SIZE])
 {
     uint32 last, padn, high, low;
     uchar  msglen[8];
@@ -685,7 +883,7 @@ PUBLIC void cryptSha256Finalize(RSha256 *ctx, uchar output[CRYPT_SHA256_SIZE])
 
 PUBLIC void cryptGetSha256Block(cuchar *input, ssize ilen, uchar output[CRYPT_SHA256_SIZE])
 {
-    RSha256 ctx;
+    CryptSha256 ctx;
 
     cryptSha256Init(&ctx);
     cryptSha256Start(&ctx);
@@ -697,8 +895,8 @@ PUBLIC void cryptGetSha256Block(cuchar *input, ssize ilen, uchar output[CRYPT_SH
 
 PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
 {
-    RSha256 ctx;
-    uchar   output[CRYPT_SHA256_SIZE];
+    CryptSha256 ctx;
+    uchar       output[CRYPT_SHA256_SIZE];
 
     if (ilen <= 0) {
         ilen = slen((char*) input);
@@ -712,13 +910,27 @@ PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
 }
 
 
+PUBLIC char *cryptGetSha256Base64(cchar *s, ssize ilen)
+{
+    char *hash, *result;
+
+    if (ilen <= 0) {
+        ilen = slen(s);
+    }
+    hash = cryptGetSha256((cuchar*) s, ilen);
+    result = cryptEncode64Block((cuchar*) hash, slen(hash));
+    rFree(hash);
+    return result;
+}
+
+
 PUBLIC char *cryptGetFileSha256(cchar *path)
 {
-    RSha256 ctx;
-    uchar   hash[CRYPT_SHA256_SIZE];
-    uchar   buf[ME_BUFSIZE];
-    ssize   len;
-    int     fd;
+    CryptSha256 ctx;
+    uchar       hash[CRYPT_SHA256_SIZE];
+    uchar       buf[ME_BUFSIZE];
+    ssize       len;
+    int         fd;
 
     memset(hash, 0, CRYPT_SHA256_SIZE);
     if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
@@ -730,7 +942,7 @@ PUBLIC char *cryptGetFileSha256(cchar *path)
         cryptSha256Update(&ctx, buf, (int) len);
     }
     if (len < 0) {
-        memset(&ctx, 0, sizeof(RSha256));
+        memset(&ctx, 0, sizeof(CryptSha256));
         close(fd);
         return 0;
     }
@@ -867,8 +1079,7 @@ static const uint ORIG_S[4][256] = {
         0xD60F573FL, 0xBC9BC6E4L, 0x2B60A476L, 0x81E67400L,
         0x08BA6FB5L, 0x571BE91FL, 0xF296EC6BL, 0x2A0DD915L,
         0xB6636521L, 0xE7B9F9B6L, 0xFF34052EL, 0xC5855664L,
-        0x53B02D5DL, 0xA99F8FA1L, 0x08BA4799L, 0x6E85076AL
-    }, {
+        0x53B02D5DL, 0xA99F8FA1L, 0x08BA4799L, 0x6E85076AL }, {
         0x4B7A70E9L, 0xB5B32944L, 0xDB75092EL, 0xC4192623L,
         0xAD6EA6B0L, 0x49A7DF7DL, 0x9CEE60B8L, 0x8FEDB266L,
         0xECAA8C71L, 0x699A17FFL, 0x5664526CL, 0xC2B19EE1L,
@@ -1151,7 +1362,7 @@ static void bencrypt(Blowfish *bp, uint *xl, uint *xr)
 }
 
 
-#if KEEP && UNUSED
+#if KEEP
 static void bdecrypt(Blowfish *bp, uint *xl, uint *xr)
 {
     uint Xl, Xr, temp;
@@ -1200,7 +1411,7 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, int rounds)
             bencrypt(&bf, &text[j], &text[j + 1]);
         }
     }
-    result = cryptEncode64Block((cchar*) text, len);
+    result = cryptEncode64Block((cuchar*) text, len);
     memset(&bf, 0, sizeof(bf));
     memset(text, 0, len);
     return result;
@@ -1210,7 +1421,8 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, int rounds)
 PUBLIC char *cryptMakeSalt(ssize size)
 {
     char  *chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    char  *rp, *result, *random;
+    uchar *random;
+    char  *rp, *result;
     ssize clen, i;
 
     size = (size + sizeof(int) - 1) & ~(sizeof(int) - 1);
@@ -1363,7 +1575,7 @@ PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen)
         key = rAllocType(mbedtls_pk_context);
     }
     memset(key, 0, sizeof(AsyKey));
-    if (buflen < 0) {
+    if (buflen <= 0) {
         buflen = slen(buf);
     }
     /* buflen must count the null - Ugh! */
@@ -1419,7 +1631,7 @@ PUBLIC ssize rBase64Decode(cchar *buf, ssize bufsize, uchar *dest, ssize destLen
 
 /************************************ Password Utils ****************************/
 
-PUBLIC int cryptGetRandomBytes(char *buf, ssize length, bool block)
+PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
 {
 #if ME_UNIX_LIKE
     ssize sofar, rc;
@@ -1545,14 +1757,14 @@ static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
  */
 PUBLIC char *cryptID(ssize size)
 {
-    char  *bytes;
-    int   i, index, lettersLen;
+    char *bytes;
+    int  i, index, lettersLen;
 
     if ((bytes = rAlloc(size + 1)) == 0) {
         return 0;
     }
     lettersLen = (int) slen(LETTERS) - 1;
-    if (cryptGetRandomBytes(bytes, size, 0) < 0) {
+    if (cryptGetRandomBytes((uchar*) bytes, size, 0) < 0) {
         return 0;
     }
     for (i = 0; i < size; i++) {
