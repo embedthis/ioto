@@ -114,6 +114,9 @@
 #endif
 
 /* Components */
+#ifndef ME_COM_OPENAI
+    #define ME_COM_OPENAI 1
+#endif
 #ifndef ME_COM_CC
     #define ME_COM_CC 1
 #endif
@@ -152,4 +155,7 @@
 #endif
 #ifndef ME_COM_WEB
     #define ME_COM_WEB 1
+#endif
+#ifndef ME_COM_WEBSOCKETS
+    #define ME_COM_WEBSOCKETS 1
 #endif

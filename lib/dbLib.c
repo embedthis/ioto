@@ -2228,7 +2228,7 @@ PUBLIC char *dbGetULID(Time when)
     int   i, index, length, mod;
 
     length = (int) slen(LETTERS) - 1;
-    if (cryptGetRandomBytes(bytes, sizeof(bytes), 0) < 0) {
+    if (cryptGetRandomBytes((uchar*) bytes, sizeof(bytes), 0) < 0) {
         return 0;
     }
     for (i = 0; i < sizeof(bytes) - 1; i++) {
