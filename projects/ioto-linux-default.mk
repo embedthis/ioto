@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 2.6.0
+VERSION               := 2.7.0
 PROFILE               ?= default
 ARCH                  ?= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/')
 CC_ARCH               ?= $(shell echo $(ARCH) | sed 's/x86/i686/;s/x64/x86_64/')
@@ -52,7 +52,7 @@ endif
 #
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_COMPANY            ?= \"embedthis\"
-ME_COMPATIBLE         ?= \"2.6\"
+ME_COMPATIBLE         ?= \"2.7\"
 ME_COMPILER_HAS_ATOMIC ?= 1
 ME_COMPILER_HAS_ATOMIC64 ?= 1
 ME_COMPILER_HAS_DOUBLE_BRACES ?= 1
@@ -86,7 +86,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"2.6.0\"
+ME_VERSION            ?= \"2.7.0\"
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
