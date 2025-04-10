@@ -154,8 +154,18 @@ typedef struct Url {
     Ticks deadline;                /**< Request time limit expiry deadline */
     Ticks timeout;                 /**< Request timeout */
 
+    RFiber *fiber;                 /**< Fiber */
+    REvent abortEvent;             /**< Abort event */
+    void *sseArg;                  /**< SSE callback argument */
+
 #if ME_COM_WEBSOCKETS
     WebSocket *webSocket;          /**< WebSocket object */
+#endif
+#if URL_SSE
+    UrlSseProc sseProc;            /**< SSE callback */
+    uint retries;                  /**< Number of retries for SSE */
+    uint maxRetries;               /**< Maximum of retries for SSE */
+    ssize lastEventId;             /**< Last event ID (SSE) */
 #endif
 } Url;
 
