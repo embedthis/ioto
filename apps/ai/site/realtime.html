@@ -20,7 +20,7 @@
                         name="question"
                         id="question"
                         size="80"
-                        placeholder="Ask any question about Ioto ..."
+                        placeholder="Ask any question ..."
                         required />
                 </div>
                 <div class="thinking" v-if="page.thinking">Thinking ...{{page.dots}}</div>
@@ -84,7 +84,6 @@
                         }))
                         page.questions.push({question: page.question, answer: '', html: ''})
                     } catch (err) {
-                        console.error(`Cannot submit form, please email`, {err})
                         alert(`${err.message}.\n\nSorry, your question could not be submitted. ${err.message}`)
                     }
                 }
@@ -106,7 +105,7 @@
             }
 
             async function reconnect() {
-                socket = new WebSocket('ws://localhost/ai/chat/realtime')
+                socket = new WebSocket('ws://localhost/ai/realtime')
                 socket.onmessage = function(event) {
                     let message = JSON.parse(event.data)
                     if (message.type === 'response.done') {

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+        <script src="https://unpkg.com/marked/marked.min.js"></script>
+    </head>
+    <body>
+        <div id="app" class="monitor">
+            <h1>Test AI Agentic Workflow</h1>
+            <h2>Patient Monitoring</h2>
+            <p>This is a test of an AI agentic workflow. The demo measures the patient's temperature on the 
+                device by calling getTemp() and sends it to the cloud LLM which determines if the patient is in urgent need of medical attention. If so, it responds to have the device workflow call the ambulance by using the local callEmergency() function.</p>
+            <p>The demo will pick a new patient temperature every 5 seconds and re-evaluate from (36 to 42 degrees) and then cycle.</p>
+            <div>
+                <button class="button" :class="{disabled: page.monitoring}" @click="start">Start</button>
+                <button class="button" :class="{disabled: !page.monitoring}" @click="stop">Stop</button>
+            </div>
+
+            <div v-if="page.status">
+                <h3>Status</h3>
+                <p v-html="page.status"></p>
+            </div>
+        </div>
+    </body>
+</html>
+
+<script defer>
+    const {createApp, reactive, ref, onMounted} = Vue
+    createApp({
+        setup() {
+            const page = reactive({
+                monitoring: false,
+                temperature: null,
+                status: null,
+            })
+
+            onMounted(() => { })
+
+            function getTime() {
+                return new Date().toLocaleString() 
+            }
+
+            async function start(event) {
+                page.monitoring = true
+                await monitor(0)
+            }
+
+            async function monitor(count) {
+                try {
+                    let response = await fetch('http://localhost/ai/patient', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'Content-Type': 'application/json',
+                            Origin: window.location.origin,
+                        },
+                        mode: 'cors',
+                        credentials: 'include',
+                        body: JSON.stringify({}),
+                    })
+                    if (response.status != 200) {
+                        throw new Error(await response.text())
+                    }
+                    let text = await response.text()
+                    text = text.replace(/.C\./, 'C.').replace(/\C,/, 'C,')
+                    page.status = marked.parse(text)
+                    if (page.monitoring && count < 7) {
+                        setTimeout(async () => await monitor(count + 1), 5 * 1000)
+                    } else {
+                        page.monitoring = false
+                        page.status = null
+                    }
+                } catch (err) {
+                    alert(`${err.message}.\n\nSorry, the patient status cannot be determined. ${err.message}`)
+                    page.monitoring = false
+                }
+            }
+
+            async function stop(event) {
+                page.monitoring = false
+            }
+            return {page, start, stop}
+        }
+    }).mount('#app')
+</script>
+
+<style>
+.monitor {
+    margin: 20px;
+    font-family:"Inter", ui-sans-serif, system-ui, sans-serif;
+    button {
+        margin-top: 20px;
+        margin-right: 6px;
+        border-radius: 4px;
+        background-color: #42b983;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+    }
+    .button.disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+}
+</style>

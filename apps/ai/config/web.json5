@@ -7,7 +7,7 @@
     documents: '@site',
     listen: ['http://:80'],
     routes: [
-        {match: '/ai/chat/', handler: 'action', methods: ['GET', 'POST']},
+        {match: '/ai/', handler: 'action', methods: ['GET', 'POST']},
         {match: '', handler: 'file', methods: ['GET']},
     ],
     webSockets: {

@@ -6,7 +6,7 @@
     </head>
     <body>
         <div id="app" class="chat">
-            <h1>Test OpenAI Chat Completions API</h1>
+            <h1>Test OpenAI Responses API</h1>
             <div _class="mb-5" v-for="item in page.questions">
                 <div class="question">{{ item.question}}</div>
                 <div class="answer" v-html="item.answer"></div>
@@ -20,7 +20,7 @@
                         name="question"
                         id="question"
                         size="80"
-                        placeholder="Ask any question..."
+                        placeholder="Ask any question ..."
                         required />
                 </div>
                 <div class="thinking" v-if="page.thinking">Thinking ...{{page.dots}}</div>
@@ -39,7 +39,7 @@
             const page = reactive({
                 dots: '',
                 lifespan: 86400 * 1000 * 5,
-                messages: [{role: 'system', content: 'You are a helpful assistant.'}],
+                previousResponseId: null,
                 question: null,
                 questions: [],
                 thinking: null,
@@ -57,9 +57,16 @@
                 if (question) {
                     try {
                         page.thinking = true
-                        page.messages.push({role: 'user', content: question})
-                        let body = { messages: page.messages }
-                        let response = await fetch('http://localhost/ai/completion', {
+                        let body = {
+                            /*
+                            tools: [{
+                                type: 'file_search', 
+                                vector_store_ids: ['vs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'] },
+                            ], */
+                            input: question,
+                            previous_response_id: page.previousResponseId ? page.previousResponseId : undefined,
+                        }
+                        let response = await fetch('http://localhost/ai/responses', {
                             method: 'POST',
                             headers: {
                                 Accept: 'application/json',
@@ -68,13 +75,15 @@
                             },
                             mode: 'cors',
                             credentials: 'include',
-                            body: JSON.stringify(body)
+                            body: JSON.stringify(body),
                         })
                         if (response.status != 200) {
                             throw new Error(await response.text())
                         }
                         let json = await response.json()
-                        let answer = json.choices[0].message.content
+
+                        page.previousResponseId = json.id
+                        let answer = json.output_text
                         if (answer.indexOf('<html') >= 0) {
                             answer = answer.replace(/```html\n/, '').replace(/\n```/, '')
                         } else {
@@ -83,7 +92,6 @@
                         //  Remove cross-references
                         answer = answer.replace(/.*<body>\n/s, '').replace(/<\/body>.*/, '').replace(/.\d+:\d+.source./g, '')
                         page.questions.push({question: page.question, answer})
-                        page.messages.push({role: 'assistant', content: answer})
                         page.question = null
                         page.dots = ''
                     } catch (err) {

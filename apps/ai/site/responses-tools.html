@@ -20,7 +20,7 @@
                         name="question"
                         id="question"
                         size="80"
-                        placeholder="Ask any question about Ioto ..."
+                        placeholder="Ask any question ..."
                         required />
                 </div>
                 <div class="thinking" v-if="page.thinking">Thinking ...{{page.dots}}</div>
@@ -51,6 +51,10 @@
                 }
             })
 
+            function getTime() {
+                return new Date().toLocaleString() 
+            }
+
             async function onSubmit(event) {
                 event.preventDefault()
                 let question = page.question
@@ -59,13 +63,22 @@
                         page.thinking = true
                         let body = {
                             tools: [{
-                                type: 'file_search', 
-                                vector_store_ids: ['vs_67a9c7bc4e148191be905286e03d624a'] },
-                            ],
+                                type: 'function',
+                                name: 'getTime',
+                                description: 'Get the current local time',
+                                parameters: {
+                                    type: 'object',
+                                    properties: {},
+                                    // required: []
+                                },
+                                additionalProperties: false,
+                            }],
+                            // strict: true,
+                            // tool_choice: 'auto',
                             input: question,
                             previous_response_id: page.previousResponseId ? page.previousResponseId : undefined,
                         }
-                        let response = await fetch('http://localhost/ai/chat/response', {
+                        let response = await fetch('http://localhost/ai/response', {
                             method: 'POST',
                             headers: {
                                 Accept: 'application/json',
@@ -81,6 +94,36 @@
                         }
                         let json = await response.json()
 
+                        for (let tool of json.output) {
+                            if (tool.name == 'getTime') {
+                                let time = getTime()
+                                let input = [{role: 'user', content: body.input}]
+                                input.push(tool)
+                                input.push({
+                                    type: 'function_call_output',
+                                    call_id: tool.call_id,
+                                    output: time,
+                                })
+                                body.input = input
+                            }
+                            response = await fetch('http://localhost/ai/response', {
+                                method: 'POST',
+                                headers: {
+                                    Accept: 'application/json',
+                                    'Content-Type': 'application/json',
+                                    Origin: window.location.origin,
+                                },
+                                mode: 'cors',
+                                credentials: 'include',
+                                body: JSON.stringify(body),
+                            })
+                            if (response.status != 200) {
+                                throw new Error(await response.text())
+                            }
+                            break
+                        }
+                        json = await response.json()
+
                         page.previousResponseId = json.id
                         let answer = json.output_text
                         if (answer.indexOf('<html') >= 0) {
@@ -94,7 +137,6 @@
                         page.question = null
                         page.dots = ''
                     } catch (err) {
-                        console.error(`Cannot submit form, please email`, {err})
                         alert(`${err.message}.\n\nSorry, your question could not be submitted. ${err.message}`)
                     } finally {
                         page.thinking = false
