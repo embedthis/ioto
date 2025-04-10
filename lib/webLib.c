@@ -1160,7 +1160,6 @@ static char *findPattern(RBuf *buf, cchar *pattern)
     if (bufLen < patLen) {
         return 0;
     }
-    cp = buf->start;
     endp = buf->start + (bufLen - patLen) + 1;
     for (cp = buf->start; cp < endp; cp++) {
         if ((cp = (char*) memchr(cp, first, endp - cp)) == 0) {
@@ -1192,12 +1191,13 @@ PUBLIC int webConsumeInput(Web *web)
 /*
     Write response headers
  */
-PUBLIC int webWriteHeaders(Web *web)
+PUBLIC ssize webWriteHeaders(Web *web)
 {
     RName *header;
     RBuf  *buf;
     cchar *connection;
     char  date[32];
+    ssize nbytes;
     int   status;
 
     status = web->status;
@@ -1265,14 +1265,14 @@ PUBLIC int webWriteHeaders(Web *web)
         //  Delay adding if using transfer encoding. This optimization eliminates a write per chunk.
         rPutStringToBuf(buf, "\r\n");
     }
-    if (webWrite(web, rGetBufStart(buf), rGetBufLength(buf)) < 0) {
+    if ((nbytes = webWrite(web, rGetBufStart(buf), rGetBufLength(buf))) < 0) {
         rFreeBuf(buf);
         return R_ERR_CANT_WRITE;
     }
     rFreeBuf(buf);
     web->creatingHeaders = 0;
     web->wroteHeaders = 1;
-    return 0;
+    return nbytes;
 }
 
 /*
@@ -1349,8 +1349,9 @@ PUBLIC void webAddAccessControlHeader(Web *web)
 }
 
 /*
-    Write body data. Set bufsize to zero to signify end of body if the content length is not defined.
-    Will close the socket on socket errors
+    Write body data. Caller should set bufsize to zero to signify end of body
+    if the content length is not defined.
+    Will write headers if not alread written. Will close the socket on socket errors.
  */
 PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
 {
@@ -1395,19 +1396,25 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
     } else {
         written = 0;
     }
-    if (web->txRemaining <= 0 || bufsize == 0) {
-        web->finalized = 1;
-    }
     webUpdateDeadline(web);
     return written;
 }
 
 /*
-    Finalize output for this request
+    Finalize normal output for this request. This will ensure headers are written and
+    will finalize transfer-encoding output. For WebSockets this must be called after the
+    handshake is complete and before WebSocket processing begins.
  */
 PUBLIC ssize webFinalize(Web *web)
 {
-    return webWrite(web, 0, 0);
+    ssize nbytes;
+
+    if (web->finalized) {
+        return 0;
+    }
+    nbytes = webWrite(web, 0, 0);
+    web->finalized = 1;
+    return nbytes;
 }
 
 /*
@@ -1442,7 +1449,7 @@ PUBLIC ssize webWriteJson(Web *web, Json *json, int nid, cchar *key)
 }
 
 /*
-    Write a transfer-chunk encoded divider
+    Write a transfer-chunk encoded divider if required
  */
 static int writeChunkDivider(Web *web, ssize size)
 {
@@ -1474,11 +1481,11 @@ PUBLIC void webSetStatus(Web *web, int status)
     Emit a single response and finalize the response output.
     If the status is an error (not 200 or 401), the response will be logged to the error log.
  */
-PUBLIC int webWriteResponse(Web *web, int status, cchar *fmt, ...)
+PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
 {
     va_list ap;
     char    *msg;
-    int     rc;
+    ssize   rc;
 
     if (!fmt) {
         fmt = "";
@@ -1503,11 +1510,9 @@ PUBLIC int webWriteResponse(Web *web, int status, cchar *fmt, ...)
     if (webWriteHeaders(web) < 0) {
         rc = R_ERR_CANT_WRITE;
     } else if (web->status != 204 && !smatch(web->method, "HEAD") && web->txLen > 0) {
-        if (webWrite(web, msg, web->txLen) < 0) {
-            rc = R_ERR_CANT_WRITE;
-        }
+        (void) webWrite(web, msg, web->txLen);
+        rc = webFinalize(web);
     }
-    webFinalize(web);
     if (status != 200 && status != 204 && status != 301 && status != 302 && status != 401) {
         rTrace("web", "%s", msg);
     }
@@ -1515,6 +1520,30 @@ PUBLIC int webWriteResponse(Web *web, int status, cchar *fmt, ...)
         rFree(msg);
     }
     return rc;
+}
+
+PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...)
+{
+    va_list ap;
+    char    *buf;
+    ssize   nbytes;
+
+    if (id <= 0) {
+        id = ++web->lastEventId;
+    }
+    va_start(ap, fmt);
+    buf = sfmtv(fmt, ap);
+    va_end(ap);
+
+    if (!web->wroteHeaders) {
+        webAddHeaderStaticString(web, "Content-Type", "text/event-stream");
+        if (webWriteHeaders(web) < 0) {
+            return R_ERR_CANT_WRITE;
+        }
+    }
+    nbytes = webWriteFmt(web, "id: %ld\nevent: %s\ndata: %s\n\n", id, name, buf);
+    rFree(buf);
+    return nbytes;
 }
 
 /*
@@ -2112,7 +2141,7 @@ static int addHeaders(Web *web)
 
 PUBLIC void webAsync(Web *web, WebSocketProc callback, void *arg)
 {
-    webSocketAsync(web->webSocket, callback, arg);
+    webSocketAsync(web->webSocket, callback, arg, web->rx);
 }
 
 PUBLIC int webWait(Web *web)
@@ -2314,6 +2343,16 @@ static void showServerContext(Web *web, Json *json)
     jsonSetFmt(json, 0, "host.maxUpload", "%lld", host->maxUpload);
 }
 
+static void eventAction(Web *web)
+{
+    int i;
+
+    for (i = 0; i < 100; i++) {
+        webWriteEvent(web, 0, "test", "Event %d", i);
+    }
+    webFinalize(web);
+}
+
 static void formAction(Web *web)
 {
     webAddHeaderStaticString(web, "Cache-Control", "no-cache");
@@ -2428,6 +2467,7 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 {
     char url[128];
 
+    webAddAction(host, SFMT(url, "%s/event", prefix), eventAction, NULL);
     webAddAction(host, SFMT(url, "%s/form", prefix), formAction, NULL);
     webAddAction(host, SFMT(url, "%s/bulk", prefix), bulkOutput, NULL);
     webAddAction(host, SFMT(url, "%s/error", prefix), errorAction, NULL);
@@ -3236,6 +3276,26 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
 
 
 
+/************************************ Locals **********************************/
+
+static int64 conn = 0; /* Connection sequence number */
+
+#define isWhite(c) ((c) == ' ' || (c) == '\t')
+
+static cchar validHeaderChars[128] = {
+    ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
+    ['H'] = 1, ['I'] = 1, ['J'] = 1, ['K'] = 1, ['L'] = 1, ['M'] = 1, ['N'] = 1,
+    ['O'] = 1, ['P'] = 1, ['Q'] = 1, ['R'] = 1, ['S'] = 1, ['T'] = 1, ['U'] = 1,
+    ['V'] = 1, ['W'] = 1, ['X'] = 1, ['Y'] = 1, ['Z'] = 1,
+    ['a'] = 1, ['b'] = 1, ['c'] = 1, ['d'] = 1, ['e'] = 1, ['f'] = 1, ['g'] = 1,
+    ['h'] = 1, ['i'] = 1, ['j'] = 1, ['k'] = 1, ['l'] = 1, ['m'] = 1, ['n'] = 1,
+    ['o'] = 1, ['p'] = 1, ['q'] = 1, ['r'] = 1, ['s'] = 1, ['t'] = 1, ['u'] = 1,
+    ['v'] = 1, ['w'] = 1, ['x'] = 1, ['y'] = 1, ['z'] = 1,
+    ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, ['5'] = 1, ['6'] = 1, ['7'] = 1, ['8'] = 1, ['9'] = 1,
+    ['!'] = 1, ['#'] = 1, ['$'] = 1, ['%'] = 1, ['&'] = 1, ['\''] = 1, ['*'] = 1,
+    ['+'] = 1, ['-'] = 1, ['.'] = 1, ['^'] = 1, ['_'] = 1, ['`'] = 1, ['|'] = 1, ['~'] = 1
+};
+
 /************************************ Forwards *********************************/
 
 static void freeWebFields(Web *web, bool keepAlive);
@@ -3254,10 +3314,6 @@ static bool routeRequest(Web *web);
 static int serveRequest(Web *web);
 static int webActionHandler(Web *web);
 static int validateUrl(Web *web);
-
-/************************************ Locals **********************************/
-
-static int64 conn = 0; /* Connection sequence number */
 
 /************************************* Code ***********************************/
 /*
@@ -3284,12 +3340,19 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
     initWeb(web, listen, sock, 0, 0);
     rAddItem(host->webs, web);
 
+    if (host->flags & WEB_SHOW_REQ_HEADERS) {
+        rLog("raw", "web", "Connect: %s\n", listen->endpoint);
+    }
     webHook(web, WEB_HOOK_CONNECT);
 
     processRequests(web);
 
+    if (host->flags & WEB_SHOW_REQ_HEADERS) {
+        rLog("raw", "web", "Disconnect: %s\n", listen->endpoint);
+    }
     webHook(web, WEB_HOOK_DISCONNECT);
     webFree(web);
+
     host->connections--;
     return 0;
 }
@@ -3669,7 +3732,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
 {
     struct tm tm;
     cchar     *end;
-    char      c, *cp, *key, *prior, *value;
+    char      c, *cp, *endKey, *key, *prior, *t, *value;
 
     if (!headers || *headers == '\0') {
         return 1;
@@ -3682,8 +3745,9 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
             webNetError(web, "Bad headers");
             return 0;
         }
+        endKey = cp;
         *cp++ = '\0';
-        while (*cp && *cp == ' ') cp++;
+        while (*cp && isWhite(*cp)) cp++;
         value = cp;
         while (*cp && *cp != '\r') cp++;
 
@@ -3698,7 +3762,23 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
         }
         *cp++ = '\0';
 
+        // Trim white space from value
+        for (t = cp - 2; t >= value; t--) {
+            if (isWhite(*t)) {
+                *t = '\0';
+            } else {
+                break;
+            }
+        }
+
+        //  Validate header name
+        for (t = key; t < endKey; t++) {
+            if (!validHeaderChars[(uchar) * t]) {
+                return NULL;
+            }
+        }
         c = tolower(*key);
+
         if (upload && c != 'c' && (
                 !scaselessmatch(key, "content-disposition") &&
                 !scaselessmatch(key, "content-type"))) {
@@ -3746,6 +3826,8 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
                 web->since = timegm(&tm);
             }
 #endif
+        } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
+            web->lastEventId = stoi(value);
 
         } else if (c == 'o' && scaselessmatch(key, "origin")) {
             web->origin = value;
@@ -3777,7 +3859,7 @@ PUBLIC cchar *webGetHeader(Web *web, cchar *name)
     for (cp = start; cp < end; cp++) {
         if (scaselessmatch(cp, name)) {
             cp += slen(name) + 1;
-            while (*cp == ' ') cp++;
+            while (isWhite(*cp)) cp++;
             value = cp;
             break;
         }
@@ -3807,7 +3889,7 @@ PUBLIC bool webGetNextHeader(Web *web, cchar **pkey, cchar **pvalue)
     if (start < rGetBufEnd(web->rxHeaders)) {
         *pkey = start;
         cp = start + slen(start) + 1;
-        while (*cp == ' ') cp++;
+        while (isWhite(*cp)) cp++;
         *pvalue = cp;
         return 1;
     }
@@ -3883,8 +3965,8 @@ PUBLIC bool webValidatePath(cchar *path)
 PUBLIC int webReadBody(Web *web)
 {
     WebRoute *route;
-    RBuf  *buf;
-    ssize nbytes;
+    RBuf     *buf;
+    ssize    nbytes;
 
     route = web->route;
     if ((route && route->stream) || web->webSocket || (web->rxRemaining <= 0 && !web->chunked)) {
