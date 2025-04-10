@@ -1065,10 +1065,11 @@ PUBLIC bool rLookupEvent(REvent id)
 
 PUBLIC Ticks rRunEvents(void)
 {
-    Event  *ep, *next, *prior;
-    Ticks  now, deadline;
-    RFiber *fiber;
-    void   *arg;
+    Event      *ep, *next, *prior;
+    Ticks      now, deadline;
+    REventProc proc;
+    RFiber     *fiber;
+    void       *arg;
 
     assert(rIsMain());
 rescan:
@@ -1082,8 +1083,9 @@ rescan:
             arg = ep->arg;
             if (ep->fast) {
                 assert(!ep->fiber);
+                proc = ep->proc;
                 unlinkEvent(ep, prior);
-                (ep->proc)(arg);
+                (proc) (arg);
             } else {
                 fiber = ep->fiber;
                 if (!fiber) {
@@ -1207,11 +1209,12 @@ PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data)
             }
         }
     }
+#ifndef __clang_analyzer__
     watch = rAllocType(Watch);
     watch->proc = proc;
     watch->data = data;
     rPushItem(list, watch);
-    // clang_sa_ignore
+#endif
 }
 
 PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data)
@@ -1298,16 +1301,23 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 #endif
 
 /*
-    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
+    Guard character for stack overflow detection
  */
-#define FIBER_MIN_STACK         ((size_t) (16 * 1024))
+#define GUARD_CHAR 0xFE
 
 /*
-    Track fiber stacks for debug. Ideal to find stack corruption or overflow.
+    Enable to add some extra debug checks
+
+    #define ME_FIBER_ALLOC_DEBUG 1
  */
-#if ME_FIBER_CHECK_STACK
-#define DWRITE(str) write(2, str, strlen(str))
-#endif
+
+/*
+    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
+ */
+#define FIBER_MIN_STACK  ((size_t) (16 * 1024))
+
+//  Write to stderr to avoid printf
+#define DWRITE(str)      write(2, str, strlen(str))
 
 static RFiber mainFiberState;
 static RFiber *mainFiber;
@@ -1374,10 +1384,9 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
     }
     if (fiberCount > fiberPeak) {
         fiberPeak = fiberCount;
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_ALLOC_DEBUG
         {
             char buf[16];
-            //  Don't use printf - it is a pig!
             DWRITE("Peak fibers "); DWRITE(sitosbuf(buf, sizeof(buf), fiberPeak, 10)); DWRITE("\n");
         }
 #endif
@@ -1401,9 +1410,12 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
 #if FIBER_WITH_VALGRIND
     fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stack, (char*) fiber->stack + stackSize);
 #endif
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_GUARD_STACK
+    //  Write a guard pattern
+    memset(fiber->guard, GUARD_CHAR, sizeof(fiber->guard));
+#endif
+#if ME_FIBER_ALLOC_DEBUG
     memset(fiber->stack, 0, stackSize);
-    memset(fiber->filler, 0xFE, sizeof(fiber->filler));
 #endif
     return fiber;
 }
@@ -1587,13 +1599,12 @@ PUBLIC void rLeave(bool *access)
     *access = 0;
 }
 
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_GUARD_STACK
 PUBLIC void rCheckFiber(void)
 {
     static ssize peak = 0;
     char         *base;
     ssize        used;
-    uchar        *cp;
     int          i;
 
     if (rIsMain()) return;
@@ -1604,21 +1615,24 @@ PUBLIC void rCheckFiber(void)
     used = base - (char*) &base;
     if (used > peak) {
         peak = (used + 1023) / 1024 * 1024;
-        //  Don't use printf
+#if ME_FIBER_ALLOC_DEBUG
         DWRITE("Peak fiber stack usage "); DWRITE(sitos(peak / 1024)); DWRITE("k (+16k for o/s)\n");
-        for (i = 0; i < sizeof(currentFiber->filler); i++) {
-            if (currentFiber->filler[i] != (char) 0xFE) {
+#endif
+        for (i = 0; i < sizeof(currentFiber->guard); i++) {
+            if (currentFiber->guard[i] != (char) GUARD_CHAR) {
                 DWRITE("ERROR: Stack overflow detected\n");
                 break;
             }
         }
-        for (cp = currentFiber->stack; cp < &currentFiber->stack[stackSize]; cp++) {
+#if ME_FIBER_ALLOC_DEBUG
+        for (uchar *cp = currentFiber->stack; cp < &currentFiber->stack[stackSize]; cp++) {
             if (*cp != 0) {
                 used = &currentFiber->stack[stackSize] - cp;
                 DWRITE("Actual stack usage "); DWRITE(sitos((used + 1023) / 1024)); DWRITE("k\n");
                 break;
             }
         }
+#endif
     }
 }
 #endif
@@ -2783,6 +2797,9 @@ PUBLIC RName *rLookupNameEntry(RHash *hash, cchar *name)
 {
     int kindex;
 
+    if (name == 0 || hash == 0 || hash->buckets == 0) {
+        return 0;
+    }
     if ((kindex = lookupHash(hash, name, 0, 0)) < 0) {
         return 0;
     }
@@ -2797,6 +2814,9 @@ PUBLIC void *rLookupName(RHash *hash, cchar *name)
     RName *np;
     int   kindex;
 
+    if (name == 0 || hash == 0 || hash->buckets == 0) {
+        return 0;
+    }
     if ((kindex = lookupHash(hash, name, 0, 0)) < 0) {
         return 0;
     }
@@ -2812,6 +2832,9 @@ PUBLIC int rRemoveName(RHash *hash, cchar *name)
     assert(hash);
     assert(name);
 
+    if (name == 0 || hash == 0 || hash->buckets == 0) {
+        return 0;
+    }
     if ((kindex = lookupHash(hash, name, &bindex, &prior)) < 0) {
         return R_ERR_CANT_FIND;
     }
@@ -2916,9 +2939,6 @@ static int lookupHash(RHash *hash, cchar *name, int *bucketIndex, int *priorp)
     RName *np;
     int   bindex, kindex, prior, rc;
 
-    if (name == 0 || hash == 0 || hash->buckets == 0) {
-        return -1;
-    }
     bindex = hash->fn(name, slen(name)) % hash->numBuckets;
     if (bucketIndex) {
         *bucketIndex = bindex;
@@ -3799,6 +3819,8 @@ PUBLIC void rSetLogFilter(cchar *types, cchar *sources, bool force)
 
     seps = "[], \"\t";
     buf = sclone(types);
+
+    next = 0;
     type = stok(buf, seps, &next);
     while (type) {
         enable = "1";
@@ -3812,6 +3834,7 @@ PUBLIC void rSetLogFilter(cchar *types, cchar *sources, bool force)
     rFree(buf);
 
     buf = sclone(sources);
+    next = 0;
     source = stok(buf, seps, &next);
     while (source) {
         enable = "1";
@@ -5128,7 +5151,7 @@ PUBLIC void *rAllocMem(size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_GUARD_STACK
     rCheckFiber();
 #endif
     return ptr;
@@ -5203,7 +5226,7 @@ PUBLIC void *rReallocMem(void *mem, size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_GUARD_STACK
     rCheckFiber();
 #endif
     return ptr;
@@ -6413,6 +6436,7 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
     ctx.start = ctx.buf;
     ctx.end = ctx.buf;
     ctx.len = 0;
+    ctx.flags = 0;
     *ctx.start = '\0';
 
     state = STATE_NORMAL;
@@ -7921,9 +7945,11 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize)
     }
     assert(buf);
     assert(bufsize > 0);
-
+    if (!buf || bufsize <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (sp->flags & R_SOCKET_EOF) {
-        return -1;
+        return R_ERR_CANT_READ;
     }
 #if ME_COM_SSL
     if (sp->tls) {
@@ -7943,14 +7969,14 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize)
                 bytes = 0;                        /* No data available */
             } else if (error == ECONNRESET) {
                 sp->flags |= R_SOCKET_EOF;        /* Disorderly disconnect */
-                bytes = -1;
+                bytes = R_ERR_CANT_READ;
             } else {
                 sp->flags |= R_SOCKET_EOF;        /* Some other error */
                 bytes = -error;
             }
         } else if (bytes == 0) {                  /* EOF */
             sp->flags |= R_SOCKET_EOF;
-            bytes = -1;
+            bytes = R_ERR_CANT_READ;
         }
         break;
     }
@@ -9320,7 +9346,13 @@ PUBLIC char *stok(char *str, cchar *delim, char **last)
 
     assert(delim);
 
-    start = (str || !last) ? str : *last;
+    if (str) {
+        start = str;
+    } else if (last) {
+        start = *last;
+    } else {
+        return 0;
+    }
     if (start == 0) {
         if (last) {
             *last = 0;
@@ -10865,7 +10897,6 @@ static void invokeHandler(int fd, int mask)
     if ((wp->mask | R_TIMEOUT) & mask) {
         rSetWaitMask(wp, 0, 0);
         if (wp->fiber) {
-            assert(!wp->handler);
             fiber = wp->fiber;
         } else {
             assert(wp->handler);
