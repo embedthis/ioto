@@ -188,9 +188,10 @@ PUBLIC int webSocketProcess(WebSocket *ws);
     @param ws WebSocket object
     @param callback Callback function
     @param arg User argument
+    @param buf Buffer containting pre-read data that may have been received as part of reading the HTTP headers.
     @stability Evolving
  */
-PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg);
+PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf);
 
 /**
     Wait for the WebSocket connection to close

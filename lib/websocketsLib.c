@@ -166,9 +166,13 @@ static ssize readSocket(WebSocket *ws)
     ssize nbytes, toRead;
 
     bp = ws->buf;
-    rCompactBuf(bp);
+    //  Compact if empty or insufficient space 
+    if (rGetBufLength(bp) == 0 || rGetBufSpace(bp) < ME_BUFSIZE) {
+        rCompactBuf(bp);
+    }
     rReserveBufSpace(bp, ME_BUFSIZE);
     toRead = rGetBufSpace(bp);
+
     if ((nbytes = rReadSocket(ws->sock, bp->end, toRead, ws->deadline)) < 0) {
         return wsError(ws, 0, "Cannot read from socket");
     }
@@ -215,14 +219,12 @@ static void waitCallback(WebSocket *ws, int mask)
 /*
     Define the WebSocket callback and setup an I/O event handler
  */
-PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg)
+PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf)
 {
     ws->callback = callback;
     ws->callbackArg = arg;
     ws->deadline = MAXINT64;
     ws->fiber = rGetFiber();
-
-    rSetWaitHandler(ws->sock->wait, (RWaitProc) waitCallback, ws, R_READABLE, 0);
 
     /*
         First time, process the connected event
@@ -231,6 +233,10 @@ PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg)
         ws->state = WS_STATE_OPEN;
         invokeCallback(ws, WS_EVENT_OPEN, NULL, 0);
     }
+    if (rGetBufLength(buf) > 0) {
+        invokeCallback(ws, WS_EVENT_MESSAGE, rGetBufStart(buf), rGetBufLength(buf));
+    }
+    rSetWaitHandler(ws->sock->wait, (RWaitProc) waitCallback, ws, R_READABLE, 0);
 }
 
 /*
@@ -472,8 +478,6 @@ static int parseMessage(WebSocket *ws)
         }
         //  Consume the data from the buffer
         rAdjustBufStart(buf, ws->frameLength);
-        rCompactBuf(buf);
-
         if (ws->fin) {
             ws->frame = WS_BEGIN;
         }
