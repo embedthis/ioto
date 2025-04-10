@@ -949,6 +949,51 @@ PUBLIC int ioUpdateLog(bool force)
     return 0;
 }
 
+#if SERVICES_CLOUD
+/*
+    Invoke an Ioto REST API on the device cloud.
+
+    url POST https://xxxxxxxxxx.execute-api.ap-southeast-1.amazonaws.com/tok/action/invoke \
+        'Authorization: xxxxxxxxxxxxxxxxxxxxxxxxxx' \
+        'Content-Type: application/json' \
+        '{name:"AutomationName",context:{propertyName:42}}'
+ */
+PUBLIC Json *ioAPI(cchar *url, cchar *data)
+{
+    Json *response;
+    char urlbuf[160];
+
+    SFMT(urlbuf, "%s/%s", ioto->api, url);
+    response = urlPostJson(urlbuf, data, -1,
+                           "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
+    if (!response) {
+        rError("ai", "Cannot invoke automation");
+        return 0;
+    }
+    return response;
+}
+
+/**
+    Invoke an Ioto automation on the device cloud.
+    data is a string representation of a json object
+    Context {...properties} in strict JSON. Use JSON or JFMT to create the context.
+ */
+PUBLIC int ioAutomation(cchar *name, cchar *context)
+{
+    Json *response;
+    char *data;
+
+    data = sfmt("{\"name\":\"%s\", \"context\":%s}", name, context);
+    response = ioAPI("tok/action/invoke", data);
+    rFree(data);
+    if (!response) {
+        rError("ai", "Cannot invoke automation");
+        return R_ERR_CANT_COMPLETE;
+    }
+    return 0;
+}
+#endif /* SERVICES_CLOUD */
+
 /*
     Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
