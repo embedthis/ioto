@@ -528,23 +528,18 @@ PUBLIC int webStartHost(WebHost *host)
 {
     Json      *json;
     WebListen *listen;
-    JsonNode  *endpoints, *np;
+    JsonNode  *np;
     cchar     *endpoint;
-    int       id;
 
     if (!host || !host->listeners) return 0;
-
     json = host->config;
-    endpoints = jsonGetNode(json, 0, "web.listen");
 
-    if (endpoints) {
-        for (ITERATE_JSON(json, endpoints, np, id)) {
-            endpoint = jsonGet(json, id, 0, 0);
-            if ((listen = allocListen(host, endpoint)) == 0) {
-                return R_ERR_CANT_OPEN;
-            }
-            rAddItem(host->listeners, listen);
+    for (ITERATE_JSON_KEY(json, 0, "web.listen", np, id)) {
+        endpoint = jsonGet(json, id, 0, 0);
+        if ((listen = allocListen(host, endpoint)) == 0) {
+            return R_ERR_CANT_OPEN;
         }
+        rAddItem(host->listeners, listen);
     }
     return 0;
 }
@@ -776,9 +771,8 @@ static cchar *MimeTypes[] = {
  */
 static void loadMimeTypes(WebHost *host)
 {
-    JsonNode *child, *mime;
+    JsonNode *child;
     cchar    **mp;
-    int      id;
 
     host->mimeTypes = rAllocHash(0, R_STATIC_VALUE | R_STATIC_NAME);
     /*
@@ -790,11 +784,8 @@ static void loadMimeTypes(WebHost *host)
     /*
         Overwrite user specified mime types
      */
-    mime = jsonGetNode(host->config, 0, "web.mime");
-    if (mime) {
-        for (ITERATE_JSON(host->config, mime, child, id)) {
-            rAddName(host->mimeTypes, child->name, child->value, 0);
-        }
+    for (ITERATE_JSON_KEY(host->config, 0, "web.mime", child, id)) {
+        rAddName(host->mimeTypes, child->name, child->value, 0);
     }
 }
 
@@ -808,7 +799,6 @@ static void initRoutes(WebHost *host)
     WebRoute *rp;
     cchar    *match;
     char     *methods;
-    int      id;
 
     host->routes = rAllocList(0, 0);
     json = host->config;
@@ -858,7 +848,7 @@ static void initRedirects(WebHost *host)
     JsonNode    *redirects, *np;
     WebRedirect *redirect;
     cchar       *from, *to;
-    int         id, status;
+    int         status;
 
     json = host->config;
     redirects = jsonGetNode(json, 0, "web.redirect");
@@ -1292,14 +1282,12 @@ PUBLIC void webAddStandardHeaders(Web *web)
 {
     WebHost  *host;
     Json     *json;
-    JsonNode *headers, *header;
-    int      id;
+    JsonNode *header;
 
     host = web->host;
     if (host->headers >= 0) {
         json = host->config;
-        headers = jsonGetNode(json, host->headers, 0);
-        for (ITERATE_JSON(json, headers, header, id)) {
+        for (ITERATE_JSON_KEY(json, host->headers, NULL, header, id)) {
             webAddHeaderStaticString(web, header->name, header->value);
         }
     }
@@ -2171,7 +2159,7 @@ static void showRequest(Web *web)
     cchar    *key, *value;
     ssize    len;
     bool     isPrintable;
-    int      i, nid;
+    int      i;
 
     json = jsonAlloc(0);
     jsonSetFmt(json, 0, "url", "%s", web->url);

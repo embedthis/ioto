@@ -2205,46 +2205,49 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
     return 0;
 }
 
-/*
-    Blend conditional sections under "conditional[property]"
-    Currently only supports "{conditional: { profile: { dev: {}, prod: {}}}}"
- */
 static int blendConditional(Json *json, cchar *property)
 {
+    Json     *conditional;
     JsonNode *collection;
     cchar    *value;
-    int      cid, nid, rootId, set;
+    char     *text;
+    int      rootId, id;
 
     rootId = jsonGetId(json, 0, property);
     if (rootId < 0) {
         return 0;
     }
-    cid = jsonGetId(json, rootId, "conditional");
-    if (cid >= 0) {
-        for (ITERATE_JSON_DYNAMIC(json, cid, collection, nid)) {
-            //  Collection name: profile
-            value = 0;
-            if (smatch(collection->name, "profile")) {
-                if ((value = ioto->cmdProfile) == 0) {
-                    value = jsonGet(ioto->config, 0, "profile", "dev");
-                }
+    /*
+        Extract the conditional set as we can't iterate while mutating the JSON
+     */
+    if ((text = jsonToString(json, rootId, "conditional", 0)) == NULL) {
+        return 0;
+    }
+    conditional = jsonParse(text, JSON_PASS_TEXT);
+
+    for (ITERATE_JSON(conditional, NULL, collection, nid)) {
+        value = 0;
+        if (smatch(collection->name, "profile")) {
+            if ((value = ioto->cmdProfile) == 0) {
+                value = jsonGet(ioto->config, 0, "profile", "dev");
             }
-            if (!value) {
-                value = jsonGet(json, 0, collection->name, 0);
-            }
-            if (value) {
-                set = jsonGetId(json, jsonGetNodeId(json, collection), value);
-                if (set >= 0) {
-                    //  WARNING: property references are not stable over a blend
-                    if (jsonBlend(json, 0, property, json, set, 0, JSON_COMBINE) < 0) {
-                        rError("setup", "Cannot blend %s", collection->name);
-                        return R_ERR_CANT_COMPLETE;
-                    }
+        }
+        if (!value) {
+            //  Get the profile name
+            value = jsonGet(json, 0, collection->name, 0);
+        }
+        if (value) {
+            //  Profile exists, so find the target id
+            id = jsonGetId(conditional, jsonGetNodeId(conditional, collection), value);
+            if (id >= 0) {
+                if (jsonBlend(json, 0, property, conditional, id, 0, JSON_COMBINE) < 0) {
+                    rError("setup", "Cannot blend %s", collection->name);
+                    return R_ERR_CANT_COMPLETE;
                 }
             }
         }
-        jsonRemove(json, rootId, "conditional");
     }
+    jsonRemove(json, rootId, "conditional");
     return 0;
 }
 
@@ -2432,7 +2435,7 @@ static void checkRequest(Web *web, JsonNode *signature)
     JsonNode *field, *schema, *var;
     cchar    *required, *role, *value;
     bool     hasWild;
-    int      fid, sid, vid;
+    int      sid;
 
     hasWild = 0;
     for (ITERATE_JSON(ioto->signatures, signature, field, fid)) {
@@ -2540,7 +2543,6 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item)
     Json     *json;
     char     *buf;
     ssize    bytes;
-    int      fid;
 
     if (!item) {
         return 0;
@@ -3172,7 +3174,7 @@ static int describeLogGroup(IotoLog *log)
     JsonNode *groups, *child;
     cchar    *name, *nextToken;
     char     *data;
-    int      id, sid, status;
+    int      sid, status;
 
     assert(log);
 
@@ -3269,7 +3271,7 @@ static int describeStream(IotoLog *log)
     JsonNode *streams, *child;
     cchar    *name, *nextToken;
     char     *data;
-    int      id, sid, status;
+    int      sid, status;
 
     assert(log);
 
@@ -5262,7 +5264,7 @@ static void cleanChanges(Json *json)
     Change   *change;
     JsonNode *key, *keys;
     ssize    count;
-    int      kid, seq;
+    int      seq;
 
     keys = jsonGetNode(json, 0, "keys");
     seq = jsonGetInt(json, 0, "seq", 0);

@@ -221,7 +221,7 @@ static int loadSchema(Db *db, cchar *schema)
     JsonNode *inc;
     cchar    *dir;
     char     dirbuf[ME_MAX_FNAME], *errorMsg, *path;
-    int      blendId, nid;
+    int      blendId;
 
     assert(db);
     assert(schema);
@@ -301,20 +301,19 @@ static int loadSchema(Db *db, cchar *schema)
  */
 static int loadModels(Db *db, Json *json)
 {
-    JsonNode *models, *node, *fp;
+    JsonNode *node, *fp;
     DbField  *field;
     DbModel  *model;
     cchar    *enable, *hash, *mem, *sync;
     char     key[80];
-    int      fid, mid, sid, delay, period;
+    int      sid, delay, period;
 
     assert(db);
     assert(json);
 
     db->models = rAllocHash(0, 0);
-    models = jsonGetNode(json, 0, "models");
 
-    for (ITERATE_JSON(json, models, node, mid)) {
+    for (ITERATE_JSON_KEY(json, 0, "models", node, mid)) {
         sid = jsonGetId(json, 0, sfmtbuf(key, sizeof(key), "process.%s", node->name));
         enable = jsonGet(json, sid, "enable", "both");
 
@@ -480,7 +479,6 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     DbField  *field;
     JsonNode *prop;
     char     *cp;
-    int      pid;
 
     assert(db);
     assert(cmd);
@@ -521,7 +519,7 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
                enum values.
             FUTURE: data validations
          */
-        for (ITERATE_JSON(props, 0, prop, pid)) {
+        for (ITERATE_JSON(props, 0, prop, ppid)) {
             if ((field = rLookupName(model->fields, prop->name)) == 0) {
                 if (smatch(prop->name, getIndexHash(db, "primary"))) {
                     //  Ignore cloud side hash
@@ -1302,18 +1300,19 @@ static int mapTypes(Db *db, DbModel *model, Json *props)
     DbField  *field;
     JsonNode *prop;
     cchar    *value;
-    int      pid;
 
     assert(db);
     assert(model);
     assert(props);
 
-    for (ITERATE_JSON(props, 0, prop, pid)) {
+again:
+    for (ITERATE_JSON(props, 0, prop, ppid)) {
         field = rLookupName(model->fields, prop->name);
         if (!field) {
             //  Unknown field. Maybe context that does not apply for this model
-            jsonRemove(props, pid, 0);
-            continue;
+            jsonRemove(props, ppid, 0);
+            //  Can't iterate and mutate
+            goto again;
         }
         if (prop->type == JSON_PRIMITIVE && smatch(prop->value, "undefined")) {
             continue;
@@ -1363,12 +1362,11 @@ static void selectProperties(Db *db, DbModel *model, Json *props, DbParams *para
 {
     JsonNode *prop;
     DbField  *field;
-    int      pid;
 
-    for (ITERATE_JSON(props, 0, prop, pid)) {
+    for (ITERATE_JSON(props, 0, prop, ppid)) {
         field = rLookupName(model->fields, prop->name);
         if (!field) {
-            jsonRemove(props, pid, 0);
+            jsonRemove(props, ppid, 0);
         }
     }
     if (smatch(cmd, "create") || (smatch(cmd, "update") && params->upsert)) {
@@ -1385,7 +1383,7 @@ static bool matchItem(RbNode *rp, Json *j1, JsonNode *n1, Json *j2, JsonNode *n2
     JsonNode *c1, *c2;
     cchar    *expires;
     char     *now;
-    int      cid, nid, rc;
+    int      nid, rc;
 
     if (j2->count == 0) {
         return 0;
@@ -2276,7 +2274,6 @@ PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent)
     Json     *props;
     JsonNode *item, *model;
     char     *str;
-    int      id, mid;
 
     for (ITERATE_JSON(json, parent, model, mid)) {
         for (ITERATE_JSON(json, model, item, id)) {
