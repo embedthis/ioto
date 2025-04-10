@@ -21,7 +21,8 @@
 
 PUBLIC int ioInitAI(void)
 {
-    cchar *endpoint, *key;
+    cchar *endpoint, *key, *show;
+    int   flags = 0;
 
     /*
         FUTURE: key = rLookupName(ioto->keys, "OPENAI_KEY")
@@ -33,7 +34,21 @@ PUBLIC int ioInitAI(void)
         }
     }
     endpoint = jsonGet(ioto->config, 0, "endpoint", "https://api.openai.com/v1");
-    return openaiInit(endpoint, key, ioto->config);
+
+    show = ioto->cmdAIShow ? ioto->cmdAIShow : jsonGet(ioto->config, 0, "log.show", 0);
+    if (!show) {
+        show = getenv("AI_SHOW");
+    }
+    flags = 0;
+    if (show) {
+        if (schr(show, 'R')) {
+            flags |= AI_SHOW_REQ;
+        }
+        if (schr(show, 'r')) {
+            flags |= AI_SHOW_RESP;
+        }
+    }
+    return openaiInit(endpoint, key, ioto->config, flags);
 }
 
 PUBLIC void ioTermAI(void)

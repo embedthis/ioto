@@ -2,7 +2,7 @@
     name: "ioto",
     title: "Ioto",
     description: "Ioto Device agent",
-    version: "2.6.0",
+    version: "2.7.0",
     keywords: [
         "ioto",
         "Embedthis"
@@ -32,13 +32,13 @@
     ],
     import: true,
     dependencies: {
-        openai: "~1",
         certs: "~1",
         crypt: "~1",
         db: "~1",
         json: "~1",
         manager: "~1",
         mqtt: "~1",
+        openai: "~1",
         osdep: "~1",
         r: "~1",
         ssl: "~1",

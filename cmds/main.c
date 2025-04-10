@@ -113,6 +113,7 @@ int main(int argc, char **argv)
         } else if (smatch(argp, "--debug") || smatch(argp, "-d")) {
             trace = TRACE_DEBUG_FILTER;
             ioto->cmdWebShow = "hH";
+            ioto->cmdAIShow = "rR";
 
         } else if (smatch(argp, "--exit")) {
             if (argind >= argc) {
