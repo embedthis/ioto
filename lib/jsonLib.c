@@ -8,7 +8,7 @@
 
 
 
-/********* Start of file src/jsonLib.c ************/
+/********* Start of file ../../../src/jsonLib.c ************/
 
 /*
     json.c - JSON parser and query engine.
@@ -154,8 +154,8 @@ static void initNode(Json *json, int nid)
 /*
     Set the name and value of a node.
  */
-static void setNode(Json *json, int nid, int type, cchar *name, bool allocatedName,
-                    cchar *value, bool allocatedValue)
+static void setNode(Json *json, int nid, int type, cchar *name, int allocatedName,
+                    cchar *value, int allocatedValue)
 {
     JsonNode *node;
 
@@ -164,30 +164,42 @@ static void setNode(Json *json, int nid, int type, cchar *name, bool allocatedNa
 
     node = &json->nodes[nid];
     node->type = type;
-    if (name) {
+
+    if (name != node->name && !smatch(name, node->name)) {
         if (node->allocatedName) {
+            node->allocatedName = 0;
             rFree(node->name);
         }
-        node->allocatedName = allocatedName;
-        if (allocatedName) {
-            name = sclone(name);
+        node->name = 0;
+
+        if (name) {
+            node->allocatedName = allocatedName;
+            if (allocatedName) {
+                name = sclone(name);
+            }
+            node->name = (char*) name;
         }
-        node->name = (char*) name;
     }
-    if (value && value != node->value && !smatch(value, node->value)) {
+
+    if (value != node->value && !smatch(value, node->value)) {
 #if JSON_TRIGGER
         if (json->trigger) {
             (json->trigger)(json->triggerArg, json, node, name, value, node->value);
         }
 #endif
         if (node->allocatedValue) {
+            node->allocatedValue = 0;
             rFree(node->value);
         }
-        node->allocatedValue = allocatedValue;
-        if (allocatedValue) {
-            value = sclone(value);
+        node->value = 0;
+
+        if (value) {
+            node->allocatedValue = allocatedValue;
+            if (allocatedValue) {
+                value = sclone(value);
+            }
+            node->value = (char*) value;
         }
-        node->value = (char*) value;
     }
 }
 
@@ -995,7 +1007,7 @@ static int findProperty(Json *json, int nid, cchar *property)
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 {
     char *property, *rest;
-    int  cid, id, qtype;
+    int  cid, id, ntype, qtype;
 
     assert(json);
     assert((0 <= nid && nid < json->count) || json->count == 0);
@@ -1024,16 +1036,28 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
                     setNode(json, cid, qtype, property, 1, 0, 0);
 
                 } else if (json->nodes[nid].type == JSON_ARRAY && smatch(property, "$")) {
-                    setNode(json, cid, type, 0, 1, 0, 0);
+                    if (type == JSON_OBJECT || type == JSON_ARRAY) {
+                        setNode(json, cid, type, property, 1, 0, 0);
+                    } else {
+                        setNode(json, cid, type, property, 1, value, 1);
+                    }
 
                 } else {
                     setNode(json, cid, type, property, 1, value, 1);
                 }
                 id = cid;
 
-            } else if (!rest) {
-                //  Property found. Just update the value
-                setNode(json, id, type, 0, 0, value, 1);
+            } else {
+                if (rest) {
+                    ntype = json->nodes[id].type;
+                    //  Node type mismatch. But allow query type to be an array index even if node is an object
+                    if (ntype != qtype && !(ntype == JSON_OBJECT && qtype == JSON_ARRAY)) {
+                        setNode(json, id, qtype, property, 1, 0, 0);
+                    }
+                } else {
+                    //  Property found. Just update the value
+                    setNode(json, id, type, property, 1, value, 1);
+                }
             }
         } else {
             /*
@@ -1105,17 +1129,15 @@ PUBLIC int jsonGetId(Json *json, int nid, cchar *key)
 }
 
 /*
-    Get the nth child node below a node specified by "nid"
+    Get the nth child node below a node specified by "pid"
  */
-PUBLIC JsonNode *jsonGetChildNode(Json *json, int nid, int nth)
+PUBLIC JsonNode *jsonGetChildNode(Json *json, int pid, int nth)
 {
-    JsonNode *child, *parent;
-    int      id;
+    JsonNode *child;
 
     assert(json);
 
-    parent = jsonGetNode(json, nid, 0);
-    for (ITERATE_JSON(json, parent, child, id)) {
+    for (ITERATE_JSON_ID(json, pid, child, id)) {
         if (--nth <= 0) {
             return child;
         }
@@ -1239,16 +1261,24 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
     return jquery(json, nid, key, value, type);
 }
 
-PUBLIC int jsonSetJson(Json *json, int nid, cchar *key, cchar *value)
+PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
 {
+    va_list ap;
     Json    *jvalue;
+    char    *value;
 
-    if (value == 0) {
+    if (fmt == 0) {
         return R_ERR_BAD_ARGS;
     }
+    va_start(ap, fmt);
+    value = sfmtv(fmt, ap);
+    va_end(ap);
+
     if ((jvalue = jsonParseString(value, 0, 0)) == 0) {
+        rFree(value);
         return R_ERR_BAD_ARGS;
     }
+    rFree(value);
     return jsonBlend(json, nid, key, jvalue, 0, 0, JSON_OVERWRITE);
 }
 
@@ -1291,10 +1321,7 @@ PUBLIC int jsonSetFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
     va_start(ap, fmt);
     value = sfmtv(fmt, ap);
     va_end(ap);
-    if (smatch(value, "(null)")) {
-        rFree(value);
-        value = sclone("null");
-    }
+
     result = jsonSet(json, nid, key, value, sleuthValueType(value, slen(value)));
     rFree(value);
     return result;
@@ -1305,6 +1332,11 @@ PUBLIC int jsonSetNumber(Json *json, int nid, cchar *key, int64 value)
     char buf[32];
 
     return jsonSet(json, nid, key, sitosbuf(buf, sizeof(buf), value, 10), JSON_PRIMITIVE);
+}
+
+PUBLIC int jsonSetString(Json *json, int nid, cchar *key, cchar *value)
+{
+    return jsonSet(json, nid, key, value, JSON_STRING);
 }
 
 /*
@@ -1584,7 +1616,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
     JsonNode *dp, *sp, *spc, *dpc;
     cchar    *property;
     char     *srcData, *value;
-    int      at, id, dlen, slen, sidc, didc, kind, pflags;
+    int      at, id, dlen, slen, didc, kind, pflags;
 
     if (dest->flags & JSON_LOCK) {
         return jerror(dest, "Cannot blend into a locked JSON object");
@@ -1634,6 +1666,10 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
         }
     }
     if (sp->type & JSON_OBJECT) {
+        if (!(dp->type & JSON_OBJECT)) {
+            // Convert destination to object
+            setNode(dest, did, sp->type, dp->name, 1, 0, 0);
+        }
         //  Examine each property for: JSON_APPEND (default) | JSON_REPLACE)
         for (ITERATE_JSON(src, sp, spc, sidc)) {
             property = src->nodes[sidc].name;
@@ -1659,7 +1695,6 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
             if ((didc = findProperty(dest, did, property)) < 0) {
                 // Absent in destination, copy node and children
                 if (!(pflags & JSON_REPLACE)) {
-                    // slen = spc->last - sidc;
                     at = dp->last;
                     insertNodes(dest, at, 1, did);
                     dp = &dest->nodes[did];
@@ -1672,7 +1707,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
                         dp = &dest->nodes[did];
                     } else {
                         copyNodes(dest, at, src, sidc, 1);
-                        setNode(dest, at, spc->type, property, 1, 0, 0);
+                        setNode(dest, at, spc->type, property, 1, spc->value, 1);
                     }
                 }
 
@@ -1681,7 +1716,6 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
                 dpc = &dest->nodes[didc];
                 if (spc->type & JSON_OBJECT && !(dpc->type & JSON_OBJECT)) {
                     removeNodes(dest, didc, dpc->last - didc - 1);
-                    // dp = &dest->nodes[did];
                     setNode(dest, didc, JSON_OBJECT, property, 1, 0, 0);
                 }
                 if (jsonBlend(dest, didc, 0, src, sidc, 0, pflags) < 0) {
@@ -1701,6 +1735,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
                 for (ITERATE_JSON(src, sp, spc, sidc)) {
                     for (ITERATE_JSON(dest, dp, dpc, didc)) {
                         if (dpc->value && *dpc->value && smatch(dpc->value, spc->value)) {
+                            //  We're mutating the destination here, but immediately breaking out of the loop
                             removeNodes(dest, didc, 1);
                             dp = &dest->nodes[did];
                             break;
@@ -1729,6 +1764,11 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
             if (--slen > 0) {
                 // Keep the existing array and just copy the elements
                 copyNodes(dest, did + 1, src, sid + 1, slen);
+                if (dp->allocatedValue) {
+                    rFree(dp->value);
+                    dp->value = 0;
+                }
+                dp->type = JSON_ARRAY;
             }
         }
     } else {
@@ -1842,6 +1882,15 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str)
         result = sclone("");
     }
     return result;
+}
+
+PUBLIC int jsonCheckIteration(struct Json *json, int count, int nid)
+{
+    if (json->count != count) {
+        rError("json", "Json iteration error. MUST not permute JSON nodes while iterating.");
+        return R_ERR_BAD_ARGS;
+    }
+    return nid;
 }
 
 static bool isfnumber(cchar *s, ssize len)

@@ -71,21 +71,66 @@ struct JsonNode;
 #define JSON_BARE       0x1000             /**< Save on a single line without quotes or [] */
 
 /**
-    This iterates over the children under the "parent" id. The child->last points to one past the end of the
+    These macros iterates over the children under the "parent" id. The child->last points to one past the end of the
     Property value and parent->last points to one past the end of the parent object.
-    WARNING: this macro requires a stable JSON collection. I.e. must not be modified in the loop body.
-    Use ITERATE_JSON_DYNAMIC if you intend to modify the JSON in the body.
+    WARNING: this macro requires a stable JSON collection. I.e. the collection must not be modified in the loop body.
+    Insertions and removals in prior nodes in the JSON tree will change the values pointed to by the child pointer and
+    will impact further iterations.
+    The jsonCheckIteration function will catch some (but not all) modifications to the JSON tree.
+ */
+
+/**
+    Iterate over the children under the "parent" node.
+    @description Do not mutate the JSON tree while iterating.
+    @param json The JSON object
+    @param parent The parent node
+    @param child The child node
+    @param nid The node ID
+    @stability Evolving
  */
 #define ITERATE_JSON(json, parent, child, nid) \
-        nid = (int) ((parent ? parent : json->nodes) - json->nodes + 1); \
-        (json->count > 0) && json->nodes && (nid < (parent ? parent : json->nodes)->last) && \
-        ((child = &json->nodes[nid]) != 0); \
-        nid = child->last
+        int pid = (int) ((parent ? parent : json->nodes) - json->nodes), nid = pid + 1, _count = 0; \
+        (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
+        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
+/**
+    Iterate over the children under a node identified by its ID
+    @description Do not mutate the JSON tree while iterating.
+    @param json The JSON object
+    @param pid The parent node ID
+    @param child The child node
+    @param nid The node ID
+    @stability Evolving
+ */
+#define ITERATE_JSON_ID(json, pid, child, nid) \
+        int nid = pid + 1, _count = 0; \
+        (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
+        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
+
+/**
+    Iterate over the children under a given key node
+    @description Do not mutate the JSON tree while iterating.
+    @param json The JSON object
+    @param baseId The node from which to search for the key
+    @param key The key to search for
+    @param child The child node
+    @param nid The node ID
+    @stability Evolving
+ */
+#define ITERATE_JSON_KEY(json, baseId, key, child, nid) \
+        int parentId = jsonGetId(json, baseId, key), nid = parentId + 1, _count = 0; \
+        (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[parentId].last) && \
+        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
+
+//  DEPRECATED - use ITERATE_JSON_ID
 #define ITERATE_JSON_DYNAMIC(json, pid, child, nid) \
-        nid = pid + 1; \
-        (json->count > 0) && json->nodes && (nid < json->nodes[pid].last) && ((child = &json->nodes[nid]) != 0); \
-        nid = json->nodes[nid].last
+        int nid = pid + 1, _count = 0; \
+        (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
+        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
 /**
     JSON Object
@@ -392,6 +437,8 @@ PUBLIC char *jsonConvert(cchar *fmt, ...);
     Convert a string into strict json string in a buffer.
     @param fmt Printf style format string
     @param ... Args for format
+    @param buf Destination buffer
+    @param size Size of the destination buffer
     @return The reference to the buffer
     @stability Evolving
  */
@@ -478,15 +525,16 @@ PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int f
 PUBLIC int jsonSet(Json *obj, int nid, cchar *key, cchar *value, int type);
 
 /**
-    Update a key in the JSON object with a JSON object value
+    Update a key in the JSON object with a JSON object value passed as a JSON5 string
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
-    @param value JSON string.
-    @return Positive node id if updated successfully. Otherwise a negative error code.
+    @param fmt JSON string.
+    @param ... Args for format
+    @return Zero if updated successfully. Otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC int jsonSetJson(Json *json, int nid, cchar *key, cchar *value);
+PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...);
 
 /**
     Update a property in the JSON object with a boolean value.
@@ -549,6 +597,17 @@ PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...);
     @stability Evolving
  */
 PUBLIC int jsonSetNumber(Json *json, int nid, cchar *key, int64 value);
+
+/**
+    Update a property in the JSON object with a string value.
+    @param json Parsed JSON object returned by jsonParse
+    @param nid Base node ID from which to start search for key. Set to zero for the top level.
+    @param key Property name to add/update. This may include ".". For example: "settings.mode".
+    @param value String value.
+    @return Positive node id if updated successfully. Otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC int jsonSetString(Json *json, int nid, cchar *key, cchar *value);
 
 /**
     Directly update a node value.
@@ -620,6 +679,15 @@ PUBLIC void jsonPrint(Json *json);
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str);
 
+/**
+    Check if the iteration is valid
+    @param json Json object
+    @param count Prior json count of nodes
+    @param nid Node id
+    @return Node id if valid, otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC int jsonCheckIteration(Json *json, int count, int nid);
 #ifdef __cplusplus
 }
 #endif

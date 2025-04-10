@@ -353,16 +353,19 @@ static int run()
 
 static int blendFiles(Json *json)
 {
-    Json     *inc;
+    Json     *blend, *inc;
     JsonNode *item;
     char     *dir, *err, *file;
-    int      bid, nid;
+    char     *toBlend;
 
-    bid = jsonGetId(json, 0, "blend");
-    if (bid < 0) {
+    /*
+        Extract the blend[] array from the input JSON as we can't iterate while mutating the JSON
+     */
+    if ((toBlend = jsonToString(json, 0, "blend", 0)) == NULL) {
         return 0;
     }
-    for (ITERATE_JSON_DYNAMIC(json, bid, item, nid)) {
+    blend = jsonParse(toBlend, JSON_PASS_TEXT);
+    for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
         if (path && *path) {
             dir = rDirname(sclone(path));
             file = sjoin(dir, "/", item->value, NULL);
@@ -379,6 +382,7 @@ static int blendFiles(Json *json)
         rFree(file);
     }
     jsonRemove(json, 0, "blend");
+    jsonFree(blend);
     return 0;
 }
 
@@ -386,13 +390,13 @@ static int mergeConditionals(Json *json, cchar *property)
 {
     JsonNode *collection;
     cchar    *value;
-    int      cid, nid, set;
+    int      cid, set;
 
     cid = jsonGetId(json, 0, "conditional");
     if (cid < 0) {
         return 0;
     }
-    for (ITERATE_JSON_DYNAMIC(json, cid, collection, nid)) {
+    for (ITERATE_JSON_ID(json, cid, collection, nid)) {
         //  Collection name: profile
         value = 0;
         if (smatch(collection->name, "profile")) {
@@ -450,7 +454,6 @@ static void outputAll(Json *json)
 {
     JsonNode *child, *node;
     char     *name, *output, *property;
-    int      id;
 
     if (format == JSON_FORMAT_JSON) {
         output = jsonToString(json, 0, 0, 0);
@@ -480,7 +483,7 @@ static void outputNameValue(Json *json, JsonNode *node, char *name)
     JsonNode *child;
     cchar    *value;
     char     *exp, *property;
-    int      id, type;
+    int      type;
 
     if (node) {
         value = node->value;
