@@ -8,7 +8,7 @@
 
 
 
-/********* Start of file src/openai.c ************/
+/********* Start of file src/openaiLib.c ************/
 
 /*
     openai.c - OpenAI support
@@ -23,12 +23,15 @@
 /*********************************** Defines **********************************/
 
 #ifndef OPENAI_MAX_URL
-    #define OPENAI_MAX_URL    512              /**< Sanity length of a URL */
+    #define OPENAI_MAX_URL 512                 /**< Sanity length of a URL */
 #endif
+
+static char *makeOutputText(Json *response);
+static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg);
 
 /************************************ Code ************************************/
 
-PUBLIC int openaiInit(cchar *endpoint, cchar *key, Json *config)
+PUBLIC int openaiInit(cchar *endpoint, cchar *key, Json *config, int flags)
 {
     if ((openai = rAllocType(OpenAI)) == NULL) {
         return R_ERR_MEMORY;
@@ -36,6 +39,7 @@ PUBLIC int openaiInit(cchar *endpoint, cchar *key, Json *config)
     openai->endpoint = sclone(endpoint);
     openai->realTimeEndpoint = sreplace(endpoint, "https://", "wss://");
     openai->headers = sfmt("Authorization: Bearer %s\r\nContent-Type: application/json\r\n", key);
+    openai->flags = flags;
     return 0;
 }
 
@@ -74,20 +78,138 @@ PUBLIC Json *openaiChatCompletion(Json *props)
 }
 
 /*
-    Submit a request to OpenAI Response API
-    Message is the prompt to submit
+    Submit a request to OpenAI Responses API and process the response invoking agents/tools as required.
     Props is a JSON object of Response API parameters
     The default model is gpt-4o-mini, truncation is auto, and tools are unset.
     Caller must free the returned JSON object
+    The callback to invoke tools and agents is "agent(arg)"
  */
-PUBLIC Json *openaiResponse(Json *props)
+PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
 {
-    Json     *request, *response;
-    JsonNode *output, *child, *content, *item;
-    char     *data, url[OPENAI_MAX_URL];
-    cchar    *text, *type;
+    Json *next, *request, *response;
+    Url  *up;
+    char *data, *text, url[OPENAI_MAX_URL];
+
+    request = jsonClone(props, 0);
+    if (!jsonGet(request, 0, "model", 0)) {
+        jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
+    }
+    if (!jsonGet(request, 0, "truncation", 0)) {
+        jsonSet(request, 0, "truncation", "auto", JSON_STRING);
+    }
+    /*
+        Submit the request using the authentication headers
+     */
+    do {
+        data = jsonToString(request, 0, NULL, JSON_STRICT);
+        if (openai->flags & AI_SHOW_REQ) {
+            rInfo("openai", "Request: %s", jsonString(request));
+        }
+        up = urlAlloc(0);
+        response = urlJson(up, "POST", SFMT(url, "%s/responses", openai->endpoint), data, -1, openai->headers);
+        rFree(data);
+
+        if (!response) {
+            rError("openai", "Failed to submit request to OpenAI: %s", urlGetError(up));
+            jsonFree(request);
+            urlFree(up);
+            return NULL;
+        }
+        urlFree(up);
+
+        next = processResponse(request, response, agent, arg);
+
+        jsonFree(request);
+        request = next;
+    } while (request != NULL);
+
+    text = makeOutputText(response);
+    if (openai->flags & AI_SHOW_RESP) {
+        rInfo("openai", "Response Text: %s", text);
+    }
+    jsonSet(response, 0, "output_text", text, JSON_STRING);
+    rFree(text);
+    return response;
+}
+
+/*
+    Process the OpenAI response and invoke the agents/tools as required
+ */
+static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg)
+{
+    JsonNode *item;
+    cchar    *name, *toolId, *type;
+    char     *result;
+    int      count;
+
+    if (openai->flags & AI_SHOW_RESP) {
+        rInfo("openai", "Response: %s", jsonString(response));
+    }
+    if (!smatch(jsonGet(response, 0, "output[0].type", 0), "function_call")) {
+        //  No agents/tools required
+        return NULL;
+    }
+    request = jsonClone(request, 0);
+    jsonSetJsonFmt(request, 0, "input[$]", "{role: 'user', content: '%s'}", jsonGet(request, 0, "input", 0));
+    jsonBlend(request, 0, "input[$]", response, 0, "output[0]", 0);
+
+    /*
+        Invoke all the required agents & tools
+     */
+    count = 0;
+    for (ITERATE_JSON_KEY(response, 0, "output", item, tid)) {
+        type = jsonGet(response, tid, "type", 0);
+        if (!smatch(type, "function_call")) {
+            continue;
+        }
+        name = jsonGet(response, tid, "name", 0);
+        toolId = jsonGet(response, tid, "call_id", 0);
+
+        /*
+            Invoke the agent/tool to process and get a result
+         */
+        if ((result = agent(name, request, response, arg)) == 0) {
+            rError("openai", "Agent %s returned NULL", name);
+            count = 0;
+            break;
+        }
+
+        jsonSetJsonFmt(request, 0, "input[$]", 
+            "{type: 'function_call_output', call_id: '%s', output: '%s'}", toolId, result);
+        rFree(result);
+        count++;
+    }
+    if (count == 0) {
+        jsonFree(request);
+        return NULL;
+    }
+    return request;
+}
+
+static char *makeOutputText(Json *response)
+{
+    JsonNode *child, *item;
     RBuf     *buf;
-    int      cid, iid;
+
+    buf = rAllocBuf(0);
+    for (ITERATE_JSON_KEY(response, 0, "output", child, cid)) {
+        if (smatch(jsonGet(response, cid, "type", 0), "message")) {
+            for (ITERATE_JSON_KEY(response, cid, "content", item, iid)) {
+                if (smatch(jsonGet(response, iid, "type", 0), "output_text")) {
+                    rPutToBuf(buf, "%s\n", jsonGet(response, iid, "text", 0));
+                }
+            }
+        }
+    }
+    return rBufToStringAndFree(buf);
+}
+
+PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
+{
+    Url  *up;
+    Json *request;
+    char *data, url[OPENAI_MAX_URL];
+    int  status;
 
     request = props ? jsonClone(props, 0) : jsonAlloc(0);
     if (!jsonGet(request, 0, "model", 0)) {
@@ -96,6 +218,7 @@ PUBLIC Json *openaiResponse(Json *props)
     if (!jsonGet(request, 0, "truncation", 0)) {
         jsonSet(request, 0, "truncation", "auto", JSON_STRING);
     }
+    jsonSetBool(request, 0, "stream", 1);
     data = jsonToString(request, 0, NULL, JSON_STRICT);
     rDebug("openai", "Request: %s", jsonString(request));
     jsonFree(request);
@@ -103,33 +226,15 @@ PUBLIC Json *openaiResponse(Json *props)
     /*
         Submit the request using the authentication headers
      */
-    response = urlPostJson(SFMT(url, "%s/responses", openai->endpoint), data, -1, "%s", openai->headers);
+    up = urlAlloc(0);
+    status = urlFetch(up, "POST", SFMT(url, "%s/responses", openai->endpoint), data, -1, "%s", openai->headers);
     rFree(data);
-
-    /*
-        Parse the response and aggregate the output text into "output_text" for convenience
-     */
-    buf = rAllocBuf(0);
-    if (response && (output = jsonGetNode(response, 0, "output")) != 0) {
-        for (ITERATE_JSON(response, output, child, cid)) {
-            type = jsonGet(response, cid, "type", 0);
-            if (smatch(type, "message")) {
-                if ((content = jsonGetNode(response, cid, "content")) != 0) {
-                    for (ITERATE_JSON(response, content, item, iid)) {
-                        type = jsonGet(response, iid, "type", 0);
-                        if (smatch(type, "output_text")) {
-                            text = jsonGet(response, iid, "text", 0);
-                            rPutToBuf(buf, "%s\n", text);
-                        }
-                    }
-                }
-            }
-        }
+    if (status != URL_CODE_OK) {
+        urlFree(up);
+        return NULL;
     }
-    jsonSet(response, 0, "output_text", rBufToStringAndFree(buf), JSON_STRING);
-    rDebug("openai", "Response: %s", jsonString(response));
-    //  Caller must free response
-    return response;
+    urlSseAsync(up, callback, arg);
+    return up;
 }
 
 /*
@@ -138,9 +243,9 @@ PUBLIC Json *openaiResponse(Json *props)
  */
 PUBLIC Url *openaiRealTimeConnect(Json *props)
 {
-    Json           *request;
-    Url            *up;
-    char           headers[256], url[OPENAI_MAX_URL];
+    Json *request;
+    Url  *up;
+    char headers[256], url[OPENAI_MAX_URL];
 
     request = props ? jsonClone(props, 0) : jsonAlloc(0);
     if (!jsonGet(request, 0, "model", 0)) {
@@ -165,14 +270,7 @@ PUBLIC Url *openaiRealTimeConnect(Json *props)
 }
 
 /*
-    List openAI models. Returns a JSON object with a list of models of the form: [
-        {
-            id: "o1-mini-2024-09-12",
-            object: "model",
-            created: 1725648979,
-            owned_by: "system"
-        },
-    ]
+    List openAI models. Returns a JSON object with a list of models of the form: [{id, object, created, owned_by}]
  */
 PUBLIC Json *openaiListModels()
 {
