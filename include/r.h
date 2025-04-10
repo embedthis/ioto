@@ -17,6 +17,11 @@
 
 /********************************** Includes **********************************/
 
+#if R_USE_ME
+   #include "me.h"
+#endif
+#include "osdep.h"
+
 #ifndef R_USE_FILE
     #define R_USE_FILE            1
     #undef R_USE_BUF
@@ -80,13 +85,17 @@
     #define R_USE_PLATFORM_REPORT ESP32
 #endif
 
-#if R_USE_ME
-   #include "me.h"
+#ifndef ME_FIBER_GUARD_STACK
+    #if ME_DEBUG
+        #define ME_FIBER_GUARD_STACK 1
+    #else
+        #define ME_FIBER_GUARD_STACK 0
+    #endif
 #endif
+
 #if R_USE_FIBER
     #include "uctx.h"
 #endif
-#include "osdep.h"
 
 /*********************************** Defines **********************************/
 #if ME_COM_R
@@ -130,8 +139,8 @@ struct Rtls;
     #define ME_R_PRINT           1
 #endif
 
-#ifndef ME_FIBER_CHECK_STACK
-    #define ME_FIBER_CHECK_STACK 0
+#ifndef ME_FIBER_GUARD_STACK
+    #define ME_FIBER_GUARD_STACK 0
 #endif
 
 /************************************ Error Codes *****************************/
@@ -431,8 +440,8 @@ typedef struct RFiber {
 #if FIBER_WITH_VALGRIND
     uint stackId;
 #endif
-#if ME_FIBER_CHECK_STACK
-    char filler[64];
+#if ME_FIBER_GUARD_STACK
+    char guard[64];
 #endif
     uchar stack[];
 } RFiber;
@@ -513,7 +522,7 @@ PUBLIC RFiber *rGetFiber(void);
  */
 PUBLIC bool rIsMain(void);
 
-#if ME_FIBER_CHECK_STACK
+#if ME_FIBER_GUARD_STACK
 /**
     CHECK fiber stack usage
     @description This will log peak fiber stack use to the log file
@@ -1177,7 +1186,7 @@ typedef struct RString { void *dummy; } RString;
 /*
     Convenience macros to declare static strings.
  */
-#define SDEF(...) #__VA_ARGS__
+#define SDEF(...)      #__VA_ARGS__
 
 /**
     Convert an integer to a string.
@@ -1397,7 +1406,7 @@ PUBLIC uint shashlower(cchar *str, ssize len);
     @description This catenates strings together with an optional string separator.
         If the separator is NULL, not separator is used. This call accepts a variable list of strings to append,
         terminated by a null argument.
-    @param str First string to catentate
+    @param str First string to concatenate
     @param ... Variable number of string arguments to append. Terminate list with NULL.
     @return Returns an allocated string.
     @stability Evolving
@@ -1407,7 +1416,7 @@ PUBLIC char *sjoin(cchar *str, ...);
 /**
     Catenate strings.
     @description This catenates strings together.
-    @param str First string to catentate
+    @param str First string to concatenate
     @param args Varargs argument obtained from va_start.
     @return Returns an allocated string.
     @stability Evolving
@@ -1417,8 +1426,8 @@ PUBLIC char *sjoinv(cchar *str, va_list args);
 /**
     Join a formatted string to an existing string.
     @description This uses the format and args to create a string that is joined to the first string.
-    @param str First string to catentate
-    @param fmt First string to catentate
+    @param str First string to concatenate
+    @param fmt First string to concatenate
     @param ... Varargs argument obtained from va_start.
     @return Returns an allocated string.
     @stability Evolving
