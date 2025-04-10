@@ -1,7 +1,7 @@
 # EmbedThis Ioto Device Agent
 
-The Ioto agent is an embedded device management agent that can be used for
-cloud-based management or direct management over a local network. 
+The EmbedThis Ioto device agent is an IoT Device Management agent that can be
+used for cloud-based management or direct management over a local network. 
 
 Ioto provides everything you need in an IoT device agent, including: a HTTP web
 server, HTTP client, MQTT client, embedded database and JSON data management.

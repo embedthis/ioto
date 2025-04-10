@@ -225,7 +225,7 @@ PUBLIC char *cryptGetSha1(cuchar *block, ssize length);
 /**
     Get an SHA1 checksum with optional prefix string and buffer length
     @param buf Buffer to checksum
-    @param len Size of the buffer
+    @param length Size of the buffer
     @param prefix String prefix to insert at the start of the result
     @returns An allocated string containing an SHA1 checksum.
     @stability Evolving
@@ -241,7 +241,7 @@ PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix);
     @stability Evolving
     @see cryptGetSha1
  */
-PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen);
+PUBLIC char *cryptGetSha1Base64(cchar *s, ssize length);
 
 /**
     Get a SHA1 hash for the contents of a file.
@@ -358,7 +358,7 @@ PUBLIC char *cryptGetSha256(cuchar *block, ssize length);
     @stability Evolving
     @see cryptGetSha256
  */
-PUBLIC char *cryptGetSha256Base64(cchar *s, ssize ilen);
+PUBLIC char *cryptGetSha256Base64(cchar *s, ssize length);
 
 /**
     Get a SHA256 hash for the contents of a file.
