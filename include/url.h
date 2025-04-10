@@ -22,6 +22,10 @@
 /*********************************** Defines **********************************/
 #if ME_COM_URL
 
+#ifndef URL_SSE
+    #define URL_SSE 1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,23 +89,17 @@ struct Url;
 #define URL_SHOW_RESP_HEADERS           0x10 /**< Trace response headers */
 #define URL_HTTP_0                      0x20 /**< Use HTTP/1.0 */
 
-#if KEEP
-/*
-    UrlProc events
- */
-#define URL_NOTIFY_IO                   1    /**< Streaming I/O event */
-#define URL_NOTIFY_RETRY                2    /**< Retry initiated. Received only if streaming */
-#define URL_NOTIFY_DONE                 3    /**< Request is complete */
-
+#if URL_SSE
 /**
-    URL callback procedure
+    URL SSE callback
     @param up URL object
-    @param event Type of event. Set to URL_NOTIFY_IO, URL_NOTIFY_RETRY or URL_NOTIFY_DONE.
-    @param buf Associated data
-    @param len Associated data length
+    @param id Event ID
+    @param event Type of event.
+    @param data Associated data
+    @param arg User argument
     @stability Evolving
  */
-typedef void (*UrlProc)(struct Url *up, int event, char *buf, ssize len);
+typedef void (*UrlSseProc)(struct Url *up, ssize id, cchar *event, cchar *data, void *arg);
 #endif
 
 /**
@@ -115,29 +113,35 @@ typedef struct Url {
     uint chunked : 4;              /**< Request is using transfer chunk encoding */
     uint close : 1;                /**< Connection should be closed on completion of the current request */
     uint certsDefined : 1;         /**< Certificates have been defined */
-    uint finalized : 1;            /**< The request has been finalized */
+    uint finalized : 1;            /**< The request body has been fully written */
     uint gotResponse : 1;          /**< Response has been read */
+    uint inCallback : 1;           /**< SSE callback is in progress */
+    uint needFree : 1;             /**< Free the URL object */
+    uint nonblock : 1;             /**< Don't block in SSE callback */
     uint protocol : 2;             /**< Use HTTP/1.0 without keep-alive. Defaults to HTTP/1.1. */
+    uint sse : 1;                  /**< SSE request */
     uint upgraded : 1;             /**< WebSocket upgrade has been completed */
     uint wroteHeaders : 1;         /**< Tx headers have been written */
+
     uint flags;                    /**< Alloc flags */
 
     char *url;                     /**< Request URL*/
     char *urlbuf;                  /**< Parsed and tokenized URL*/
     char *method;                  /** HTTP request method */
     char *boundary;                /**< Multipart mime upload file boundary */
-    ssize txLen;                   /**< Length of tx body */
 
+    ssize txLen;                   /**< Length of tx body */
     RBuf *rx;                      /**< Buffer for progressive reading response data */
     char *response;                /**< Response as a string */
     RBuf *responseBuf;             /**< Buffer to hold complete response */
     ssize rxLen;                   /**< Length of rx body */
     ssize rxRemaining;             /**< Remaining rx data to read from the socket */
+    ssize bufLimit;                /**< Maximum number of bytes to buffer from the response */
 
     RBuf *rxHeaders;               /**< Buffer for Rx headers */
     RBuf *txHeaders;               /**< Buffer for Tx headers */
 
-    char *error;                   /**< Error message */
+    char *error;                   /**< Error message for internal errors, not HTTP errors */
     cchar *host;                   /**< Request host */
     cchar *path;                   /**< Request path without leading "/" and query/ref */
     cchar *query;                  /**< Request query portion */
@@ -206,7 +210,7 @@ PUBLIC int urlError(Url *up, cchar *message, ...);
 PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, ssize size, cchar *headers, ...);
 
 /**
-    Fetch a URL and return a JSON response.
+    Fetch a URL and return a JSON response if the HTTP request is successful.
     @description This routine issues a HTTP request and reads and parses the response into a JSON object tree.
         This routine will block the current fiber while waiting for the request to complete. Other fibers continue to
            run.
@@ -229,11 +233,10 @@ PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, ssize size
 /**
     Finalize the request.
     @description This routine finalizes the request and signifies that the entire request including any
-    request body data has been sent to the server. This routine must be called at the end of writing
+    request body data has been sent to the server. This routine MUST be called at the end of writing
     the request body (if any). It will read the response status and headers before returning.
-    If using WebSockets, this should be called before calling urlRunSocket to verify the WebSocket handshake.
-    Internally, this function is implemented by calling urlWrite with a NULL buffer.
-    This call is idempotent.
+    If using WebSockets, this should be called before calling urlWebSocketAsync to verify the WebSocket handshake.
+    Internally, this function is implemented by calling urlWrite with a NULL buffer. This call is idempotent.
     @param up Url object
     @return Zero if successful.
     @stability Evolving
@@ -249,7 +252,9 @@ PUBLIC void urlFree(Url *up);
 
 /**
     Get a URL using a HTTP GET request.
-    @description This routine will block the current fiber while waiting for the request to complete.
+    @description This will issue a HTTP GET request to the specified URL.
+        If the HTTP status is 200, this will return the response body.
+        This routine will block the current fiber while waiting for the request to complete.
         Other fibers continue to run.
     @param url HTTP URL to fetch
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
@@ -282,6 +287,8 @@ PUBLIC cchar *urlGetHeader(Url *up, cchar *header);
 
 /**
     Issue a HTTP GET request and return parsed JSON.
+    @description This will issue a HTTP GET request to the specified URL and if successful, will
+        return the parsed response body.
     @param url HTTP URL to fetch
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
@@ -359,6 +366,8 @@ PUBLIC int urlParse(Url *up, cchar *url);
 
 /**
     Issue a HTTP POST request.
+    @description This will issue a HTTP POST request to the specified URL with the optional body data.
+        Regardless of the HTTP status, this will return the response body.
     @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param size Size of body data for request.
@@ -372,6 +381,8 @@ PUBLIC char *urlPost(cchar *url, cvoid *data, ssize size, cchar *headers, ...);
 
 /**
     Issue a HTTP POST request and return parsed JSON.
+    @description This will issue a HTTP POST request to the specified URL with the optional body data. If successful,
+        it will return the parsed response body.
     @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
     @param len Size of body data for request.
@@ -395,6 +406,14 @@ PUBLIC Json *urlPostJson(cchar *url, cvoid *data, ssize len, cchar *headers, ...
     @stability Evolving
  */
 PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
+
+/**
+    Set the maximum number of bytes to buffer from the response
+    @param up URL object
+    @param limit Maximum number of bytes
+    @stability Evolving
+ */
+PUBLIC void urlSetBufLimit(Url *up, ssize limit);
 
 /**
     Define the certificates to use with TLS
@@ -570,16 +589,58 @@ PUBLIC WebSocket *urlGetWebSocket(Url *up);
     @param arg Argument to pass to the callback function.
     @stability Evolving
  */
-PUBLIC void urlAsync(Url *up, WebSocketProc callback, void *arg);
+PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
+#endif /* ME_COM_WEBSOCKETS */
+
+#if URL_SSE
+/**
+    Wait for SSE events
+    @param up URL object
+    @return Zero if successful.
+    @stability Evolving
+ */
+PUBLIC int urlSseWait(Url *up);
 
 /**
-    Wait for the WebSockets connection to be closed
+    Define an SSE async callback.
+    @description This will invoke the callback function when SSE events are received.
+    @param up URL object
+    @param proc Callback function to invoke for read data.
+    @param arg Argument to pass to the callback function.
+    @stability Evolving
+ */
+PUBLIC void urlSseAsync(Url *up, UrlSseProc proc, void *arg);
+
+/**
+    Get SSE events
+    @param uri URL to get events from
+    @param proc Callback function to invoke for read data.
+    @param arg Argument to pass to the callback function.
+    @param headers Optional request headers.
+    @return Zero if successful.
+    @stability Evolving
+ */
+PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, ...);
+
+/**
+    Set the maximum number of retries for SSE requests
+    @param up URL object
+    @param maxRetries Maximum number of retries
+    @stability Evolving
+ */
+PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
+#endif
+
+#if URL_SSE || ME_COM_WEBSOCKETS
+/**
+    Wait for the connection to be closed
+    @description Used for SSE and WebSocket connections.
     @param up URL object
     @return Zero if successful.
     @stability Evolving
  */
 PUBLIC int urlWait(Url *up);
-#endif
+#endif /* URL_SSE || ME_COM_WEBSOCKETS */
 
 #ifdef __cplusplus
 }

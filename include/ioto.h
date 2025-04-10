@@ -171,6 +171,7 @@ typedef struct Ioto {
     cchar *cmdProfile;         /**< Command line override profile */
     cchar *cmdProduct;         /**< Command line override Product ID Token */
     cchar *cmdTest;            /**< Command line override for services.test */
+    cchar *cmdAIShow;          /**< Command line override for AI request/response trace */
     cchar *cmdWebShow;         /**< Command line override for web request/response trace */
     bool cmdReset : 1;         /** Command line reset */
     int cmdCount;              /** Test iterations */
@@ -263,6 +264,24 @@ PUBLIC void ioInit(void);
     @stability Evolving
  */
 PUBLIC void ioTerm(void);
+
+/**
+    Invoke an Ioto REST API.
+    @param url The URL path to invoke. Should not contain the host/tok portion.
+    @param data The data to send
+    @return The response from the API as a json object. Caller must free.
+    @stability Evolving
+ */
+PUBLIC Json *ioAPI(cchar *url, cchar *data);
+
+/**
+    Invoke an automation on the device cloud.
+    @param name The name of the automation to invoke
+    @param context The context properties to pass to the automation
+    @return 0 on success, -1 on failure
+    @stability Evolving
+ */
+PUBLIC int ioAutomation(cchar *name, cchar *context);
 
 #if SERVICES_SHADOW
 /**

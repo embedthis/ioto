@@ -20,7 +20,7 @@
 #define TRACE_DEBUG_FILTER   "stderr:all:all,!mbedtls"
 #define TRACE_FORMAT         "%S: %T: %M"
 #define DEFAULT_CONFIG \
-                             "{\
+        "{\
     web: {\
         documents: '.',\
         listen: ['http://:80', 'https://:443'],\
@@ -152,8 +152,6 @@ int main(int argc, char **argv)
 
 static void start(void)
 {
-    char ebuf[ME_MAX_IP];
-
     if ((config = jsonParseFile("web.json5", NULL, 0)) == NULL) {
         if ((config = jsonParse(DEFAULT_CONFIG, 0)) == 0) {
             rError("app", "Cannot parse config file \"web.json5\"");
@@ -161,7 +159,7 @@ static void start(void)
         }
     }
     if (endpoint[0]) {
-        jsonSetJson(config, 0, "web", SFMT(ebuf, "{listen: ['%s']}", endpoint));
+        jsonSetJsonFmt(config, 0, "web", "{listen: ['%s']}", endpoint);
     }
     setLog(config);
     if (!show) {

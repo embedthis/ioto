@@ -206,8 +206,8 @@ typedef struct WebHost {
     int64 webSocketsPingPeriod; /** Ping period */
     bool webSocketsValidateUTF; /** Validate UTF */
     bool webSocketsEnable;      /** Enable WebSocket */
-#endif
-#endif
+#endif /* ME_COM_WEBSOCKETS */
+#endif /* ME_WEB_LIMITS */
 } WebHost;
 
 /**
@@ -346,6 +346,7 @@ typedef struct Web {
     Offset rxRemaining;         /**< Amount of rx body data left to read in this request */
     ssize txLen;                /**< Transmit response body content length */
     Offset txRemaining;         /**< Transmit body data remaining to send */
+    ssize lastEventId;          /**< Last event ID (SSE) */
 
     uint status : 16;           /**< Request response HTTP status code */
     uint chunked : 4;           /**< Receive transfer chunk encoding state */
@@ -490,8 +491,12 @@ PUBLIC void webExtendTimeout(Web *web, Ticks timeout);
 
 /**
     Finalize response output.
-    @description This routine will call webWrite(web, NULL, 0);
+    @description This routine MUST be called after all output has been written.
+        It will ensure that headers are written and that transfer-encoding is finalized.
+        For WebSockets this routine is called as part of the WebSockets upgrade by the server.
+        This call is idempotent and can be called multiple times.
     @param web Web object
+    @return The number of bytes written.
     @stability Evolving
  */
 PUBLIC ssize webFinalize(Web *web);
@@ -687,7 +692,7 @@ PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
     Write response data
     @description This routine will block the current fiber if necessary. Other fibers continue to run.
         This routine will write the response HTTP headers if required.
-        Writing a null buffer or zero bufsize finalizes the response and indicates there is no more output. 
+        Writing a null buffer or zero bufsize finalizes the response and indicates there is no more output.
         The webFinalize API is a convenience call for this purpose.
     @pre Must only be called from a fiber.
     @param web Web object
@@ -733,7 +738,7 @@ PUBLIC ssize webWriteJson(Web *web, Json *json, int nid, cchar *key);
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC int webWriteHeaders(Web *web);
+PUBLIC ssize webWriteHeaders(Web *web);
 
 /**
     Write a response
@@ -748,7 +753,18 @@ PUBLIC int webWriteHeaders(Web *web);
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC int webWriteResponse(Web *web, int status, cchar *fmt, ...);
+PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...);
+
+/**
+    Write an SSE event to the client
+    @param web Web object
+    @param id Event ID
+    @param name Event name
+    @param fmt Printf style message string
+    @param ... Format arguments.
+    @stability Evolving
+ */
+PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...);
 
 /*
     Internal APIs
