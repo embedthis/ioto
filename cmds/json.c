@@ -388,15 +388,25 @@ static int blendFiles(Json *json)
 
 static int mergeConditionals(Json *json, cchar *property)
 {
+    Json     *conditional;
     JsonNode *collection;
     cchar    *value;
-    int      cid, set;
+    char     *text;
+    int      id, rootId;
 
-    cid = jsonGetId(json, 0, "conditional");
-    if (cid < 0) {
+    rootId = jsonGetId(json, 0, property);
+    if (rootId < 0) {
         return 0;
     }
-    for (ITERATE_JSON_ID(json, cid, collection, nid)) {
+    /*
+        Extract the conditional set as we can't iterate while mutating the JSON
+     */
+    if ((text = jsonToString(json, rootId, "conditional", 0)) == NULL) {
+        return 0;
+    }
+    conditional = jsonParse(text, JSON_PASS_TEXT);
+
+    for (ITERATE_JSON(conditional, NULL, collection, nid)) {
         //  Collection name: profile
         value = 0;
         if (smatch(collection->name, "profile")) {
@@ -408,16 +418,15 @@ static int mergeConditionals(Json *json, cchar *property)
             value = jsonGet(json, 0, collection->name, 0);
         }
         if (value) {
-            set = jsonGetId(json, jsonGetNodeId(json, collection), value);
-            if (set >= 0) {
-                //  WARNING: property references are not stable over a blend
-                if (jsonBlend(json, 0, 0, json, set, 0, JSON_COMBINE) < 0) {
+            id = jsonGetId(conditional, jsonGetNodeId(conditional, collection), value);
+            if (id >= 0) {
+                if (jsonBlend(json, 0, property, conditional, id, 0, JSON_COMBINE) < 0) {
                     return error("Cannot blend %s", collection->name);
                 }
             }
         }
     }
-    jsonRemove(json, 0, "conditional");
+    jsonRemove(json, rootId, "conditional");
     return 0;
 }
 
