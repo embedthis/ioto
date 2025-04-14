@@ -9,7 +9,7 @@ assignees: ''
 
 **ISSUES will not receive priority that do not complete this template. They will be flagged as "Insufficient Information" and may be closed without any action.**
 
-Before filing an issue, please check the [Ioto Documentation](https://www.embedthis.com/doc/). We've created a [LLM ChatBot](https://www.embedthis.com/doc/chat/bot.html) that is trained on all the documentation. Please ask it questions before filing an issue. It may surprise you!
+Before filing an issue, please check the [Ioto Documentation](https://www.embedthis.com/doc/). We've created a [LLM ChatBot](https://www.embedthis.com/doc/chat/bot.html) that is trained on all the documentation. Please ask it questions before filing an issue. We also provide a [llms.txt](./llms.txt) file that you can use to train your own LLM to answer questions about Ioto.
 
 If that fails, please complete the following template.
 
