@@ -9,6 +9,10 @@ assignees: ''
 
 **ISSUES will not receive priority that do not complete this template. They will be flagged as "Insufficient Information" and may be closed without any action.**
 
+Before filing an issue, please check the [Ioto Documentation](https://www.embedthis.com/doc/). We've created a [LLM ChatBot](https://www.embedthis.com/doc/chat/bot.html) that is trained on all the documentation. Please ask it questions before filing an issue. It may surprise you!
+
+If that fails, please complete the following template.
+
 **Describe the bug**
 
 A clear and complete description of what the bug is. Please explain in detail what the bug is. Most people are too brief in the description and it results in delays addressing issues as we go back and forth with questions. Please spend some time writing a complete description.
