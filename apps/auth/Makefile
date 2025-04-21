@@ -20,12 +20,18 @@ all: config
 config: api export schema 
 
 export:
+	json -q --check config/device.json5 || echo "Cannot parse device.json5"
 	json -q --check config/ioto.json5 || echo "Cannot parse ioto.json5"
 	json -q --check config/web.json5 || echo "Cannot parse web.json5"
-	json -q --check config/db.json5 || echo "Cannot parse db.json5"
-	ccp config/web.json5 $(CONFIG)/web.json5
-	ccp config/ioto.json5 $(CONFIG)/ioto.json5
-	ccp config/db.json5 $(CONFIG)/db.json5
+	if [ ! -f $(CONFIG)/device.json5 ] ; then \
+		ccp config/device.json5 $(CONFIG)/device.json5 ; \
+	fi
+	if [ ! -f $(CONFIG)/ioto.json5 ] ; then \
+		ccp config/ioto.json5 $(CONFIG)/ioto.json5 ; \
+	fi
+	if [ ! -f $(CONFIG)/web.json5 ] ; then \
+		ccp config/web.json5 $(CONFIG)/web.json5 ; \
+	fi
 
 api:
 

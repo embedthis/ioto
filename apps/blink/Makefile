@@ -21,6 +21,8 @@ build api:
 
 config:
 	json -q --check config/ioto.json5 || echo "Cannot parse ioto.json5"
-	ccp config/web.json5 $(CONFIG)/web.json5
+	if [ ! -f $(CONFIG)/web.json5 ] ; then \
+		ccp config/web.json5 $(CONFIG)/web.json5 ; \
+	fi
 
 clean:
