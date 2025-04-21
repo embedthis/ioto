@@ -134,9 +134,8 @@ struct IotoLog;
     @stability Evolving
  */
 typedef struct Ioto {
-    Json *auth;                /**< Auth configuraiton */
     Json *config;              /**< Configuration */
-    Json*template;             /**< Properties for templates */
+    Json *properties;          /**< Properties for templates */
 
 #if SERVICES_SHADOW
     Json *shadow;              /**< Shadow state */
@@ -230,7 +229,6 @@ typedef struct Ioto {
 #endif
 
     struct IotoLog *log;       /**< Cloud Watch Log object */
-    // RHash *keys;            /**< Key distribution store */
 #endif
 } Ioto;
 
@@ -822,7 +820,8 @@ PUBLIC void ioStopRuntime(void);
 /**
     Start Ioto services
     @description This routine blocks and services Ioto requests until commanded to exit via rStop()
-    @param fn Start function. This is used to ensure the build system links with the supplied function.
+    @param fn Start function. This function is not called. It is used to ensure the build system links with the supplied
+       function only.
     @return Zero if successful, otherwise a negative error code.
     @stability Evolving
  */

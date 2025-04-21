@@ -534,7 +534,7 @@ PUBLIC int dbRemove(Db *db, cchar *model, Json *props, DbParams *params);
 PUBLIC int dbSave(Db *db, cchar *filename);
 
 /**
-    Set an item field value as a boolean
+    Update a database item field value as a boolean
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
     @param fieldName Name of the item field to set.
@@ -556,7 +556,7 @@ PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool valu
                                DbParams *params);
 
 /**
-    Set an item field value as a date.
+    Update a database item field value as a date.
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
     @param fieldName Name of the item field to set.
@@ -578,7 +578,7 @@ PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time valu
                                DbParams *params);
 
 /**
-    Set an item field value as a double
+    Update a database item field value as a double
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
     @param fieldName Name of the item field to set.
@@ -600,7 +600,7 @@ PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double 
                                  DbParams *params);
 
 /**
-    Set an item field value.
+    Update a database item field value.
     @description Update a field in an existing item. The item must already exist.
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
@@ -623,7 +623,7 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *v
                                 DbParams *params);
 
 /**
-    Set an item field value as a number
+    Update a database item field value as a number
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
     @param fieldName Name of the item field to set.
@@ -730,7 +730,7 @@ PUBLIC DbModel *dbGetModel(Db *db, cchar *name);
     @return A model instance
     @stability Evolving
  */
-PUBLIC DbModel *dbGetItemModel(Db *db, DbItem *item);
+PUBLIC DbModel *dbGetItemModel(Db *db, CDbItem *item);
 
 /**
     Get the next key when using paginated find requests.
@@ -745,10 +745,11 @@ PUBLIC cchar *dbNext(Db *db, RList *list);
    Remove expired items
    @param db Database instance
    @param notify Set to true to invoke callback notifier for removed items.
+   @return The number of items removed or negative error code.
    @ingroup db
    @stability Prototype
  */
-PUBLIC const DbItem *dbRemoveExpired(Db *db, bool notify);
+PUBLIC int dbRemoveExpired(Db *db, bool notify);
 
 /**
    Compact the database by converting JSON items back to a compact string representation
