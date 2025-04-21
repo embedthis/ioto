@@ -61,6 +61,9 @@ PUBLIC Json *openaiChatCompletion(Json *props)
     Json *request, *response;
     char *data, url[OPENAI_MAX_URL];
 
+    if (!openai) {
+        return NULL;
+    }
     request = props ? jsonClone(props, 0) : jsonAlloc(0);
     if (!jsonGet(request, 0, "model", 0)) {
         jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
@@ -90,6 +93,9 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
     Url  *up;
     char *data, *text, url[OPENAI_MAX_URL];
 
+    if (!openai) {
+        return NULL;
+    }
     request = jsonClone(props, 0);
     if (!jsonGet(request, 0, "model", 0)) {
         jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
@@ -174,8 +180,8 @@ static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, v
             break;
         }
 
-        jsonSetJsonFmt(request, 0, "input[$]", 
-            "{type: 'function_call_output', call_id: '%s', output: '%s'}", toolId, result);
+        jsonSetJsonFmt(request, 0, "input[$]",
+                       "{type: 'function_call_output', call_id: '%s', output: '%s'}", toolId, result);
         rFree(result);
         count++;
     }
@@ -211,6 +217,9 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
     char *data, url[OPENAI_MAX_URL];
     int  status;
 
+    if (!openai) {
+        return NULL;
+    }
     request = props ? jsonClone(props, 0) : jsonAlloc(0);
     if (!jsonGet(request, 0, "model", 0)) {
         jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
@@ -243,6 +252,9 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
  */
 PUBLIC Url *openaiRealTimeConnect(Json *props)
 {
+    if (!openai) {
+        return NULL;
+    }
     Json *request;
     Url  *up;
     char headers[256], url[OPENAI_MAX_URL];

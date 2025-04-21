@@ -10000,6 +10000,9 @@ PUBLIC Time rParseIsoDate(cchar *when)
     int       minutes_offset = 0;
     int       sign = 1; // Positive offset
 
+    if (!when) {
+        return -1;
+    }
     if (sscanf(when, "%4d-%2d-%2dT%2d:%2d:%2d",
                &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
                &tm.tm_hour, &tm.tm_min, &tm.tm_sec) != 6) {
