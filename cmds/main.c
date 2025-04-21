@@ -54,6 +54,7 @@ static void showUsage(int line)
             "    --reset                   # Reset state to factory defaults\n"
             "    --show [HBhb]             # Show request headers/body (HB) and response headers/body (hb).\n"
             "    --state dir               # Set the state directory\n"
+            "    --sync up|down|both       # Force a database sycn with the cloud\n"
             "    --test suite              # Run Unit test suite in the Unit app (see test.json5)\n"
             "    --timeouts                # Disable timeouts for debugging\n"
             "    --trace file[:type:from]  # Trace to file (stdout:all:all)\n"
@@ -67,7 +68,7 @@ static void showUsage(int line)
  */
 int main(int argc, char **argv)
 {
-    cchar *argp, *home;
+    cchar *argp, *home, *show;
     int   argind, background;
 
     background = 0;
@@ -86,6 +87,7 @@ int main(int argc, char **argv)
     ioAlloc();
 
     ioto->cmdProfile = getenv("IOTO_PROFILE");
+    show = getenv("IOTO_SHOW");
 
     /*
         Parse command line arguments
@@ -112,8 +114,7 @@ int main(int argc, char **argv)
 
         } else if (smatch(argp, "--debug") || smatch(argp, "-d")) {
             trace = TRACE_DEBUG_FILTER;
-            ioto->cmdWebShow = "hH";
-            ioto->cmdAIShow = "rR";
+            show = "hH";
 
         } else if (smatch(argp, "--exit")) {
             if (argind >= argc) {
@@ -159,7 +160,7 @@ int main(int argc, char **argv)
             ioto->cmdProfile = argv[++argind];
 
         } else if (smatch(argp, "--quiet") || smatch(argp, "-q")) {
-            ioto->cmdWebShow = "";
+            show = "";
 
         } else if (smatch(argp, "--reset")) {
             ioto->cmdReset = 1;
@@ -169,7 +170,7 @@ int main(int argc, char **argv)
             if (argind >= argc) {
                 usage();
             } else {
-                ioto->cmdWebShow = argv[++argind];
+                show = argv[++argind];
             }
 
         } else if (smatch(argp, "--state")) {
@@ -178,6 +179,12 @@ int main(int argc, char **argv)
                 usage();
             }
             ioto->cmdStateDir = sclone(argv[++argind]);
+
+        } else if (smatch(argp, "--sync")) {
+            if (argind >= argc) {
+                usage();
+            }
+            ioto->cmdSync = argv[++argind];
 
         } else if (smatch(argp, "--test")) {
             if (argind >= argc) {
@@ -204,7 +211,7 @@ int main(int argc, char **argv)
             }
             if (!smatch(trace, TRACE_DEBUG_FILTER)) {
                 trace = TRACE_VERBOSE_FILTER;
-                ioto->cmdWebShow = "hH";
+                show = "hH";
             }
 
         } else if (smatch(argp, "--version") || smatch(argp, "-V")) {
@@ -229,6 +236,9 @@ int main(int argc, char **argv)
             usage();
         }
     }
+    ioto->cmdAIShow = show;
+    ioto->cmdWebShow = show;
+
     setEvent(exitEvent);
 
     if (home && chdir(home) < 0) {
