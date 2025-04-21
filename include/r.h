@@ -117,7 +117,6 @@ typedef unsigned long time_t;
 #endif
 
 struct RBuf;
-struct REvent;
 struct RFile;
 struct RHash;
 struct RList;
@@ -4033,8 +4032,6 @@ PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer);
     @description Self-balancing binary search tree.
     @stability Evolving
  */
-struct RbTree;
-
 #define RB_DUP 0x1              /**< Flags for rbAlloc to permit duplicate keys */
 
 typedef struct RbNode {
