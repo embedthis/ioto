@@ -6,16 +6,24 @@ Me.load({
     plugins: [ 'installs' ],
 
     blend: [ 
+        'apps/**.me',
         'mbedtls.me', 
         'openssl.me', 
         'ssl.me',
         'installs/installs.me',
     ],
 
+    configure: {
+        discovers: ['ssl'],
+        requires:  [ 'db', 'osdep', 'uctx', 'r', 'json', 'mqtt', 'ioto', 'websockets', 'web', 'url', 'openai' ],
+    },
+    
     settings: {
+        app: 'demo',
         static: true,
         user: 'ioto',
         group: 'ioto',
+
         prefixes: 'install-prefixes',
         manifest: 'installs/manifest.me',
 
@@ -25,10 +33,6 @@ Me.load({
         prefixes: 'install-prefixes',
     },
 
-    configure: {
-        discovers: ['ssl'],
-        requires:  [ 'db', 'osdep', 'uctx', 'r', 'json', 'mqtt', 'ioto', 'websockets', 'web', 'url', 'openai' ],
-    },
 
     targets: {
         osdep:      { enable: true },
@@ -40,6 +44,33 @@ Me.load({
         websockets: { enable: true },
         openai:     { enable: true },
 
+        config: {
+            goals: ['all'],
+            depends: [ 'appConfig', 'state/config/ioto.json5' ],
+            path: 'src/ioto-config.h',
+            shell: `
+            echo 'HERE in config'
+                if [ ! -f state/config/ioto.json5 ] ; then
+                    cp apps/${settings.app}/config/ioto.json5 state/config/ioto.json5
+                fi
+                json --header services state/config/ioto.json5 >src/ioto-config.h
+                rm -f ${OBJ}/*.o
+            `,
+            message: 'Update src/ioto-config.h',
+        },
+
+        appConfig: {
+            goals: ['all'],
+            shell: `
+            echo 'HERE in appConfig'
+                APP=$(json app state/config/ioto.json5)
+                PROFILE=$(json profile state/config/ioto.json5)
+                VERSION=$(json version pak.json)
+                echo "      [Info] Building Ioto ${VERSION} and the \\"${APP}\\" app for ${PROFILE}"
+                [ -f apps/${APP}/Makefile ] && make --no-print-directory -C apps/${APP} config ; true
+            `,
+        },
+
         libioto: {
             type: 'lib',
             headers: [ 'include/*.h' ],
@@ -48,8 +79,8 @@ Me.load({
         },
         ioto: {
             type: 'exe',
-            sources: [ 'cmds/main.c', 'cmds/start.c' ],
-            depends: [ 'libioto' ],
+            sources: [ 'cmds/main.c' ],
+            depends: [ 'libioto', 'apps' ],
         },
         password: {
             type: 'exe',

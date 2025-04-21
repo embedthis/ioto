@@ -1,0 +1,23 @@
+/*
+    noapp.me -- MakeMe File for the noapp app
+
+    The noapp app is a No-op.
+
+    MakeMe files are used by EmbedThis to generate Makefiles
+ */
+
+Me.load({
+    targets: {
+        noapp: {
+            configurable: true,
+            ifdef:        [ 'apps' ],
+            depends:      [ 'libnoapp' ],
+        },
+        libnoapp: {
+            ifdef: [ 'noapp' ],
+            type: 'lib',
+            path: '${BIN}/libapp${ARLIB}',
+            sources: [ 'src/*.c' ],
+        },
+    },
+})
