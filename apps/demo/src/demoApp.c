@@ -6,8 +6,10 @@
 #if ESP32
 #include "driver/gpio.h"
 #include "rom/gpio.h"
-#define GPIO 2
+#define GPIO         2
 #endif
+
+#define EVAL_PRODUCT "01H4R15D3478JD26YDYK408XE6"
 
 static void deviceCommand(void *ctx, DbItem *item);
 static void demo(void);
@@ -49,7 +51,7 @@ void ioStop(void)
 static void demo(void)
 {
     Ticks      delay;
-    cchar      *demo;
+    Time       expires;
     int        count, i;
     static int once = 0;
     static int counter = 0;
@@ -59,21 +61,21 @@ static void demo(void)
     /*
         Get demo control parameters (delay, count)
      */
-    demo = ioGetConfig("demo.type", "mqtt");
     delay = svalue(ioGetConfig("demo.delay", "30sec")) * TPS;
     count = ioto->cmdCount ? ioto->cmdCount : ioGetConfigInt("demo.count", 30);
-    rInfo("demo", "Running demo \"%s\" count %d, delay %d", demo, count, (int) delay);
+    rInfo("demo", "Running demo with %d iterations and delay of %d", count, (int) delay);
 
 #if ESP32
     /*
         Toggle the LED to give visual feedback via GPIO pin 2
      */
     int level = 1;
-    rInfo("demo", "Running demo \"%s\"", demo);
     gpio_reset_pin(GPIO);
     gpio_set_direction(GPIO, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO, level);
 #endif
+    expires = rGetTime() + 2 * 3600 * TPS;
+    dbRemoveExpired(ioto->db, 1);
 
     for (i = 0; i < count; i++) {
         /*
@@ -83,47 +85,48 @@ static void demo(void)
             rError("demo", "Cloud connection lost, suspending demo");
             break;
         }
+        rInfo("demo", "Updating Store.counter via MQTT request");
+        ioSetNum("counter", counter);
 
-        /*
-            Perform the selected demo as selected via the ioto.json5 demo collection.
-            These demonstrate different aspects of the Ioto service.
-         */
-        rInfo("demo", "Send counter %d/%d using demo \"%s\" with delay %d", counter, count, demo, (int) delay);
-        if (smatch(demo, "service")) {
+        rInfo("demo", "Updating Store.counter via DB Sync");
+        if (dbUpdate(ioto->db, "Store",
+                     DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
+                     DB_PARAMS(.upsert = 1)) == 0) {
+            rError("demo", "Cannot update store item in database: %s", dbGetError(ioto->db));
+        }
+
+        //  Update a cloud metric called "RANDOM" via MQTT request
+        double value = ((double) random() / RAND_MAX) * 10;
+        ioSetMetric("RANDOM", value, "", 0);
+
+        //  Read the metric average for the last 5 minutes back from the cloud
+        value = ioGetMetric("RANDOM", "", "avg", 5 * 60);
+        rInfo("demo", "Random metric has average: %f", value);
+
+        if (!smatch(ioto->product, EVAL_PRODUCT)) {
             /*
-                Update the cloud Service table with the counter via database sync
+                The Service and Log tables are defined in the custom schema.json5 file.
+                Updates to these tables require a device cloud with the schema.json5 uploaded.
+                Cannot be used on the eval cloud which is shared among all users.
              */
+            rInfo("demo", "Updating Service table");
             if (dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", counter), DB_PARAMS(.upsert = 1)) == 0) {
                 rError("demo", "Cannot update service value item in database: %s", dbGetError(ioto->db));
             }
-        } else if (smatch(demo, "sync")) {
-            /*
-                Update the cloud Store table's counter item via database sync
-             */
-            if (dbUpdate(ioto->db, "Store",
-                         DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
-                         DB_PARAMS(.upsert = 1)) == 0) {
-                rError("demo", "Cannot update store item in database: %s", dbGetError(ioto->db));
-            }
-        } else if (smatch(demo, "mqtt")) {
-            /*
-                Update the cloud Store table's counter item via MQTT request
-             */
-            ioSetNum("counter", counter);
 
-        } else if (smatch(demo, "log")) {
             /*
                 Update the cloud Log table with a new item.
+                The expires field is optional and if not specified, the item will not be deleted.
              */
-            if (dbCreate(ioto->db, "Log", DB_JSON("{message: 'when-%d'}", rGetTime()), NULL) == 0) {
+            rInfo("demo", "Updating Log table");
+            if (dbCreate(ioto->db, "Log", DB_JSON("{message: 'message-%d', expires: '%ld'}", counter, expires),
+                         NULL) == 0) {
                 rError("demo", "Cannot update log item in database: %s", dbGetError(ioto->db));
             }
-        } else if (smatch(demo, "metric")) {
-            //  Update the "RANDOM" cloud metric for display in the manager
-            double value = ((double) random() / RAND_MAX) * 10;
-            ioSetMetric("RANDOM", value, "", 0);
-            value = ioGetMetric("RANDOM", "", "avg", 5 * 60);
         }
+
+        rInfo("demo", "Demo iteration %d/%d", counter, count);
+
         if (++counter < count) {
 #if ESP32
             //  Trace task and memory usage
@@ -132,6 +135,7 @@ static void demo(void)
             rSleep(delay);
         }
 #if ESP32
+        //  Toggle the LED to give visual feedback via GPIO pin 2
         level = !level;
         gpio_set_level(GPIO, level);
 #endif
