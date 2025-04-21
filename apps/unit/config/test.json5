@@ -1,0 +1,66 @@
+{
+    suites: {
+        'all-suite': {
+            description: 'Run all tests possible',
+            run: ['db-local', 'mqtt-ping', 'mqtt-request', 'store-sync', 'store-mqtt'],
+            parallel: true,
+            count: 500,
+            exit: true,
+        },
+        'sync-suite': {
+            description: 'Use DB sync to replicate local CPU load stat',
+            run: ['store-sync'],
+            count: 50,
+            delay: 10,
+            exit: false,
+        },
+        'metric-suite': {
+            description: 'Post metrics by MQTT API',
+            run: ['metric-api'],
+            count: 50,
+            delay: 10,
+            exit: false,
+        },
+        'mqtt-suite': {
+            description: 'Post CPU load to the cloud store via MQTT',
+            run: ['store-mqtt'],
+            count: 50,
+            delay: 10,
+            exit: false,
+        },
+        'stream-suite': {
+            description: 'Stream HTTP output to /api/public/stream',
+            run: ['stream'],
+            count: 1,
+            exit: false,
+        },
+        'cloud-test': {
+            description: 'Test cloud functions',
+            run: ['db-local', 'metric-api', 'mqtt-ping', 'mqtt-request', 'store-sync', 'store-mqtt', 'stream'],
+            count: 1,
+            exit: true,
+        },
+        'aws-test': {
+            description: 'Test AWS API functions',
+            run: ['s3'],
+            count: 1,
+            exit: true,
+        },
+        'ai-suite': {
+            description: 'Test AI API functions',
+            run: ['ai'],
+            count: 1,
+            exit: false,
+        },
+        debug: {
+            run: ['debug'],
+            count: 1,
+            exit: true,
+        },
+    },
+    tests: {
+        cpu: {
+            script: "ps -axro pcpu | awk '{sum+=$1} END {print sum}'",
+        },
+    },
+}

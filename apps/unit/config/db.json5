@@ -1,0 +1,20 @@
+{
+    //  Passwords: "demo"
+    User: [
+        {
+            username: 'admin',
+            password: 'BF1:00128:4oMqal5QuyBIslkR:9tvve3CPB8LoINq2ce6SWZLsdX5tQoLy',
+            role: 'admin',
+        },
+        {
+            username: 'guest',
+            password: 'BF1:00016:9bK672CWJNqRGK7T:vOcsA3B5PIz5eQoxZJ7kXlxbuvl3IVXJ',
+            role: 'user',
+        },
+        {
+            username: 'super',
+            password: 'BF1:00016:BYVWyfEQCG0Ypdwf:Pgqz3q1hIqRIu7R63Egx6V6zadINvwZk',
+            role: 'super',
+        },
+    ],
+}

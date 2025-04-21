@@ -1,9 +1,10 @@
 /*
     web.json5 - Web server configuration file
-
-    For a full list of properties: https://www.embedthis.com/agent/doc/web/properties/
 */
 {
+    auth: {
+        roles: ['user', 'admin', 'owner', 'super'],
+    },
     documents: '@site',
     headers: {},
     index: 'index.html',
@@ -16,10 +17,12 @@
         maxFrame: '100K',
         maxMessage: '100K',
     },
-    listen: ['http://:80', 'https://:443'],
-    __redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
+    listen: ['http://:9090', 'https://:4443'],
+    redirect: [{status: 302, from: 'http://:9090', to: 'https://:4443'}],
     routes: [
-        {match: '', handler: 'file', methods: ['GET']},
+        {match: '/api/public/', handler: 'action'},
+        {match: '/api/', handler: 'action', role: 'user'},
+        {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
     ],
     timeouts: {
         inactivity: '300 secs',

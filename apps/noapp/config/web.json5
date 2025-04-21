@@ -1,0 +1,18 @@
+/*
+    web.json5 - Web server configuration file
+
+    For a full list of properties: https://www.embedthis.com/agent/doc/web/properties/
+*/
+{
+    documents: '@site',
+    listen: ['http://:80'],
+    routes: [
+        {match: '/ai/', handler: 'action', methods: ['GET', 'POST']},
+        {match: '', handler: 'file', methods: ['GET']},
+    ],
+    webSockets: {
+        ping: 'never',
+        protocol: 'chat',
+        validateUTF: false,
+    },
+}

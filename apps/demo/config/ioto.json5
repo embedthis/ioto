@@ -39,10 +39,10 @@
         service: '1hr',
     },
     demo: {
-        count: 50,
+        count: 20,
         delay: '15sec',
         enable: true,
-        type: 'service',
+        type: 'sync',
     },
     limits: {
         reprovision: 5,
@@ -62,8 +62,9 @@
         timeout: 0,
     },
     services: {
-        ai: false,
+        ai: true,
         database: true,
+        demo: true,
         keys: false,
         logs: false,
         mqtt: true,
