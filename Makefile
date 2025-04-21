@@ -10,7 +10,7 @@
 #
 
 SHELL		:= /bin/bash
-TOOLS		:= $(shell bin/prep-build)
+TOOLS		:= $(shell bin/prep-build $(APP))
 NAME		:= ioto
 PROFILE 	:= dev
 TOP			:= $(shell realpath .)
@@ -122,10 +122,10 @@ clean clobber:
 	@echo '       [Run] $@'
 	@$(MAKE) -f $(PROJECT) TOP=$(TOP) APP=$(APP) $@
 	@$(MAKE) -C apps/$(APP) SHOW=$(SHOW) BASE=$(BASE) TOP=$(TOP) clean
-	rm -fr ./build
 	rm -f $(DB)/*.jnl $(DB)/*.db 
 	rm -f $(CONFIG)/db.json5 $(CONFIG)/display.json5 $(CONFIG)/local.json5
 	rm -f $(CONFIG)/signature.json5 $(CONFIG)/web.json5 $(CONFIG)/schema.json5
+	rm -fr ./build ./state
 	@echo '      [Info] $@ complete'
 
 install installBinary uninstall:
