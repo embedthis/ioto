@@ -39,7 +39,7 @@ static void buildDecodeMap(void)
     for (int i = 0; i < 64; i++) {
         decodeMap[(uchar) encodeMap[i]] = i;
     }
-#if 0
+#if KEEP
     int i, j;
     for (i = 0; i < 256; ) {
         for (j = 0; j < 16; j++) {

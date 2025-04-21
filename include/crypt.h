@@ -50,6 +50,9 @@
     #define ME_CRYPT_BASE64       1
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*********************************** Base-64 **********************************/
 
 #if ME_CRYPT_BASE64 || DOXYGEN
