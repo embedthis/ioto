@@ -1,11 +1,12 @@
 /*
-    schema.json5 -- Schema for the blink App
+    schema.json5 -- Schema for the NoApp App
  */
 {
     version: 'latest',
-    description: 'blink app schema',
+    description: 'NoApp schema',
     blend: [
         '../../../schemas/OneTable.json5',
+        '../../../schemas/CloudSchema.json5',
     ],
     process: { },
     models: { },
