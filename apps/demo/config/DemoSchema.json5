@@ -8,7 +8,6 @@
     process: {
         Service: { enable: 'both', sync: 'up', actions: true },
         Settings: { enable: 'both', sync: 'up', actions: true },
-        Log: { enable: 'both', sync: 'up', actions: true },
     },
     models: {
         /*
@@ -44,20 +43,6 @@
             updated: {type: 'date', readonly: true},
             _source: {type: 'string', hidden: true},
         },
-
-        /*
-            Service Log table. New entries allocate new items.
-         */
-        Log: {
-            pk: {type: 'string', value: 'log#', hidden: true},
-            sk: {type: 'string', value: 'log#${id}', hidden: true},
-            id: {type: 'string', generate: 'ulid', notes: 'Unique account ID'},
-            message: {type: 'string' },
-            context: {type: 'object', default: {} },
-            expires: {type: 'date', ttl: true},
-            updated: {type: 'date', readonly: true},
-            _source: {type: 'string', hidden: true},
-        }
     }
 }
 
