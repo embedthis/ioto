@@ -2,7 +2,7 @@
 
 The Demo app is a simple cloud-based app that demonstrates sending data to the device cloud.
 
-The Demo App is an example of a [Styled Device App](https://www.embedthis.com/doc/apps/patterns/). This means it adds a device data schema to the standard device app.
+The Demo App is an example of a [Customized Device App](https://www.embedthis.com/doc/apps/patterns/). This means it adds a device data schema to the standard device app.
 
 The Demo app uses the standard device app UI with a customized data schema and custom device metrics.
 
@@ -52,15 +52,13 @@ The Demo app UI is designed to run on a mobile device, but can also be used on a
 
 The first step is to create an Demo product definition in the [Builder](https://admin.embedthis.com/).
 
-Because this demo requires a device cloud and management app, we need our own app definition so our devices will be kept private and not be publically visible.
-
-Navigate to the [Builder](https://admin.embedthis.com/clouds) site and select `Products` in the sidebar menu and click `Add Product`. Then create a product definition by entering a product name and description of your choosing. Select the `Ioto Agent` and select `By Device Volume` and enter `1` in the Total Device field. Your first device is free.
+Navigate to the [Builder](https://admin.embedthis.com/clouds) site and select `Products` in the sidebar menu and click `Add Product`. Then create a product definition by entering a product name and description of your choosing. Select the `Ioto Agent` and select `Evaluation` as the plan type. 
 
 <img src="https://www.embedthis.com/images/demo/demo-product-edit.avif" alt="Create Demo Product" width="600"><br>
 
 ### Download Ioto Agent
 
-Once the product definition is created, you can click `Download` from the Products list and save the source distribution to your system. The eval version of Ioto will be fine for this solution.
+Once the product definition is created, you can click `Download` from the Products list by selecting the download icon for your "Demo App" and save the source distribution to your system. 
 
 <img src="https://www.embedthis.com/images/builder/product-list.avif" alt="Product List"><br>
 
@@ -78,7 +76,8 @@ Then build Ioto with the Demo app, by typing:
 
     $ make APP=demo
 
-This will build Ioto, the Demo app and will copy the Demo config files to the top-level `state/config` directory.
+This will build Ioto, the Demo app and will copy the Demo config files to the top-level `state/config` directory. Make sure when you want to make config changes, you make them to the 'apps/*/config' directories and not to the top-level `state/config` directory as they will be overwritten when you build Ioto.
+
 
 ### Create Device Cloud 
 
@@ -90,7 +89,7 @@ Check the `Upload Schema` option and upload the `./schema.json5` file from your 
 
 ### Create Device App
 
-To view your device state, you need to create a device app that will display the Demo UI. This will create a the standard device app and host it on the EmbedThis Ioto device cloud.
+To view your device state, you need to create a device app that will display the Demo UI. This will create a standard device management app and host it on the EmbedThis Ioto device cloud.
 
 Select `Apps` from the Builder side menu and click `Add Apps`. Enter your desired app name (Demo) and pick a domain name for your app. The domain will be a subdomain of the `ioto.me` domain and will be automatically registered and published for you. Later, if you create a dedicated device cloud, you can select your own custom domain with any TLD extension.
 
@@ -120,7 +119,7 @@ $ make run
 
 When Ioto is run, the Demo app will run a demo routine that updates the `Service` table with a counter every 30 seconds. The demo is configurable via the `ioto.json5` "demo" configuration collection. The demo can be configured to tailor the delay, number of updates and the mechanism used to perform updates. See comments in the `demoApp.c` for details.
 
-In the console output, you will see a unique device ID displayed. This is a `Device Claim ID` that you can use to claim the device for exclusive management by your Demo app. Take note of that device claim ID.
+In the console output, you will see a unique device ID displayed. This is generated if not already defined in the `device.json5` file. This ID is a `Device Claim ID` that you can use to claim the device for exclusive management by your Demo app. Take note of that device claim ID.
 
 When Ioto starts, it will register with the Builder and wait to be claimed by your Demo App.
 

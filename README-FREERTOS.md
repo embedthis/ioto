@@ -43,7 +43,8 @@ ioto-VERSION director to **ioto**.
 Before building your Ioto source code, you need to configure Ioto for your
 desired set of services. The Ioto distribution build includes several demo apps
 that define a set of services required for that app. The Ioto services are
-selected via the **config/ioto.json5** configuration file. The services are:
+selected via the **state/config/ioto.json5** configuration file. The services
+are:
 
 Service | Description
 -|-
@@ -77,8 +78,9 @@ To select an app, invoke **make config** with your desired APP:
 
     make APP=demo config
 
-This will copy the app's configuration to the **ioto/config** directory. From
-there, you can copy the config files to your Flash file system.
+During the first time build, the App's configuration will be copied to the
+**state/config** directory. From there, you can copy the config files to your
+Flash file system.
 
 If you want a complete sample, please see the [README-ESP32](./README-ESP32.md)
 for a demo app that uses FreeRTOS on ESP32 hardware micro-controllers.
@@ -156,17 +158,17 @@ Directory | Description
 state | Runtime state including database, provisioning data and provisioned
 certificates
 certs | X509 certificates
-config | Configuration files
-site | Local web site 
+state/config | Configuration files
+state/site | Local web site 
 
 File | Description
 -|-
-config/ioto.json5 | Primary Ioto configuration file
-config/web.json5 | Local web server configuration file
-config/device.json5 | Per-device definition
-certs/roots.crt | Top-level roots certificate
-certs/aws.crt | AWS root certificate
-schema.json5 | Database schema
+state/config/ioto.json5 | Primary Ioto configuration file
+state/config/web.json5 | Local web server configuration file
+state/config/device.json5 | Per-device definition
+state/certs/roots.crt | Top-level roots certificate
+state/certs/aws.crt | AWS root certificate
+state/schema.json5 | Database schema
 
 Copy the **ioto/config/** files and the required the **ioto/certs**
 certificates and key files to your flash file system.

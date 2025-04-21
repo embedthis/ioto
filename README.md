@@ -36,11 +36,11 @@ Ioto is commercial software and is provided under the following licenses.
 
 See [LICENSE.md](LICENSE.md) and [EVAL.md](EVAL.md) for details.
 
-## Management Apps
+## Device Management Apps
 
-The Ioto distribution build includes several demo apps for local or cloud-based
-management. Apps demonstrate device-side logic to implement various management
-use cases.
+The Ioto distribution build includes several sample apps for local or
+cloud-based management. Apps demonstrate device-side logic to implement various
+management use cases.
 
 The default app is the "demo" app which sends device data and metrics to the
 cloud.
@@ -48,12 +48,13 @@ cloud.
 Name | Description
 -|-|-
 ai | Demonstrate using the OpenAI APIs.
-auth | Simple embedded web server user/group authentication.
+auth | Simple embedded web server user/group authentication sample.
 blink | Minimal ESP32 blink app to demonstrate linking with Ioto on ESP32
 microcontrollers.
 demo | Cloud-based management of a device. Demonstrates simple data
 synchronization and metrics.
 noapp | Stubs to build Ioto without an app
+unit | Unit testing app.
 
 Each application has a README.md in the apps/APP directory that describes the
 application.
@@ -90,8 +91,11 @@ doing this.
 When building Ioto, you do not need to use a `configure` program. Instead, you
 simply run **make** and select your desired App. This will copy the App's
 configuration and conditionally compile the required services based on the
-App's **ioto.json5** configuration settings. You can provide parameters to the
-build via makefile command variables. See below for details.
+App's **ioto.json5** configuration settings. During the first time build, the
+App's configuration will be copied to the **state/config** directory.
+
+You can provide parameters to the build via makefile command variables. See
+below for details.
 
 The selectable Ioto services are:
 
@@ -129,11 +133,10 @@ main program. If you are embedding Ioto in another program, you should link the
 Ioto library with your program. See [Linking](#linking-with-ioto) below for
 details. 
 
-The top level Makefile parses your selected App's **ioto.json5** configuration
-file, detects your operating system and CPU architecture and then invokes the
-appropriate project Makefile for your system. It copies the select app
-configuration from the **apps/NAME/config** directory to the **state**
-directory.
+The top level Makefile parses your **ioto.json5** configuration file, detects
+your operating system and CPU architecture and then invokes the appropriate
+project Makefile for your system. It copies the select app configuration from
+the **apps/NAME/config** directory to the **state** directory.
 
 To build, nominate your selected app via the "APP=NAME" makefile option:
 
@@ -298,8 +301,8 @@ application also may have greater requirements.
 
 ## Build Profiles
 
-You can change Ioto's build and execution **profile** by editing app's
-**ioto.json5**. Two build profiles are supported:
+You can change Ioto's build and execution **profile** by editing the
+**ioto.json5** configuration file. Two build profiles are supported:
 
 -   dev
 -   prod

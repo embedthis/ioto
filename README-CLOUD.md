@@ -28,8 +28,11 @@ The **demo** app sends device data and metrics to the cloud.
 When building Ioto, you do not need to use a `configure` program. Instead, you
 simply run **make** and select your desired App. This will copy the App's
 configuration and conditionally compile the required services based on the
-App's **ioto.json5** configuration settings. You can provide parameters to the
-build via makefile command variables. See below for details.
+App's **ioto.json5** configuration settings. During the first time build, the
+App's configuration will be copied to the **state/config** directory.
+
+You can provide parameters to the build via makefile command variables. See
+below for details.
 
 The selectable Ioto services are:
 

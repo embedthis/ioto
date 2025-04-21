@@ -283,5 +283,5 @@ The Ioto database synchronization automatically replicates data up to the cloud 
 | ------------------------- | ------------------------------------------|
 | config/DemoSchema.json5   | Demo database schema file                 |
 | config/ioto.json5         | Primary Ioto configuration file           |
-| schema.json5       | Complete database schema file             |
+| schema.json5              | Complete database schema file             |
 | src/*.c                   | Device-side app service code              |
