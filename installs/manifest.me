@@ -265,9 +265,32 @@ Me.load({
                     home:   '${TOP}',
                     from:   'apps/**',
                     to:     '${src}/',
-                    exclude: /.local.mk|local.json5|unit\/|apps.me|\.me$/,
+                    exclude: /.local.mk|local.json5|unit\/$/,
                     flatten: false,
 
+                }, {
+                    home:   '${TOP}',
+                    from:   'schemas/**',
+                    to:     '${src}',
+                    exclude: /.local.mk|local.json5|unit\/$/,
+                    flatten: false,
+
+                }, {
+                    //  Needed to generate projects
+                    from: '${TOP}/apps/demo/config/ioto.json5',
+                    to: '${src}/state/config/ioto.json5',
+                    perform: function(from, to, options) {
+                        to.dirname.makeDir()
+                        let data = from.readString()
+                        data = data.replace(/profile: 'dev'/, "profile: 'prod'")
+                        to.write(data)
+                        return data
+                    },
+
+                }, {
+                    from:       '${TOP}/apps/demo/config/device.json5',
+                    to:         '${src}/state/config/device.json5',
+                    
                 }, {
                     from:       '${TOP}/installs/',
                     to:         '${src}/installs',
@@ -297,9 +320,7 @@ Me.load({
                     postPerform: function(from, to) {
                         run('me -q configure', {dir: to})
                         run('me -q projects', {dir: to})
-                        // run('rm main.me mbedtls.me openssl.me ssl.me start.me', {dir: to})
-                        // run('rm dist.me installs/manifest.me', {dir: to})
-                        // run('rm -fr ./build', {dir: to})
+                        run('rm -fr ./state', {dir: to})
                     }
                 }
             ],
