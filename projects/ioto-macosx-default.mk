@@ -18,19 +18,25 @@ PATH                  := $(LBIN):$(PATH)
 #
 # Components
 #
+ME_COM_AI             ?= 0
+ME_COM_APPS           ?= 1
+ME_COM_AUTH           ?= 0
 ME_COM_COMPILER       ?= 1
 ME_COM_DB             ?= 1
+ME_COM_DEMO           ?= 0
 ME_COM_IOTO           ?= 1
 ME_COM_JSON           ?= 1
 ME_COM_LIB            ?= 1
 ME_COM_MBEDTLS        ?= 0
 ME_COM_MQTT           ?= 1
+ME_COM_NOAPP          ?= 0
 ME_COM_OPENAI         ?= 1
 ME_COM_OPENSSL        ?= 1
 ME_COM_OSDEP          ?= 1
 ME_COM_R              ?= 1
 ME_COM_SSL            ?= 1
 ME_COM_UCTX           ?= 1
+ME_COM_UNIT           ?= 0
 ME_COM_URL            ?= 1
 ME_COM_VXWORKS        ?= 0
 ME_COM_WEB            ?= 1
@@ -39,19 +45,38 @@ ME_COM_WEBSOCKETS     ?= 1
 ME_COM_OPENSSL_PATH   ?= "/opt/homebrew"
 ME_COM_MBEDTLS_PATH   ?= "/opt/homebrew"
 
+ifeq ($(ME_COM_AI),1)
+    ME_COM_APPS := 1
+endif
+ifeq ($(ME_COM_AUTH),1)
+    ME_COM_APPS := 1
+endif
+ifeq ($(ME_COM_DEMO),1)
+    ME_COM_APPS := 1
+endif
 ifeq ($(ME_COM_LIB),1)
     ME_COM_COMPILER := 1
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
     ME_COM_SSL := 1
 endif
+ifeq ($(ME_COM_NOAPP),1)
+    ME_COM_APPS := 1
+endif
 ifeq ($(ME_COM_OPENSSL),1)
     ME_COM_SSL := 1
+endif
+ifeq ($(ME_COM_UNIT),1)
+    ME_COM_APPS := 1
+endif
+ifeq ($(ME_COM_IOTO),1)
+    ME_COM_APPS := 1
 endif
 
 #
 # Settings
 #
+ME_APP                ?= \"demo\"
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_COMPANY            ?= \"embedthis\"
 ME_COMPATIBLE         ?= \"2.7\"
@@ -93,7 +118,7 @@ ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
 CFLAGS                += -Wno-unknown-warning-option   -w
-DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                += "-I$(BUILD)/inc"
 LDFLAGS               += -g -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
 LIBPATHS              += -L$(BUILD)/bin
@@ -173,20 +198,26 @@ prep:
 	@echo "$(MAKEFLAGS)" >$(BUILD)/.makeflags
 
 clean:
+	rm -f "$(BUILD)/obj/aiApp.o"
+	rm -f "$(BUILD)/obj/authApp.o"
+	rm -f "$(BUILD)/obj/authUser.o"
 	rm -f "$(BUILD)/obj/cryptLib.o"
 	rm -f "$(BUILD)/obj/db.o"
 	rm -f "$(BUILD)/obj/dbLib.o"
+	rm -f "$(BUILD)/obj/demoApp.o"
 	rm -f "$(BUILD)/obj/iotoLib.o"
 	rm -f "$(BUILD)/obj/json.o"
 	rm -f "$(BUILD)/obj/jsonLib.o"
 	rm -f "$(BUILD)/obj/main.o"
 	rm -f "$(BUILD)/obj/mqttLib.o"
+	rm -f "$(BUILD)/obj/noapp.o"
 	rm -f "$(BUILD)/obj/openaiLib.o"
 	rm -f "$(BUILD)/obj/password.o"
 	rm -f "$(BUILD)/obj/rLib.o"
-	rm -f "$(BUILD)/obj/start.o"
 	rm -f "$(BUILD)/obj/uctxAssembly.o"
 	rm -f "$(BUILD)/obj/uctxLib.o"
+	rm -f "$(BUILD)/obj/unitApp.o"
+	rm -f "$(BUILD)/obj/unitTests.o"
 	rm -f "$(BUILD)/obj/urlLib.o"
 	rm -f "$(BUILD)/obj/web.o"
 	rm -f "$(BUILD)/obj/webLib.o"
@@ -212,12 +243,22 @@ $(BUILD)/inc/me.h: $(DEPS_1)
 	cp include/me.h $(BUILD)/inc/me.h
 
 #
+#   ioto-config.h
+#
+DEPS_2 += include/ioto-config.h
+
+$(BUILD)/inc/ioto-config.h: $(DEPS_2)
+	@echo '      [Copy] $(BUILD)/inc/ioto-config.h'
+	mkdir -p "$(BUILD)/inc"
+	cp include/ioto-config.h $(BUILD)/inc/ioto-config.h
+
+#
 #   osdep.h
 #
-DEPS_2 += include/osdep.h
-DEPS_2 += $(BUILD)/inc/me.h
+DEPS_3 += include/osdep.h
+DEPS_3 += $(BUILD)/inc/me.h
 
-$(BUILD)/inc/osdep.h: $(DEPS_2)
+$(BUILD)/inc/osdep.h: $(DEPS_3)
 	@echo '      [Copy] $(BUILD)/inc/osdep.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/osdep.h $(BUILD)/inc/osdep.h
@@ -225,25 +266,13 @@ $(BUILD)/inc/osdep.h: $(DEPS_2)
 #
 #   r.h
 #
-DEPS_3 += include/r.h
-DEPS_3 += $(BUILD)/inc/osdep.h
+DEPS_4 += include/r.h
+DEPS_4 += $(BUILD)/inc/osdep.h
 
-$(BUILD)/inc/r.h: $(DEPS_3)
+$(BUILD)/inc/r.h: $(DEPS_4)
 	@echo '      [Copy] $(BUILD)/inc/r.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/r.h $(BUILD)/inc/r.h
-
-#
-#   crypt.h
-#
-DEPS_4 += include/crypt.h
-DEPS_4 += $(BUILD)/inc/me.h
-DEPS_4 += $(BUILD)/inc/r.h
-
-$(BUILD)/inc/crypt.h: $(DEPS_4)
-	@echo '      [Copy] $(BUILD)/inc/crypt.h'
-	mkdir -p "$(BUILD)/inc"
-	cp include/crypt.h $(BUILD)/inc/crypt.h
 
 #
 #   json.h
@@ -257,25 +286,27 @@ $(BUILD)/inc/json.h: $(DEPS_5)
 	cp include/json.h $(BUILD)/inc/json.h
 
 #
+#   crypt.h
+#
+DEPS_6 += include/crypt.h
+DEPS_6 += $(BUILD)/inc/me.h
+DEPS_6 += $(BUILD)/inc/r.h
+
+$(BUILD)/inc/crypt.h: $(DEPS_6)
+	@echo '      [Copy] $(BUILD)/inc/crypt.h'
+	mkdir -p "$(BUILD)/inc"
+	cp include/crypt.h $(BUILD)/inc/crypt.h
+
+#
 #   db.h
 #
-DEPS_6 += include/db.h
-DEPS_6 += $(BUILD)/inc/json.h
+DEPS_7 += include/db.h
+DEPS_7 += $(BUILD)/inc/json.h
 
-$(BUILD)/inc/db.h: $(DEPS_6)
+$(BUILD)/inc/db.h: $(DEPS_7)
 	@echo '      [Copy] $(BUILD)/inc/db.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/db.h $(BUILD)/inc/db.h
-
-#
-#   ioto-config.h
-#
-DEPS_7 += include/ioto-config.h
-
-$(BUILD)/inc/ioto-config.h: $(DEPS_7)
-	@echo '      [Copy] $(BUILD)/inc/ioto-config.h'
-	mkdir -p "$(BUILD)/inc"
-	cp include/ioto-config.h $(BUILD)/inc/ioto-config.h
 
 #
 #   mqtt.h
@@ -367,11 +398,35 @@ $(BUILD)/inc/ioto.h: $(DEPS_13)
 	cp include/ioto.h $(BUILD)/inc/ioto.h
 
 #
+#   auth.h
+#
+DEPS_14 += apps/auth/src/auth.h
+DEPS_14 += $(BUILD)/inc/me.h
+DEPS_14 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/inc/auth.h: $(DEPS_14)
+	@echo '      [Copy] $(BUILD)/inc/auth.h'
+	mkdir -p "$(BUILD)/inc"
+	cp apps/auth/src/auth.h $(BUILD)/inc/auth.h
+
+#
+#   gpio.h
+#
+
+$(BUILD)/inc/driver/gpio.h: $(DEPS_15)
+
+#
+#   gpio.h
+#
+
+$(BUILD)/inc/rom/gpio.h: $(DEPS_16)
+
+#
 #   uctx-defs.h
 #
-DEPS_14 += include/uctx-defs.h
+DEPS_17 += include/uctx-defs.h
 
-$(BUILD)/inc/uctx-defs.h: $(DEPS_14)
+$(BUILD)/inc/uctx-defs.h: $(DEPS_17)
 	@echo '      [Copy] $(BUILD)/inc/uctx-defs.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/uctx-defs.h $(BUILD)/inc/uctx-defs.h
@@ -379,9 +434,9 @@ $(BUILD)/inc/uctx-defs.h: $(DEPS_14)
 #
 #   uctx-os.h
 #
-DEPS_15 += include/uctx-os.h
+DEPS_18 += include/uctx-os.h
 
-$(BUILD)/inc/uctx-os.h: $(DEPS_15)
+$(BUILD)/inc/uctx-os.h: $(DEPS_18)
 	@echo '      [Copy] $(BUILD)/inc/uctx-os.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/uctx-os.h $(BUILD)/inc/uctx-os.h
@@ -389,238 +444,311 @@ $(BUILD)/inc/uctx-os.h: $(DEPS_15)
 #
 #   uctx.h
 #
-DEPS_16 += include/uctx.h
-DEPS_16 += $(BUILD)/inc/uctx-os.h
+DEPS_19 += include/uctx.h
+DEPS_19 += $(BUILD)/inc/uctx-os.h
 
-$(BUILD)/inc/uctx.h: $(DEPS_16)
+$(BUILD)/inc/uctx.h: $(DEPS_19)
 	@echo '      [Copy] $(BUILD)/inc/uctx.h'
 	mkdir -p "$(BUILD)/inc"
 	cp include/uctx.h $(BUILD)/inc/uctx.h
 
 #
+#   unit.h
+#
+DEPS_20 += apps/unit/src/unit.h
+DEPS_20 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/inc/unit.h: $(DEPS_20)
+	@echo '      [Copy] $(BUILD)/inc/unit.h'
+	mkdir -p "$(BUILD)/inc"
+	cp apps/unit/src/unit.h $(BUILD)/inc/unit.h
+
+#
+#   aiApp.o
+#
+DEPS_21 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/obj/aiApp.o: \
+    apps/ai/src/aiApp.c $(DEPS_21)
+	@echo '   [Compile] $(BUILD)/obj/aiApp.o'
+	$(CC) -c -o $(BUILD)/obj/aiApp.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/ai/src/aiApp.c
+
+#
+#   authApp.o
+#
+DEPS_22 += $(BUILD)/inc/auth.h
+
+$(BUILD)/obj/authApp.o: \
+    apps/auth/src/authApp.c $(DEPS_22)
+	@echo '   [Compile] $(BUILD)/obj/authApp.o'
+	$(CC) -c -o $(BUILD)/obj/authApp.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/auth/src/authApp.c
+
+#
+#   authUser.o
+#
+DEPS_23 += $(BUILD)/inc/auth.h
+
+$(BUILD)/obj/authUser.o: \
+    apps/auth/src/authUser.c $(DEPS_23)
+	@echo '   [Compile] $(BUILD)/obj/authUser.o'
+	$(CC) -c -o $(BUILD)/obj/authUser.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/auth/src/authUser.c
+
+#
 #   cryptLib.o
 #
-DEPS_17 += $(BUILD)/inc/crypt.h
+DEPS_24 += $(BUILD)/inc/crypt.h
 
 $(BUILD)/obj/cryptLib.o: \
-    lib/cryptLib.c $(DEPS_17)
+    lib/cryptLib.c $(DEPS_24)
 	@echo '   [Compile] $(BUILD)/obj/cryptLib.o'
 	$(CC) -c -o $(BUILD)/obj/cryptLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/cryptLib.c
 
 #
 #   db.o
 #
-DEPS_18 += $(BUILD)/inc/r.h
-DEPS_18 += $(BUILD)/inc/db.h
+DEPS_25 += $(BUILD)/inc/r.h
+DEPS_25 += $(BUILD)/inc/db.h
 
 $(BUILD)/obj/db.o: \
-    cmds/db.c $(DEPS_18)
+    cmds/db.c $(DEPS_25)
 	@echo '   [Compile] $(BUILD)/obj/db.o'
 	$(CC) -c -o $(BUILD)/obj/db.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/db.c
 
 #
 #   dbLib.o
 #
-DEPS_19 += $(BUILD)/inc/db.h
-DEPS_19 += $(BUILD)/inc/crypt.h
+DEPS_26 += $(BUILD)/inc/db.h
+DEPS_26 += $(BUILD)/inc/crypt.h
 
 $(BUILD)/obj/dbLib.o: \
-    lib/dbLib.c $(DEPS_19)
+    lib/dbLib.c $(DEPS_26)
 	@echo '   [Compile] $(BUILD)/obj/dbLib.o'
 	$(CC) -c -o $(BUILD)/obj/dbLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/dbLib.c
 
 #
+#   demoApp.o
+#
+DEPS_27 += $(BUILD)/inc/ioto.h
+DEPS_27 += $(BUILD)/inc/driver/gpio.h
+DEPS_27 += $(BUILD)/inc/rom/gpio.h
+
+$(BUILD)/obj/demoApp.o: \
+    apps/demo/src/demoApp.c $(DEPS_27)
+	@echo '   [Compile] $(BUILD)/obj/demoApp.o'
+	$(CC) -c -o $(BUILD)/obj/demoApp.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/demo/src/demoApp.c
+
+#
 #   iotoLib.o
 #
-DEPS_20 += $(BUILD)/inc/ioto.h
+DEPS_28 += $(BUILD)/inc/ioto.h
 
 $(BUILD)/obj/iotoLib.o: \
-    lib/iotoLib.c $(DEPS_20)
+    lib/iotoLib.c $(DEPS_28)
 	@echo '   [Compile] $(BUILD)/obj/iotoLib.o'
 	$(CC) -c -o $(BUILD)/obj/iotoLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/iotoLib.c
 
 #
 #   json.o
 #
-DEPS_21 += $(BUILD)/inc/osdep.h
-DEPS_21 += $(BUILD)/inc/r.h
-DEPS_21 += $(BUILD)/inc/json.h
+DEPS_29 += $(BUILD)/inc/osdep.h
+DEPS_29 += $(BUILD)/inc/r.h
+DEPS_29 += $(BUILD)/inc/json.h
 
 $(BUILD)/obj/json.o: \
-    cmds/json.c $(DEPS_21)
+    cmds/json.c $(DEPS_29)
 	@echo '   [Compile] $(BUILD)/obj/json.o'
 	$(CC) -c -o $(BUILD)/obj/json.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/json.c
 
 #
 #   jsonLib.o
 #
-DEPS_22 += $(BUILD)/inc/json.h
+DEPS_30 += $(BUILD)/inc/json.h
 
 $(BUILD)/obj/jsonLib.o: \
-    lib/jsonLib.c $(DEPS_22)
+    lib/jsonLib.c $(DEPS_30)
 	@echo '   [Compile] $(BUILD)/obj/jsonLib.o'
 	$(CC) -c -o $(BUILD)/obj/jsonLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/jsonLib.c
 
 #
 #   main.o
 #
-DEPS_23 += $(BUILD)/inc/ioto.h
+DEPS_31 += $(BUILD)/inc/ioto.h
 
 $(BUILD)/obj/main.o: \
-    cmds/main.c $(DEPS_23)
+    cmds/main.c $(DEPS_31)
 	@echo '   [Compile] $(BUILD)/obj/main.o'
 	$(CC) -c -o $(BUILD)/obj/main.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/main.c
 
 #
 #   mqttLib.o
 #
-DEPS_24 += $(BUILD)/inc/mqtt.h
+DEPS_32 += $(BUILD)/inc/mqtt.h
 
 $(BUILD)/obj/mqttLib.o: \
-    lib/mqttLib.c $(DEPS_24)
+    lib/mqttLib.c $(DEPS_32)
 	@echo '   [Compile] $(BUILD)/obj/mqttLib.o'
 	$(CC) -c -o $(BUILD)/obj/mqttLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/mqttLib.c
 
 #
+#   noapp.o
+#
+DEPS_33 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/obj/noapp.o: \
+    apps/noapp/src/noapp.c $(DEPS_33)
+	@echo '   [Compile] $(BUILD)/obj/noapp.o'
+	$(CC) -c -o $(BUILD)/obj/noapp.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/noapp/src/noapp.c
+
+#
 #   openaiLib.o
 #
-DEPS_25 += $(BUILD)/inc/openai.h
+DEPS_34 += $(BUILD)/inc/openai.h
 
 $(BUILD)/obj/openaiLib.o: \
-    lib/openaiLib.c $(DEPS_25)
+    lib/openaiLib.c $(DEPS_34)
 	@echo '   [Compile] $(BUILD)/obj/openaiLib.o'
 	$(CC) -c -o $(BUILD)/obj/openaiLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/openaiLib.c
 
 #
 #   password.o
 #
-DEPS_26 += $(BUILD)/inc/r.h
-DEPS_26 += $(BUILD)/inc/crypt.h
-DEPS_26 += $(BUILD)/inc/json.h
+DEPS_35 += $(BUILD)/inc/r.h
+DEPS_35 += $(BUILD)/inc/crypt.h
+DEPS_35 += $(BUILD)/inc/json.h
 
 $(BUILD)/obj/password.o: \
-    cmds/password.c $(DEPS_26)
+    cmds/password.c $(DEPS_35)
 	@echo '   [Compile] $(BUILD)/obj/password.o'
 	$(CC) -c -o $(BUILD)/obj/password.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/password.c
 
 #
 #   rLib.o
 #
-DEPS_27 += $(BUILD)/inc/r.h
+DEPS_36 += $(BUILD)/inc/r.h
 
 $(BUILD)/obj/rLib.o: \
-    lib/rLib.c $(DEPS_27)
+    lib/rLib.c $(DEPS_36)
 	@echo '   [Compile] $(BUILD)/obj/rLib.o'
 	$(CC) -c -o $(BUILD)/obj/rLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/rLib.c
 
 #
-#   start.o
-#
-DEPS_28 += $(BUILD)/inc/ioto.h
-
-$(BUILD)/obj/start.o: \
-    cmds/start.c $(DEPS_28)
-	@echo '   [Compile] $(BUILD)/obj/start.o'
-	$(CC) -c -o $(BUILD)/obj/start.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/start.c
-
-#
 #   uctxAssembly.o
 #
-DEPS_29 += $(BUILD)/inc/uctx-os.h
-DEPS_29 += $(BUILD)/inc/uctx-defs.h
+DEPS_37 += $(BUILD)/inc/uctx-os.h
+DEPS_37 += $(BUILD)/inc/uctx-defs.h
 
 $(BUILD)/obj/uctxAssembly.o: \
-    lib/uctxAssembly.S $(DEPS_29)
+    lib/uctxAssembly.S $(DEPS_37)
 	@echo '   [Compile] $(BUILD)/obj/uctxAssembly.o'
 	$(CC) -c -o $(BUILD)/obj/uctxAssembly.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/uctxAssembly.S
 
 #
 #   uctxLib.o
 #
-DEPS_30 += $(BUILD)/inc/uctx.h
-DEPS_30 += $(BUILD)/inc/uctx-defs.h
+DEPS_38 += $(BUILD)/inc/uctx.h
+DEPS_38 += $(BUILD)/inc/uctx-defs.h
 
 $(BUILD)/obj/uctxLib.o: \
-    lib/uctxLib.c $(DEPS_30)
+    lib/uctxLib.c $(DEPS_38)
 	@echo '   [Compile] $(BUILD)/obj/uctxLib.o'
 	$(CC) -c -o $(BUILD)/obj/uctxLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/uctxLib.c
 
 #
+#   unitApp.o
+#
+DEPS_39 += $(BUILD)/inc/unit.h
+
+$(BUILD)/obj/unitApp.o: \
+    apps/unit/src/unitApp.c $(DEPS_39)
+	@echo '   [Compile] $(BUILD)/obj/unitApp.o'
+	$(CC) -c -o $(BUILD)/obj/unitApp.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/unit/src/unitApp.c
+
+#
+#   unitTests.o
+#
+DEPS_40 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/obj/unitTests.o: \
+    apps/unit/src/unitTests.c $(DEPS_40)
+	@echo '   [Compile] $(BUILD)/obj/unitTests.o'
+	$(CC) -c -o $(BUILD)/obj/unitTests.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/unit/src/unitTests.c
+
+#
 #   urlLib.o
 #
-DEPS_31 += $(BUILD)/inc/url.h
-DEPS_31 += $(BUILD)/inc/websockets.h
+DEPS_41 += $(BUILD)/inc/url.h
+DEPS_41 += $(BUILD)/inc/websockets.h
 
 $(BUILD)/obj/urlLib.o: \
-    lib/urlLib.c $(DEPS_31)
+    lib/urlLib.c $(DEPS_41)
 	@echo '   [Compile] $(BUILD)/obj/urlLib.o'
 	$(CC) -c -o $(BUILD)/obj/urlLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/urlLib.c
 
 #
 #   web.o
 #
-DEPS_32 += $(BUILD)/inc/web.h
+DEPS_42 += $(BUILD)/inc/web.h
 
 $(BUILD)/obj/web.o: \
-    cmds/web.c $(DEPS_32)
+    cmds/web.c $(DEPS_42)
 	@echo '   [Compile] $(BUILD)/obj/web.o'
 	$(CC) -c -o $(BUILD)/obj/web.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" cmds/web.c
 
 #
 #   webLib.o
 #
-DEPS_33 += $(BUILD)/inc/web.h
-DEPS_33 += $(BUILD)/inc/url.h
+DEPS_43 += $(BUILD)/inc/web.h
+DEPS_43 += $(BUILD)/inc/url.h
 
 $(BUILD)/obj/webLib.o: \
-    lib/webLib.c $(DEPS_33)
+    lib/webLib.c $(DEPS_43)
 	@echo '   [Compile] $(BUILD)/obj/webLib.o'
 	$(CC) -c -o $(BUILD)/obj/webLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/webLib.c
 
 #
 #   websocketsLib.o
 #
-DEPS_34 += $(BUILD)/inc/websockets.h
-DEPS_34 += $(BUILD)/inc/crypt.h
+DEPS_44 += $(BUILD)/inc/websockets.h
+DEPS_44 += $(BUILD)/inc/crypt.h
 
 $(BUILD)/obj/websocketsLib.o: \
-    lib/websocketsLib.c $(DEPS_34)
+    lib/websocketsLib.c $(DEPS_44)
 	@echo '   [Compile] $(BUILD)/obj/websocketsLib.o'
 	$(CC) -c -o $(BUILD)/obj/websocketsLib.o -arch $(CC_ARCH) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" lib/websocketsLib.c
 
 #
 #   libioto
 #
-DEPS_35 += $(BUILD)/inc/crypt.h
-DEPS_35 += $(BUILD)/inc/db.h
-DEPS_35 += $(BUILD)/inc/ioto-config.h
-DEPS_35 += $(BUILD)/inc/ioto.h
-DEPS_35 += $(BUILD)/inc/json.h
-DEPS_35 += $(BUILD)/inc/me.h
-DEPS_35 += $(BUILD)/inc/mqtt.h
-DEPS_35 += $(BUILD)/inc/openai.h
-DEPS_35 += $(BUILD)/inc/osdep.h
-DEPS_35 += $(BUILD)/inc/r.h
-DEPS_35 += $(BUILD)/inc/uctx-defs.h
-DEPS_35 += $(BUILD)/inc/uctx-os.h
-DEPS_35 += $(BUILD)/inc/uctx.h
-DEPS_35 += $(BUILD)/inc/url.h
-DEPS_35 += $(BUILD)/inc/web.h
-DEPS_35 += $(BUILD)/inc/websockets.h
-DEPS_35 += $(BUILD)/obj/cryptLib.o
-DEPS_35 += $(BUILD)/obj/dbLib.o
-DEPS_35 += $(BUILD)/obj/iotoLib.o
-DEPS_35 += $(BUILD)/obj/jsonLib.o
-DEPS_35 += $(BUILD)/obj/mqttLib.o
-DEPS_35 += $(BUILD)/obj/openaiLib.o
-DEPS_35 += $(BUILD)/obj/rLib.o
-DEPS_35 += $(BUILD)/obj/uctxAssembly.o
-DEPS_35 += $(BUILD)/obj/uctxLib.o
-DEPS_35 += $(BUILD)/obj/urlLib.o
-DEPS_35 += $(BUILD)/obj/webLib.o
-DEPS_35 += $(BUILD)/obj/websocketsLib.o
+DEPS_45 += $(BUILD)/inc/crypt.h
+DEPS_45 += $(BUILD)/inc/db.h
+DEPS_45 += $(BUILD)/inc/ioto-config.h
+DEPS_45 += $(BUILD)/inc/ioto.h
+DEPS_45 += $(BUILD)/inc/json.h
+DEPS_45 += $(BUILD)/inc/me.h
+DEPS_45 += $(BUILD)/inc/mqtt.h
+DEPS_45 += $(BUILD)/inc/openai.h
+DEPS_45 += $(BUILD)/inc/osdep.h
+DEPS_45 += $(BUILD)/inc/r.h
+DEPS_45 += $(BUILD)/inc/uctx-defs.h
+DEPS_45 += $(BUILD)/inc/uctx-os.h
+DEPS_45 += $(BUILD)/inc/uctx.h
+DEPS_45 += $(BUILD)/inc/url.h
+DEPS_45 += $(BUILD)/inc/web.h
+DEPS_45 += $(BUILD)/inc/websockets.h
+DEPS_45 += $(BUILD)/obj/cryptLib.o
+DEPS_45 += $(BUILD)/obj/dbLib.o
+DEPS_45 += $(BUILD)/obj/iotoLib.o
+DEPS_45 += $(BUILD)/obj/jsonLib.o
+DEPS_45 += $(BUILD)/obj/mqttLib.o
+DEPS_45 += $(BUILD)/obj/openaiLib.o
+DEPS_45 += $(BUILD)/obj/rLib.o
+DEPS_45 += $(BUILD)/obj/uctxAssembly.o
+DEPS_45 += $(BUILD)/obj/uctxLib.o
+DEPS_45 += $(BUILD)/obj/urlLib.o
+DEPS_45 += $(BUILD)/obj/webLib.o
+DEPS_45 += $(BUILD)/obj/websocketsLib.o
 
-$(BUILD)/bin/libioto.a: $(DEPS_35)
+$(BUILD)/bin/libioto.a: $(DEPS_45)
 	@echo '      [Link] $(BUILD)/bin/libioto.a'
 	$(AR) -cr $(BUILD)/bin/libioto.a "$(BUILD)/obj/cryptLib.o" "$(BUILD)/obj/dbLib.o" "$(BUILD)/obj/iotoLib.o" "$(BUILD)/obj/jsonLib.o" "$(BUILD)/obj/mqttLib.o" "$(BUILD)/obj/openaiLib.o" "$(BUILD)/obj/rLib.o" "$(BUILD)/obj/uctxAssembly.o" "$(BUILD)/obj/uctxLib.o" "$(BUILD)/obj/urlLib.o" "$(BUILD)/obj/webLib.o" "$(BUILD)/obj/websocketsLib.o"
 
@@ -628,225 +756,304 @@ ifeq ($(ME_COM_DB),1)
 #
 #   db
 #
-DEPS_36 += $(BUILD)/bin/libioto.a
-DEPS_36 += $(BUILD)/obj/db.o
+DEPS_46 += $(BUILD)/bin/libioto.a
+DEPS_46 += $(BUILD)/obj/db.o
 
-LIBS_36 += -lioto
+LIBS_46 += -lioto
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_36 += -lmbedtls
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_46 += -lmbedtls
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_36 += -lmbedcrypto
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_46 += -lmbedcrypto
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_36 += -lmbedx509
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_36 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_46 += -lmbedx509
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_46 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_36 += -lssl
-    LIBPATHS_36 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_36 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_46 += -lssl
+    LIBPATHS_46 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_46 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_36 += -lcrypto
-    LIBPATHS_36 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_36 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_46 += -lcrypto
+    LIBPATHS_46 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_46 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/db: $(DEPS_36)
+$(BUILD)/bin/db: $(DEPS_46)
 	@echo '      [Link] $(BUILD)/bin/db'
-	$(CC) -o $(BUILD)/bin/db -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/db.o" $(LIBPATHS_36) $(LIBS_36) $(LIBS_36) $(LIBS) 
+	$(CC) -o $(BUILD)/bin/db -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/db.o" $(LIBPATHS_46) $(LIBS_46) $(LIBS_46) $(LIBS) 
+endif
+
+
+
+ifeq ($(ME_COM_DEMO),1)
+#
+#   libdemo
+#
+DEPS_47 += $(BUILD)/obj/demoApp.o
+
+$(BUILD)/bin/libapp.a: $(DEPS_47)
+	@echo '      [Link] $(BUILD)/bin/libapp.a'
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/demoApp.o"
+endif
+
+ifeq ($(ME_COM_AI),1)
+#
+#   libai
+#
+DEPS_48 += $(BUILD)/obj/aiApp.o
+
+$(BUILD)/bin/libapp.a: $(DEPS_48)
+	@echo '      [Link] $(BUILD)/bin/libapp.a'
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/aiApp.o"
+endif
+
+ifeq ($(ME_COM_AUTH),1)
+#
+#   libauth
+#
+DEPS_49 += $(BUILD)/inc/auth.h
+DEPS_49 += $(BUILD)/obj/authApp.o
+DEPS_49 += $(BUILD)/obj/authUser.o
+
+$(BUILD)/bin/libapp.a: $(DEPS_49)
+	@echo '      [Link] $(BUILD)/bin/libapp.a'
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/authApp.o" "$(BUILD)/obj/authUser.o"
+endif
+
+ifeq ($(ME_COM_NOAPP),1)
+#
+#   libnoapp
+#
+DEPS_50 += $(BUILD)/obj/noapp.o
+
+$(BUILD)/bin/libapp.a: $(DEPS_50)
+	@echo '      [Link] $(BUILD)/bin/libapp.a'
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/noapp.o"
+endif
+
+ifeq ($(ME_COM_UNIT),1)
+#
+#   libunit
+#
+DEPS_51 += $(BUILD)/inc/unit.h
+DEPS_51 += $(BUILD)/obj/unitApp.o
+DEPS_51 += $(BUILD)/obj/unitTests.o
+
+$(BUILD)/bin/libapp.a: $(DEPS_51)
+	@echo '      [Link] $(BUILD)/bin/libapp.a'
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/unitApp.o" "$(BUILD)/obj/unitTests.o"
+endif
+
+ifeq ($(ME_COM_APPS),1)
 endif
 
 ifeq ($(ME_COM_IOTO),1)
 #
 #   ioto
 #
-DEPS_37 += $(BUILD)/bin/libioto.a
-DEPS_37 += $(BUILD)/obj/main.o
-DEPS_37 += $(BUILD)/obj/start.o
+DEPS_52 += $(BUILD)/bin/libioto.a
+DEPS_52 += apps
+ifeq ($(ME_COM_DEMO),1)
+    DEPS_52 += $(BUILD)/bin/libapp.a
+endif
+ifeq ($(ME_COM_AI),1)
+    DEPS_52 += $(BUILD)/bin/libapp.a
+endif
+ifeq ($(ME_COM_AUTH),1)
+    DEPS_52 += $(BUILD)/bin/libapp.a
+endif
+ifeq ($(ME_COM_NOAPP),1)
+    DEPS_52 += $(BUILD)/bin/libapp.a
+endif
+ifeq ($(ME_COM_UNIT),1)
+    DEPS_52 += $(BUILD)/bin/libapp.a
+endif
+DEPS_52 += $(BUILD)/obj/main.o
 
-LIBS_37 += -lioto
+LIBS_52 += -lioto
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_37 += -lmbedtls
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_52 += -lmbedtls
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_37 += -lmbedcrypto
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_52 += -lmbedcrypto
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_37 += -lmbedx509
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_37 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_52 += -lmbedx509
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_52 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_37 += -lssl
-    LIBPATHS_37 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_37 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_52 += -lssl
+    LIBPATHS_52 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_52 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_37 += -lcrypto
-    LIBPATHS_37 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_37 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_52 += -lcrypto
+    LIBPATHS_52 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_52 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/ioto: $(DEPS_37)
+$(BUILD)/bin/ioto: $(DEPS_52)
 	@echo '      [Link] $(BUILD)/bin/ioto'
-	$(CC) -o $(BUILD)/bin/ioto -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/main.o" "$(BUILD)/obj/start.o" $(LIBPATHS_37) $(LIBS_37) $(LIBS_37) $(LIBS) 
+	$(CC) -o $(BUILD)/bin/ioto -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/main.o" -lapp $(LIBPATHS_52) $(LIBS_52) $(LIBS_52) $(LIBS) -lapp 
 endif
 
 ifeq ($(ME_COM_JSON),1)
 #
 #   json
 #
-DEPS_38 += $(BUILD)/bin/libioto.a
-DEPS_38 += $(BUILD)/obj/json.o
+DEPS_53 += $(BUILD)/bin/libioto.a
+DEPS_53 += $(BUILD)/obj/json.o
 
-LIBS_38 += -lioto
+LIBS_53 += -lioto
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_38 += -lmbedtls
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_53 += -lmbedtls
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_38 += -lmbedcrypto
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_53 += -lmbedcrypto
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_38 += -lmbedx509
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_38 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_53 += -lmbedx509
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_53 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_38 += -lssl
-    LIBPATHS_38 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_38 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_53 += -lssl
+    LIBPATHS_53 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_53 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_38 += -lcrypto
-    LIBPATHS_38 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_38 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_53 += -lcrypto
+    LIBPATHS_53 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_53 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/json: $(DEPS_38)
+$(BUILD)/bin/json: $(DEPS_53)
 	@echo '      [Link] $(BUILD)/bin/json'
-	$(CC) -o $(BUILD)/bin/json -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/json.o" $(LIBPATHS_38) $(LIBS_38) $(LIBS_38) $(LIBS) 
+	$(CC) -o $(BUILD)/bin/json -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/json.o" $(LIBPATHS_53) $(LIBS_53) $(LIBS_53) $(LIBS) 
 endif
 
 #
 #   password
 #
-DEPS_39 += $(BUILD)/bin/libioto.a
-DEPS_39 += $(BUILD)/obj/password.o
+DEPS_54 += $(BUILD)/bin/libioto.a
+DEPS_54 += $(BUILD)/obj/password.o
 
-LIBS_39 += -lioto
+LIBS_54 += -lioto
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_39 += -lmbedtls
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_54 += -lmbedtls
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_39 += -lmbedcrypto
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_54 += -lmbedcrypto
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_39 += -lmbedx509
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_39 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_54 += -lmbedx509
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_54 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_39 += -lssl
-    LIBPATHS_39 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_39 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_54 += -lssl
+    LIBPATHS_54 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_54 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_39 += -lcrypto
-    LIBPATHS_39 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_39 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_54 += -lcrypto
+    LIBPATHS_54 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_54 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/password: $(DEPS_39)
+$(BUILD)/bin/password: $(DEPS_54)
 	@echo '      [Link] $(BUILD)/bin/password'
-	$(CC) -o $(BUILD)/bin/password -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/password.o" $(LIBPATHS_39) $(LIBS_39) $(LIBS_39) $(LIBS) 
+	$(CC) -o $(BUILD)/bin/password -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/password.o" $(LIBPATHS_54) $(LIBS_54) $(LIBS_54) $(LIBS) 
 
 #
 #   webserver
 #
-DEPS_40 += $(BUILD)/bin/libioto.a
-DEPS_40 += $(BUILD)/obj/web.o
+DEPS_55 += $(BUILD)/bin/libioto.a
+DEPS_55 += $(BUILD)/obj/web.o
 
-LIBS_40 += -lioto
+LIBS_55 += -lioto
 ifeq ($(ME_COM_MBEDTLS),1)
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_40 += -lmbedtls
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_55 += -lmbedtls
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_40 += -lmbedcrypto
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_55 += -lmbedcrypto
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
-    LIBS_40 += -lmbedx509
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
-    LIBPATHS_40 += -L"$(ME_COM_MBEDTLS_PATH)/library"
+    LIBS_55 += -lmbedx509
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/lib"
+    LIBPATHS_55 += -L"$(ME_COM_MBEDTLS_PATH)/library"
 endif
 ifeq ($(ME_COM_OPENSSL),1)
 ifeq ($(ME_COM_SSL),1)
-    LIBS_40 += -lssl
-    LIBPATHS_40 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_40 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_55 += -lssl
+    LIBPATHS_55 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_55 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 endif
 ifeq ($(ME_COM_OPENSSL),1)
-    LIBS_40 += -lcrypto
-    LIBPATHS_40 += -L"$(ME_COM_OPENSSL_PATH)/lib"
-    LIBPATHS_40 += -L"$(ME_COM_OPENSSL_PATH)"
+    LIBS_55 += -lcrypto
+    LIBPATHS_55 += -L"$(ME_COM_OPENSSL_PATH)/lib"
+    LIBPATHS_55 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/webserver: $(DEPS_40)
+$(BUILD)/bin/webserver: $(DEPS_55)
 	@echo '      [Link] $(BUILD)/bin/webserver'
-	$(CC) -o $(BUILD)/bin/webserver -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/web.o" $(LIBPATHS_40) $(LIBS_40) $(LIBS_40) $(LIBS) 
+	$(CC) -o $(BUILD)/bin/webserver -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS)     "$(BUILD)/obj/web.o" $(LIBPATHS_55) $(LIBS_55) $(LIBS_55) $(LIBS) 
 
 #
 #   stop
 #
 
-stop: $(DEPS_41)
+stop: $(DEPS_56)
 
 #
 #   installBinary
 #
 
-installBinary: $(DEPS_42)
+installBinary: $(DEPS_57)
 	mkdir -p "$(ME_APP_PREFIX)" ; \
 	rm -f "$(ME_APP_PREFIX)/latest" ; \
 	ln -s "$(VERSION)" "$(ME_APP_PREFIX)/latest" ; \
@@ -871,7 +1078,7 @@ installBinary: $(DEPS_42)
 	chmod 755 "$(ME_VAPP_PREFIX)/bin/scripts/update" ; \
 	mkdir -p $(ME_WEB_PREFIX) ; cp -r ./site/* $(ME_WEB_PREFIX) ; \
 	mkdir -p "$(ME_ETC_PREFIX)" ; \
-	cp state/config/*.json5 $(ME_ETC_PREFIX)/*.json5 ; \
+	cp state/config/device.json5 $(ME_ETC_PREFIX)/device.json5 ; \
 	mkdir -p "$(ME_ETC_PREFIX)" ; \
 	cp state/config/ioto.json5 $(ME_ETC_PREFIX)/ioto.json5 ; \
 	mkdir -p "/var/lib/ioto/db" ; \
@@ -885,16 +1092,16 @@ installBinary: $(DEPS_42)
 #   start
 #
 
-start: $(DEPS_43)
+start: $(DEPS_58)
 
 #
 #   install
 #
-DEPS_44 += stop
-DEPS_44 += installBinary
-DEPS_44 += start
+DEPS_59 += stop
+DEPS_59 += installBinary
+DEPS_59 += start
 
-install: $(DEPS_44)
+install: $(DEPS_59)
 	echo "      [Info] Ioto installed at $(ME_VAPP_PREFIX)" ; \
 	echo "      [Info] Configuration directory $(ME_ETC_PREFIX)" ; \
 	echo "      [Info] Documents directory $(ME_WEB_PREFIX)" ; \
@@ -906,7 +1113,7 @@ install: $(DEPS_44)
 #   installPrep
 #
 
-installPrep: $(DEPS_45)
+installPrep: $(DEPS_60)
 	if [ "`id -u`" != 0 ] ; \
 	then echo "Must run as root. Rerun with sudo." ; \
 	exit 255 ; \
@@ -915,9 +1122,9 @@ installPrep: $(DEPS_45)
 #
 #   uninstall
 #
-DEPS_46 += stop
+DEPS_61 += stop
 
-uninstall: $(DEPS_46)
+uninstall: $(DEPS_61)
 	( \
 	cd installs; \
 	rm -f "$(ME_ETC_PREFIX)/appweb.conf" ; \
@@ -931,13 +1138,13 @@ uninstall: $(DEPS_46)
 #   uninstallBinary
 #
 
-uninstallBinary: $(DEPS_47)
+uninstallBinary: $(DEPS_62)
 
 #
 #   version
 #
 
-version: $(DEPS_48)
+version: $(DEPS_63)
 	echo $(VERSION)
 
 

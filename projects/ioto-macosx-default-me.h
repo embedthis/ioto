@@ -3,6 +3,9 @@
  */
 
 /* Settings */
+#ifndef ME_APP
+    #define ME_APP "demo"
+#endif
 #ifndef ME_AUTHOR
     #define ME_AUTHOR "Embedthis Software."
 #endif
@@ -217,11 +220,23 @@
 #endif
 
 /* Components */
+#ifndef ME_COM_AI
+    #define ME_COM_AI 0
+#endif
+#ifndef ME_COM_APPS
+    #define ME_COM_APPS 1
+#endif
+#ifndef ME_COM_AUTH
+    #define ME_COM_AUTH 0
+#endif
 #ifndef ME_COM_CC
     #define ME_COM_CC 1
 #endif
 #ifndef ME_COM_DB
     #define ME_COM_DB 1
+#endif
+#ifndef ME_COM_DEMO
+    #define ME_COM_DEMO 0
 #endif
 #ifndef ME_COM_IOTO
     #define ME_COM_IOTO 1
@@ -237,6 +252,9 @@
 #endif
 #ifndef ME_COM_MQTT
     #define ME_COM_MQTT 1
+#endif
+#ifndef ME_COM_NOAPP
+    #define ME_COM_NOAPP 0
 #endif
 #ifndef ME_COM_OPENAI
     #define ME_COM_OPENAI 1
@@ -255,6 +273,9 @@
 #endif
 #ifndef ME_COM_UCTX
     #define ME_COM_UCTX 1
+#endif
+#ifndef ME_COM_UNIT
+    #define ME_COM_UNIT 0
 #endif
 #ifndef ME_COM_URL
     #define ME_COM_URL 1
