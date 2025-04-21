@@ -99,9 +99,9 @@ PUBLIC Json *openaiFineTune(cchar *data);
 /*
     Init flags
  */
-#define AI_SHOW_NONE    0x1            /**< Trace nothing */
-#define AI_SHOW_REQ     0x2            /**< Trace request */
-#define AI_SHOW_RESP    0x8            /**< Trace response */
+#define AI_SHOW_NONE 0x1               /**< Trace nothing */
+#define AI_SHOW_REQ  0x2               /**< Trace request */
+#define AI_SHOW_RESP 0x8               /**< Trace response */
 
 /**
     Initialize the OpenAI API
