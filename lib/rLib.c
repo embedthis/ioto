@@ -259,6 +259,7 @@ PUBLIC int rGrowBuf(RBuf *bp, ssize need)
         rCompactBuf(bp);
     }
     growBy = min(ME_R_MAX_BUF, need);
+    growBy = max(growBy, ME_BUFSIZE);
     if ((newbuf = rAlloc(bp->buflen + growBy)) == 0) {
         assert(!R_ERR_MEMORY);
         return R_ERR_MEMORY;
