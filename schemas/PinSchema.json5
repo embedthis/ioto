@@ -1,0 +1,21 @@
+/*
+    PinSchema.json5 -- GPIO Table
+ */
+{
+    process: {
+        Pin: {enable: 'both', sync: 'both', show: true},
+    },
+    models: {
+        Pin: {
+            pk: {type: 'string', value: 'pin#${accountId}#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'pin#${name}', hidden: true},
+            accountId: {type: 'string', required: true, readonly: true},
+            description: {type: 'string'},
+            deviceId: {type: 'string', required: true, readonly: true},
+            name: {type: 'string', required: true},
+            value: {type: 'object'},
+            updated: {type: 'date', readonly: true},
+            _source: {type: 'string', hidden: true},
+        },
+    },
+}

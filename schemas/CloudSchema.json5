@@ -8,6 +8,7 @@
         Broadcast: {enable: 'both', sync: 'down', show: true, mem: true},
         Command: {enable: 'both', sync: 'down', show: true},
         Device: {enable: 'both', sync: 'up', show: true},
+        Log: {enable: 'both', sync: 'up', show: true, actions: true},
         Store: {enable: 'both', notify: 'default', sync: 'up', actions: true, delay: 0},
         SyncState: {enable: 'device', show: false},
     },
@@ -65,13 +66,17 @@
             _source: {type: 'string', hidden: true},
         },
 
-        /*
-            Device-side sync state
-         */
-        SyncState: {
-            sk: {type: 'string', value: 'state#'},
-            lastSyncDown: {type: 'date'},
-            lastUpdate: {type: 'date'},
+        Log: {
+            pk: {type: 'string', value: 'l#${accountId}#${deviceId}', hidden: true},
+            sk: {type: 'string', value: 'l#${id}', hidden: true},
+            id: {type: 'string', generate: 'ulid', notes: 'Unique ID'},
+            accountId: {type: 'string', required: true, readonly: true, notes: 'Owning account'},
+            deviceId: {type: 'string', required: true, readonly: true, notes: 'Owning device'},
+            message: {type: 'string' },
+            context: {type: 'object', default: {} },
+            expires: {type: 'date', ttl: true},
+            updated: {type: 'date', readonly: true},
+            _source: {type: 'string', hidden: true},
         },
 
         /*
@@ -89,5 +94,15 @@
             expires: {type: 'date', ttl: true},
             _source: {type: 'string', hidden: true},
         },
+
+        /*
+            Device-side sync state
+         */
+        SyncState: {
+            sk: {type: 'string', value: 'state#'},
+            lastSync: {type: 'date'},
+            lastUpdate: {type: 'date'},
+        },
+
     },
 }
