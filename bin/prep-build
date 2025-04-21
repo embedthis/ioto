@@ -2,8 +2,12 @@
 #
 #   prep-build - Make the required build tools
 #
+#   Usage: prep-build [app]
+#
 #   This builds the awesome "json" converter tool that can edit, query and convert JSON and JSON5 files.
 #
+APP=$1
+
 if [ ! -d bin ] ; then
     echo "Must run from the top directory"
     exit 1
@@ -52,7 +56,9 @@ if [ ! -f bin/json ] ; then
 fi
 
 if [ ! -f state/config/ioto.json5 ] ; then 
-    if [ -d apps/demo ] ; then
+    if [ -f apps/${APP}/config/ioto.json5 ] ; then
+        cp apps/${APP}/config/ioto.json5 state/config
+    elif [ -d apps/demo ] ; then
         cp apps/demo/config/ioto.json5 state/config
     elif [ -d apps/console ] ; then
         cp apps/console/config/ioto.json5 state/config
