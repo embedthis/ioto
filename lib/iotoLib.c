@@ -549,7 +549,6 @@ PUBLIC void ioUpdateDevice(void)
     jsonSet(json, 0, "model", jsonGet(ioto->config, 0, "device.model", 0), JSON_STRING);
     jsonSet(json, 0, "name", jsonGet(ioto->config, 0, "device.name", 0), JSON_STRING);
     jsonSet(json, 0, "product", jsonGet(ioto->config, 0, "device.product", 0), JSON_STRING);
-    jsonSet(json, 0, "state", "online", JSON_STRING);
 
     if (rEmitLog("trace", "sync")) {
         rInfo("database", "Update device item");
@@ -2017,7 +2016,6 @@ PUBLIC int ioInitConfig(void)
 
 PUBLIC void ioTermConfig(void)
 {
-
     jsonFree(ioto->config);
     jsonFree(ioto->properties);
 #if SERVICES_SHADOW
@@ -2030,7 +2028,6 @@ PUBLIC void ioTermConfig(void)
     rFree(ioto->cmdStateDir);
     rFree(ioto->cmdSync);
     rFree(ioto->id);
-    rFree(ioto->lastSync);
     rFree(ioto->logDir);
     rFree(ioto->profile);
     rFree(ioto->product);
@@ -2041,7 +2038,6 @@ PUBLIC void ioTermConfig(void)
     ioto->builder = 0;
     ioto->config = 0;
     ioto->id = 0;
-    ioto->lastSync = 0;
     ioto->logDir = 0;
     ioto->profile = 0;
     ioto->product = 0;
@@ -2065,16 +2061,20 @@ PUBLIC void ioTermConfig(void)
     ioto->account = 0;
     ioto->api = 0;
     ioto->apiToken = 0;
+    ioto->awsAccess = 0;
+    ioto->awsSecret = 0;
+    ioto->awsToken = 0;
+    ioto->awsRegion = 0;
     ioto->cloud = 0;
     ioto->cloudType = 0;
     ioto->cmdConfigDir = 0;
     ioto->cmdStateDir = 0;
     ioto->cmdSync = 0;
     ioto->endpoint = 0;
-    ioto->awsAccess = 0;
-    ioto->awsSecret = 0;
-    ioto->awsToken = 0;
-    ioto->awsRegion = 0;
+#if SERVICES_SYNC
+    rFree(ioto->lastSync);
+    ioto->lastSync = 0;
+#endif
 #endif
 }
 
@@ -4910,7 +4910,6 @@ PUBLIC int ioInitSync(void)
 {
     cchar *lastSync;
 
-    dbPrint(ioto->db);
     nextSeq = rand();
     ioto->syncDue = MAXINT64;
     ioto->syncHash = rAllocHash(0, 0);
