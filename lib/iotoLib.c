@@ -36,15 +36,15 @@ PUBLIC int ioInitAI(void)
     endpoint = jsonGet(ioto->config, 0, "endpoint", "https://api.openai.com/v1");
 
     show = ioto->cmdAIShow ? ioto->cmdAIShow : jsonGet(ioto->config, 0, "log.show", 0);
-    if (!show) {
+    if (!show || !*show) {
         show = getenv("AI_SHOW");
     }
     flags = 0;
     if (show) {
-        if (schr(show, 'R')) {
+        if (schr(show, 'H') || schr(show, 'R')) {
             flags |= AI_SHOW_REQ;
         }
-        if (schr(show, 'r')) {
+        if (schr(show, 'h') || schr(show, 'r')) {
             flags |= AI_SHOW_RESP;
         }
     }
@@ -879,6 +879,12 @@ static int initServices(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
+#if SERVICES_AI
+    ioto->aiService = 1;
+    if (ioto->aiService && ioInitAI() < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
 #if SERVICES_CLOUD
     if (ioto->provisionService && ioInitCloud() < 0) {
         return R_ERR_CANT_INITIALIZE;
@@ -888,12 +894,6 @@ static int initServices(void)
     if (ioto->updateService) {
         //  Delay to allow provisioning to complete
         rStartEvent((RFiberProc) ioUpdate, 0, 15 * TPS);
-    }
-#endif
-#if SERVICES_AI
-    ioto->aiService = 1;
-    if (ioto->aiService && ioInitAI() < 0) {
-        return R_ERR_CANT_INITIALIZE;
     }
 #endif
 #if ME_DEBUG
