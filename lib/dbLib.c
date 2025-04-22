@@ -89,6 +89,7 @@ static void freeChange(Db *db, DbChange *change);
 static void freeField(DbField *field);
 static void freeModel(DbModel *model);
 static void freeItem(Db *db, DbItem *node);
+static int flushJournal(Db *db);
 static RbTree *getIndex(Db *db, DbParams *params);
 static cchar *getIndexName(Db *db, DbParams *params);
 static cchar *getIndexHash(Db *db, cchar *index);
@@ -111,7 +112,7 @@ static void setDefaults(Db *db, DbModel *model, Json *props);
 static void setTemplates(Db *db, DbModel *model, Json *props);
 static void setTimestamps(Db *db, DbModel *model, Json *props, cchar *cmd);
 static int writeBlock(Db *db, cchar *buf);
-static int writeChange(Db *db, DbModel *model, DbItem *item, cchar *cmd);
+static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd);
 static int writeItem(FILE *fp, DbItem *item);
 static int writeSize(Db *db, int len);
 
@@ -466,6 +467,7 @@ PUBLIC int dbSave(Db *db, cchar *path)
 
 static int saveDb(Db *db)
 {
+    db->journalEvent = 0;
     return dbSave(db, NULL);
 }
 
@@ -845,10 +847,16 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
         }
     }
     freeEnv(&env);
+    if (count) {
+        flushJournal(db);
+    }
     return count;
 }
 
-PUBLIC const DbItem *dbRemoveExpired(Db *db, bool notify)
+/*
+    Must be manually invoked by the user to remove expired items.
+ */
+PUBLIC int dbRemoveExpired(Db *db, bool notify)
 {
     Env     env;
     RbNode  *rp, *next;
@@ -858,17 +866,19 @@ PUBLIC const DbItem *dbRemoveExpired(Db *db, bool notify)
     Json    *json, *allocJson;
     cchar   *expires;
     char    *now;
-
+    int     count;
     assert(db);
 
     now = rGetIsoDate(rGetTime());
     db->servicing = 1;
+    count = 0;
 
     for (ITERATE_NAME_DATA(db->models, np, model)) {
         if (!model->expiresField) continue;
         if (SETUP(db, model->name, NULL, NULL, "find", &env) < 0) {
             return 0;
         }
+        again:
         for (rp = rbLookupFirst(env.index, &env.search, &env); rp; rp = next) {
             next = rbLookupNext(env.index, rp, &env.search, &env);
             item = rp->data;
@@ -884,6 +894,11 @@ PUBLIC const DbItem *dbRemoveExpired(Db *db, bool notify)
                     rTrace("db", "Remove expired item:\n%s", jsonString(json));
                 }
                 rbRemove(db->primary, rp, 0);
+                count++;
+                if (allocJson) {
+                    jsonFree(allocJson);
+                }
+                goto again;
             }
             if (allocJson) {
                 jsonFree(allocJson);
@@ -891,12 +906,12 @@ PUBLIC const DbItem *dbRemoveExpired(Db *db, bool notify)
         }
     }
     db->servicing = 0;
-    if (db->needSave) {
-        dbSave(db, NULL);
-        db->needSave = 0;
+
+    if (flushJournal(db) < 0) {
+        return R_ERR_CANT_WRITE;
     }
     rFree(now);
-    return 0;
+    return count;
 }
 
 /*
@@ -1457,7 +1472,7 @@ static DbModel *allocModel(Db *db, cchar *name, cchar *sync, Time delay)
         return 0;
     }
     model->name = name;
-    model->sync = (smatch(sync, "both") || smatch(sync, "up")) ? 1 : 0;
+    model->sync = (smatch(sync, "both") || smatch(sync, "up") || smatch(sync, "down")) ? 1 : 0;
     model->delay = delay;
     model->fields = rAllocHash(0, 0);
 
@@ -1801,11 +1816,11 @@ static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar
         events = DB_ON_CHANGE;
 
     } else {
-        if (delay != DB_INMEM) {
+        if (delay != DB_INMEM && db->journal) {
             /*
                 No delay, write to the journal unless in-mem
              */
-            if (writeChange(db, model, item, cmd) == 0) {
+            if (writeChangeToJournal(db, model, item, cmd) == 0) {
                 if (item->delayed) {
                     rRemoveName(db->changes, item->key);
                     item->delayed = 0;
@@ -1836,7 +1851,7 @@ static void commitChange(Db *db)
             search.key = change->key;
             if ((rp = rbLookup(db->primary, &search, NULL)) != 0) {
                 item = rp->data;
-                if (writeChange(change->db, change->model, item, change->cmd) != 0) {
+                if (writeChangeToJournal(change->db, change->model, item, change->cmd) != 0) {
                     // continue
                 }
                 invokeCallbacks(change->db, change->model, item, change->params, change->cmd,
@@ -1860,7 +1875,7 @@ static void commitChange(Db *db)
     Write a changed item to the journal and handle journal resets
     Errors are handled by low level I/O routines setting db->journalError
  */
-static int writeChange(Db *db, DbModel *model, DbItem *item, cchar *cmd)
+static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd)
 {
     char *value;
     int  bufsize;
@@ -1889,9 +1904,16 @@ static int writeChange(Db *db, DbModel *model, DbItem *item, cchar *cmd)
         dberror(db, R_ERR_CANT_WRITE, "Cannot flush journal: %d", errno);
         db->journalError = 1;
     }
-    //  Handle errors here by re-writing the database and recreating the journal
-    if (db->journalError || db->journalSize > db->maxJournalSize ||
-        (rGetTicks() - db->journalCreated) > db->maxJournalAge) {
+    return flushJournal(db);
+}
+
+static int flushJournal(Db *db)
+{
+    /*
+        Save the journal to the database if it is full or if there is an error.
+     */
+    if (db->journalError || db->journalSize >= db->maxJournalSize ||
+        (rGetTicks() - db->journalCreated) >= db->maxJournalAge) {
         if (db->servicing) {
             db->needSave = 1;
         } else if (dbSave(db, NULL) < 0) {
