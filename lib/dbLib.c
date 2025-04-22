@@ -146,12 +146,14 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
     db->context = jsonAlloc(0);
     db->changes = rAllocHash(0, 0);
     if (loadSchema(db, schema) < 0) {
-        // Errors already reported
+        rError("db", "%s", db->error);
+        dbClose(db);
         return 0;
     }
     if (path) {
         if (loadData(db, path) < 0) {
             rError("db", "%s", db->error);
+            dbClose(db);
             return 0;
         }
         //  Recover journal data incase sudden shutdown
@@ -160,6 +162,7 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
         if (!(db->flags & DB_READ_ONLY)) {
             if (recreateJournal(db) < 0) {
                 rError("db", "%s", db->error);
+                dbClose(db);
                 return 0;
             }
         }
@@ -323,9 +326,8 @@ static int loadModels(Db *db, Json *json)
         }
         sync = jsonGet(json, sid, "sync", "none");
 
-        if ((mem =
-                 jsonGet(json, sid, "mem",
-                         NULL)) != NULL && (smatch(mem, "true") || smatch(mem, "1"))) {
+        if ((mem = jsonGet(json, sid, "mem", NULL)) != NULL && 
+                (smatch(mem, "true") || smatch(mem, "1"))) {
             delay = DB_INMEM;
         } else {
             delay = (int) stoi(jsonGet(json, sid, "delay", "0"));
@@ -826,7 +828,6 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
     int    count, limit;
 
     assert(db);
-    assert(modelName);
     assert(props);
 
     if (SETUP(db, modelName, props, params, "remove", &env) < 0) {
@@ -1502,7 +1503,7 @@ PUBLIC DbModel *dbGetModel(Db *db, cchar *name)
     return rLookupName(db->models, name);
 }
 
-PUBLIC DbModel *dbGetItemModel(Db *db, DbItem *item)
+PUBLIC DbModel *dbGetItemModel(Db *db, CDbItem *item)
 {
     cchar *modelName;
 
