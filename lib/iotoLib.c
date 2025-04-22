@@ -465,7 +465,7 @@ PUBLIC int ioInitDb(void)
 
     flags = ioto->nosave ? DB_READ_ONLY : 0;
     if ((ioto->db = dbOpen(path, schema, flags)) == 0) {
-        rError("database", "Cannot open database %s with schema %s", path, schema);
+        rError("database", "Cannot open database %s or schema %s", path, schema);
         rFree(path);
         rFree(schema);
         return R_ERR_CANT_OPEN;
@@ -707,6 +707,7 @@ PUBLIC Ioto *ioAlloc(void)
 PUBLIC void ioFree(void)
 {
     if (ioto) {
+        //  ioto members freed in ioTerm and ioTermConfig
         rFree(ioto);
     }
     ioto = NULL;
@@ -731,7 +732,10 @@ PUBLIC void ioInit(void)
     rSetState(R_READY);
     rInfo("ioto", "Ioto ready");
     rSignal("app:ready", 0);
-    ioStart();
+    if (ioStart() < 0) {
+        rError("ioto", "Cannot start Ioto, ioStart() failed");
+        rStop();
+    }
 }
 
 /*
@@ -1580,7 +1584,7 @@ PUBLIC int ioRegister(void)
 
 #if SERVICES_CLOUD
     if (ioto->api && ioto->apiToken) {
-        rInfo("register", "Device registered and claimed by %s cloud \"%s\" in %s",
+        rInfo("ioto", "Device registered and claimed by %s cloud \"%s\" in %s",
               jsonGet(ioto->config, 0, "provision.cloudType", 0),
               jsonGet(ioto->config, 0, "provision.cloudName", 0),
               jsonGet(ioto->config, 0, "provision.cloudRegion", 0)
@@ -1589,21 +1593,21 @@ PUBLIC int ioRegister(void)
     }
 #else
     if (ioto->registered) {
-        rInfo("register", "Device already registered");
+        rInfo("ioto", "Device already registered");
         return 0;
     }
 #endif
     if (!ioto->product || smatch(ioto->product, "PUT-YOUR-PRODUCT-ID-HERE")) {
-        rError("register", "Cannot register device, missing \"product\" in config/device.json5");
+        rError("ioto", "Cannot register device, missing \"product\" in config/device.json5");
         return R_ERR_BAD_ARGS;
     }
     if (!ioto->id || *ioto->id == '\0') {
-        rError("register", "Cannot register device, missing device \"id\" in config/device.json5");
+        rError("ioto", "Cannot register device, missing device \"id\" in config/device.json5");
         return R_ERR_BAD_ARGS;
 
     } else if (smatch(ioto->id, "auto")) {
         ioto->id = cryptID(10);
-        rInfo("register", "Generated device claim ID %s", ioto->id);
+        rInfo("ioto", "Generated device claim ID %s", ioto->id);
 
         jsonUnlock(ioto->config);
         jsonSet(ioto->config, 0, "device.id", ioto->id, JSON_STRING);
@@ -1612,7 +1616,7 @@ PUBLIC int ioRegister(void)
         if (!ioto->nosave) {
             path = rGetFilePath(IO_DEVICE_FILE);
             if (jsonSave(ioto->config, 0, "device", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
-                rError("register", "Cannot save device registration to %s", path);
+                rError("ioto", "Cannot save device registration to %s", path);
                 return R_ERR_CANT_WRITE;
             }
         }
@@ -1638,7 +1642,7 @@ PUBLIC int ioRegister(void)
     jsonFree(params);
 
     if (once++ == 0) {
-        rInfo("register", "Device registering with %s\n%s", ioto->builder, data);
+        rInfo("ioto", "Device registering with %s\n%s", ioto->builder, data);
     }
 
     sfmtbuf(url, sizeof(url), "%s/device/register", ioto->builder);
@@ -1660,11 +1664,11 @@ static int parseRegisterResponse(Json *json)
     char       *path;
 
     if (json == 0 || json->count < 2) {
-        rError("register", "Cannot register device");
+        rError("ioto", "Cannot register device");
         return R_ERR_CANT_COMPLETE;
     }
-    if (rEmitLog("debug", "register")) {
-        rDebug("register", "Device register response: %s", jsonString(json));
+    if (rEmitLog("debug", "ioto")) {
+        rDebug("ioto", "Device register response: %s", jsonString(json));
     }
     /*
         Response will have 2 elements when registered but not claimed
@@ -1675,7 +1679,7 @@ static int parseRegisterResponse(Json *json)
         if (ioto->provisionService) {
             //  Registered but not yet claimed
             if (once++ == 0) {
-                rInfo("register", "Device not yet claimed for management via the cloud");
+                rInfo("ioto", "Device not yet claimed for management via the cloud");
             }
         }
     }
@@ -1686,14 +1690,14 @@ static int parseRegisterResponse(Json *json)
     jsonRemove(ioto->config, 0, "provision");
     jsonBlend(ioto->config, 0, "provision", json, 0, 0, 0);
 
-    if (rEmitLog("debug", "register")) {
-        rDebug("register", "Provisioning: %s", jsonString(json));
+    if (rEmitLog("debug", "ioto")) {
+        rDebug("ioto", "Provisioning: %s", jsonString(json));
     }
 
     if (!ioto->nosave) {
         path = rGetFilePath(IO_PROVISION_FILE);
         if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
-            rError("register", "Cannot save device provisioning to %s", path);
+            rError("ioto", "Cannot save device provisioning to %s", path);
             rFree(path);
             return R_ERR_CANT_WRITE;
         }
@@ -1760,7 +1764,7 @@ PUBLIC void ioSerialize(void)
     }
 #if SERVICES_CLOUD
     if (ioto->id) {
-        rInfo("app", "Device Claim ID: %s", ioto->id);
+        rInfo("ioto", "Device Claim ID: %s", ioto->id);
     }
 #endif
 }
@@ -1978,11 +1982,11 @@ PUBLIC int ioInitConfig(void)
 #if SERVICES_PROVISION
     cchar *id = jsonGet(json, 0, "provision.id", 0);
     if (id && !smatch(ioto->id, id)) {
-        rError("setup", "Provisioning does not match configured device claim ID, reset provisioning");
+        rError("ioto", "Provisioning does not match configured device claim ID, reset provisioning");
         ioDeprovision();
     }
     if (!ioto->product || smatch(ioto->product, "")) {
-        rError("setup", "Define your Builder \"product\" token in device.json5");
+        rError("ioto", "Define your Builder \"product\" token in device.json5");
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
@@ -1997,7 +2001,7 @@ PUBLIC int ioInitConfig(void)
         if (rAccessFile(authority, R_OK) == 0) {
             rSetSocketDefaultCerts(authority, NULL, NULL, NULL);
         } else {
-            rError("setup", "Cannot access TLS root certificates \"%s\"", authority);
+            rError("ioto", "Cannot access TLS root certificates \"%s\"", authority);
             rFree(authority);
             return R_ERR_CANT_INITIALIZE;
         }
@@ -2005,7 +2009,7 @@ PUBLIC int ioInitConfig(void)
     }
 #endif
     ioUpdateLog(0);
-    rInfo("app", "Starting Ioto %s, with \"%s\" app %s, using \"%s\" profile",
+    rInfo("ioto", "Starting Ioto %s, with \"%s\" app %s, using \"%s\" profile",
           ME_VERSION, ioto->app, ioto->version, ioto->profile);
     enableServices();
     return 0;
@@ -2022,6 +2026,9 @@ PUBLIC void ioTermConfig(void)
 
     rFree(ioto->app);
     rFree(ioto->builder);
+    rFree(ioto->cmdConfigDir);
+    rFree(ioto->cmdStateDir);
+    rFree(ioto->cmdSync);
     rFree(ioto->id);
     rFree(ioto->lastSync);
     rFree(ioto->logDir);
@@ -2060,6 +2067,9 @@ PUBLIC void ioTermConfig(void)
     ioto->apiToken = 0;
     ioto->cloud = 0;
     ioto->cloudType = 0;
+    ioto->cmdConfigDir = 0;
+    ioto->cmdStateDir = 0;
+    ioto->cmdSync = 0;
     ioto->endpoint = 0;
     ioto->awsAccess = 0;
     ioto->awsSecret = 0;
@@ -2101,7 +2111,7 @@ PUBLIC int ioLoadConfig(void)
         return R_ERR_CANT_READ;
     }
     if (json->count == 0) {
-        rInfo("setup", "Cannot find valid \"%s\" config file", IO_CONFIG_FILE);
+        rInfo("ioto", "Cannot find valid \"%s\" config file", IO_CONFIG_FILE);
     }
     if (loadJson(json, NULL, IO_LOCAL_FILE, 1) < 0) {
         return R_ERR_CANT_READ;
@@ -2149,8 +2159,8 @@ PUBLIC int ioLoadConfig(void)
     } else {
         rAddDirectory("site", "@state/site");
     }
-    if (rEmitLog("debug", "setup")) {
-        rDebug("setup", "%s", jsonString(json));
+    if (rEmitLog("debug", "ioto")) {
+        rDebug("ioto", "%s", jsonString(json));
     }
     return 0;
 }
@@ -2197,11 +2207,11 @@ static void enableServices(void)
         ioto->syncService = jsonGetBool(config, sid, "sync", 0);
 
         if (!ioto->provisionService && (ioto->keyService || ioto->mqttService)) {
-            rError("setup", "Need provisioning service if key or mqtt service is required");
+            rError("ioto", "Need provisioning service if key or mqtt service is required");
             ioto->provisionService = 1;
         }
         if ((ioto->provisionService || ioto->keyService || ioto->syncService) && !ioto->mqttService) {
-            rError("setup", "Need MQTT service if provision, key or sync services are required");
+            rError("ioto", "Need MQTT service if provision, key or sync services are required");
             ioto->mqttService = 1;
         }
 #endif
@@ -2217,9 +2227,11 @@ static void enableServices(void)
          */
         ioto->registerService = jsonGetBool(config, sid, "register", ioto->provisionService ? 1 : 0);
     }
-    rInfo("setup", "Enabling services: %s%s%s%s%s%s%s%s%s%s",
+    rInfo("ioto", "Enabling services: %s%s%s%s%s%s%s%s%s%s%s%s",
+          ioto->aiService ? "ai " : "",
           ioto->dbService ? "db " : "",
           ioto->logService ? "log " : "",
+          ioto->mqttService ? "mqtt " : "",
           ioto->provisionService ? "provision " : "",
           ioto->registerService ? "register " : "",
           ioto->shadowService ? "shadow " : "",
@@ -2242,7 +2254,7 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
     path = rGetFilePath(filename);
     if (rAccessFile(path, F_OK) < 0) {
         if (!optional) {
-            rError("setup", "Cannot find required file %s", path);
+            rError("ioto", "Cannot find required file %s", path);
             rFree(path);
             return R_ERR_CANT_FIND;
         }
@@ -2250,14 +2262,14 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
         return 0;
     }
     if ((extra = jsonParseFile(path, NULL, 0)) == 0) {
-        rError("setup", "Cannot parse %s", path);
+        rError("ioto", "Cannot parse %s", path);
         rFree(path);
         return R_ERR_CANT_READ;
     }
-    rDebug("setup", "Loading %s", path);
+    rDebug("ioto", "Loading %s", path);
 
     if (jsonBlend(json, 0, property, extra, 0, 0, 0) < 0) {
-        rError("setup", "Cannot blend %s", path);
+        rError("ioto", "Cannot blend %s", path);
         jsonFree(extra);
         rFree(path);
         return R_ERR_CANT_READ;
@@ -2307,7 +2319,7 @@ static int blendConditional(Json *json, cchar *property)
             id = jsonGetId(conditional, jsonGetNodeId(conditional, collection), value);
             if (id >= 0) {
                 if (jsonBlend(json, 0, property, conditional, id, 0, JSON_COMBINE) < 0) {
-                    rError("setup", "Cannot blend %s", collection->name);
+                    rError("ioto", "Cannot blend %s", collection->name);
                     return R_ERR_CANT_COMPLETE;
                 }
             }
@@ -4336,7 +4348,7 @@ PUBLIC int ioProvision()
         if (provisionDevice()) {
             break;
         }
-        rInfo("provision", "Device not yet claimed, waiting %lld secs ...", delay / 1000);
+        rInfo("ioto", "Device not yet claimed, waiting %lld secs ...", delay / 1000);
     }
     rLeave(&provisioning);
     return 0;
@@ -4376,7 +4388,7 @@ static bool provisionDevice(void)
     json = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
 
     if (json == 0 || json->count == 0) {
-        rError("provision", "Cannot provision device");
+        rError("ioto", "Cannot provision device");
         jsonFree(json);
         return 0;
     }
@@ -4395,7 +4407,7 @@ static void parseProvisioningResponse(Json *json)
     char  *certMem, *keyMem, *path;
 
     key = certificate = path = 0;
-    rInfo("provision", "Device claimed");
+    rInfo("ioto", "Device claimed");
 
     /*
         Extract provisioning certificates for MQTT communications with AWS IoT
@@ -4403,7 +4415,7 @@ static void parseProvisioningResponse(Json *json)
     certificate = jsonGet(json, 0, "certificate", 0);
     key = jsonGet(json, 0, "key", 0);
     if (!certificate || !key) {
-        rError("provision", "Provisioning is missing certificate");
+        rError("ioto", "Provisioning is missing certificate");
         return;
     }
     if (ioto->nosave) {
@@ -4417,7 +4429,7 @@ static void parseProvisioningResponse(Json *json)
     } else {
         path = rGetFilePath(IO_CERTIFICATE);
         if (rWriteFile(path, certificate, -1, 0600) < 0) {
-            rError("provision", "Cannot save certificate to %s", path);
+            rError("ioto", "Cannot save certificate to %s", path);
         } else {
             jsonSet(json, 0, "certificate", path, JSON_STRING);
         }
@@ -4425,7 +4437,7 @@ static void parseProvisioningResponse(Json *json)
 
         path = rGetFilePath(IO_KEY);
         if (rWriteFile(path, key, -1, 0600) < 0) {
-            rError("provision", "Cannot save key to %s", path);
+            rError("ioto", "Cannot save key to %s", path);
         } else {
             jsonSet(json, 0, "key", path, JSON_STRING);
         }
@@ -4441,7 +4453,7 @@ static void parseProvisioningResponse(Json *json)
     if (!ioto->nosave) {
         path = rGetFilePath(IO_PROVISION_FILE);
         if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
-            rError("provision", "Cannot save provisioning state to %s", path);
+            rError("ioto", "Cannot save provisioning state to %s", path);
             rFree(path);
             return;
         }
@@ -4456,7 +4468,7 @@ static void parseProvisioningResponse(Json *json)
     rFree(ioto->endpoint);
     ioto->endpoint = jsonGetClone(ioto->config, 0, "provision.endpoint", 0);
 
-    rInfo("provision", "Device provisioned for %s cloud \"%s\" in %s",
+    rInfo("ioto", "Device provisioned for %s cloud \"%s\" in %s",
           jsonGet(ioto->config, 0, "provision.cloudType", 0),
           jsonGet(ioto->config, 0, "provision.cloudName", 0),
           jsonGet(ioto->config, 0, "provision.cloudRegion", 0)
@@ -4498,13 +4510,13 @@ PUBLIC void ioRelease(MqttRecv *rp)
         if (rGetTime() < (timestamp + 10 * TPS)) {
             //  Unit tests may get a stale restart command
             if (!ioto->cmdTest) {
-                rInfo("sync", "Received provisioning command %s", rp->topic);
+                rInfo("ioto", "Received provisioning command %s", rp->topic);
                 ioDisconnect();
                 ioDeprovision();
             }
         }
     } else {
-        rError("provision", "Unknown provision command %s", cmd);
+        rError("ioto", "Unknown provision command %s", cmd);
     }
 }
 
@@ -4545,7 +4557,7 @@ PUBLIC void ioDeprovision(void)
     path = rGetFilePath(IO_PROVISION_FILE);
     unlink(path);
     rFree(path);
-    rInfo("provision", "Device deprovisioned");
+    rInfo("ioto", "Device deprovisioned");
 }
 
 /*
@@ -4561,7 +4573,7 @@ PUBLIC void ioGetKeys(void)
 
     json = urlPostJson(url, 0, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
     if (json == 0) {
-        rError("provision", "Cannot get credentials");
+        rError("ioto", "Cannot get credentials");
         return;
     }
     /*
@@ -5628,7 +5640,9 @@ PUBLIC bool ioUpdate(void)
     /*
         Protection incase update fails and device loops continually updating
      */
-    enable = jsonGetBool(ioto->config, 0, "update.enable", 0);
+    if ((enable = jsonGetBool(ioto->config, 0, "update.enable", 0)) == 0) {
+        return 0;
+    }
     schedule = jsonGet(ioto->config, 0, "update.schedule", "* * * * *");
     jitter = svalue(jsonGet(ioto->config, 0, "update.jitter", "0")) * TPS;
     period = svalue(jsonGet(ioto->config, 0, "update.period", "24 hrs")) * TPS;
@@ -5667,12 +5681,12 @@ PUBLIC bool ioUpdate(void)
     rTrace("update", "Request \n%s\n%s\n%s\n\n", url, headers, body);
     if ((json = urlJson(up, "POST", url, body, -1, headers)) == 0) {
         response = urlGetResponse(up);
-        rInfo("update", "\nResponse %s\n", response);
+        rInfo("ioto", "\nResponse %s\n", response);
         if (smatch(response, "Cannot find device") || smatch(response, "Authentication failed")) {
             /*
                 The device has either been removed or released. Release certs and re-provision after a restart
              */
-            rInfo("update", "%s: releasing device ...", response);
+            rInfo("ioto", "%s: releasing device ...", response);
             ioDeprovision();
             rSetState(R_RESTART);
         } else {
@@ -5692,7 +5706,7 @@ PUBLIC bool ioUpdate(void)
         version = jsonGet(json, 0, "version", 0);
         image = jsonGet(json, 0, "url", 0);
         path = rGetFilePath("@state/update.bin");
-        rInfo("update", "Device has updated firmware: %s", version);
+        rInfo("ioto", "Device has updated firmware: %s", version);
 
         /*
             Download the update with throttling
@@ -5711,7 +5725,7 @@ PUBLIC bool ioUpdate(void)
         rFree(path);
 
     } else if (json) {
-        rInfo("update", "Device has no pending updates for version: %s", ioto->version);
+        rInfo("ioto", "Device has no pending updates for version: %s", ioto->version);
     }
     jsonFree(json);
 
@@ -5747,7 +5761,7 @@ static void applyUpdate(char *path)
     if (script) {
         SFMT(command, "%s \"%s\"", script, path);
         output = rRun(command, &status);
-        rInfo("update", "Update returned status %d, output: %s", status, output);
+        rInfo("ioto", "Update returned status %d, output: %s", status, output);
 
         if (status != 0) {
             rError("update", "Update command failed: %s", output);
@@ -5817,7 +5831,7 @@ static int download(cchar *url, cchar *path)
         }
     } while (nbytes > 0);
     rFree(buf);
-    rInfo("update", "Downloaded %d bytes", (int) total);
+    rInfo("ioto", "Downloaded %d bytes", (int) total);
 
     urlFree(up);
     close(fd);

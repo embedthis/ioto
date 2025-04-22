@@ -662,7 +662,7 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     topic = sfmtv(fmt, ap);
     va_end(ap);
 
-    rInfo("mqtt", "Define master MQTT subscription \"%s\"", topic);
+    rTrace("mqtt", "Define master MQTT subscription \"%s\"", topic);
     
     if ((rc = mqttSubscribe(mq, NULL, maxQos, wait, "%s", topic)) == 0) {
         if (sends(topic, "/+") || sends(topic, "/#")) {
