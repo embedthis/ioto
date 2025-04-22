@@ -1973,7 +1973,7 @@ PUBLIC int ioInitConfig(void)
     ioto->product = jsonGetClone(json, 0, "device.product", 0);
     ioto->registered = jsonGetBool(json, 0, "provision.registered", 0);
     ioto->version = jsonGetClone(json, 0, "version", "1.0.0");
-    ioto->template = makeTemplate();
+    ioto->properties = makeTemplate();
 
 #if SERVICES_PROVISION
     cchar *id = jsonGet(json, 0, "provision.id", 0);
@@ -2013,8 +2013,12 @@ PUBLIC int ioInitConfig(void)
 
 PUBLIC void ioTermConfig(void)
 {
+
     jsonFree(ioto->config);
-    jsonFree(ioto->template);
+    jsonFree(ioto->properties);
+#if SERVICES_SHADOW
+    jsonFree(ioto->shadow);
+#endif
 
     rFree(ioto->app);
     rFree(ioto->builder);
@@ -2037,7 +2041,7 @@ PUBLIC void ioTermConfig(void)
     ioto->registered = 0;
     ioto->serializeService = 0;
     ioto->version = 0;
-    ioto->template = 0;
+    ioto->properties = 0;
 
 #if SERVICES_CLOUD
     rFree(ioto->account);
@@ -2314,11 +2318,11 @@ static int blendConditional(Json *json, cchar *property)
 }
 
 /*
-    Expand ${references} in the "str" using template variables in ioto->template
+    Expand ${references} in the "str" using properties variables in ioto->properties
  */
 PUBLIC char *ioExpand(cchar *str)
 {
-    return jsonTemplate(ioto->template, str);
+    return jsonTemplate(ioto->properties, str);
 }
 
 /*
@@ -2346,7 +2350,7 @@ static Json *makeTemplate(void)
  */
 PUBLIC void ioSetTemplateVar(cchar *key, cchar *value)
 {
-    jsonSet(ioto->template, 0, key, value, 0);
+    jsonSet(ioto->properties, 0, key, value, 0);
 }
 
 static void removeFile(cchar *file)
