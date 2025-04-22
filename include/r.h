@@ -528,6 +528,14 @@ PUBLIC bool rIsMain(void);
     @stability Internal
  */
 PUBLIC void rCheckFiber(void);
+
+/**
+    Get the stack usage of the current fiber
+    @description This measures the stack that has been used in the past.
+    @return The stack usage of the current fiber
+    @stability Evolving
+ */
+PUBLIC int64 rGetStackUsage(void);
 #endif
 
 //  Internal

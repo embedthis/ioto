@@ -1613,11 +1613,14 @@ PUBLIC void rCheckFiber(void)
     base = (char*) rGetFiberStack();
     if (base == 0) return;
 
+    //  This measures the current stack usage
     used = base - (char*) &base;
     if (used > peak) {
         peak = (used + 1023) / 1024 * 1024;
 #if ME_FIBER_ALLOC_DEBUG
-        DWRITE("Peak fiber stack usage "); DWRITE(sitos(peak / 1024)); DWRITE("k (+16k for o/s)\n");
+        char  num[16];
+        sitosbuf(num, sizeof(num), peak / 1024, 10);
+        DWRITE("Peak fiber stack usage "); DWRITE(num); DWRITE("k (+16k for o/s)\n");
 #endif
         for (i = 0; i < sizeof(currentFiber->guard); i++) {
             if (currentFiber->guard[i] != (char) GUARD_CHAR) {
@@ -1626,17 +1629,31 @@ PUBLIC void rCheckFiber(void)
             }
         }
 #if ME_FIBER_ALLOC_DEBUG
-        for (uchar *cp = currentFiber->stack; cp < &currentFiber->stack[stackSize]; cp++) {
-            if (*cp != 0) {
-                used = &currentFiber->stack[stackSize] - cp;
-                DWRITE("Actual stack usage "); DWRITE(sitos((used + 1023) / 1024)); DWRITE("k\n");
-                break;
-            }
-        }
+        //  This measures the stack that has been used in the past
+        used = rGetStackUsage();
+        sitosbuf(num, sizeof(num), used / 1024, 10);
+        DWRITE("Actual stack usage "); DWRITE(num); DWRITE("k\n");
 #endif
     }
 }
-#endif
+
+/*
+    This measures the stack that has been used in the past
+ */
+PUBLIC int64 rGetStackUsage(void)
+{
+    int64 used;
+
+    used = 0;
+    for (uchar *cp = currentFiber->stack; cp < &currentFiber->stack[stackSize]; cp++) {
+        if (*cp != 0) {
+            used = &currentFiber->stack[stackSize] - cp;
+            break;
+        }
+    }
+    return used;
+}
+#endif /* ME_FIBER_GUARD_STACK */
 #endif /* R_USE_FIBER */
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.
