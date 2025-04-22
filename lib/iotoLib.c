@@ -486,7 +486,7 @@ PUBLIC int ioInitDb(void)
 #endif
 #if SERVICES_SYNC
     if (dbGet(ioto->db, "SyncState", NULL, NULL) == 0) {
-        dbCreate(ioto->db, "SyncState", DB_PROPS("lastSyncDown", "0", "lastUpdate", "0"), NULL);
+        dbCreate(ioto->db, "SyncState", DB_PROPS("lastSync", "0", "lastUpdate", "0"), NULL);
     }
     if (ioto->syncService && (ioInitSync() < 0)) {
         return R_ERR_CANT_READ;
@@ -2019,6 +2019,7 @@ PUBLIC void ioTermConfig(void)
     rFree(ioto->app);
     rFree(ioto->builder);
     rFree(ioto->id);
+    rFree(ioto->lastSync);
     rFree(ioto->logDir);
     rFree(ioto->profile);
     rFree(ioto->product);
@@ -2029,6 +2030,7 @@ PUBLIC void ioTermConfig(void)
     ioto->builder = 0;
     ioto->config = 0;
     ioto->id = 0;
+    ioto->lastSync = 0;
     ioto->logDir = 0;
     ioto->profile = 0;
     ioto->product = 0;
@@ -4470,7 +4472,7 @@ static void parseProvisioningResponse(Json *json)
  */
 static void postProvisionSync(void)
 {
-    ioSyncUp(1);
+    ioSyncUp(0, 1);
     rWatchOff("mqtt:connected", (RWatchProc) postProvisionSync, 0);
 }
 
@@ -4869,7 +4871,7 @@ static int nextSeq = 1;
 
 static Change *allocChange(cchar *cmd, cchar *key, char *data, cchar *updated, Ticks due);
 static void applySyncLog(void);
-static void cleanChanges(Json *json);
+static void cleanSyncChanges(Json *json);
 static void dbCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd, int events);
 static void deviceCommand(void *arg, struct Db *db, struct DbModel *model, struct DbItem *item,
                           struct DbParams *params, cchar *cmd, int event);
@@ -4881,7 +4883,7 @@ static int readSize(FILE *fp);
 static void receiveSync(MqttRecv *rp);
 static void recreateSyncLog(void);
 static void scheduleSync(Change *change);
-static void syncItem(DbModel *model, DbItem *item, DbParams *params, cchar *cmd, bool guarantee);
+static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd, bool guarantee);
 static void updateChange(Change *change, cchar *cmd, char *data, cchar *updated, Ticks due);
 static int writeBlock(cchar *buf);
 static int writeSize(int len);
@@ -4890,10 +4892,18 @@ static int writeSize(int len);
 
 PUBLIC int ioInitSync(void)
 {
+    cchar *lastSync;
+
+    dbPrint(ioto->db);
     nextSeq = rand();
     ioto->syncDue = MAXINT64;
     ioto->syncHash = rAllocHash(0, 0);
     ioto->maxSyncSize = (int) svalue(jsonGet(ioto->config, 0, "database.maxSyncSize", "1k"));
+    if ((lastSync = dbGetField(ioto->db, "SyncState", "lastSync", NULL, NULL)) != NULL) {
+        ioto->lastSync = sclone(lastSync);
+    } else {
+        ioto->lastSync = rGetIsoDate(0);
+    }
     dbAddCallback(ioto->db, (DbCallbackProc) dbCallback, NULL, NULL, DB_ON_COMMIT | DB_ON_FREE);
     recreateSyncLog();
     return 0;
@@ -4904,6 +4914,8 @@ PUBLIC void ioTermSync(void)
     RName  *np;
     Change *change;
     char   path[ME_MAX_FNAME];
+
+    dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
 
     for (ITERATE_NAMES(ioto->syncHash, np)) {
         change = np->value;
@@ -4929,37 +4941,56 @@ PUBLIC void ioTermSync(void)
     Users can call this if necessary.
     If guarantee is true, then reliably save the change record until the cloud acknowledges receipt.
  */
-PUBLIC void ioSyncUp(bool guarantee)
+PUBLIC void ioSyncUp(Time when, bool guarantee)
 {
     RbNode  *node;
     DbModel *model;
     DbItem  *item;
+    Time    updated;
+
+    dbRemoveExpired(ioto->db, 1);
 
     for (node = rbFirst(ioto->db->primary); node; node = rbNext(ioto->db->primary, node)) {
         item = node->data;
         model = dbGetItemModel(ioto->db, item);
         if (model && model->sync) {
+            if (when > 0) {
+                updated = rParseIsoDate(dbField(item, "updated"));
+                //  If updated at the same time as when, then send update
+                if (updated < when) {
+                    continue;
+                }
+            }
             syncItem(model, item, NULL, "update", guarantee);
         }
     }
     ioFlushSync(0);
 }
 
+/*
+    Send a sync down message to the cloud
+    When is set to retrieve items updated after this time. If when is negative, the call will items updated
+    since the last sync.
+ */
 PUBLIC void ioSyncDown(Time when)
 {
-    char *lastSync;
-    char msg[160];
+    char msg[160], *timestamp;
 
     //  Send SyncDown message
-    if (when < 0) {
-        lastSync = sclone(dbGetField(ioto->db, "SyncState", "lastSyncDown", NULL, NULL));
+    if (when >= 0) {
+        timestamp = rGetIsoDate(when);
+        SFMT(msg, "{\"timestamp\":\"%s\"}", timestamp);
+        rFree(timestamp);
     } else {
-        lastSync = rGetIsoDate(when);
+        SFMT(msg, "{\"timestamp\":\"%s\"}", ioto->lastSync);
     }
-    SFMT(msg, "{\"lastSync\":\"%s\"}", lastSync ? lastSync : "0");
-    rFree(lastSync);
-    //  DEPRECATE syncUp and rename syncDown
-    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE, "$aws/rules/IotoDevice/ioto/service/%s/db/syncUp", ioto->id);
+    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE, "$aws/rules/IotoDevice/ioto/service/%s/db/syncDown", ioto->id);
+}
+
+PUBLIC void ioSync(Time when, bool guarantee)
+{
+    ioSyncUp(when, guarantee);
+    ioSyncDown(when);
 }
 
 /*
@@ -5118,7 +5149,7 @@ static void dbCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams
     if this update came from a cloud update (i.e. stop infinite looping updates).
     If guarantee is true, then reliably save the change record until the cloud acknowledges receipt.
  */
-static void syncItem(DbModel *model, DbItem *item, DbParams *params, cchar *cmd, bool guarantee)
+static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd, bool guarantee)
 {
     Change *change;
     cchar  *updated;
@@ -5319,15 +5350,17 @@ PUBLIC void ioFlushSync(bool force)
     Remove changes that have been replicated to the cloud.
     Changes are acknowledged by sequence number.
  */
-static void cleanChanges(Json *json)
+static void cleanSyncChanges(Json *json)
 {
     Change   *change;
     JsonNode *key, *keys;
+    cchar    *updated;
     ssize    count;
     int      seq;
 
     keys = jsonGetNode(json, 0, "keys");
     seq = jsonGetInt(json, 0, "seq", 0);
+    updated = jsonGet(json, 0, "updated", 0);
     if (!keys) {
         return;
     }
@@ -5337,13 +5370,23 @@ static void cleanChanges(Json *json)
         change = rLookupName(ioto->syncHash, key->value);
         if (change) {
             if (change->seq == seq) {
+                if (scmp(change->updated, ioto->lastSync) > 0) {
+                    rFree(ioto->lastSync);
+                    //  Prefer cloud-side updated time
+                    ioto->lastSync = sclone(updated ? updated : change->updated);
+                    //  OPTIMIZE
+                    dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
+                }
                 freeChange(change);
             }
         }
     }
+    rDebug("sync", "After syncing %ld changes %d changes pending", count, rGetHashLength(ioto->syncHash));
     if (count && rGetHashLength(ioto->syncHash) == 0) {
+        //  OPTIMIZE
         recreateSyncLog();
     }
+    rSignal("db:sync:done", 0);
 }
 
 static void recreateSyncLog(void)
@@ -5370,7 +5413,11 @@ static void recreateSyncLog(void)
  */
 PUBLIC void ioConnectSync(void)
 {
+    Time timestamp;
+
     if (!ioto->syncService) return;
+
+    timestamp = rParseIsoDate(ioto->lastSync);
 
     dbAddCallback(ioto->db,  (DbCallbackProc) deviceCommand, "Command", NULL, DB_ON_CHANGE);
 
@@ -5385,7 +5432,20 @@ PUBLIC void ioConnectSync(void)
     applySyncLog();
 
     //  Sync from cloud to device - non-blocking
-    ioSyncDown(-1);
+    if (!ioto->cmdSync) {
+        //  Sync down all changes made since the last sync down (while we were offline)
+        ioSyncDown(timestamp);
+    } else {
+        //  Sync all items as required
+        if (smatch(ioto->cmdSync, "up")) {
+            ioSyncUp(0, 1);
+        } else if (smatch(ioto->cmdSync, "down")) {
+            ioSyncDown(0);
+        } else if (smatch(ioto->cmdSync, "both")) {
+            ioSyncUp(0, 1);
+            ioSyncDown(0);
+        }
+    }
 }
 
 /*
@@ -5393,11 +5453,12 @@ PUBLIC void ioConnectSync(void)
  */
 static void receiveSync(MqttRecv *rp)
 {
-    Db           *db;
-    const DbItem *prior;
-    cchar        *msg, *priorUpdated, *sk, *updated, *lastSyncDown;
-    Json         *json;
-    bool         stale;
+    Db      *db;
+    CDbItem *prior;
+    cchar   *msg, *priorUpdated, *sk, *updated;
+    DbModel *model;
+    Json    *json;
+    bool    stale;
 
     db = ioto->db;
     msg = rp->data;
@@ -5409,25 +5470,21 @@ static void receiveSync(MqttRecv *rp)
     if (rEmitLog("debug", "sync")) {
         rDebug("sync", "Received sync response %s: %s", rp->topic, msg);
     } else {
-        rInfo("sync", "Received %s", rp->topic);
+        rTrace("sync", "Received %s", rp->topic);
     }
     if (sends(rp->topic, "SYNC")) {
-        //  Response for a sync
-        cleanChanges(json);
-        rSignal("db:sync:done", 0);
+        //  Response for a syncItem to DynamoDB
+        cleanSyncChanges(json);
 
-    } else if (sends(rp->topic, "SYNCUP") || sends(rp->topic, "SYNCDOWN")) {
-        //  DEPRECATED SYNCUP
+    } else if (sends(rp->topic, "SYNCDOWN")) {
         //  Response for syncdown (ioConnectSync)
-        updated = jsonGet(json, 0, "updated", 0);
-        lastSyncDown = dbGetField(ioto->db, "SyncState", "lastSyncDown", NULL, NULL);
-        if (!lastSyncDown || scmp(lastSyncDown, updated) < 0) {
-            rInfo("sync", "SyncDown complete for %s", updated);
-            dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSyncDown", updated), DB_PARAMS(.bypass = 1));
-            //  DEPRECATED syncup event
-            rSignal("db:syncup:done", 0);
+        if ((updated = jsonGet(json, 0, "updated", 0)) != NULL && scmp(updated, ioto->lastSync) > 0) {
+            rFree(ioto->lastSync);
+            ioto->lastSync = sclone(updated);
+            dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
             rSignal("db:syncdown:done", 0);
         }
+        rTrace("sync", "SyncDown complete");
 
     } else {
         sk = jsonGet(json, 0, "sk", "");
@@ -5436,16 +5493,23 @@ static void receiveSync(MqttRecv *rp)
         if (prior) {
             updated = jsonGet(json, 0, "updated", 0);
             priorUpdated = dbField(prior, "updated");
-            if (updated && priorUpdated) {
-                if (scmp(updated, priorUpdated) < 0) {
-                    rTrace("sync", "Discard stale sync update");
-                    stale = 1;
-                }
+            if (updated && priorUpdated && scmp(updated, priorUpdated) < 0) {
+                stale = 1;
             }
         }
-        if (!stale) {
-            rInfo("db:sync", "Received database %s", rp->topic);
+        if (stale) {
+            rTrace("sync", "Discard stale sync update and send item back to peer");
+            model = dbGetItemModel(ioto->db, prior);
+            syncItem(model, prior, NULL, "update", 1);
+
+        } else {
             if (sends(rp->topic, "REMOVE")) {
+                jsonRemove(json, 0, "updated");
+                if (rEmitLog("debug", "sync")) {
+                    char *str = jsonToString(json, 0, 0, JSON_PRETTY);
+                    rDebug("sync", "Remove %s", str);
+                    rFree(str);
+                }
                 dbRemove(db, NULL, json, DB_PARAMS(.bypass = 1));
 
             } else if (sends(rp->topic, "INSERT")) {

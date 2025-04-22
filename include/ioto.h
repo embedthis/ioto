@@ -165,6 +165,7 @@ typedef struct Ioto {
     char *version;             /**< Your software version number (not Ioto version) */
     char *cmdConfigDir;        /**< Command line override directory for config files */
     char *cmdStateDir;         /**< Command line override directory for state files */
+    char *cmdSync;             /**< Command line override directory for state files */
     cchar *cmdId;              /**< Command line override claim ID */
     cchar *cmdIotoFile;        /**< Command line override path for the ioto.json5 config file */
     cchar *cmdProfile;         /**< Command line override profile */
@@ -226,6 +227,7 @@ typedef struct Ioto {
     ssize syncSize;            /**< Size of buffered database changes */
     RHash *syncHash;           /**< Hash of database change records */
     FILE *syncLog;             /**< Sync log file descriptor */
+    char *lastSync;            /**< Last item sync time */
 #endif
 
     struct IotoLog *log;       /**< Cloud Watch Log object */
@@ -481,19 +483,32 @@ PUBLIC void ioFlushSync(bool force);
 /**
     Sync all items to the cloud
     @description This call can be used to force a full sync-up of the local database to the cloud.
+    @param timestamp Sync items updated after this time.
     @param guarantee Set to true to true, peform a reliable sync by waiting for the cloud to send
     a receipt acknowlegement for each item.
     @stability Evolving
  */
-PUBLIC void ioSyncUp(bool guarantee);
+PUBLIC void ioSyncUp(Time timestamp, bool guarantee);
 
 /**
     Sync items from the cloud down to the device
     @description This call can be used to retrieve all items updated after the requested timestamp
-    @param timestamp Retrieve items updated after this time.
+    @param timestamp Retrieve items updated after this time. If timestamp is negative, the call will
+        retrieve items updates since the last sync.
     @stability Evolving
  */
 PUBLIC void ioSyncDown(Time timestamp);
+
+/**
+    Sync items to and from the cloud
+    @description This call can be used to force a sync-up and sync-down of the local database to and from the cloud.
+    @param when Retrieve items updated after this time. If when is negative, the call will sync items updated
+        since the last sync.
+    @param guarantee Set to true to true, peform a reliable sync by waiting for the cloud to send
+        a receipt acknowlegement for each item.
+    @stability Evolving
+ */
+PUBLIC void ioSync(Time when, bool guarantee);
 #endif
 
 #if SERVICES_DATABASE
@@ -815,6 +830,11 @@ PUBLIC Ticks cronUntil(cchar *spec, Time when);
     @stability Evolving
  */
 PUBLIC int ioStartRuntime(int verbose);
+
+/**
+    Stop the Ioto runtime
+    @stability Evolving
+ */
 PUBLIC void ioStopRuntime(void);
 
 /**
