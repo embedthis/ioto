@@ -10,13 +10,13 @@
     models: {
         Device: {
             sk:             { type: 'string', value: 'd#${id}', hidden: true },
+            connection:     { type: 'string' },
             created:        { type: 'date' },
             description:    { type: 'string' },
             id:             { type: 'string', required: true },
             model:          { type: 'string' },
             name:           { type: 'string' },
             product:        { type: 'string' },
-            state:          { type: 'string' },
             test:           { type: 'boolean' },
             updated:        { type: 'date' },
         },
