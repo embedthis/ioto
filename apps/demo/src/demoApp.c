@@ -143,8 +143,7 @@ static void demo(void)
     rInfo("demo", "Demo complete");
     rSignal("demo:complete", 0);
 
-    //  The app will now exit
-    rStop();
+    // rStop();
 }
 
 /*
