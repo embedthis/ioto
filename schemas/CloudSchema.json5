@@ -99,9 +99,8 @@
          */
         SyncState: {
             sk: {type: 'string', value: 'state#'},
-            lastSync: {type: 'date'},
-            lastUpdate: {type: 'date'},
+            lastSync: {type: 'date', notes: 'Last time the device was synced with the cloud'},
+            lastUpdate: {type: 'date', notes: 'Last time the device software was updated'},        
         },
-
     },
 }

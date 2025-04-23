@@ -5,7 +5,8 @@
     process: {
         Device: { enable: 'device' },
         Dashboard: { enable: 'device', show: false },
-        User: { show: true },
+        SyncState: { enable: 'device',show: true },
+        User: { enable: 'device',show: true },
     },
     models: {
         Device: {
@@ -89,6 +90,14 @@
                     },
                 },
             },
+        },
+        /*
+            Device-side sync state
+         */
+        SyncState: {
+            sk: {type: 'string', value: 'state#'},
+            lastSync: {type: 'date'},
+            lastUpdate: {type: 'date', notes: 'Last time the device software was updated'},
         },
         User: {
             sk:             { type: 'string', value: 'user#${id}', hidden: true },
