@@ -22,6 +22,7 @@ PATH                  := $(LBIN):$(PATH)
 ME_COM_AI             ?= 0
 ME_COM_APPS           ?= 1
 ME_COM_AUTH           ?= 0
+ME_COM_BLINK          ?= 0
 ME_COM_COMPILER       ?= 1
 ME_COM_DB             ?= 1
 ME_COM_DEMO           ?= 0
@@ -50,6 +51,9 @@ ifeq ($(ME_COM_AI),1)
     ME_COM_APPS := 1
 endif
 ifeq ($(ME_COM_AUTH),1)
+    ME_COM_APPS := 1
+endif
+ifeq ($(ME_COM_BLINK),1)
     ME_COM_APPS := 1
 endif
 ifeq ($(ME_COM_DEMO),1)
@@ -122,7 +126,7 @@ ME_WEB_USER           ?= \"$(WEB_USER)\"
 
 export PATH           := $(WIND_GNU_PATH)/$(WIND_HOST_TYPE)/bin:$(PATH)
 CFLAGS                += -fomit-frame-pointer -fno-builtin -fno-defer-pop -fvolatile  -w
-DFLAGS                += -DVXWORKS -DRW_MULTI_THREAD -DCPU=ARMARCH7 -DTOOL_FAMILY=gnu -DTOOL=gnu -D_GNU_TOOL -D_WRS_KERNEL_ -D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h" $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                += -DVXWORKS -DRW_MULTI_THREAD -DCPU=ARMARCH7 -DTOOL_FAMILY=gnu -DTOOL=gnu -D_GNU_TOOL -D_WRS_KERNEL_ -D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h" $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                += "-I$(BUILD)/inc"
 LDFLAGS               += -Wl,-r
 LIBPATHS              += -L$(BUILD)/bin
@@ -995,7 +999,8 @@ install: $(DEPS_59)
 	echo "      [Info] Documents directory " ; \
 	echo "      [Info] Executables directory " ; \
 	echo '      [Info] Use "man ioto" for usage' ; \
-	echo "      [Info] Run via 'cd  ; sudo ioto'"
+	echo "      [Info] Run via 'cd  ; sudo ioto'" ; \
+	bin/json profile=prod /etc/ioto/ioto.json5
 
 #
 #   installPrep

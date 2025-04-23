@@ -223,6 +223,9 @@
 #ifndef ME_COM_AUTH
     #define ME_COM_AUTH 0
 #endif
+#ifndef ME_COM_BLINK
+    #define ME_COM_BLINK 0
+#endif
 #ifndef ME_COM_CC
     #define ME_COM_CC 1
 #endif

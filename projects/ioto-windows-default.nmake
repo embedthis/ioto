@@ -52,6 +52,9 @@ ME_COM_APPS           = 1
 !IF "$(ME_COM_AUTH)" == ""
 ME_COM_AUTH           = 0
 !ENDIF
+!IF "$(ME_COM_BLINK)" == ""
+ME_COM_BLINK          = 0
+!ENDIF
 !IF "$(ME_COM_COMPILER)" == ""
 ME_COM_COMPILER       = 1
 !ENDIF
@@ -131,6 +134,10 @@ ME_COM_APPS           = 1
 !ENDIF
 
 !IF "$(ME_COM_AUTH)" == "1"
+ME_COM_APPS           = 1
+!ENDIF
+
+!IF "$(ME_COM_BLINK)" == "1"
 ME_COM_APPS           = 1
 !ENDIF
 
@@ -282,7 +289,7 @@ LD                    = link
 AR                    = lib
 RC                    = rc
 CFLAGS                = -nologo -GR- -W3 -Zi -Od -MDd
-DFLAGS                = -DME_DEBUG=1 -D_CRT_SECURE_NO_WARNINGS=1 -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_RC=$(ME_COM_RC) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                = -DME_DEBUG=1 -D_CRT_SECURE_NO_WARNINGS=1 -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_RC=$(ME_COM_RC) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                = -Ibuild\$(CONFIG)\inc
 LDFLAGS               = -nologo -incremental:no -dynamicbase -nxcompat -debug -machine:x64
 LIBPATHS              = "-libpath:build\$(CONFIG)\bin"
@@ -1192,26 +1199,22 @@ stop: $(DEPS_56)
 
 installBinary: $(DEPS_57)
 	if not exist "$(ME_VAPP_PREFIX)\bin" md "$(ME_VAPP_PREFIX)\bin"
-	copy /Y /B build\$(CONFIG)\bin\ioto.exe+modified "$(ME_VAPP_PREFIX)\bin\ioto.exe" $(LOG)
 	if not exist "\var\lib\ioto" md "\var\lib\ioto"
 	if not exist "$(ME_VAPP_PREFIX)\bin" md "$(ME_VAPP_PREFIX)\bin"
 	copy /Y /B installs\uninstall.sh+modified "$(ME_VAPP_PREFIX)\bin\uninstall" $(LOG)
 	if not exist "null\certs" md "null\certs"
 	copy /Y /B certs\roots.crt+modified null\certs\roots.crt $(LOG)
-	copy /Y /B certs\test.crt+modified null\certs\test.crt $(LOG)
-	copy /Y /B certs\test.key+modified null\certs\test.key $(LOG)
 	copy /Y /B certs\aws.crt+modified null\certs\aws.crt $(LOG)
 	if not exist "$(ME_VAPP_PREFIX)\bin\scripts" md "$(ME_VAPP_PREFIX)\bin\scripts"
 	copy /Y /B scripts\update+modified "$(ME_VAPP_PREFIX)\bin\scripts\update" $(LOG)
-	mkdir -p $(ME_VAPP_PREFIX)/web ; cp -r ./site/* $(ME_VAPP_PREFIX)/web
+	mkdir -p $(ME_VAPP_PREFIX)/web ; cp -r state/site/* $(ME_VAPP_PREFIX)/web
 	if not exist "$(ME_VAPP_PREFIX)" md "$(ME_VAPP_PREFIX)"
 	copy /Y /B state\config\device.json5+modified "$(ME_VAPP_PREFIX)\device.json5" $(LOG)
+	copy /Y /B state\config\schema.json5+modified "$(ME_VAPP_PREFIX)\schema.json5" $(LOG)
 	if not exist "$(ME_VAPP_PREFIX)" md "$(ME_VAPP_PREFIX)"
 	copy /Y /B state\config\ioto.json5+modified "$(ME_VAPP_PREFIX)\ioto.json5" $(LOG)
-	if not exist "null\db" md "null\db"
-	copy /Y /B state\db\*.json5+modified null\db\*.json5 $(LOG)
+	mkdir -p null/db
 	if not exist "$(ME_VAPP_PREFIX)\bin" md "$(ME_VAPP_PREFIX)\bin"
-	copy /Y /B build\$(CONFIG)\bin\libioto.lib+modified "$(ME_VAPP_PREFIX)\bin\libioto.lib" $(LOG)
 	if not exist "$(ME_VAPP_PREFIX)\inc" md "$(ME_VAPP_PREFIX)\inc"
 	copy /Y /B build\$(CONFIG)\inc\me.h+modified "$(ME_VAPP_PREFIX)\inc\me.h" $(LOG)
 
@@ -1236,6 +1239,7 @@ install: $(DEPS_59)
 	echo "      [Info] Executables directory $(ME_VAPP_PREFIX)/bin"
 	echo '      [Info] Use "man ioto" for usage'
 	echo "      [Info] Run via 'cd $(ME_VAPP_PREFIX) ; sudo ioto'"
+	bin/json profile=prod /etc/ioto/ioto.json5
 
 #
 #   installPrep

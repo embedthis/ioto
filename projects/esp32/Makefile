@@ -9,7 +9,7 @@ CERTS	:= $(STATE)/certs
 SITE	:= $(STATE)/site
 DB		:= $(STATE)/db
 PATH 	:= $(BASE)/bin:$(PATH)
-TOOLS	:= $(shell cd $(BASE) ; bin/prep-build demo)
+TOOLS	:= $(shell cd $(BASE) ; bin/prep-build)
 APP 	:= $(shell $(BASE)/bin/json -q app $(CONFIG)/ioto.json5 || ls -1 $(BASE)/apps | egrep 'demo')
 EDIR	:= $(BASE)/apps/$(APP)/esp32
 TARGET	:= $(touch sdkconfig ; grep CONFIG_IDF_TARGET sdkconfig || echo esp32-s3)
@@ -44,7 +44,7 @@ check:
 	mkdir -p state/config
 
 build-tools:
-	cd components/ioto >/dev/null ; bin/prep-build demo
+	cd components/ioto >/dev/null ; bin/prep-build
 
 notice:
 	@if [ -f $(TOP)/local.json5 ] ; then cp $(TOP)/local.json5 $(TOP)/state/config ; fi

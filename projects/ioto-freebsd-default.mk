@@ -21,6 +21,7 @@ PATH                  := $(LBIN):$(PATH)
 ME_COM_AI             ?= 0
 ME_COM_APPS           ?= 1
 ME_COM_AUTH           ?= 0
+ME_COM_BLINK          ?= 0
 ME_COM_COMPILER       ?= 1
 ME_COM_DB             ?= 1
 ME_COM_DEMO           ?= 0
@@ -48,6 +49,9 @@ ifeq ($(ME_COM_AI),1)
     ME_COM_APPS := 1
 endif
 ifeq ($(ME_COM_AUTH),1)
+    ME_COM_APPS := 1
+endif
+ifeq ($(ME_COM_BLINK),1)
     ME_COM_APPS := 1
 endif
 ifeq ($(ME_COM_DEMO),1)
@@ -117,7 +121,7 @@ ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
 CFLAGS                += -Wno-unknown-warning-option  -fomit-frame-pointer  -w
-DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                += "-I$(BUILD)/inc"
 LDFLAGS               += -g
 LIBPATHS              += -L$(BUILD)/bin
@@ -972,8 +976,6 @@ installBinary: $(DEPS_57)
 	rm -f "$(ME_APP_PREFIX)/latest" ; \
 	ln -s "$(VERSION)" "$(ME_APP_PREFIX)/latest" ; \
 	mkdir -p "$(ME_VAPP_PREFIX)/bin" ; \
-	cp $(BUILD)/bin/ioto $(ME_VAPP_PREFIX)/bin/ioto ; \
-	chmod 755 "$(ME_VAPP_PREFIX)/bin/ioto" ; \
 	mkdir -p "$(ME_BIN_PREFIX)" ; \
 	rm -f "$(ME_BIN_PREFIX)/ioto" ; \
 	ln -s "$(ME_VAPP_PREFIX)/bin/ioto" "$(ME_BIN_PREFIX)/ioto" ; \
@@ -984,21 +986,18 @@ installBinary: $(DEPS_57)
 	chmod 755 "$(ME_VAPP_PREFIX)/bin/uninstall" ; \
 	mkdir -p "/var/lib/ioto/certs" ; \
 	cp certs/roots.crt /var/lib/ioto/certs/roots.crt ; \
-	cp certs/test.crt /var/lib/ioto/certs/test.crt ; \
-	cp certs/test.key /var/lib/ioto/certs/test.key ; \
 	cp certs/aws.crt /var/lib/ioto/certs/aws.crt ; \
 	mkdir -p "$(ME_VAPP_PREFIX)/bin/scripts" ; \
 	cp scripts/update $(ME_VAPP_PREFIX)/bin/scripts/update ; \
 	chmod 755 "$(ME_VAPP_PREFIX)/bin/scripts/update" ; \
-	mkdir -p $(ME_WEB_PREFIX) ; cp -r ./site/* $(ME_WEB_PREFIX) ; \
+	mkdir -p $(ME_WEB_PREFIX) ; cp -r state/site/* $(ME_WEB_PREFIX) ; \
 	mkdir -p "$(ME_ETC_PREFIX)" ; \
 	cp state/config/device.json5 $(ME_ETC_PREFIX)/device.json5 ; \
+	cp state/config/schema.json5 $(ME_ETC_PREFIX)/schema.json5 ; \
 	mkdir -p "$(ME_ETC_PREFIX)" ; \
 	cp state/config/ioto.json5 $(ME_ETC_PREFIX)/ioto.json5 ; \
-	mkdir -p "/var/lib/ioto/db" ; \
-	cp state/db/*.json5 /var/lib/ioto/db/*.json5 ; \
+	mkdir -p /var/lib/ioto/db ; \
 	mkdir -p "$(ME_VAPP_PREFIX)/bin" ; \
-	cp $(BUILD)/bin/libioto.a $(ME_VAPP_PREFIX)/bin/libioto.a ; \
 	mkdir -p "$(ME_VAPP_PREFIX)/inc" ; \
 	cp $(BUILD)/inc/me.h $(ME_VAPP_PREFIX)/inc/me.h
 
@@ -1021,7 +1020,8 @@ install: $(DEPS_59)
 	echo "      [Info] Documents directory $(ME_WEB_PREFIX)" ; \
 	echo "      [Info] Executables directory $(ME_VAPP_PREFIX)/bin" ; \
 	echo '      [Info] Use "man ioto" for usage' ; \
-	echo "      [Info] Run via 'cd $(ME_ETC_PREFIX) ; sudo ioto'"
+	echo "      [Info] Run via 'cd $(ME_ETC_PREFIX) ; sudo ioto'" ; \
+	bin/json profile=prod $(ME_ETC_PREFIX)/ioto.json5
 
 #
 #   installPrep
