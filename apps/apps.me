@@ -11,7 +11,7 @@ Me.load({
         apps: {
             configurable: true,
             description: 'Ioto Apps',
-            discovers: [ 'demo', 'ai', 'auth', 'noapp', 'unit' ],
+            discovers: [ 'demo', 'ai', 'auth', 'blink', 'noapp', 'unit' ],
             libraries: [ 'app' ],
             enable: true,
 
@@ -69,16 +69,15 @@ Me.load({
                     me.settings.app = name
                     me.targets.apps.app = app
                     let top = me.dir.top
-                    makeme.trace("Using App", name)
 
-                    Cmd.run('json app=' + name + ' state/config/ioto.json5', {dir: top})
+                    // Cmd.run('json app=' + name + ' state/config/ioto.json5', {dir: top})
                     
                     if (!makeme.generating && !makeme.options.gen) {
                         //  Don't clean site if generating
                         Cmd.sh('rm -fr state/site/*', {dir: top})
                     }
                     Cmd.sh('rm -fr state/db/*.jnl state/db/*.db', {dir: top})
-                    Cmd.sh('find config -type f -print | egrep -v "ioto.json5|device.json5|local.json5" | xargs -r rm', {dir: top.join('state')})
+                    Cmd.sh('find config -type f -print | egrep -v "schema.json5|ioto.json5|device.json5|local.json5" | xargs -r rm', {dir: top.join('state')})
 
                     let required = makeme.options['with'] && makeme.options['with'].contains(app)
                     if ((makeme.generating || makeme.options.gen) && !required) {

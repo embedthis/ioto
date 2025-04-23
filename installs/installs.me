@@ -37,6 +37,8 @@ Me.load({
                 trace('Info', 'Executables directory ' + me.prefixes.vapp.join('bin'))
                 trace('Info', 'Use "man ioto" for usage')
                 trace('Info', 'Run via "cd ' + me.prefixes.etc + ' ; sudo ioto"')
+                run('bin/json profile=prod /etc/ioto/ioto.json5')
+                run('mkdir -p /var/lib/ioto/db')
             `,
             generate: `
                 echo "      [Info] Ioto installed at ${vapp}"
@@ -45,6 +47,7 @@ Me.load({
                 echo "      [Info] Executables directory ${abin}"
                 echo '      [Info] Use "man ioto" for usage'
                 echo "      [Info] Run via 'cd ${etc} ; sudo ioto'"
+                bin/json profile=prod /etc/ioto/ioto.json5
             `,
         },
 

@@ -49,7 +49,6 @@ Me.load({
             depends: [ 'appConfig', 'state/config/ioto.json5' ],
             path: 'src/ioto-config.h',
             shell: `
-            echo 'HERE in config'
                 if [ ! -f state/config/ioto.json5 ] ; then
                     cp apps/${settings.app}/config/ioto.json5 state/config/ioto.json5
                 fi
@@ -62,7 +61,6 @@ Me.load({
         appConfig: {
             goals: ['all'],
             shell: `
-            echo 'HERE in appConfig'
                 APP=$(json app state/config/ioto.json5)
                 PROFILE=$(json profile state/config/ioto.json5)
                 VERSION=$(json version pak.json)

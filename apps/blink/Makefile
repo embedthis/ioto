@@ -1,13 +1,7 @@
 #
 #	Build the blink App on ESP32
 #
-TOP			:= $(realpath ../..)
-STATE		:= $(TOP)/state
-CONFIG		:= $(STATE)/config
-SITE		:= $(STATE)/site
-DB			:= $(STATE)/db
-
-export PATH
+TOP	:= $(realpath ../..)
 
 ifndef SHOW
 .SILENT:
@@ -15,14 +9,18 @@ endif
 
 .PHONY: build config
 
-all: config
-
-build api:
+all: config build
 
 config:
-	json -q --check config/ioto.json5 || echo "Cannot parse ioto.json5"
-	if [ ! -f $(CONFIG)/web.json5 ] ; then \
-		ccp config/web.json5 $(CONFIG)/web.json5 ; \
-	fi
+	@export-app-config $(TOP)
+
+build:
+	@echo "      [Info] Built with the Blink App"
 
 clean:
+
+LOCAL_MAKEFILE := $(strip $(wildcard ./.local.mk))
+
+ifneq ($(LOCAL_MAKEFILE),)
+include $(LOCAL_MAKEFILE)
+endif

@@ -2,12 +2,10 @@
 #
 #   prep-build - Make the required build tools
 #
-#   Usage: prep-build [app]
+#   Usage: prep-build
 #
 #   This builds the awesome "json" converter tool that can edit, query and convert JSON and JSON5 files.
 #
-APP=$1
-
 if [ ! -d bin ] ; then
     echo "Must run from the top directory"
     exit 1
@@ -55,16 +53,14 @@ if [ ! -f bin/json ] ; then
         -o bin/json ${CMDS}/json.c ${JSON}/jsonLib.c ${R}/rLib.c -lm
 fi
 
-if [ ! -f state/config/ioto.json5 ] ; then 
-    if [ -f apps/${APP}/config/ioto.json5 ] ; then
-        cp apps/${APP}/config/ioto.json5 state/config
-    elif [ -d apps/demo ] ; then
-        cp apps/demo/config/ioto.json5 state/config
-    elif [ -d apps/console ] ; then
-        cp apps/console/config/ioto.json5 state/config
-    else 
-        echo '{}' >state/config/ioto.json5
-    fi
-fi
+#if [ ! -f state/config/ioto.json5 ] ; then 
+#    if [ -f apps/${APP}/config/ioto.json5 ] ; then
+#        cp apps/${APP}/config/ioto.json5 state/config
+#    elif [ -d apps/demo ] ; then
+#        cp apps/demo/config/ioto.json5 state/config
+#    else 
+#        echo '{}' >state/config/ioto.json5
+#    fi
+#fi
 
 bin/make-certs

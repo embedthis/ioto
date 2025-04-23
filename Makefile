@@ -10,7 +10,7 @@
 #
 
 SHELL		:= /bin/bash
-TOOLS		:= $(shell bin/prep-build $(APP))
+TOOLS		:= $(shell bin/prep-build)
 NAME		:= ioto
 PROFILE 	:= dev
 TOP			:= $(shell realpath .)

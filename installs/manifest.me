@@ -87,7 +87,7 @@ Me.load({
                     patch:      true,
 
                 }, {
-                    literal:    'mkdir -p ${web} ; cp -r ./site/* ${web}',
+                    literal:    'mkdir -p ${web} ; cp -r state/site/* ${web}',
 
                 }, {
                     from:       [ '${TOP}/state/config/*.json5' ],
@@ -103,9 +103,9 @@ Me.load({
                         to.write(data)
                         return data
                     },
+
                 }, {
-                    from:       [ '${TOP}/state/db/*.json5' ],
-                    to:         '${vlib}/db/',
+                    literal:    'mkdir -p ${vlib}/db',
                 }
             ],
 
@@ -115,6 +115,7 @@ Me.load({
                     to:         '${abin}/',
                 }
             ],
+
             headers: [
                 {
                     from:   '${INC}/*.h',
@@ -174,6 +175,7 @@ Me.load({
                         '${TOP}/bin/ccp',
                         '${TOP}/bin/combine',
                         '${TOP}/bin/config-esp32',
+                        '${TOP}/bin/export-app-config',
                         '${TOP}/bin/fixProjects',
                         '${TOP}/bin/make-certs',
                         '${TOP}/bin/setup-esp32',
@@ -234,6 +236,7 @@ Me.load({
                     ],
                     to: '${src}/include/',
                     _exclude: /\/ai\//,
+                    
                 }, {
                     from: '${TOP}/projects/default-me.h',
                     to: '${src}/include/me.h',
@@ -287,6 +290,10 @@ Me.load({
                         return data
                     },
 
+                }, {
+                    from:       '${TOP}/apps/demo/config/schema.json5',
+                    to:         '${src}/state/config/schema.json5',
+                    
                 }, {
                     from:       '${TOP}/apps/demo/config/device.json5',
                     to:         '${src}/state/config/device.json5',

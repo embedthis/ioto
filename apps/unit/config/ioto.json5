@@ -23,7 +23,7 @@
         service: '1hr',
     },
     limits: {
-        stack: '32k',
+        stack: '128k',
     },
     mqtt: {
         authority: '@certs/aws.crt',

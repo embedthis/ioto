@@ -135,6 +135,9 @@
 #ifndef ME_COM_MQTT
     #define ME_COM_MQTT 1
 #endif
+#ifndef ME_COM_OPENAI
+    #define ME_COM_OPENAI 1
+#endif
 #ifndef ME_COM_OPENSSL
     #define ME_COM_OPENSSL 1
 #endif
