@@ -850,7 +850,7 @@ ifeq ($(ME_COM_IOTO),1)
 #   ioto
 #
 DEPS_52 += $(BUILD)/bin/libioto.a
-DEPS_52 += apps
+DEPS_52 += $(BUILD)/bin/libapp.a
 ifeq ($(ME_COM_DEMO),1)
     DEPS_52 += $(BUILD)/bin/libapp.a
 endif

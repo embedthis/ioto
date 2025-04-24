@@ -15,8 +15,8 @@ will transparently sync device data to the cloud to enable effortless remote
 management.
 
 This distribution includes several [Sample Apps](./apps) to help you get
-started with Ioto. You can also download the separate Ioto Management Apps
-package for a suite of device management apps. 
+started with Ioto. You can also download the separate Ioto Sample Apps package
+for a suite of device sample apps. 
 
 See the [README-Cloud](./README-CLOUD.md) for more details about cloud-based
 management.
@@ -36,7 +36,7 @@ Ioto is commercial software and is provided under the following licenses.
 
 See [LICENSE.md](LICENSE.md) and [EVAL.md](EVAL.md) for details.
 
-## Device Management Apps
+## Sample Apps
 
 The Ioto distribution build includes several sample apps for local or
 cloud-based management. Apps demonstrate device-side logic to implement various

@@ -14,6 +14,7 @@ Me.load({
             discovers: [ 'demo', 'ai', 'auth', 'blink', 'noapp', 'unit' ],
             libraries: [ 'app' ],
             enable: true,
+            path: '${BIN}/libapp${ARLIB}',
 
             /*
                 Not when generating or configuring, select the one app to build from ioto.json5
@@ -96,7 +97,7 @@ Me.load({
                 for each (p in target.discovers) {
                     me.targets[p].enable = false
                 }
-            }            
+            },
         }
     }
 })
