@@ -18,6 +18,7 @@
             model:          { type: 'string' },
             name:           { type: 'string' },
             product:        { type: 'string' },
+            state:          { type: 'string' },
             test:           { type: 'boolean' },
             updated:        { type: 'date' },
         },

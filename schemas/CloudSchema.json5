@@ -61,6 +61,7 @@
             model: {type: 'string'},
             name: {type: 'string'},
             product: {type: 'string', notes: 'Product Token'},
+            state: {type: 'string', notes: 'Device state'},
             updated: {type: 'date', readonly: true},
             _source: {type: 'string', hidden: true},
         },
