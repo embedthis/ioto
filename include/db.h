@@ -384,6 +384,98 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *model, Json *props, DbParams *params);
  */
 PUBLIC cchar *dbGetField(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params);
 
+/**
+   Get a field value from an item as a boolean
+   @description If the field is not found, the default value is returned. Use dbGetField if you must know if the field
+      is missing.
+   @param db Database instance returned via #dbOpen
+   @param model Name of the schema model for matching items.
+   @param fieldName Name of the item field to return.
+       @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+      value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+      provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
+      Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
+      validated against the model and unknown property names will not be written to the database.
+   @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+        \n
+        cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
+           supports "primary".
+        \n
+   @param defaultValue Default value to return if the field is not found.
+   @return The field value as a boolean.
+   @stability Evolving
+ */
+PUBLIC bool dbGetBool(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, bool defaultValue);
+
+/**
+   Get a field value from an item as a date
+   @description If the field is not found, the default value is returned. Use dbGetField if you must know if the field
+      is missing.
+   @param db Database instance returned via #dbOpen
+   @param model Name of the schema model for matching items.
+   @param fieldName Name of the item field to return.
+       @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+      value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+      provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
+      Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
+      validated against the model and unknown property names will not be written to the database.
+   @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+        \n
+        cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
+           supports "primary".
+        \n
+   @param defaultValue Default value to return if the field is not found.
+   @return The field value as a date of seconds since epoch (Jan 1 1970).
+   @stability Evolving
+ */
+PUBLIC Time dbGetDate(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, Time defaultValue);
+
+/**
+   Get a field value from an item as a double
+   @description If the field is not found, the default value is returned. Use dbGetField if you must know if the field
+      is missing.
+   @param db Database instance returned via #dbOpen
+   @param model Name of the schema model for matching items.
+   @param fieldName Name of the item field to return.
+       @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+      value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+      provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
+      Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
+      validated against the model and unknown property names will not be written to the database.
+   @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+        \n
+        cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
+           supports "primary".
+        \n
+   @param defaultValue Default value to return if the field is not found.
+   @return The field value as a double.
+   @stability Evolving
+ */
+PUBLIC double dbGetDouble(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, double defaultValue);
+
+/**
+   Get a field value from an item as a number
+   @description If the field is not found, the default value is returned. Use dbGetField if you must know if the field
+      is missing.
+   @param db Database instance returned via #dbOpen
+   @param model Name of the schema model for matching items.
+   @param fieldName Name of the item field to return.
+       @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+      value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+      provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
+      Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
+      validated against the model and unknown property names will not be written to the database.
+   @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+        \n
+        cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
+           supports "primary".
+        \n
+   @param defaultValue Default value to return if the field is not found.
+   @return The field value as a number.
+   @stability Evolving
+ */
+PUBLIC int64 dbGetNum(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, int64 defaultValue);
+
 /*
     Get a JSON object representing the item.
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
@@ -552,8 +644,7 @@ PUBLIC int dbSave(Db *db, cchar *filename);
     @return The updated item. Caller must not free.
     @stability Evolving
  */
-PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool value, Json *props,
-                               DbParams *params);
+PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool value, Json *props, DbParams *params);
 
 /**
     Update a database item field value as a date.
@@ -574,8 +665,7 @@ PUBLIC const DbItem *dbSetBool(Db *db, cchar *model, cchar *fieldName, bool valu
     @return The updated item. Caller must not free.
     @stability Evolving
  */
-PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time value, Json *props,
-                               DbParams *params);
+PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time value, Json *props, DbParams *params);
 
 /**
     Update a database item field value as a double
@@ -596,12 +686,12 @@ PUBLIC const DbItem *dbSetDate(Db *db, cchar *model, cchar *fieldName, Time valu
     @return The updated item. Caller must not free.
     @stability Evolving
  */
-PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double value, Json *props,
-                                 DbParams *params);
+PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double value, Json *props, DbParams *params);
 
 /**
     Update a database item field value.
-    @description Update a field in an existing item. The item must already exist.
+    @description Update a field in an existing item. The item must already exist. This sets the field value to the
+       string value.
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.
     @param fieldName Name of the item field to set.
@@ -619,8 +709,7 @@ PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double 
     @return The updated item. Caller must not free.
     @stability Evolving
  */
-PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *value, Json *props,
-                                DbParams *params);
+PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *value, Json *props, DbParams *params);
 
 /**
     Update a database item field value as a number
@@ -641,9 +730,28 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *model, cchar *fieldName, cchar *v
     @return The updated item. Caller must not free.
     @stability Evolving
  */
-PUBLIC const DbItem *dbSetNum(Db *db, cchar *model, cchar *fieldName, int64 value, Json *props,
-                              DbParams *params);
+PUBLIC const DbItem *dbSetNum(Db *db, cchar *model, cchar *fieldName, int64 value, Json *props, DbParams *params);
 
+/**
+    Update a database item field value as a string
+    @param db Database instance returned via #dbOpen
+    @param model Name of the schema model for the item. Set to NULL if no model is required.
+    @param fieldName Name of the item field to set.
+    @param value Value to assign to the item's field.
+    @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+       value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+       provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
+       Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
+       validated against the model.
+    @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+        \n
+        cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
+           supports "primary".
+        \n
+    @return The updated item. Caller must not free.
+    @stability Evolving
+ */
+PUBLIC const DbItem *dbSetString(Db *db, cchar *model, cchar *fieldName, cchar *value, Json *props, DbParams *params);
 /*
     Set the database change journal parameters
     @param db Database object returned via dbOpen

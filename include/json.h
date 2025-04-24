@@ -332,6 +332,17 @@ PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue);
 PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue);
 
 /**
+    Get a json node value as a double
+    @param json Source json
+    @param nid Base node ID from which to examine. Set to zero for the top level.
+    @param key Property name to search for. This may include ".". For example: "settings.mode".
+    @param defaultValue If the key is not defined, return the defaultValue.
+    @return The key value as a double or defaultValue if not defined
+    @stability Evolving
+ */
+PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue);
+
+/**
     Get a json node value as an integer
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
@@ -352,6 +363,28 @@ PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
     @stability Evolving
  */
 PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue);
+
+/**
+    Get a json node value as a uint64
+    @description Parse the stored value with unit suffixes and returns a number. 
+    The following suffixes are supported:
+        sec, secs, second, seconds,
+        min, mins, minute, minutes,
+        hr, hrs, hour, hours,
+        day, days,
+        week, weeks,
+        month, months,
+        year, years,
+        byte, bytes, k, kb, m, mb, g, gb.
+        Also supports the strings: unlimited, infinite, never, forever.
+    @param json Source json
+    @param nid Base node ID from which to examine. Set to zero for the top level.
+    @param key Property name to search for. This may include ".". For example: "settings.mode".
+    @param defaultValue If the key is not defined, return the defaultValue.
+    @return The key value as a uint64 or defaultValue if not defined
+    @stability Evolving
+ */
+PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue);
 
 /**
     Get a json node ID

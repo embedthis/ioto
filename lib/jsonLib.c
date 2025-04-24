@@ -1238,6 +1238,14 @@ PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue
     return atof(value);
 }
 
+PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
+{
+    cchar *value;
+
+    value = jsonGet(json, nid, key, defaultValue);
+    return svalue(value);
+}
+
 /*
     Set a property value. The nid provides the index of the base node, and the "name"
     is search using that index as a starting point. Name can contain "." or "[]".

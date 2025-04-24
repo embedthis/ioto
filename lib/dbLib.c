@@ -326,8 +326,8 @@ static int loadModels(Db *db, Json *json)
         }
         sync = jsonGet(json, sid, "sync", "none");
 
-        if ((mem = jsonGet(json, sid, "mem", NULL)) != NULL && 
-                (smatch(mem, "true") || smatch(mem, "1"))) {
+        if ((mem = jsonGet(json, sid, "mem", NULL)) != NULL &&
+            (smatch(mem, "true") || smatch(mem, "1"))) {
             delay = DB_INMEM;
         } else {
             delay = (int) stoi(jsonGet(json, sid, "delay", "0"));
@@ -729,6 +729,55 @@ PUBLIC cchar *dbGetField(Db *db, cchar *modelName, cchar *fieldName, Json *props
     return 0;
 }
 
+PUBLIC bool dbGetBool(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, bool defaultValue)
+{
+    cchar *value;
+
+    value = dbGetField(db, modelName, fieldName, props, params);
+    if (value) {
+        return smatch(value, "true");
+    }
+    return defaultValue;
+}
+
+PUBLIC Time dbGetDate(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, Time defaultValue)
+{
+    cchar *value;
+
+    value = dbGetField(db, modelName, fieldName, props, params);
+    if (value) {
+        return rParseIsoDate(value);
+    }
+    return defaultValue;
+}
+
+PUBLIC double dbGetDouble(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, double defaultValue)
+{
+    cchar *value;
+
+    value = dbGetField(db, modelName, fieldName, props, params);
+    if (value) {
+        return stod(value);
+    }
+    return defaultValue;
+}
+
+PUBLIC int64 dbGetNum(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, int64 defaultValue)
+{
+    cchar *value;
+
+    value = dbGetField(db, modelName, fieldName, props, params);
+    if (value) {
+        return stoi(value);
+    }
+    return defaultValue;
+}
+
+PUBLIC cchar *dbGetString(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, cchar *defaultValue)
+{
+    return dbGetField(db, modelName, fieldName, props, params);
+} 
+
 /*
     Find matching items of the given model type.
     Props contains item properties to search for. This should include the item key (or key
@@ -868,6 +917,7 @@ PUBLIC int dbRemoveExpired(Db *db, bool notify)
     cchar   *expires;
     char    *now;
     int     count;
+
     assert(db);
 
     now = rGetIsoDate(rGetTime());
@@ -879,7 +929,7 @@ PUBLIC int dbRemoveExpired(Db *db, bool notify)
         if (SETUP(db, model->name, NULL, NULL, "find", &env) < 0) {
             return 0;
         }
-        again:
+again:
         for (rp = rbLookupFirst(env.index, &env.search, &env); rp; rp = next) {
             next = rbLookupNext(env.index, rp, &env.search, &env);
             item = rp->data;
@@ -980,8 +1030,12 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
     return item;
 }
 
-PUBLIC const DbItem *dbSetDouble(Db *db, cchar *modelName, cchar *fieldName, double value,
-                                 Json *props, DbParams *params)
+PUBLIC const DbItem *dbSetBool(Db *db, cchar *modelName, cchar *fieldName, bool value, Json *props, DbParams *params)
+{
+    return dbSetField(db, modelName, fieldName, value ? "true" : "false", props, params);
+}
+
+PUBLIC const DbItem *dbSetDouble(Db *db, cchar *modelName, cchar *fieldName, double value, Json *props, DbParams *params)
 {
     char buf[32];
 
@@ -989,23 +1043,7 @@ PUBLIC const DbItem *dbSetDouble(Db *db, cchar *modelName, cchar *fieldName, dou
     return dbSetField(db, modelName, fieldName, buf, props, params);
 }
 
-PUBLIC const DbItem *dbSetNum(Db *db, cchar *modelName, cchar *fieldName, int64 value, Json *props,
-                              DbParams *params)
-{
-    char buf[32];
-
-    return dbSetField(db, modelName, fieldName, sitosbuf(buf, sizeof(buf), value, 10), props,
-                      params);
-}
-
-PUBLIC const DbItem *dbSetBool(Db *db, cchar *modelName, cchar *fieldName, bool value, Json *props,
-                               DbParams *params)
-{
-    return dbSetField(db, modelName, fieldName, value ? "true" : "false", props, params);
-}
-
-PUBLIC const DbItem *dbSetDate(Db *db, cchar *modelName, cchar *fieldName, Time when, Json *props,
-                               DbParams *params)
+PUBLIC const DbItem *dbSetDate(Db *db, cchar *modelName, cchar *fieldName, Time when, Json *props, DbParams *params)
 {
     char         *value;
     const DbItem *item;
@@ -1014,6 +1052,19 @@ PUBLIC const DbItem *dbSetDate(Db *db, cchar *modelName, cchar *fieldName, Time 
     item = dbSetField(db, modelName, fieldName, value, props, params);
     return item;
 }
+
+PUBLIC const DbItem *dbSetNum(Db *db, cchar *modelName, cchar *fieldName, int64 value, Json *props, DbParams *params)
+{
+    char buf[32];
+
+    return dbSetField(db, modelName, fieldName, sitosbuf(buf, sizeof(buf), value, 10), props, params);
+}
+
+PUBLIC const DbItem *dbSetString(Db *db, cchar *modelName, cchar *fieldName, cchar *value, Json *props, DbParams *params)
+{
+    return dbSetField(db, modelName, fieldName, value, props, params);
+}
+
 
 /*
     Update an item
@@ -2244,9 +2295,9 @@ static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
  */
 PUBLIC char *dbGetULID(Time when)
 {
-    char  bytes[16 + 1], time[10 + 1];
-    Time  mark;
-    int   i, index, length, mod;
+    char bytes[16 + 1], time[10 + 1];
+    Time mark;
+    int  i, index, length, mod;
 
     length = (int) slen(LETTERS) - 1;
     if (cryptGetRandomBytes((uchar*) bytes, sizeof(bytes), 0) < 0) {
