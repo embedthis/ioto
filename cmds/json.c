@@ -11,7 +11,7 @@
 
     Options:
     --blend | --check | --compress | --default | --env | --export | --header |
-    --json | --json5 | --profile name | --remove | --stdin
+    --js | --json | --json5 | --profile name | --remove | --stdin
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -39,6 +39,7 @@
 #define JSON_FORMAT_HEADER   2
 #define JSON_FORMAT_JSON     3
 #define JSON_FORMAT_JSON5    4
+#define JSON_FORMAT_JS       5
 
 #define JSON_CMD_ASSIGN      1
 #define JSON_CMD_CONVERT     2
@@ -92,9 +93,10 @@ static int usage(void)
              "  --env            # Emit query result as shell env vars.\n"
              "  --export         # Add 'export' prefix to shell env vars.\n"
              "  --header         # Emit query result as C header defines.\n"
+             "  --js             # Emit output in JS form (export {}).\n"
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
-             "  --noerror        # Ignore file open errors.\n"
+             "  --noerror        # Ignore errors.\n"
              "  --profile name   # Merge the properties from the named profile.\n"
              "  --quiet          # Quiet mode with no error messages.\n"
              "  --stdin          # Read from stdin.\n"
@@ -182,6 +184,9 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--header")) {
             format = JSON_FORMAT_HEADER;
+
+        } else if (smatch(argp, "--js")) {
+            format = JSON_FORMAT_JS;
 
         } else if (smatch(argp, "--json")) {
             format = JSON_FORMAT_JSON;
@@ -284,6 +289,8 @@ static int run()
                 format = JSON_FORMAT_JSON;
             } else if (scaselessmatch(ext, "json5")) {
                 format = JSON_FORMAT_JSON5;
+            } else if (scaselessmatch(ext, "js")) {
+                format = JSON_FORMAT_JS;
             } else {
                 format = JSON_FORMAT_JSON5;
             }
@@ -315,6 +322,9 @@ static int run()
         flags |= JSON_SINGLE;
     } else {
         flags |= JSON_PRETTY;
+        if (format == JSON_FORMAT_JSON) {
+            flags |= JSON_QUOTES;
+        }
     }
     if (cmd == JSON_CMD_ASSIGN) {
         stok(property, "=", &value);
@@ -327,6 +337,9 @@ static int run()
 
     } else if (cmd == JSON_CMD_REMOVE) {
         if (jsonRemove(json, 0, property) < 0) {
+            if (noerror) {
+                return 0;
+            }
             return error("Cannot remove property \"%s\"", property);
         }
         if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
@@ -463,13 +476,20 @@ static void outputAll(Json *json)
 {
     JsonNode *child, *node;
     char     *name, *output, *property;
+    int      flags;
 
     if (format == JSON_FORMAT_JSON) {
-        output = jsonToString(json, 0, 0, 0);
+        flags = compress ? JSON_SINGLE : JSON_QUOTES | JSON_PRETTY;
+        output = jsonToString(json, 0, 0, flags);
         rPrintf("%s", output);
         rFree(output);
+
+    } else if (format == JSON_FORMAT_JS) {
+        rPrintf("export default %s\n", jsonString(json));
+
     } else if (format == JSON_FORMAT_JSON5) {
         rPrintf("%s\n", jsonString(json));
+
     } else if (format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
         name = "";
         for (ITERATE_JSON(json, NULL, node, id)) {
@@ -530,6 +550,9 @@ static void outputNameValue(Json *json, JsonNode *node, char *name)
         }
     } else if (format == JSON_FORMAT_JSON) {
         rPrintf("%s", value);
+    } else if (format == JSON_FORMAT_JS) {
+        rPrintf("export default %s", value);
+
     } else if (format == JSON_FORMAT_JSON5) {
         rPrintf("%s", value);
     }
