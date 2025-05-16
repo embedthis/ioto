@@ -787,7 +787,6 @@ PUBLIC IotoLog *ioAllocLog(cchar *name, cchar *region, int create, cchar *group,
 PUBLIC int ioEnableCloudLog(void);
 PUBLIC void ioFreeLog(IotoLog *log);
 PUBLIC bool ioUpdate(void);
-PUBLIC void ioUpdateDevice(void);
 
 #endif /* SERVICES_CLOUD */
 
@@ -814,6 +813,7 @@ PUBLIC void ioTermSync(void);
 PUBLIC void ioTermWeb(void);
 
 PUBLIC int ioRegister(void);
+PUBLIC void ioUpdateDevice(void);
 PUBLIC int ioUpdateLog(bool force);
 PUBLIC int ioGetFileMode(void);
 PUBLIC char *ioExpand(cchar *s);

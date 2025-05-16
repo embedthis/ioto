@@ -492,9 +492,7 @@ PUBLIC int ioInitDb(void)
         return R_ERR_CANT_READ;
     }
 #endif
-#if SERVICES_CLOUD
     ioUpdateDevice();
-#endif
     if (service) {
         rStartEvent((RFiberProc) dbService, 0, service);
     }
@@ -532,19 +530,17 @@ static void dbService(void)
  */
 PUBLIC void ioUpdateDevice(void)
 {
-#if SERVICES_CLOUD
     Json *json;
 
     assert(ioto->id);
 
-    if (!ioto->account) {
-        return;
-    }
     json = jsonAlloc(0);
     jsonSet(json, 0, "id", ioto->id, JSON_STRING);
+#if SERVICES_CLOUD
     if (ioto->account) {
         jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
     }
+#endif
     jsonSet(json, 0, "description", jsonGet(ioto->config, 0, "device.description", 0), JSON_STRING);
     jsonSet(json, 0, "model", jsonGet(ioto->config, 0, "device.model", 0), JSON_STRING);
     jsonSet(json, 0, "name", jsonGet(ioto->config, 0, "device.name", 0), JSON_STRING);
@@ -557,7 +553,6 @@ PUBLIC void ioUpdateDevice(void)
         rError("sync", "Cannot update device item in database: %s", dbGetError(ioto->db));
     }
     jsonFree(json);
-#endif
 }
 
 #else
@@ -1678,7 +1673,7 @@ static int parseRegisterResponse(Json *json)
         if (ioto->provisionService) {
             //  Registered but not yet claimed
             if (once++ == 0) {
-                rInfo("ioto", "Device not yet claimed for management via the cloud");
+                rInfo("ioto", "Device not claimed. Claim via the product Device App");
             }
         }
     }
@@ -2834,6 +2829,7 @@ static void onCloudConnect()
 #endif
 #if SERVICES_SYNC
     ioConnectSync();
+    ioUpdateDevice();
 #endif
 }
 
