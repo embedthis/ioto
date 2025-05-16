@@ -1,0 +1,17 @@
+{
+    "name": "dev-schemas",
+    "description": "Device Cloud Schemas",
+    "version": "1.0.0",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/embedthis/dev-schemas.git"
+    },
+    "licenses": "UNLICENSED",
+    "main": "index.js",
+    "export": [{
+        "from": ["*.js*", "parts/**"],
+        "to": "${TOP}/schemas"
+    }],
+    "origin": "embedthis/dev-schemas"
+}

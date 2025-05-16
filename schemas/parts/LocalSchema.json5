@@ -1,0 +1,125 @@
+/*
+    LocalSchema.json5 -- Local device schema when not using cloud-based management
+ */
+{
+    process: {
+        Device: { enable: 'device' },
+        Dashboard: { enable: 'device', show: false },
+        SyncState: { enable: 'device',show: true },
+        User: { enable: 'device',show: true },
+    },
+    models: {
+        Device: {
+            sk:             { type: 'string', value: 'd#${id}', hidden: true },
+            connection:     { type: 'string' },
+            created:        { type: 'date' },
+            description:    { type: 'string' },
+            id:             { type: 'string', required: true },
+            model:          { type: 'string' },
+            name:           { type: 'string' },
+            product:        { type: 'string' },
+            state:          { type: 'string' },
+            test:           { type: 'boolean' },
+            updated:        { type: 'date' },
+        },
+        Dashboard: {
+            sk: {type: 'string', value: 'dashboard#${id}', hidden: true},
+            id: {type: 'string', generate: 'uid'},
+
+            css: {type: 'array', default: [], partial: false},
+            emulate: {type: 'string'},
+            fixed: {type: 'boolean', default: false},
+            framed: {type: 'boolean', default: true},
+            id: {type: 'string', generate: 'ulid'},
+            layout: {type: 'string', default: 'flow'},
+            live: {type: 'boolean', default: true},
+            name: {type: 'string', required: true},
+            range: {type: 'object', partial: false},
+            refresh: {type: 'number', default: 60},
+            toolbar: {type: 'boolean', default: true},
+            type: {type: 'string'},
+            widgetCss: {type: 'array', default: [], partial: false},
+
+            widgets: {
+                type: 'array',
+                default: [],
+                partial: false,
+                items: {
+                    type: 'object',
+                    default: {},
+                    partial: false,
+                    schema: {
+                        action: {type: 'object', default: {}},
+                        accept: {type: 'string'},
+                        anchor: {type: 'object', partial: true, default: {}},
+                        axes: {type: 'object'},
+                        cloudId: {type: 'string'}, //  Cloud ID
+                        css: {type: 'array', default: [], partial: true },  // CSS properties
+                        dashboard: {type: 'string'}, //  Dashboard widget to select another dashboard
+                        datetime: {type: 'string'},
+                        dimensions: {type: 'object', default: {}}, //  Metric and data dimensions
+                        field: {type: 'string'},  // Database model field
+                        fields: {type: 'array'},  // Database fields for table
+                        fixed: {type: 'boolean'},  // Fixed from modifications
+                        form: {type: 'boolean'},  // Form input
+                        footer: {type: 'string'},  // Footer text
+                        format: {type: 'string'},  // Numeric format
+                        framed: {type: 'boolean'}, // Widget frame
+                        header: {type: 'string'}, //  Widget header
+                        height: {type: 'string'}, //  Pixel height
+                        id: {type: 'string'}, //  Unique widget UUID
+                        input: {type: 'string'}, //  Input widget
+                        items: {type: 'string'}, //  Input items JSON
+                        label: {type: 'string'}, //  Left (x coord)?
+                        legend: {type: 'object'}, //  TBD
+                        left: {type: 'string'}, //  Left (x coord)?
+                        limit: {type: 'number'}, // Items limit
+                        max: {type: 'number'},
+                        min: {type: 'number'},
+                        metric: {type: 'string'}, //  CloudWatch Metric
+                        model: {type: 'string'},  // Database model
+                        multiple: {type: 'boolean'}, //  Multiple values
+                        namespace: {type: 'string'}, //  Metric namespace
+                        options: {type: 'object'},
+                        pivot: {type: 'string'},
+                        placeholder: {type: 'string'}, // Input placeholder
+                        prefix: {type: 'string'}, //  Value prefix
+                        presentation: {type: 'string'}, //  Graph Presentation style
+                        range: {type: 'object'}, //  Widget range override
+                        region: {type: 'string'}, //  Region for metrics
+                        rows: {type: 'number'},
+                        show: {type: 'string'},
+                        statistic: {type: 'string'}, //  Math stat
+                        subtitle: {type: 'string'}, //  Subtitle
+                        suffix: {type: 'string'}, //  Value suffix
+                        text: {type: 'string'}, //  Text content
+                        ticks: {type: 'number'},
+                        timezone: {type: 'string'},
+                        title: {type: 'string'},
+                        top: {type: 'string'}, //  Top position?
+                        type: {type: 'string'}, //  Widget type
+                        validate: {type: 'string'},
+                        units: {type: 'string'}, //  Metric units
+                        width: {type: 'string'}, //  Pixel width
+                        z: {type: 'number'}, //  Z order
+                    },
+                },
+            },
+        },
+        /*
+            Device-side sync state. Used with or without cloud-based management
+         */
+        SyncState: {
+            sk: {type: 'string', value: 'state#'},
+            lastSync: {type: 'date'},
+            lastUpdate: {type: 'date', notes: 'Last time the device software was updated'},
+        },
+        User: {
+            sk:             { type: 'string', value: 'user#${id}', hidden: true },
+            id:             { type: 'string', generate: 'uid' },
+            username:       { type: 'string', required: true, unique: true },
+            password:       { type: 'string', sync: 'none', discard: true },
+            role:           { type: 'string', required: true, enum: ['user', 'admin', 'super'], default: 'user' }
+        },
+    }
+}

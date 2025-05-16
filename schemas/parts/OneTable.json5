@@ -1,0 +1,17 @@
+/*
+    OneTableSchema.json5 -- Core OneTable settings, params and indexes
+ */
+{
+    format: 'onetable:1.1.0',
+    params: {
+        isoDates: true,
+        nulls: false,
+        typeField: '_type',
+        timestamps: 'update',
+    },
+    indexes: {
+        primary: { hash: 'pk', sort: 'sk', description: 'Primary index' },
+        //  gs1 ignored in local database
+        gs1: { hash: 'gs1pk', sort: 'gs1sk', project: 'all' }
+    },
+}

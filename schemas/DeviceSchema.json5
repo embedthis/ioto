@@ -1,0 +1,14 @@
+/*
+    DeviceSchema -- Core schema for the device-* databases
+ */
+{
+    version: 'latest',
+    description: 'Device Cloud Schema',
+    blend: [
+        'parts/OneTable.json5',
+        'parts/CloudSchema.json5',
+        'parts/MetricSchema.json5',
+    ],
+    process: { },
+    models: { },
+}
