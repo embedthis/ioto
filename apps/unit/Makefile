@@ -13,7 +13,7 @@ endif
 all: config build
 
 config:
-	@export-app-config $(TOP)
+	@$(TOP)/bin/export-app-config $(TOP)
 	@mkdir -p $(SITE)
 	find $(SITE) -type f -print | xargs -r rm
 

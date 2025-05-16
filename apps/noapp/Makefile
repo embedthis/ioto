@@ -18,7 +18,7 @@ endif
 all: config build
 
 config:
-	@export-app-config $(TOP)
+	@$(TOP)/bin/export-app-config $(TOP)
 
 build:
 	@echo "      [Info] Built with No App"

@@ -14,7 +14,7 @@ endif
 all: config build
 
 config:
-	@export-app-config $(TOP)
+	@$(TOP)/bin/export-app-config $(TOP)
 
 build:
 	mkdir -p $(SITE)
