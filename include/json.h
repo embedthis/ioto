@@ -89,9 +89,9 @@ struct JsonNode;
     @stability Evolving
  */
 #define ITERATE_JSON(json, parent, child, nid) \
-        int pid = (int) ((parent ? parent : json->nodes) - json->nodes), nid = pid + 1, _count = 0; \
+        int pid = (int) ((parent ? parent : json->nodes) - json->nodes), nid = pid + 1, _count = json->count; \
         (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
-        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        (child = &json->nodes[nid]) != 0; \
         nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
 /**
@@ -104,9 +104,9 @@ struct JsonNode;
     @stability Evolving
  */
 #define ITERATE_JSON_ID(json, pid, child, nid) \
-        int nid = pid + 1, _count = 0; \
+        int nid = pid + 1, _count = json->count; \
         (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
-        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        (child = &json->nodes[nid]) != 0; \
         nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
 /**
@@ -120,16 +120,16 @@ struct JsonNode;
     @stability Evolving
  */
 #define ITERATE_JSON_KEY(json, baseId, key, child, nid) \
-        int parentId = jsonGetId(json, baseId, key), nid = parentId + 1, _count = 0; \
+        int parentId = jsonGetId(json, baseId, key), nid = parentId + 1, _count = json->count; \
         (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[parentId].last) && \
-        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        (child = &json->nodes[nid]) != 0; \
         nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
 //  DEPRECATED - use ITERATE_JSON_ID
 #define ITERATE_JSON_DYNAMIC(json, pid, child, nid) \
-        int nid = pid + 1, _count = 0; \
+        int nid = pid + 1, _count = json->count; \
         (json->count > 0) && json->nodes && nid >= 0 && (nid < json->nodes[pid].last) && \
-        ((child = &json->nodes[nid]) != 0, _count = json->count); \
+        (child = &json->nodes[nid]) != 0; \
         nid = jsonCheckIteration(json, _count, json->nodes[nid].last)
 
 /**
