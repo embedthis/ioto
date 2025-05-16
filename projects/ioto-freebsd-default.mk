@@ -120,7 +120,7 @@ ME_VERSION            ?= \"2.7.0\"
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
-CFLAGS                += -Wno-unknown-warning-option  -fomit-frame-pointer  -w
+CFLAGS                += -fomit-frame-pointer  -w
 DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                += "-I$(BUILD)/inc"
 LDFLAGS               += -g
@@ -474,7 +474,7 @@ DEPS_21 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/aiApp.o: \
     apps/ai/src/aiApp.c $(DEPS_21)
 	@echo '   [Compile] $(BUILD)/obj/aiApp.o'
-	$(CC) -c -o $(BUILD)/obj/aiApp.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/ai/src/aiApp.c
+	$(CC) -c -o $(BUILD)/obj/aiApp.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/ai/src/aiApp.c
 
 #
 #   authApp.o
@@ -484,7 +484,7 @@ DEPS_22 += $(BUILD)/inc/auth.h
 $(BUILD)/obj/authApp.o: \
     apps/auth/src/authApp.c $(DEPS_22)
 	@echo '   [Compile] $(BUILD)/obj/authApp.o'
-	$(CC) -c -o $(BUILD)/obj/authApp.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/auth/src/authApp.c
+	$(CC) -c -o $(BUILD)/obj/authApp.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/auth/src/authApp.c
 
 #
 #   authUser.o
@@ -494,7 +494,7 @@ DEPS_23 += $(BUILD)/inc/auth.h
 $(BUILD)/obj/authUser.o: \
     apps/auth/src/authUser.c $(DEPS_23)
 	@echo '   [Compile] $(BUILD)/obj/authUser.o'
-	$(CC) -c -o $(BUILD)/obj/authUser.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/auth/src/authUser.c
+	$(CC) -c -o $(BUILD)/obj/authUser.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/auth/src/authUser.c
 
 #
 #   cryptLib.o
@@ -504,7 +504,7 @@ DEPS_24 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/cryptLib.o: \
     lib/cryptLib.c $(DEPS_24)
 	@echo '   [Compile] $(BUILD)/obj/cryptLib.o'
-	$(CC) -c -o $(BUILD)/obj/cryptLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/cryptLib.c
+	$(CC) -c -o $(BUILD)/obj/cryptLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/cryptLib.c
 
 #
 #   db.o
@@ -515,7 +515,7 @@ DEPS_25 += $(BUILD)/inc/db.h
 $(BUILD)/obj/db.o: \
     cmds/db.c $(DEPS_25)
 	@echo '   [Compile] $(BUILD)/obj/db.o'
-	$(CC) -c -o $(BUILD)/obj/db.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/db.c
+	$(CC) -c -o $(BUILD)/obj/db.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/db.c
 
 #
 #   dbLib.o
@@ -526,7 +526,7 @@ DEPS_26 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/dbLib.o: \
     lib/dbLib.c $(DEPS_26)
 	@echo '   [Compile] $(BUILD)/obj/dbLib.o'
-	$(CC) -c -o $(BUILD)/obj/dbLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/dbLib.c
+	$(CC) -c -o $(BUILD)/obj/dbLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/dbLib.c
 
 #
 #   demoApp.o
@@ -538,7 +538,7 @@ DEPS_27 += $(BUILD)/inc/rom/gpio.h
 $(BUILD)/obj/demoApp.o: \
     apps/demo/src/demoApp.c $(DEPS_27)
 	@echo '   [Compile] $(BUILD)/obj/demoApp.o'
-	$(CC) -c -o $(BUILD)/obj/demoApp.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/demo/src/demoApp.c
+	$(CC) -c -o $(BUILD)/obj/demoApp.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/demo/src/demoApp.c
 
 #
 #   iotoLib.o
@@ -548,7 +548,7 @@ DEPS_28 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/iotoLib.o: \
     lib/iotoLib.c $(DEPS_28)
 	@echo '   [Compile] $(BUILD)/obj/iotoLib.o'
-	$(CC) -c -o $(BUILD)/obj/iotoLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/iotoLib.c
+	$(CC) -c -o $(BUILD)/obj/iotoLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/iotoLib.c
 
 #
 #   json.o
@@ -560,7 +560,7 @@ DEPS_29 += $(BUILD)/inc/json.h
 $(BUILD)/obj/json.o: \
     cmds/json.c $(DEPS_29)
 	@echo '   [Compile] $(BUILD)/obj/json.o'
-	$(CC) -c -o $(BUILD)/obj/json.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/json.c
+	$(CC) -c -o $(BUILD)/obj/json.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/json.c
 
 #
 #   jsonLib.o
@@ -570,7 +570,7 @@ DEPS_30 += $(BUILD)/inc/json.h
 $(BUILD)/obj/jsonLib.o: \
     lib/jsonLib.c $(DEPS_30)
 	@echo '   [Compile] $(BUILD)/obj/jsonLib.o'
-	$(CC) -c -o $(BUILD)/obj/jsonLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/jsonLib.c
+	$(CC) -c -o $(BUILD)/obj/jsonLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/jsonLib.c
 
 #
 #   main.o
@@ -580,7 +580,7 @@ DEPS_31 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/main.o: \
     cmds/main.c $(DEPS_31)
 	@echo '   [Compile] $(BUILD)/obj/main.o'
-	$(CC) -c -o $(BUILD)/obj/main.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/main.c
+	$(CC) -c -o $(BUILD)/obj/main.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/main.c
 
 #
 #   mqttLib.o
@@ -590,7 +590,7 @@ DEPS_32 += $(BUILD)/inc/mqtt.h
 $(BUILD)/obj/mqttLib.o: \
     lib/mqttLib.c $(DEPS_32)
 	@echo '   [Compile] $(BUILD)/obj/mqttLib.o'
-	$(CC) -c -o $(BUILD)/obj/mqttLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/mqttLib.c
+	$(CC) -c -o $(BUILD)/obj/mqttLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/mqttLib.c
 
 #
 #   noapp.o
@@ -600,7 +600,7 @@ DEPS_33 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/noapp.o: \
     apps/noapp/src/noapp.c $(DEPS_33)
 	@echo '   [Compile] $(BUILD)/obj/noapp.o'
-	$(CC) -c -o $(BUILD)/obj/noapp.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/noapp/src/noapp.c
+	$(CC) -c -o $(BUILD)/obj/noapp.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/noapp/src/noapp.c
 
 #
 #   openaiLib.o
@@ -610,7 +610,7 @@ DEPS_34 += $(BUILD)/inc/openai.h
 $(BUILD)/obj/openaiLib.o: \
     lib/openaiLib.c $(DEPS_34)
 	@echo '   [Compile] $(BUILD)/obj/openaiLib.o'
-	$(CC) -c -o $(BUILD)/obj/openaiLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/openaiLib.c
+	$(CC) -c -o $(BUILD)/obj/openaiLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/openaiLib.c
 
 #
 #   password.o
@@ -622,7 +622,7 @@ DEPS_35 += $(BUILD)/inc/json.h
 $(BUILD)/obj/password.o: \
     cmds/password.c $(DEPS_35)
 	@echo '   [Compile] $(BUILD)/obj/password.o'
-	$(CC) -c -o $(BUILD)/obj/password.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/password.c
+	$(CC) -c -o $(BUILD)/obj/password.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/password.c
 
 #
 #   rLib.o
@@ -632,7 +632,7 @@ DEPS_36 += $(BUILD)/inc/r.h
 $(BUILD)/obj/rLib.o: \
     lib/rLib.c $(DEPS_36)
 	@echo '   [Compile] $(BUILD)/obj/rLib.o'
-	$(CC) -c -o $(BUILD)/obj/rLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/rLib.c
+	$(CC) -c -o $(BUILD)/obj/rLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/rLib.c
 
 #
 #   uctxAssembly.o
@@ -643,7 +643,7 @@ DEPS_37 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxAssembly.o: \
     lib/uctxAssembly.S $(DEPS_37)
 	@echo '   [Compile] $(BUILD)/obj/uctxAssembly.o'
-	$(CC) -c -o $(BUILD)/obj/uctxAssembly.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/uctxAssembly.S
+	$(CC) -c -o $(BUILD)/obj/uctxAssembly.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/uctxAssembly.S
 
 #
 #   uctxLib.o
@@ -654,7 +654,7 @@ DEPS_38 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxLib.o: \
     lib/uctxLib.c $(DEPS_38)
 	@echo '   [Compile] $(BUILD)/obj/uctxLib.o'
-	$(CC) -c -o $(BUILD)/obj/uctxLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/uctxLib.c
+	$(CC) -c -o $(BUILD)/obj/uctxLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/uctxLib.c
 
 #
 #   unitApp.o
@@ -664,7 +664,7 @@ DEPS_39 += $(BUILD)/inc/unit.h
 $(BUILD)/obj/unitApp.o: \
     apps/unit/src/unitApp.c $(DEPS_39)
 	@echo '   [Compile] $(BUILD)/obj/unitApp.o'
-	$(CC) -c -o $(BUILD)/obj/unitApp.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/unit/src/unitApp.c
+	$(CC) -c -o $(BUILD)/obj/unitApp.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/unit/src/unitApp.c
 
 #
 #   unitTests.o
@@ -674,7 +674,7 @@ DEPS_40 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/unitTests.o: \
     apps/unit/src/unitTests.c $(DEPS_40)
 	@echo '   [Compile] $(BUILD)/obj/unitTests.o'
-	$(CC) -c -o $(BUILD)/obj/unitTests.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) $(IFLAGS) apps/unit/src/unitTests.c
+	$(CC) -c -o $(BUILD)/obj/unitTests.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/unit/src/unitTests.c
 
 #
 #   urlLib.o
@@ -685,7 +685,7 @@ DEPS_41 += $(BUILD)/inc/websockets.h
 $(BUILD)/obj/urlLib.o: \
     lib/urlLib.c $(DEPS_41)
 	@echo '   [Compile] $(BUILD)/obj/urlLib.o'
-	$(CC) -c -o $(BUILD)/obj/urlLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/urlLib.c
+	$(CC) -c -o $(BUILD)/obj/urlLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/urlLib.c
 
 #
 #   web.o
@@ -695,7 +695,7 @@ DEPS_42 += $(BUILD)/inc/web.h
 $(BUILD)/obj/web.o: \
     cmds/web.c $(DEPS_42)
 	@echo '   [Compile] $(BUILD)/obj/web.o'
-	$(CC) -c -o $(BUILD)/obj/web.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/web.c
+	$(CC) -c -o $(BUILD)/obj/web.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/web.c
 
 #
 #   webLib.o
@@ -706,7 +706,7 @@ DEPS_43 += $(BUILD)/inc/url.h
 $(BUILD)/obj/webLib.o: \
     lib/webLib.c $(DEPS_43)
 	@echo '   [Compile] $(BUILD)/obj/webLib.o'
-	$(CC) -c -o $(BUILD)/obj/webLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/webLib.c
+	$(CC) -c -o $(BUILD)/obj/webLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/webLib.c
 
 #
 #   websocketsLib.o
@@ -717,7 +717,7 @@ DEPS_44 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/websocketsLib.o: \
     lib/websocketsLib.c $(DEPS_44)
 	@echo '   [Compile] $(BUILD)/obj/websocketsLib.o'
-	$(CC) -c -o $(BUILD)/obj/websocketsLib.o -Wno-unknown-warning-option $(LDFLAGS) -fomit-frame-pointer $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/websocketsLib.c
+	$(CC) -c -o $(BUILD)/obj/websocketsLib.o $(LDFLAGS) $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/websocketsLib.c
 
 #
 #   libioto

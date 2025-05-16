@@ -35,6 +35,7 @@
         "certs": "~1",
         "crypt": "~1",
         "db": "~1",
+        "dev-schemas": "~1.0",
         "json": "~1",
         "manager": "~1",
         "mqtt": "~1",
