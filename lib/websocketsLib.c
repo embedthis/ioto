@@ -290,7 +290,7 @@ PUBLIC int webSocketProcess(WebSocket *ws)
     if (ws->pingPeriod && !ws->pingEvent) {
         ws->pingEvent = rStartEvent((REventProc) sendPing, ws, ws->pingPeriod);
     }
-    ws->error = 0;
+    // ws->error = 0;
 
     /*
         Process buffered data while we have complete frames
@@ -891,7 +891,7 @@ static int wsError(WebSocket *ws, int code, cchar *fmt, ...)
     ws->errorMessage = sfmtv(fmt, args);
     va_end(args);
 
-    rError("sockets", "msg:%s", ws->errorMessage);
+    rError("sockets", "%s", ws->errorMessage);
     invokeCallback(ws, WS_EVENT_ERROR, ws->errorMessage, slen(ws->errorMessage));
     return -code;
 }
