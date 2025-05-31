@@ -22,12 +22,15 @@
     listen: ['http://:80', 'https://:443'],
     redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
     routes: [
-        {match: '/api/user/', handler: 'action', role: 'user'},
-        {match: '/api/public/', handler: 'action'},
+        {match: '/api/user/', handler: 'action', role: 'user', validate: true},
+        {match: '/api/public/', handler: 'action', validate: true},
         {match: '/admin/', handler: 'file', role: 'admin'},
         {match: '/user/', handler: 'file', role: 'user'},
         {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
     ],
+    signatures: {
+        enable: false,
+    },
     timeouts: {
         inactivity: '300 secs',
         parse: '10 secs',

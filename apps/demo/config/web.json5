@@ -21,6 +21,9 @@
     routes: [
         {match: '', handler: 'file', methods: ['GET']},
     ],
+    signatures: {
+        enable: false,
+    },
     timeouts: {
         inactivity: '300 secs',
         parse: '10 secs',

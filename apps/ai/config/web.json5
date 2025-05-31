@@ -10,6 +10,9 @@
         {match: '/ai/', handler: 'action', methods: ['GET', 'POST']},
         {match: '', handler: 'file', methods: ['GET']},
     ],
+    signatures: {
+        enable: false,
+    },
     webSockets: {
         ping: 'never',
         protocol: 'chat',

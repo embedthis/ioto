@@ -24,6 +24,9 @@
         {match: '/api/', handler: 'action', role: 'user'},
         {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
     ],
+    signatures: {
+        enable: false,
+    },
     timeouts: {
         inactivity: '300 secs',
         parse: '10 secs',
