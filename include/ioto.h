@@ -113,7 +113,6 @@ extern "C" {
 #define IO_CONFIG_FILE    "@config/ioto.json5"     /**< Primary Ioto config file */
 #define IO_DEVICE_FILE    "@config/device.json5"   /**< Name of the device identification config file */
 #define IO_LOCAL_FILE     "@config/local.json5"    /**< Development overrides */
-#define IO_SIGNATURE_FILE "@config/signature.json5"/**< Name of the optional REST API signatures file */
 #define IO_PROVISION_FILE "@config/provision.json5"/**< Name of the device provisioning state file */
 #define IO_WEB_FILE       "@config/web.json5"      /**< Name of the web server config file */
 #define IO_CERTIFICATE    "@certs/ioto.crt"        /**< Name of the AWS thing certificate file */
@@ -145,7 +144,6 @@ typedef struct Ioto {
 #endif
 #if SERVICES_WEB
     WebHost *webHost;          /**< Web server host */
-    Json *signatures;          /**< Web Rest API signatures */
 #endif
 #if SERVICES_MQTT
     Mqtt *mqtt;                /**< Mqtt object */
@@ -183,7 +181,9 @@ typedef struct Ioto {
     bool logService : 1;       /** Log file ingest to CloudWatch logs */
     bool mqttService : 1;      /** MQTT service */
     bool nosave : 1;           /** Do not save. i.e. run in-memory */
+    bool registered : 1;       /** Device has been registered */
     bool provisioned : 1;      /** Provisioned with the cloud */
+
     bool aiService : 1;        /** AI service */
     bool provisionService : 1; /** Cloud provisioning service */
     bool registerService : 1;  /** Device registration service */
@@ -192,9 +192,6 @@ typedef struct Ioto {
     bool testService : 1;      /** Test service */
     bool updateService : 1;    /** Update service */
     bool webService : 1;       /** Web server */
-
-    bool registered : 1;       /** Device has been registered */
-    bool strictSignatures : 1; /** Enforce strict signature compliance */
 
     char *serializeService;    /** Manufacturing serialization (factory, auto, none) */
 
@@ -820,7 +817,6 @@ PUBLIC char *ioExpand(cchar *s);
 PUBLIC void ioSetTemplateVar(cchar *key, cchar *value);
 PUBLIC void ioGetKeys(void);
 PUBLIC int ioLoadConfig(void);
-PUBLIC void webCheckRequest(Web *web, cchar *controller, cchar *action);
 PUBLIC Ticks cronUntil(cchar *spec, Time when);
 
 /**

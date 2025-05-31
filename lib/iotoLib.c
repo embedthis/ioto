@@ -2428,21 +2428,9 @@ PUBLIC int ioInitWeb(void)
 {
     WebHost *webHost;
     cchar   *webShow;
-    char    *errorMsg, *path;
+    char    *path;
 
     webInit();
-
-    /*
-        Parse a signatures.json file that is used to validate REST requests to the web server
-     */
-    path = rGetFilePath(IO_SIGNATURE_FILE);
-    if (rAccessFile(path, R_OK) == 0) {
-        if ((ioto->signatures = jsonParseFile(path, &errorMsg, 0)) == 0) {
-            rError("web", "Cannot parse signatures file: %s", errorMsg);
-        }
-        ioto->strictSignatures = smatch(jsonGet(ioto->config, 0, "web.strict", 0), "true");
-    }
-    rFree(path);
 
     /*
         Rebase relative documents and upload directories under "state"
@@ -2485,10 +2473,6 @@ PUBLIC int ioInitWeb(void)
 
 PUBLIC void ioTermWeb(void)
 {
-    if (ioto->signatures) {
-        jsonFree(ioto->signatures);
-        ioto->signatures = 0;
-    }
     if (ioto->webHost) {
         webStopHost(ioto->webHost);
         webFreeHost(ioto->webHost);
@@ -2501,85 +2485,6 @@ PUBLIC void ioRestartWeb(void)
 {
     webStopHost(ioto->webHost);
     webStartHost(ioto->webHost);
-}
-
-/*
-    Check a web request against the API signature for this controller.method.
- */
-static void checkRequest(Web *web, JsonNode *signature)
-{
-    JsonNode *field, *schema, *var;
-    cchar    *required, *role, *value;
-    bool     hasWild;
-    int      sid;
-
-    hasWild = 0;
-    for (ITERATE_JSON(ioto->signatures, signature, field, fid)) {
-        required = jsonGet(ioto->signatures, fid, "required", 0);
-        role = jsonGet(ioto->signatures, fid, "role", 0);
-
-        if (smatch(field->name, "*")) {
-            hasWild = 1;
-        } else {
-            if (role && !webCan(web, role)) {
-                rDebug("web", "WARNING: removing %s for %s - Insufficient role: %s", field->name, web->url, role);
-                webRemoveVar(web, field->name);
-            } else {
-                value = jsonGet(web->vars, 0, field->name, 0);
-                if (required && !value && !jsonGet(ioto->signatures, fid, "default", 0)) {
-                    webWriteResponse(web, 400, "Missing required request field '%s'", field->name);
-                }
-            }
-        }
-        schema = jsonGetNode(ioto->signatures, fid, "schema");
-        if (schema) {
-            checkRequest(web, schema);
-        }
-    }
-    if (web->vars) {
-        for (ITERATE_JSON(web->vars, 0, var, vid)) {
-            sid = jsonGetId(ioto->signatures, jsonGetNodeId(ioto->signatures, signature), var->name);
-            if (!hasWild) {
-                if (sid < 0) {
-                    rDebug("web", "WARNING: removing %s - not in signature for %s", var->name, web->url);
-                    webRemoveVar(web, var->name);
-                } else {
-                    if (jsonGet(ioto->signatures, sid, "discard", 0) != 0) {
-                        webRemoveVar(web, var->name);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/*
-    Check the request signature for actions against a signatures.json file
- */
-PUBLIC void webCheckRequest(Web *web, cchar *controller, cchar *action)
-{
-    JsonNode *signature;
-    char     path[WEB_MAX_SIG];
-
-    sfmtbuf(path, sizeof(path), "%s.%s", controller, action);
-
-    if ((web->signature = jsonGetId(ioto->signatures, 0, path)) < 0) {
-        if (ioto->strictSignatures) {
-            webWriteResponse(web, 400, "Unsupported request");
-        } else {
-            rError("web", "Cannot find signature for %s", path);
-        }
-        return;
-    }
-    if ((signature = jsonGetNode(ioto->signatures, web->signature, "request")) != 0) {
-        checkRequest(web, signature);
-    } else {
-        if (ioto->strictSignatures) {
-            webWriteResponse(web, 400, "Unsupported request");
-        } else {
-            rError("web", "Cannot find signature for %s", path);
-        }
-    }
 }
 
 /*
@@ -2615,36 +2520,10 @@ static int parseShow(cchar *arg)
  */
 PUBLIC ssize webWriteItem(Web *web, const DbItem *item)
 {
-    JsonNode *field, *signature;
-    Json     *json;
-    char     *buf;
-    ssize    bytes;
-
     if (!item) {
         return 0;
     }
-    json = dbJson(item);
-    if (web->signature >= 0) {
-        if ((signature = jsonGetNode(ioto->signatures, web->signature, "response")) != 0) {
-            //  OPT - could do dry run without clone and only clone if modification required
-            //  OPT - or have test if modification will be required by this signature
-            json = jsonClone(json, 0);
-            for (ITERATE_JSON(ioto->signatures, signature, field, fid)) {
-                if (jsonGet(ioto->signatures, fid, "discard", 0) != 0) {
-                    jsonRemove(json, 0, field->name);
-                }
-            }
-            buf = jsonToString(json, 0, 0, JSON_QUOTES);
-            jsonFree(json);
-            bytes = webWrite(web, buf, -1);
-            rFree(buf);
-            return bytes;
-        }
-    }
-    buf = jsonToString(json, 0, 0, JSON_QUOTES);
-    bytes = webWrite(web, buf, -1);
-    rFree(buf);
-    return bytes;
+    return webWriteValidatedJson(web, dbJson(item), 0);
 }
 
 /*
