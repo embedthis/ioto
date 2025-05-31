@@ -290,7 +290,7 @@ PUBLIC void aiResponsesExample(void)
      */
     model = ioGetConfig("ai.model", "gpt-4o-mini");
     request = jsonParse(SFMT(buf, SDEF({
-        model: % s,
+        model: %s,
         input: 'What is the capital of the moon?',
         tools: [{
                     type: 'file_search',
