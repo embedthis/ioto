@@ -43,7 +43,7 @@ PUBLIC bool webAuthenticate(Web *web)
             Retrieve authentication state from the session storage. Faster than re-authenticating.
          */
         if ((web->username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
-            web->role = (char*) webGetSessionVar(web, WEB_SESSION_ROLE, 0);
+            web->role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
             if (web->role && web->host->roles >= 0) {
                 if ((web->roleId = jsonGetId(web->host->config, web->host->roles, web->role)) < 0) {
                     rError("web", "Unknown role in webAuthenticate: %s", web->role);
@@ -76,7 +76,7 @@ PUBLIC bool webCan(Web *web, cchar *requiredRole)
     assert(web);
     assert(requiredRole);
 
-    if (!requiredRole || *requiredRole == '\0') {
+    if (!requiredRole || *requiredRole == '\0' || smatch(requiredRole, "public")) {
         return 1;
     }
     host = web->host;
@@ -394,7 +394,7 @@ PUBLIC void webTerm(void)
 PUBLIC WebHost *webAllocHost(Json *config, int flags)
 {
     WebHost *host;
-    cchar   *show;
+    cchar   *path, *show;
     char    *errorMsg;
 
     if ((host = rAllocType(WebHost)) == 0) {
@@ -424,11 +424,25 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
         if ((config = jsonParseFile(ME_WEB_CONFIG, &errorMsg, JSON_LOCK)) == 0) {
             rError("config", "%s", errorMsg);
             rFree(errorMsg);
+            rFree(host);
             return 0;
         }
         host->freeConfig = 1;
     }
     host->config = config;
+
+    /*
+        Parse a signatures.json file that is used to validate REST requests to the web server
+     */
+    if (jsonGetBool(host->config, 0, "web.signatures.enable", 0)) {
+        path = jsonGet(host->config, 0, "web.signatures.path", 0);
+        if ((host->signatures = jsonParseFile(path, &errorMsg, 0)) == 0) {
+            rError("web", "Cannot parse signatures file: %s", errorMsg);
+            rFree(host);
+            return 0;
+        }
+        host->strictSignatures = smatch(jsonGet(host->config, 0, "web.signatures.strict", 0), "true");
+    }
 
     host->index = jsonGet(host->config, 0, "web.index", "index.html");
     host->parseTimeout = getTimeout(host, "web.timeouts.parse", "5secs");
@@ -518,6 +532,10 @@ PUBLIC void webFreeHost(WebHost *host)
     rFreeHash(host->mimeTypes);
     if (host->freeConfig) {
         jsonFree(host->config);
+    }
+    if (host->signatures) {
+        jsonFree(host->signatures);
+        host->signatures = 0;
     }
     rFree(host->docs);
     rFree(host->ip);
@@ -809,6 +827,7 @@ static void initRoutes(WebHost *host)
         rp->match = "";
         rp->handler = "file";
         rp->methods = host->methods;
+        rp->validate = 0;
         rAddItem(host->routes, rp);
 
     } else {
@@ -829,6 +848,7 @@ static void initRoutes(WebHost *host)
             rp->trim = jsonGet(json, id, "trim", 0);
             rp->handler = jsonGet(json, id, "handler", "file");
             rp->stream = jsonGetBool(json, id, "stream", 0);
+            rp->validate = jsonGetBool(json, id, "validate", 0);
 
             if ((methods = jsonToString(json, id, "methods", 0)) != 0) {
                 methods[slen(methods) - 1] = '\0';
@@ -899,6 +919,756 @@ PUBLIC void webSetHostDefaultIP(WebHost *host, cchar *ip)
 {
     rFree(host->ip);
     host->ip = sclone(ip);
+}
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
+/********* Start of file ../../../src/http.c ************/
+
+/*
+    http.c - Core HTTP request processing
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/********************************** Includes **********************************/
+
+
+
+/************************************ Locals **********************************/
+
+static int64 conn = 0;      /* Connection sequence number */
+
+#define isWhite(c) ((c) == ' ' || (c) == '\t')
+
+static cchar validHeaderChars[128] = {
+    ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
+    ['H'] = 1, ['I'] = 1, ['J'] = 1, ['K'] = 1, ['L'] = 1, ['M'] = 1, ['N'] = 1,
+    ['O'] = 1, ['P'] = 1, ['Q'] = 1, ['R'] = 1, ['S'] = 1, ['T'] = 1, ['U'] = 1,
+    ['V'] = 1, ['W'] = 1, ['X'] = 1, ['Y'] = 1, ['Z'] = 1,
+    ['a'] = 1, ['b'] = 1, ['c'] = 1, ['d'] = 1, ['e'] = 1, ['f'] = 1, ['g'] = 1,
+    ['h'] = 1, ['i'] = 1, ['j'] = 1, ['k'] = 1, ['l'] = 1, ['m'] = 1, ['n'] = 1,
+    ['o'] = 1, ['p'] = 1, ['q'] = 1, ['r'] = 1, ['s'] = 1, ['t'] = 1, ['u'] = 1,
+    ['v'] = 1, ['w'] = 1, ['x'] = 1, ['y'] = 1, ['z'] = 1,
+    ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, ['5'] = 1, ['6'] = 1, ['7'] = 1, ['8'] = 1, ['9'] = 1,
+    ['!'] = 1, ['#'] = 1, ['$'] = 1, ['%'] = 1, ['&'] = 1, ['\''] = 1, ['*'] = 1,
+    ['+'] = 1, ['-'] = 1, ['.'] = 1, ['^'] = 1, ['_'] = 1, ['`'] = 1, ['|'] = 1, ['~'] = 1
+};
+
+/************************************ Forwards *********************************/
+
+static void freeWebFields(Web *web, bool keepAlive);
+static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int close);
+static int handleRequest(Web *web);
+static bool matchFrom(Web *web, cchar *from);
+static int parseHeaders(Web *web, ssize headerSize);
+static int processBody(Web *web);
+static void processOptions(Web *web);
+static void processRequests(Web *web);
+static void processQuery(Web *web);
+static int redirectRequest(Web *web);
+static void resetWeb(Web *web);
+static bool routeRequest(Web *web);
+static int serveRequest(Web *web);
+static int webActionHandler(Web *web);
+
+/************************************* Code ***********************************/
+/*
+    Allocate a new web connection. This is called by the socket listener when a new connection is accepted.
+ */
+PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
+{
+    Web     *web;
+    WebHost *host;
+
+    assert(!rIsMain());
+
+    host = listen->host;
+
+    if (++host->connections > host->maxConnections) {
+        rTrace("web", "Too many connections %d/%d", (int) host->connections, (int) host->maxConnections);
+        rFreeSocket(sock);
+        return R_ERR_WONT_FIT;
+    }
+    if ((web = rAllocType(Web)) == 0) {
+        return R_ERR_MEMORY;
+    }
+    web->conn = conn++;
+    initWeb(web, listen, sock, 0, 0);
+    rAddItem(host->webs, web);
+
+    if (host->flags & WEB_SHOW_REQ_HEADERS) {
+        rLog("raw", "web", "Connect: %s\n", listen->endpoint);
+    }
+    webHook(web, WEB_HOOK_CONNECT);
+
+    processRequests(web);
+
+    if (host->flags & WEB_SHOW_REQ_HEADERS) {
+        rLog("raw", "web", "Disconnect: %s\n", listen->endpoint);
+    }
+    webHook(web, WEB_HOOK_DISCONNECT);
+    webFree(web);
+
+    host->connections--;
+    return 0;
+}
+
+PUBLIC void webFree(Web *web)
+{
+    rRemoveItem(web->host->webs, web);
+    freeWebFields(web, 0);
+    rFree(web);
+}
+
+PUBLIC void webClose(Web *web)
+{
+    if (web) {
+        web->close = 1;
+    }
+}
+
+static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int close)
+{
+    web->listen = listen;
+    web->host = listen->host;
+    web->sock = sock;
+    web->fiber = rGetFiber();
+
+    web->body = 0;
+    web->error = 0;
+    web->finalized = 0;
+    web->rx = rx ? rx : rAllocBuf(ME_BUFSIZE);
+    web->rxHeaders = rAllocBuf(ME_BUFSIZE);
+    web->status = 200;
+    web->rxRemaining = WEB_UNLIMITED;
+    web->txRemaining = WEB_UNLIMITED;
+    web->txLen = -1;
+    web->rxLen = -1;
+    web->close = close;
+}
+
+static void freeWebFields(Web *web, bool keepAlive)
+{
+    RSocket   *sock;
+    WebListen *listen;
+    RBuf      *rx;
+    int64     conn;
+    int       close;
+
+    if (keepAlive) {
+        close = web->close;
+        conn = web->conn;
+        listen = web->listen;
+        rx = web->rx;
+        sock = web->sock;
+    } else {
+        rFreeBuf(web->rx);
+    }
+    rFree(web->path);
+    rFree(web->error);
+    rFree(web->redirect);
+    rFree(web->cookie);
+    rFreeBuf(web->body);
+    rFreeBuf(web->trace);
+    rFreeBuf(web->rxHeaders);
+    rFreeHash(web->txHeaders);
+
+    jsonFree(web->vars);
+    jsonFree(web->qvars);
+    webFreeUpload(web);
+
+#if ME_COM_WEBSOCKETS
+    if (web->webSocket) {
+        webSocketFree(web->webSocket);
+    }
+#endif
+    memset(web, 0, sizeof(Web));
+
+    if (keepAlive) {
+        web->listen = listen;
+        web->rx = rx;
+        web->sock = sock;
+        web->close = close;
+        web->conn = conn;
+    }
+}
+
+static void resetWeb(Web *web)
+{
+    if (web->close) return;
+
+    if (web->rxRemaining > 0) {
+        if (webConsumeInput(web) < 0) {
+            //  Cannot read full body so close connection
+            web->close = 1;
+            return;
+        }
+    }
+    freeWebFields(web, 1);
+    initWeb(web, web->listen, web->sock, web->rx, web->close);
+    web->reuse++;
+}
+
+/*
+    Process requests on a single socket. This implements Keep-Alive and pipelined requests.
+ */
+static void processRequests(Web *web)
+{
+    while (!web->close) {
+        if (serveRequest(web) < 0) {
+            break;
+        }
+        resetWeb(web);
+    }
+}
+
+/*
+    Serve a request. This routine blocks the current fiber while waiting for I/O.
+ */
+static int serveRequest(Web *web)
+{
+    ssize size;
+
+    web->started = rGetTicks();
+    web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
+
+    /*
+        Read until we have all the headers up to the limit
+     */
+    if ((size = webBufferUntil(web, "\r\n\r\n", web->host->maxHeader, 0)) < 0) {
+        return R_ERR_CANT_READ;
+    }
+    if (parseHeaders(web, size) < 0) {
+        return R_ERR_CANT_READ;
+    }
+    webAddStandardHeaders(web);
+    webHook(web, WEB_HOOK_START);
+
+    if (handleRequest(web) < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    webHook(web, WEB_HOOK_END);
+    return 0;
+}
+
+/*
+    Handle one request. This process includes:
+        redirections, authorizing the request, uploads, request body and finally
+        invoking the required action or file handler.
+ */
+static int handleRequest(Web *web)
+{
+    WebRoute *route;
+    cchar    *handler;
+
+    if (web->error) {
+        return 0;
+    }
+    if (redirectRequest(web)) {
+        //  Protocol and site level redirections handled
+        return 0;
+    }
+    if (!routeRequest(web)) {
+        return 0;
+    }
+    route = web->route;
+    handler = route->handler;
+
+    if (tolower(web->method[0]) == 'o' && scaselessmatch(web->method, "OPTIONS") && route->methods) {
+        processOptions(web);
+        return 0;
+    }
+    if (web->uploads && webProcessUpload(web) < 0) {
+        return 0;
+    }
+    if (web->query) {
+        processQuery(web);
+    }
+#if ME_COM_WEBSOCKETS
+    if (scaselessmatch(web->upgrade, "websocket")) {
+        if (webUpgradeSocket(web) < 0) {
+            return R_ERR_CANT_COMPLETE;
+        }
+    }
+#endif
+    if (webReadBody(web) < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    webUpdateDeadline(web);
+
+    if (route->validate && !webValidateRequest(web)) {
+        return R_ERR_BAD_REQUEST;
+    }
+
+    /*
+        Request ready to run, allow any request modification or running a custom handler
+     */
+    webHook(web, WEB_HOOK_RUN);
+    if (web->error) {
+        // Return zero as a valid response has been generated
+        return 0;
+    }
+    /*
+        Run standard handlers: action and file
+     */
+    if (handler[0] == 'a' && smatch(handler, "action")) {
+        return webActionHandler(web);
+
+    } else if (handler[0] == 'f' && smatch(handler, "file")) {
+        return webFileHandler(web);
+    }
+    return webError(web, 404, "No handler to process request");
+}
+
+static int webActionHandler(Web *web)
+{
+    WebAction *action;
+    int       next;
+
+    for (ITERATE_ITEMS(web->host->actions, action, next)) {
+        if (sstarts(web->path, action->match)) {
+            if (!action->role || webCan(web, action->role)) {
+                webHook(web, WEB_HOOK_ACTION);
+                (action->fn)(web);
+                return 0;
+            }
+        }
+    }
+    return webError(web, 404, "No action to handle request");
+}
+
+/*
+    Route the request. This matches the request URL with route URL prefixes.
+    It also authorizes the request by checking the authenticated user role vs the routes required role.
+    Return true if the request was routed successfully.
+ */
+static bool routeRequest(Web *web)
+{
+    WebRoute *route;
+    char     *path;
+    bool     match;
+    int      next;
+
+    for (ITERATE_ITEMS(web->host->routes, route, next)) {
+        if (route->exact) {
+            match = smatch(web->path, route->match);
+        } else {
+            match = sstarts(web->path, route->match);
+        }
+        if (match) {
+            if (!rLookupName(route->methods, web->method)) {
+                webError(web, 405, "Unsupported method.");
+                return 0;
+            }
+            web->route = route;
+            if (route->redirect) {
+                webRedirect(web, 302, route->redirect);
+
+            } else if (route->role) {
+                if (!webAuthenticate(web) || !webCan(web, route->role)) {
+                    if (!smatch(route->role, "public")) {
+                        webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
+                        return 0;
+                    }
+                }
+            }
+            if (route->trim && sstarts(web->path, route->trim)) {
+                path = sclone(&web->path[slen(route->trim)]);
+                rFree(web->path);
+                web->path = path;
+            }
+            return 1;
+        }
+    }
+    rInfo("web", "Cannot find route to serve request %s", web->path);
+    webHook(web, WEB_HOOK_NOT_FOUND);
+
+    if (!web->error) {
+        webWriteResponse(web, 404, "No matching route");
+    }
+    return 0;
+}
+
+/*
+    Apply top level redirections. This is used to redirect to https and site redirections.
+ */
+static int redirectRequest(Web *web)
+{
+    WebRedirect *redirect;
+    int         next;
+
+    for (ITERATE_ITEMS(web->host->redirects, redirect, next)) {
+        if (matchFrom(web, redirect->from)) {
+            webRedirect(web, redirect->status, redirect->to);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static bool matchFrom(Web *web, cchar *from)
+{
+    char  *buf, ip[256];
+    cchar *host, *path, *query, *hash, *scheme;
+    bool  rc;
+    int   port, portNum;
+
+    if ((buf = webParseUrl(from, &scheme, &host, &port, &path, &query, &hash)) == 0) {
+        webWriteResponse(web, 404, "Cannot parse redirection target");
+        return 0;
+    }
+    rc = 1;
+    if (scheme && !smatch(web->scheme, scheme)) {
+        rc = 0;
+    } else if (host || port) {
+        rGetSocketAddr(web->sock, ip, sizeof(ip), &portNum);
+        if (host && (!smatch(web->host->name, host) && !smatch(ip, host))) {
+            rc = 0;
+        } else if (port && port != portNum) {
+            rc = 0;
+        }
+    }
+    if (path && !smatch(&web->path[1], path)) {
+        //  Path does not contain leading "/"
+        rc = 0;
+    } else if (query && !smatch(web->query, query)) {
+        rc = 0;
+    } else if (hash && !smatch(web->hash, hash)) {
+        rc = 0;
+    }
+    rFree(buf);
+    return rc;
+}
+
+/*
+    Parse the request headers
+ */
+static int parseHeaders(Web *web, ssize headerSize)
+{
+    RBuf *buf;
+    char *end, *tok;
+
+    buf = web->rx;
+    if (headerSize <= 10) {
+        return webNetError(web, "Bad request header");
+    }
+    end = buf->start + headerSize;
+    end[-2] = '\0';
+    rPutBlockToBuf(web->rxHeaders, buf->start, headerSize - 2);
+    rAdjustBufStart(buf, end - buf->start);
+
+    if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
+        rLog("raw", "web", "Request <<<<\n\n%s\n", web->rxHeaders->start);
+    }
+    web->method = supper(stok(web->rxHeaders->start, " \t", &tok));
+    web->url = stok(tok, " \t", &tok);
+    web->protocol = supper(stok(tok, "\r", &tok));
+    web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
+
+    if (tok == 0) {
+        return webNetError(web, "Bad request header");
+    }
+    rAdjustBufStart(web->rxHeaders, tok - web->rxHeaders->start + 1);
+    rAddNullToBuf(web->rxHeaders);
+
+    /*
+        Only support HTTP/1.0 without keep alive - all clients should be supporting HTTP/1.1
+     */
+    if (smatch(web->protocol, "HTTP/1.0")) {
+        web->http10 = 1;
+        web->close = 1;
+    }
+    if (!webParseHeadersBlock(web, web->rxHeaders->start, rGetBufLength(web->rxHeaders), 0)) {
+        return R_ERR_BAD_REQUEST;
+    }
+    if (webValidateUrl(web) < 0) {
+        return R_ERR_BAD_REQUEST;
+    }
+    webUpdateDeadline(web);
+    return 0;
+}
+
+/*
+    Parse a headers block. Used here and by file upload.
+ */
+PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, bool upload)
+{
+    struct tm tm;
+    cchar     *end;
+    char      c, *cp, *endKey, *key, *prior, *t, *value;
+
+    if (!headers || *headers == '\0') {
+        return 1;
+    }
+    end = &headers[headersSize];
+
+    for (cp = headers; cp < end; ) {
+        key = cp;
+        if ((cp = strchr(cp, ':')) == 0) {
+            webNetError(web, "Bad headers");
+            return 0;
+        }
+        endKey = cp;
+        *cp++ = '\0';
+        while (*cp && isWhite(*cp)) cp++;
+        value = cp;
+        while (*cp && *cp != '\r') cp++;
+
+        if (*cp != '\r') {
+            webNetError(web, "Bad headers");
+            return 0;
+        }
+        *cp++ = '\0';
+        if (*cp != '\n') {
+            webNetError(web, "Bad headers");
+            return 0;
+        }
+        *cp++ = '\0';
+
+        // Trim white space from value
+        for (t = cp - 2; t >= value; t--) {
+            if (isWhite(*t)) {
+                *t = '\0';
+            } else {
+                break;
+            }
+        }
+
+        //  Validate header name
+        for (t = key; t < endKey; t++) {
+            if (!validHeaderChars[(uchar) * t]) {
+                return NULL;
+            }
+        }
+        c = tolower(*key);
+
+        if (upload && c != 'c' && (
+                !scaselessmatch(key, "content-disposition") &&
+                !scaselessmatch(key, "content-type"))) {
+            webNetError(web, "Bad upload headers");
+            return 0;
+        }
+        if (c == 'c') {
+            if (scaselessmatch(key, "content-disposition")) {
+                web->contentDisposition = value;
+
+            } else if (scaselessmatch(key, "content-type")) {
+                web->contentType = value;
+                if (scontains(value, "multipart/form-data")) {
+                    if (webInitUpload(web) < 0) {
+                        return 0;
+                    }
+
+                } else if (smatch(value, "application/x-www-form-urlencoded")) {
+                    web->formBody = 1;
+
+                } else if (smatch(value, "application/json")) {
+                    web->jsonBody = 1;
+                }
+
+            } else if (scaselessmatch(key, "connection")) {
+                if (scaselessmatch(value, "close")) {
+                    web->close = 1;
+                }
+            } else if (scaselessmatch(key, "content-length")) {
+                web->rxLen = web->rxRemaining = atoi(value);
+
+            } else if (scaselessmatch(key, "cookie")) {
+                if (web->cookie) {
+                    prior = web->cookie;
+                    web->cookie = sjoin(prior, "; ", value, NULL);
+                    rFree(prior);
+                } else {
+                    web->cookie = sclone(value);
+                }
+            }
+
+        } else if (c == 'i' && strcmp(key, "if-modified-since") == 0) {
+#if !defined(ESP32)
+            if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
+                web->since = timegm(&tm);
+            }
+#endif
+        } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
+            web->lastEventId = stoi(value);
+
+        } else if (c == 'o' && scaselessmatch(key, "origin")) {
+            web->origin = value;
+
+        } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
+            web->chunked = WEB_CHUNK_START;
+        } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
+            web->upgrade = value;
+        }
+    }
+    if (!web->chunked && !web->uploads && web->rxLen < 0) {
+        web->rxRemaining = 0;
+    }
+    return 1;
+}
+
+/*
+    Headers have been tokenized with a null replacing the ":" and "\r\n"
+ */
+PUBLIC cchar *webGetHeader(Web *web, cchar *name)
+{
+    cchar *cp, *end, *start;
+    cchar *value;
+
+    start = rGetBufStart(web->rxHeaders);
+    end = rGetBufEnd(web->rxHeaders);
+    value = 0;
+
+    for (cp = start; cp < end; cp++) {
+        if (scaselessmatch(cp, name)) {
+            cp += slen(name) + 1;
+            while (isWhite(*cp)) cp++;
+            value = cp;
+            break;
+        }
+        cp += slen(cp) + 1;
+        if (cp < end && *cp) {
+            cp += slen(cp) + 1;
+        }
+    }
+    return value;
+}
+
+PUBLIC bool webGetNextHeader(Web *web, cchar **pkey, cchar **pvalue)
+{
+    cchar *cp, *start;
+
+    assert(pkey);
+    assert(pvalue);
+
+    if (!pkey || !pvalue) {
+        return 0;
+    }
+    if (*pvalue) {
+        start = *pvalue + slen(*pvalue) + 2;
+    } else {
+        start = rGetBufStart(web->rxHeaders);
+    }
+    if (start < rGetBufEnd(web->rxHeaders)) {
+        *pkey = start;
+        cp = start + slen(start) + 1;
+        while (isWhite(*cp)) cp++;
+        *pvalue = cp;
+        return 1;
+    }
+    return 0;
+}
+
+/*
+    Read body data from the rx buffer into the body buffer
+    Not called for streamed requests
+ */
+PUBLIC int webReadBody(Web *web)
+{
+    WebRoute *route;
+    RBuf     *buf;
+    ssize    nbytes;
+
+    route = web->route;
+    if ((route && route->stream) || web->webSocket || (web->rxRemaining <= 0 && !web->chunked)) {
+        return 0;
+    }
+    if (!web->body) {
+        web->body = rAllocBuf(ME_BUFSIZE);
+    }
+    buf = web->body;
+    do {
+        rReserveBufSpace(buf, ME_BUFSIZE);
+        nbytes = webRead(web, rGetBufEnd(buf), rGetBufSpace(buf));
+        if (nbytes < 0) {
+            return R_ERR_CANT_READ;
+        }
+        rAdjustBufEnd(buf, nbytes);
+        if (rGetBufLength(buf) > web->host->maxBody) {
+            webNetError(web, "Request is too big");
+            return R_ERR_CANT_READ;
+        }
+    } while (nbytes > 0 && web->rxRemaining > 0);
+    rAddNullToBuf(buf);
+
+    if (processBody(web) < 0) {
+        //  Continue
+        return 0;
+    }
+    return 0;
+}
+
+/*
+    Process the request body and parse JSON, url-encoded forms and query vars.
+ */
+static int processBody(Web *web)
+{
+    if (web->host->flags & WEB_SHOW_REQ_BODY && rGetBufLength(web->body)) {
+        rLog("raw", "web", "Request Body <<<<\n\n%s\n\n", rBufToString(web->body));
+    }
+    if (web->jsonBody) {
+        if ((web->vars = webParseJson(web)) == 0) {
+            return webError(web, 400, "JSON body is malformed");
+        }
+    } else if (web->formBody) {
+        web->vars = jsonAlloc(0);
+        webParseForm(web);
+    }
+    return 0;
+}
+
+static void processQuery(Web *web)
+{
+    web->qvars = jsonAlloc(0);
+    webParseQuery(web);
+}
+
+static void processOptions(Web *web)
+{
+    RList *list;
+    RName *np;
+
+    list = rAllocList(0, 0);
+    for (ITERATE_NAMES(web->route->methods, np)) {
+        rAddItem(list, np->name);
+    }
+    rSortList(list, NULL, NULL);
+    webAddHeaderDynamicString(web, "Access-Control-Allow-Methods", rListToString(list, ","));
+    rFreeList(list);
+    webWriteResponse(web, 200, NULL);
+}
+
+PUBLIC int webHook(Web *web, int event)
+{
+    if (web->host->hook) {
+        return (web->host->hook)(web, event);
+    }
+    return 0;
+}
+
+/**
+    Extend the timeout for the request by updating the deadline.
+    DEPRECATED: Use webUpdateDeadline() instead.
+ */
+PUBLIC void webExtendTimeout(Web *web, Ticks timeout)
+{
+    web->deadline = rGetTimeouts() ? rGetTicks() + timeout : 0;
+}
+
+/**
+    Reset the deadline for the request using the inactivity timeout and request timeout.
+    This is used typically when I/O activity is detected.
+ */
+PUBLIC void webUpdateDeadline(Web *web)
+{
+    if (web->upgraded) return;
+    web->deadline = rGetTimeouts() ?
+                    min(rGetTicks() + web->host->inactivityTimeout, web->started + web->host->requestTimeout) : 0;
 }
 
 /*
@@ -1480,6 +2250,7 @@ PUBLIC void webSetStatus(Web *web, int status)
 /*
     Emit a single response and finalize the response output.
     If the status is an error (not 200 or 401), the response will be logged to the error log.
+    If status is zero, set the status to 400 and close the socket after issuing the response.
  */
 PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
 {
@@ -1490,6 +2261,12 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
     if (!fmt) {
         fmt = "";
     }
+    if (!status) {
+        status = 400;
+        web->close = 1;
+    }
+    web->status = status;
+
     if (rIsSocketClosed(web->sock)) {
         return R_ERR_CANT_WRITE;
     }
@@ -1501,9 +2278,7 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
         va_end(ap);
     }
     web->txLen = slen(msg);
-    if (status) {
-        web->status = status;
-    }
+
     webAddHeaderStaticString(web, "Content-Type", "text/plain");
 
     rc = 0;
@@ -1664,8 +2439,8 @@ PUBLIC void webRedirect(Web *web, int status, cchar *target)
 
 /*
     Issue a request error response.
-    If status is zero, close the socket after trying to issue a response.
-    Otherwise, the socket and connection remain usable for further requests.
+    If status is zero, close the socket after trying to issue a response and return an error code.
+    Otherwise, the socket and connection remain usable for further requests and we return zero.
  */
 PUBLIC int webError(Web *web, int status, cchar *fmt, ...)
 {
@@ -1682,11 +2457,12 @@ PUBLIC int webError(Web *web, int status, cchar *fmt, ...)
         web->close = 1;
     }
     webHook(web, WEB_HOOK_ERROR);
-    return 0;
+    return status == 0 ? R_ERR_CANT_COMPLETE : 0;
 }
 
 /*
-    Close the socket and issue no response. The connection is not usable.
+    Indicate an error and immediately close the socket. This issues no response to the client.
+    Use when the connection is not usable or the client is not to be trusted.
  */
 PUBLIC int webNetError(Web *web, cchar *fmt, ...)
 {
@@ -2184,7 +2960,7 @@ static void showRequest(Web *web)
 {
     Json     *json;
     JsonNode *node;
-    char     *body, keybuf[80], *result;
+    char     *body, keybuf[80];
     cchar    *key, *value;
     ssize    len;
     bool     isPrintable;
@@ -2217,9 +2993,7 @@ static void showRequest(Web *web)
         Form vars
      */
     if (web->vars) {
-        for (ITERATE_JSON(web->vars, NULL, node, nid)) {
-            jsonSetFmt(json, 0, SFMT(keybuf, "form.%s", node->name), "%s", node->value);
-        }
+        jsonBlend(json, 0, "form", web->vars, 0, NULL, 0);
     }
 
     /*
@@ -2243,7 +3017,7 @@ static void showRequest(Web *web)
     /*
         Rx Body
      */
-    if (rGetBufLength(web->body)) {
+    if (web->body && rGetBufLength(web->body)) {
         len = rGetBufLength(web->body);
         body = rGetBufStart(web->body);
         jsonSetFmt(json, 0, "bodyLength", "%ld", len);
@@ -2255,16 +3029,14 @@ static void showRequest(Web *web)
             }
         }
         if (isPrintable) {
-            body = sreplace(rBufToString(web->body), "\"", "\\\"");
-            jsonSetFmt(json, 0, "body", "%s", body);
-            rFree(body);
+            jsonSetFmt(json, 0, "body", "%s", rBufToString(web->body));
         }
     }
     showRequestContext(web, json);
     showServerContext(web, json);
-    result = jsonToString(json, 0, NULL, JSON_STRICT | JSON_PRETTY);
-    webWrite(web, result, slen(result));
-    rFree(result);
+
+    webWriteValidatedJson(web, json, JSON_QUOTES | JSON_PRETTY);
+
     jsonFree(json);
 }
 
@@ -2343,6 +3115,9 @@ static void showServerContext(Web *web, Json *json)
     jsonSetFmt(json, 0, "host.maxUpload", "%lld", host->maxUpload);
 }
 
+/*
+    SSE test
+ */
 static void eventAction(Web *web)
 {
     int i;
@@ -2392,6 +3167,22 @@ static void showAction(Web *web)
 static void successAction(Web *web)
 {
     webWriteResponse(web, URL_CODE_OK, "success\n");
+}
+
+static void sigAction(Web *web)
+{
+    // Pretend to be authenticated with "user" role
+    web->role = "user";
+    web->authChecked = 1;
+    web->username = "user";
+
+    if (web->vars) {
+        jsonPrint(web->vars);
+        webWriteValidatedJson(web, web->vars, JSON_QUOTES | JSON_PRETTY);
+    } else {
+        webWriteValidated(web, rBufToString(web->body));
+    }
+    webFinalize(web);
 }
 
 #if ME_WEB_UPLOAD
@@ -2480,6 +3271,7 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 #if ME_COM_WEBSOCKETS
     webAddAction(host, SFMT(url, "%s/ws", prefix), webSocketAction, NULL);
 #endif
+    webAddAction(host, SFMT(url, "%s/sig", prefix), sigAction, NULL);
 }
 
 #else
@@ -3264,11 +4056,80 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
  */
 
 
-/********* Start of file ../../../src/webLib.c ************/
+/********* Start of file ../../../src/validate.c ************/
 
 /*
-    web.c -
+    validate.c - Validate request and response signatures
 
+    The description, notes, private, title and name fields are generally for documentation
+    tools and are ignored by the validation routines.
+
+    DOC
+        Model Name (controller name)
+        Model Description (meta.description)
+        Model Notes (meta.notes)
+        Model See Also (meta.see)
+        Method
+            Method Name
+            Method Title
+            Method Description
+            Method Method
+            Role
+            Request Section
+            Query Section
+            Response Section
+                ${name} Record
+                notes - go into paged response
+
+
+    Format of the signatures.json5 file:
+    {
+        CONTROLLER_NAME: {
+            _meta: {
+                description:         - Doc markdown description
+                notes:               - Notes for doc
+                see:                 - See also
+                private:             - Hide from doc
+                role:                - Access control
+                title:               - Short title
+            },
+            METHOD: {
+                description:        - Doc markdown description
+                example             - Example value
+                private:            - Hide from doc
+                role:               - Access control
+                request:            - BLOCK, null, 'string', 'number', 'boolean', 'array', 'object'
+                response:           - BLOCK, null, 'string', 'number', 'boolean', 'array', 'object'
+                request.query:      - BLOCK, null, 'string', 'number', 'boolean', 'array', 'object'
+                title:              - Short title
+
+                BLOCK: {
+                    fields: {       - If object
+                        NAME: {
+                            description - Field description for doc
+                            discard     - Remove from data (for response)
+                            fields      - Nested object
+                            of          - If type == 'array' then nested block
+                            required    - Must be present (for request)
+                            role        - Discard if role not posessed
+                            type        - Type (object, array, string, number, boolean)
+                            validate    - Regexp
+                        },
+                    }
+                    array: {            - If array
+                        of: {
+                            type:       - Data type
+                            fields: {}, - Item object
+                        }
+                    },
+                }
+                request.query:           - BLOCK, null, 'string', 'number', 'boolean', 'array', 'object'
+        }
+    }
+
+    Notes:
+    - Can omit request, response, query blocks and the data is then unvalidated
+    - Use fields: {'*'} to allow any fields
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
@@ -3278,628 +4139,394 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
 
 /************************************ Locals **********************************/
 
-static int64 conn = 0; /* Connection sequence number */
-
-#define isWhite(c) ((c) == ' ' || (c) == '\t')
-
-static cchar validHeaderChars[128] = {
-    ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
-    ['H'] = 1, ['I'] = 1, ['J'] = 1, ['K'] = 1, ['L'] = 1, ['M'] = 1, ['N'] = 1,
-    ['O'] = 1, ['P'] = 1, ['Q'] = 1, ['R'] = 1, ['S'] = 1, ['T'] = 1, ['U'] = 1,
-    ['V'] = 1, ['W'] = 1, ['X'] = 1, ['Y'] = 1, ['Z'] = 1,
-    ['a'] = 1, ['b'] = 1, ['c'] = 1, ['d'] = 1, ['e'] = 1, ['f'] = 1, ['g'] = 1,
-    ['h'] = 1, ['i'] = 1, ['j'] = 1, ['k'] = 1, ['l'] = 1, ['m'] = 1, ['n'] = 1,
-    ['o'] = 1, ['p'] = 1, ['q'] = 1, ['r'] = 1, ['s'] = 1, ['t'] = 1, ['u'] = 1,
-    ['v'] = 1, ['w'] = 1, ['x'] = 1, ['y'] = 1, ['z'] = 1,
-    ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, ['5'] = 1, ['6'] = 1, ['7'] = 1, ['8'] = 1, ['9'] = 1,
-    ['!'] = 1, ['#'] = 1, ['$'] = 1, ['%'] = 1, ['&'] = 1, ['\''] = 1, ['*'] = 1,
-    ['+'] = 1, ['-'] = 1, ['.'] = 1, ['^'] = 1, ['_'] = 1, ['`'] = 1, ['|'] = 1, ['~'] = 1
-};
+#define WEB_MAX_SIG_DEPTH 8             /* Maximum depth of signature validation */
 
 /************************************ Forwards *********************************/
 
-static void freeWebFields(Web *web, bool keepAlive);
-static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int close);
-static int handleRequest(Web *web);
-static bool matchFrom(Web *web, cchar *from);
-static int parseHeaders(Web *web, ssize headerSize);
+static bool checkDataSignature(Web *web, cchar *tag, cchar *body, JsonNode *signature);
+static bool checkJsonSignature(Web *web, cchar *tag, Json *json, int jid, JsonNode *signature, int depth);
+static cchar *getType(Web *web, JsonNode *signature);
 static int parseUrl(Web *web);
-static int processBody(Web *web);
-static void processOptions(Web *web);
-static void processRequests(Web *web);
-static void processQuery(Web *web);
-static int redirectRequest(Web *web);
-static void resetWeb(Web *web);
-static bool routeRequest(Web *web);
-static int serveRequest(Web *web);
-static int webActionHandler(Web *web);
-static int validateUrl(Web *web);
+static bool sigError(Web *web, cchar *fmt, ...);
 
 /************************************* Code ***********************************/
 /*
-    Allocate a new web connection. This is called by the socket listener when a new connection is accepted.
+    Check the request signature against a signatures.json5 file.
+    This converts the URL path into a JSON property path by changing "/" to ".".
+    Return true if the request is valid. If not, we return an error code and the connection is closed.
+    This is an INTERNAL API and should not be used by user code.
  */
-PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
+PUBLIC bool webValidateRequest(Web *web)
 {
-    Web     *web;
-    WebHost *host;
+    char  path[WEB_MAX_SIG];
+    ssize len;
+    char  *cp;
 
-    assert(!rIsMain());
+    assert(web);
 
-    host = listen->host;
-
-    if (++host->connections > host->maxConnections) {
-        rTrace("web", "Too many connections %d/%d", (int) host->connections, (int) host->maxConnections);
-        rFreeSocket(sock);
-        return R_ERR_WONT_FIT;
+    //  Strip URL prefix
+    len = slen(web->route->match);
+    sncopy(path, sizeof(path), &web->url[len], slen(web->url) - len);
+    for (cp = path; cp < &path[sizeof(path)] && *cp; cp++) {
+        if (*cp == '/') *cp = '.';
     }
-    if ((web = rAllocType(Web)) == 0) {
+    return webValidateRequestBody(web, path);
+}
+
+/*
+    This is provided for backwards compatibility with old code and for user's who have URL paths that don't match
+    the prefix/controller/action format. Note: this permits custom URL paths and custom signature blocks.
+ */
+PUBLIC bool webValidateControllerAction(Web *web, cchar *controller, cchar *action)
+{
+    char path[WEB_MAX_SIG];
+
+    assert(web);
+
+    SFMT(path, "%s.%s", controller, action);
+    return webValidateRequestBody(web, path);
+}
+
+/*
+    Validate the request using a URL request path and the host->signatures.
+    The path is used as a JSON property path into the signatures.json5 file.
+    Generally, this is the controller.method format, but custom formats are supported.
+    This routine will generate an error response if the signature is not found or
+    if the signature is invalid. Depending on the host->strictSignatures flag, it will
+    either return 0 or R_ERR_BAD_REQUEST. If invalid, the connection is closed after the
+    error response is written.
+ */
+PUBLIC bool webValidateRequestBody(Web *web, cchar *path)
+{
+    WebHost  *host;
+    JsonNode *signature;
+    bool     strict;
+
+    host = web->host;
+    strict = host->strictSignatures;
+
+    if ((web->signature = jsonGetId(host->signatures, 0, path)) >= 0) {
+        //  Allow missing request signature
+        if ((signature = jsonGetNode(host->signatures, web->signature, "request")) != 0) {
+            if (web->vars) {
+                return checkJsonSignature(web, "request", web->vars, 0, signature, 0);
+            }
+            if (web->body) {
+                return checkDataSignature(web, "request", rBufToString(web->body), signature);
+            }
+            if (signature->type != JSON_PRIMITIVE || !smatch(signature->value, "null")) {
+                sigError(web, "Missing request body");
+                return 0;
+            }
+        }
+        if (web->qvars) {
+            //  Allow missing request.query signature
+            if ((signature = jsonGetNode(host->signatures, web->signature, "request.query")) != 0) {
+                return checkJsonSignature(web, "query", web->qvars, 0, signature, 0);
+            }
+        }
+    }
+    if (strict) {
+        sigError(web, "Unsupported request");
+        return 0;
+    }
+    //  Emit warning, but permit the request to continue
+    rError("web", "Cannot find request signature for %s", path);
+    return 1;
+}
+
+/*
+    Write a validated response and check against the API signature.
+    The buffer MUST be null terminated.  Does not finalize.
+ */
+PUBLIC ssize webWriteValidated(Web *web, cchar *buf)
+{
+    JsonNode *signature;
+
+    assert(web);
+
+    if (web->signature >= 0) {
+        //  Allow a signature to omit the response field (even with strict mode)
+        if ((signature = jsonGetNode(web->host->signatures, web->signature, "response")) != 0) {
+            if (!checkDataSignature(web, "response", buf, signature)) {
+                return R_ERR_BAD_REQUEST;
+            }
+        }
+    }
+    return webWrite(web, buf, slen(buf));
+}
+
+/*
+    Write a validated response and check against the API signature.
+    Does not finalize.
+ */
+PUBLIC ssize webWriteValidatedJson(Web *web, Json *json, int flags)
+{
+    JsonNode *signature;
+    char     *buf;
+    ssize    bytes;
+
+    assert(web);
+
+    if (web->signature >= 0) {
+        //  Allow a signature to not have a response even with strict mode
+        if ((signature = jsonGetNode(web->host->signatures, web->signature, "response")) != 0) {
+            if (!checkJsonSignature(web, "response", json, 0, signature, 0)) {
+                return R_ERR_BAD_REQUEST;
+            }
+        }
+    }
+    if (!flags) {
+        flags = JSON_QUOTES | JSON_PRETTY;
+    }
+    buf = jsonToString(json, 0, 0, flags);
+    if (!buf) {
         return R_ERR_MEMORY;
     }
-    web->conn = conn++;
-    initWeb(web, listen, sock, 0, 0);
-    rAddItem(host->webs, web);
-
-    if (host->flags & WEB_SHOW_REQ_HEADERS) {
-        rLog("raw", "web", "Connect: %s\n", listen->endpoint);
-    }
-    webHook(web, WEB_HOOK_CONNECT);
-
-    processRequests(web);
-
-    if (host->flags & WEB_SHOW_REQ_HEADERS) {
-        rLog("raw", "web", "Disconnect: %s\n", listen->endpoint);
-    }
-    webHook(web, WEB_HOOK_DISCONNECT);
-    webFree(web);
-
-    host->connections--;
-    return 0;
-}
-
-PUBLIC void webFree(Web *web)
-{
-    rRemoveItem(web->host->webs, web);
-    freeWebFields(web, 0);
-    rFree(web);
-}
-
-PUBLIC void webClose(Web *web)
-{
-    if (web) {
-        web->close = 1;
-    }
-}
-
-static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int close)
-{
-    web->listen = listen;
-    web->host = listen->host;
-    web->sock = sock;
-    web->fiber = rGetFiber();
-
-    web->body = rAllocBuf(ME_BUFSIZE);
-    web->error = 0;
-    web->finalized = 0;
-    web->rx = rx ? rx : rAllocBuf(ME_BUFSIZE);
-    web->rxHeaders = rAllocBuf(ME_BUFSIZE);
-    web->status = 200;
-    web->rxRemaining = WEB_UNLIMITED;
-    web->txRemaining = WEB_UNLIMITED;
-    web->txLen = -1;
-    web->rxLen = -1;
-    web->close = close;
-}
-
-static void freeWebFields(Web *web, bool keepAlive)
-{
-    RSocket   *sock;
-    WebListen *listen;
-    RBuf      *rx;
-    int64     conn;
-    int       close;
-
-    if (keepAlive) {
-        close = web->close;
-        conn = web->conn;
-        listen = web->listen;
-        rx = web->rx;
-        sock = web->sock;
-    } else {
-        rFreeBuf(web->rx);
-    }
-    rFree(web->path);
-    rFree(web->error);
-    rFree(web->redirect);
-    rFree(web->cookie);
-    rFreeBuf(web->body);
-    rFreeBuf(web->trace);
-    rFreeBuf(web->rxHeaders);
-    rFreeHash(web->txHeaders);
-
-    jsonFree(web->vars);
-    jsonFree(web->qvars);
-    webFreeUpload(web);
-
-#if ME_COM_WEBSOCKETS
-    if (web->webSocket) {
-        webSocketFree(web->webSocket);
-    }
-#endif
-    memset(web, 0, sizeof(Web));
-
-    if (keepAlive) {
-        web->listen = listen;
-        web->rx = rx;
-        web->sock = sock;
-        web->close = close;
-        web->conn = conn;
-    }
-}
-
-static void resetWeb(Web *web)
-{
-    if (web->close) return;
-
-    if (web->rxRemaining > 0) {
-        if (webConsumeInput(web) < 0) {
-            //  Cannot read full body so close connection
-            web->close = 1;
-            return;
-        }
-    }
-    freeWebFields(web, 1);
-    initWeb(web, web->listen, web->sock, web->rx, web->close);
-    web->reuse++;
-}
-
-/*
-    Process requests on a single socket. This implements Keep-Alive and pipelined requests.
- */
-static void processRequests(Web *web)
-{
-    while (!web->close) {
-        if (serveRequest(web) < 0) {
-            break;
-        }
-        resetWeb(web);
-    }
-}
-
-/*
-    Serve a request. This routine blocks the current fiber while waiting for I/O.
- */
-static int serveRequest(Web *web)
-{
-    ssize size;
-
-    web->started = rGetTicks();
-    web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
-
-    /*
-        Read until we have all the headers up to the limit
-     */
-    if ((size = webBufferUntil(web, "\r\n\r\n", web->host->maxHeader, 0)) < 0) {
-        return R_ERR_CANT_READ;
-    }
-    if (parseHeaders(web, size) < 0) {
-        return R_ERR_CANT_READ;
-    }
-    webAddStandardHeaders(web);
-    webHook(web, WEB_HOOK_START);
-
-    if (handleRequest(web) < 0) {
-        return R_ERR_CANT_READ;
-    }
-    webHook(web, WEB_HOOK_END);
-    return 0;
-}
-
-/*
-    Handle one request. This process includes:
-        redirections, authorizing the request, uploads, request body and finally
-        invoking the required action or file handler.
- */
-static int handleRequest(Web *web)
-{
-    WebRoute *route;
-    cchar    *handler;
-
-    if (web->error) {
-        return 0;
-    }
-    if (redirectRequest(web)) {
-        //  Protocol and site level redirections handled
-        return 0;
-    }
-    if (!routeRequest(web)) {
-        return 0;
-    }
-    route = web->route;
-    handler = route->handler;
-
-    if (tolower(web->method[0]) == 'o' && scaselessmatch(web->method, "OPTIONS") && route->methods) {
-        processOptions(web);
-        return 0;
-    }
-    if (web->uploads && webProcessUpload(web) < 0) {
-        return 0;
-    }
-    if (web->query) {
-        processQuery(web);
-    }
-#if ME_COM_WEBSOCKETS
-    if (scaselessmatch(web->upgrade, "websocket")) {
-        if (webUpgradeSocket(web) < 0) {
-            return R_ERR_CANT_COMPLETE;
-        }
-    }
-#endif
-    if (webReadBody(web) < 0) {
-        return R_ERR_CANT_COMPLETE;
-    }
-    webUpdateDeadline(web);
-
-    /*
-        Request ready to run, allow any request modification or running a custom handler
-     */
-    webHook(web, WEB_HOOK_RUN);
-    if (web->error) {
-        return 0;
-    }
-    /*
-        Run standard handlers: action and file
-     */
-    if (handler[0] == 'a' && smatch(handler, "action")) {
-        return webActionHandler(web);
-
-    } else if (handler[0] == 'f' && smatch(handler, "file")) {
-        return webFileHandler(web);
-    }
-    return webError(web, 404, "No handler to process request");
-}
-
-static int webActionHandler(Web *web)
-{
-    WebAction *action;
-    int       next;
-
-    for (ITERATE_ITEMS(web->host->actions, action, next)) {
-        if (sstarts(web->path, action->match)) {
-            if (!action->role || webCan(web, action->role)) {
-                webHook(web, WEB_HOOK_ACTION);
-                (action->fn)(web);
-                return 0;
-            }
-        }
-    }
-    return webError(web, 404, "No action to handle request");
-}
-
-/*
-    Route the request. This matches the request URL with route URL prefixes.
-    It also authorizes the request by checking the authenticated user role vs the routes required role.
-    Return true if the request was routed successfully.
- */
-static bool routeRequest(Web *web)
-{
-    WebRoute *route;
-    char     *path;
-    bool     match;
-    int      next;
-
-    for (ITERATE_ITEMS(web->host->routes, route, next)) {
-        if (route->exact) {
-            match = smatch(web->path, route->match);
-        } else {
-            match = sstarts(web->path, route->match);
-        }
-        if (match) {
-            if (!rLookupName(route->methods, web->method)) {
-                webError(web, 405, "Unsupported method.");
-                return 0;
-            }
-            web->route = route;
-            if (route->redirect) {
-                webRedirect(web, 302, route->redirect);
-
-            } else if (route->role) {
-                if (!webAuthenticate(web) || !webCan(web, route->role)) {
-                    webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
-                    return 0;
-                }
-            }
-            if (route->trim && sstarts(web->path, route->trim)) {
-                path = sclone(&web->path[slen(route->trim)]);
-                rFree(web->path);
-                web->path = path;
-            }
-            return 1;
-        }
-    }
-    rInfo("web", "Cannot find route to serve request %s", web->path);
-    webHook(web, WEB_HOOK_NOT_FOUND);
-
-    if (!web->error) {
-        webWriteResponse(web, 404, "No matching route");
-    }
-    return 0;
-}
-
-/*
-    Apply top level redirections. This is used to redirect to https and site redirections.
- */
-static int redirectRequest(Web *web)
-{
-    WebRedirect *redirect;
-    int         next;
-
-    for (ITERATE_ITEMS(web->host->redirects, redirect, next)) {
-        if (matchFrom(web, redirect->from)) {
-            webRedirect(web, redirect->status, redirect->to);
-            return 1;
-        }
-    }
-    return 0;
-}
-
-static bool matchFrom(Web *web, cchar *from)
-{
-    char  *buf, ip[256];
-    cchar *host, *path, *query, *hash, *scheme;
-    bool  rc;
-    int   port, portNum;
-
-    if ((buf = webParseUrl(from, &scheme, &host, &port, &path, &query, &hash)) == 0) {
-        webWriteResponse(web, 404, "Cannot parse redirection target");
-        return 0;
-    }
-    rc = 1;
-    if (scheme && !smatch(web->scheme, scheme)) {
-        rc = 0;
-    } else if (host || port) {
-        rGetSocketAddr(web->sock, ip, sizeof(ip), &portNum);
-        if (host && (!smatch(web->host->name, host) && !smatch(ip, host))) {
-            rc = 0;
-        } else if (port && port != portNum) {
-            rc = 0;
-        }
-    }
-    if (path && !smatch(&web->path[1], path)) {
-        //  Path does not contain leading "/"
-        rc = 0;
-    } else if (query && !smatch(web->query, query)) {
-        rc = 0;
-    } else if (hash && !smatch(web->hash, hash)) {
-        rc = 0;
-    }
+    bytes = webWrite(web, buf, slen(buf));
     rFree(buf);
-    return rc;
+    return bytes;
 }
 
-/*
-    Parse the request headers
- */
-static int parseHeaders(Web *web, ssize headerSize)
+static bool checkDataSignature(Web *web, cchar *tag, cchar *body, JsonNode *signature)
 {
-    RBuf *buf;
-    char *end, *tok;
+    cchar *type;
 
-    buf = web->rx;
-    if (headerSize <= 10) {
-        return webNetError(web, "Bad request header");
-    }
-    end = buf->start + headerSize;
-    end[-2] = '\0';
-    rPutBlockToBuf(web->rxHeaders, buf->start, headerSize - 2);
-    rAdjustBufStart(buf, end - buf->start);
+    assert(web);
+    assert(tag);
+    assert(signature);
 
-    if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
-        rLog("raw", "web", "Request <<<<\n\n%s\n", web->rxHeaders->start);
-    }
-    web->method = supper(stok(web->rxHeaders->start, " \t", &tok));
-    web->url = stok(tok, " \t", &tok);
-    web->protocol = supper(stok(tok, "\r", &tok));
-    web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
-
-    if (tok == 0) {
-        return webNetError(web, "Bad request header");
-    }
-    rAdjustBufStart(web->rxHeaders, tok - web->rxHeaders->start + 1);
-    rAddNullToBuf(web->rxHeaders);
-
-    /*
-        Only support HTTP/1.0 without keep alive - all clients should be supporting HTTP/1.1
-     */
-    if (smatch(web->protocol, "HTTP/1.0")) {
-        web->http10 = 1;
-        web->close = 1;
-    }
-    if (!webParseHeadersBlock(web, web->rxHeaders->start, rGetBufLength(web->rxHeaders), 0)) {
-        return R_ERR_BAD_REQUEST;
-    }
-    if (validateUrl(web) < 0) {
-        return R_ERR_BAD_REQUEST;
-    }
-    webUpdateDeadline(web);
-    return 0;
-}
-
-/*
-    Parse a headers block. Used here and by file upload.
- */
-PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, bool upload)
-{
-    struct tm tm;
-    cchar     *end;
-    char      c, *cp, *endKey, *key, *prior, *t, *value;
-
-    if (!headers || *headers == '\0') {
-        return 1;
-    }
-    end = &headers[headersSize];
-
-    for (cp = headers; cp < end; ) {
-        key = cp;
-        if ((cp = strchr(cp, ':')) == 0) {
-            webNetError(web, "Bad headers");
+    type = getType(web, signature);
+    if (smatch(type, "null")) {
+        if (body) {
+            sigError(web, "Bad %s, body should be empty", tag);
             return 0;
         }
-        endKey = cp;
-        *cp++ = '\0';
-        while (*cp && isWhite(*cp)) cp++;
-        value = cp;
-        while (*cp && *cp != '\r') cp++;
 
-        if (*cp != '\r') {
-            webNetError(web, "Bad headers");
+    } else if (smatch(type, "number")) {
+        if (!sfnumber(body)) {
+            sigError(web, "Bad %s, \"%s\" should be a number", tag, signature->name);
             return 0;
         }
-        *cp++ = '\0';
-        if (*cp != '\n') {
-            webNetError(web, "Bad headers");
+
+    } else if (smatch(type, "boolean")) {
+        if (!scaselessmatch(body, "true") && !scaselessmatch(body, "false")) {
+            sigError(web, "Bad %s, \"%s\" should be a boolean", tag, signature->name);
             return 0;
         }
-        *cp++ = '\0';
 
-        // Trim white space from value
-        for (t = cp - 2; t >= value; t--) {
-            if (isWhite(*t)) {
-                *t = '\0';
-            } else {
-                break;
-            }
-        }
-
-        //  Validate header name
-        for (t = key; t < endKey; t++) {
-            if (!validHeaderChars[(uchar) * t]) {
-                return NULL;
-            }
-        }
-        c = tolower(*key);
-
-        if (upload && c != 'c' && (
-                !scaselessmatch(key, "content-disposition") &&
-                !scaselessmatch(key, "content-type"))) {
-            webNetError(web, "Bad upload headers");
+    } else if (smatch(type, "date")) {
+        if (rParseIsoDate(body) < 0) {
+            sigError(web, "Bad %s, \"%s\" should be a date", tag, signature->name);
             return 0;
         }
-        if (c == 'c') {
-            if (scaselessmatch(key, "content-disposition")) {
-                web->contentDisposition = value;
 
-            } else if (scaselessmatch(key, "content-type")) {
-                web->contentType = value;
-                if (scontains(value, "multipart/form-data")) {
-                    if (webInitUpload(web) < 0) {
-                        return 0;
-                    }
-
-                } else if (smatch(value, "application/x-www-form-urlencoded")) {
-                    web->formBody = 1;
-
-                } else if (smatch(value, "application/json")) {
-                    web->jsonBody = 1;
-                }
-
-            } else if (scaselessmatch(key, "connection")) {
-                if (scaselessmatch(value, "close")) {
-                    web->close = 1;
-                }
-            } else if (scaselessmatch(key, "content-length")) {
-                web->rxLen = web->rxRemaining = atoi(value);
-
-            } else if (scaselessmatch(key, "cookie")) {
-                if (web->cookie) {
-                    prior = web->cookie;
-                    web->cookie = sjoin(prior, "; ", value, NULL);
-                    rFree(prior);
-                } else {
-                    web->cookie = sclone(value);
-                }
-            }
-
-        } else if (c == 'i' && strcmp(key, "if-modified-since") == 0) {
-#if !defined(ESP32)
-            if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
-                web->since = timegm(&tm);
-            }
-#endif
-        } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
-            web->lastEventId = stoi(value);
-
-        } else if (c == 'o' && scaselessmatch(key, "origin")) {
-            web->origin = value;
-
-        } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
-            web->chunked = WEB_CHUNK_START;
-        } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
-            web->upgrade = value;
-        }
-    }
-    if (!web->chunked && !web->uploads && web->rxLen < 0) {
-        web->rxRemaining = 0;
+    } else if (!smatch(type, "string")) {
+        sigError(web, "Bad %s data, expected a %s for \"%s\"", tag, type, signature->name);
+        return 0;
     }
     return 1;
 }
 
 /*
-    Headers have been tokenized with a null replacing the ":" and "\r\n"
- */
-PUBLIC cchar *webGetHeader(Web *web, cchar *name)
-{
-    cchar *cp, *end, *start;
-    cchar *value;
-
-    start = rGetBufStart(web->rxHeaders);
-    end = rGetBufEnd(web->rxHeaders);
-    value = 0;
-
-    for (cp = start; cp < end; cp++) {
-        if (scaselessmatch(cp, name)) {
-            cp += slen(name) + 1;
-            while (isWhite(*cp)) cp++;
-            value = cp;
-            break;
-        }
-        cp += slen(cp) + 1;
-        if (cp < end && *cp) {
-            cp += slen(cp) + 1;
-        }
+    Check a JSON payload against the API signature.
+    This evaluates the json properties starting at the "jid" node. It will recurse as required over arrays and objects.
+    Return true if the request is valid. If invalid, we return 0 and the connection is closed after the error response
+       is written.
+    The signature may be:
+    Signature BLOCKS are of the form: {
+        type: 'null', 'string', 'number', 'boolean', 'object', 'array'
+        fields: {},
+        of: BLOCK
     }
-    return value;
-}
-
-PUBLIC bool webGetNextHeader(Web *web, cchar **pkey, cchar **pvalue)
+ */
+static bool checkJsonSignature(Web *web, cchar *tag, Json *json, int jid, JsonNode *signature, int depth)
 {
-    cchar *cp, *start;
+    WebHost  *host;
+    Json     *signatures;
+    JsonNode *field, *fields, *item, *parent, *of, *var;
+    cchar    *def, *ftype, *methodRole, *oftype, *required, *role, *type, *value;
+    bool     hasWild;
+    int      id, sid;
 
-    assert(pkey);
-    assert(pvalue);
+    assert(web);
+    assert(tag);
+    assert(signature);
 
-    if (!pkey || !pvalue) {
+    if (!web || !tag || !json || !signature) {
+        rError("web", "Invalid parameters to checkJsonSignature");
         return 0;
     }
-    if (*pvalue) {
-        start = *pvalue + slen(*pvalue) + 2;
+    if (depth > WEB_MAX_SIG_DEPTH) {
+        webError(web, 400, "Signature validation failed");
+        return 0;
+    }
+    host = web->host;
+    hasWild = 0;
+    signatures = host->signatures;
+    sid = jsonGetNodeId(signatures, signature);
+    type = getType(web, signature);
+
+    if (smatch(type, "array")) {
+        /*
+            Iterate over the array items
+         */
+        oftype = jsonGet(signatures, sid, "of.type", "object");
+        for (ITERATE_JSON_ID(json, jid, item, iid)) {
+            of = jsonGetNode(signatures, sid, "of");
+            if (smatch(oftype, "object")) {
+                if (of && !checkJsonSignature(web, tag, json, iid, of, depth + 1)) {
+                    return 0;
+                }
+            } else if (smatch(oftype, "array")) {
+                if (of && !checkJsonSignature(web, tag, json, iid, of, depth + 1)) {
+                    return 0;
+                }
+            } else {
+                if (of && !checkDataSignature(web, tag, item->value, of)) {
+                    return 0;
+                }
+            }
+        }
+    } else if (smatch(type, "object")) {
+        /*
+            Iterate over object fields
+         */
+        methodRole = jsonGet(signatures, sid, "role", web->route->role);
+        fields = jsonGetNode(signatures, sid, "fields");
+        if (fields) {
+            for (ITERATE_JSON(signatures, fields, field, fid)) {
+                if (field->name[0] == '_') {
+                    continue;
+                }
+                if (smatch(field->name, "*")) {
+                    hasWild = 1;
+                    continue;
+                }
+                role = jsonGet(signatures, fid, "role", methodRole);
+                if (role && !webCan(web, role)) {
+                    rDebug("web", "WARNING: removing %s for %s - Insufficient role: %s", field->name, web->url, role);
+                    sigError(web, "Insufficient role for %s field '%s'", tag, field->name);
+                    continue;
+                }
+                value = jsonGet(json, jid, field->name, 0);
+                if (!value) {
+                    required = jsonGet(signatures, fid, "required", 0);
+                    def = jsonGet(signatures, fid, "default", 0);
+                    if (required && !def) {
+                        sigError(web, "Missing required %s field '%s'", tag, field->name);
+                        return 0;
+                    } else if (def) {
+                        jsonSet(json, jid, field->name, def, 0);
+                        value = def;
+                    }
+                } else {
+                    if (jsonGet(signatures, fid, "discard", 0)) {
+                        jsonRemove(json, jid, field->name);
+                        continue;
+                    }
+                    ftype = jsonGet(signatures, fid, "type", 0);
+                    if (smatch(ftype, "object")) {
+                        id = jsonGetId(json, jid, field->name);
+                        if (!checkJsonSignature(web, tag, json, id, field, depth + 1)) {
+                            return 0;
+                        }
+                    } else if (smatch(ftype, "array")) {
+                        id = jsonGetId(json, jid, field->name);
+                        of = jsonGetNode(signatures, fid, "of");
+                        if (!checkJsonSignature(web, tag, json, id, field, depth + 1)) {
+                            return 0;
+                        }
+                    } else {
+                        if (!checkDataSignature(web, tag, value, field)) {
+                            return 0;
+                        }
+                    }
+                }
+            }
+        }
+        /*
+            Check for extra fields in the payload
+         */
+        if (json && !hasWild) {
+            parent = jsonGetNode(json, jid, 0);
+            for (ITERATE_JSON(json, parent, var, vid)) {
+                id = jsonGetId(signatures, sid, "fields");
+                id = jsonGetId(signatures, id, var->name);
+                if (id < 0) {
+                    if (web->host->strictSignatures) {
+                        sigError(web, "Invalid extra %s field '%s'", tag, var->name);
+                        return 0;
+                    }
+                    rDebug("web", "WARNING: removing %s - not in signature for %s", var->name, web->url);
+                    jsonRemove(json, 0, var->name);
+                    // continue
+
+                } else if (jsonGet(signatures, sid, "discard", 0) != 0) {
+                    // Discard field and continue
+                    jsonRemove(json, jid, var->name);
+                }
+            }
+        }
     } else {
-        start = rGetBufStart(web->rxHeaders);
+        value = jsonGet(json, jid, 0, 0);
+        if (!checkDataSignature(web, tag, value, signature)) {
+            return 0;
+        }
     }
-    if (start < rGetBufEnd(web->rxHeaders)) {
-        *pkey = start;
-        cp = start + slen(start) + 1;
-        while (isWhite(*cp)) cp++;
-        *pvalue = cp;
-        return 1;
-    }
+    return 1;
+}
+
+static bool sigError(Web *web, cchar *fmt, ...)
+{
+    va_list args;
+    char    *msg;
+
+    va_start(args, fmt);
+    msg = sfmtv(fmt, args);
+    webWriteResponse(web, 0, "%s\n", msg);
+    rFree(msg);
+    va_end(args);
     return 0;
+}
+
+static cchar *getType(Web *web, JsonNode *signature)
+{
+    cchar *type;
+    int   sid;
+
+    if (signature->type == JSON_PRIMITIVE && smatch(signature->value, "null")) {
+        type = "null";
+    } else if (signature->type == JSON_STRING) {
+        type = signature->value;
+    } else {
+        sid = jsonGetNodeId(web->host->signatures, signature);
+        type = jsonGet(web->host->signatures, sid, "type", 0);
+    }
+    if (!type) {
+        type = "object";
+    }
+    return type;
+}
+
+/*
+    Check a URL path for valid characters
+ */
+PUBLIC bool webValidatePath(cchar *path)
+{
+    ssize pos;
+
+    if (!path || *path == '\0') {
+        return 0;
+    }
+    pos = strspn(path, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=%");
+    return pos < slen(path) ? 0 : 1;
 }
 
 /*
     Validate the request URL
  */
-static int validateUrl(Web *web)
+PUBLIC int webValidateUrl(Web *web)
 {
     if (web->url == 0 || *web->url == 0) {
         return webNetError(web, "Empty URL");
@@ -3915,6 +4542,9 @@ static int validateUrl(Web *web)
     return 0;
 }
 
+/*
+    Decode and parse the request URL
+ */
 static int parseUrl(Web *web)
 {
     char *delim, *path, *tok;
@@ -3941,125 +4571,11 @@ static int parseUrl(Web *web)
     //  Query is decoded when parsed in webParseQuery and webParseEncoded
     webDecode(path);
     webDecode(web->hash);
+
     if ((web->path = webNormalizePath(path)) == 0) {
         return webNetError(web, "Illegal URL");
     }
     return 0;
-}
-
-PUBLIC bool webValidatePath(cchar *path)
-{
-    ssize pos;
-
-    if (!path || *path == '\0') {
-        return 0;
-    }
-    pos = strspn(path, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=%");
-    return pos < slen(path) ? 0 : 1;
-}
-
-/*
-    Read body data from the rx buffer into the body buffer
-    Not called for streamed requests
- */
-PUBLIC int webReadBody(Web *web)
-{
-    WebRoute *route;
-    RBuf     *buf;
-    ssize    nbytes;
-
-    route = web->route;
-    if ((route && route->stream) || web->webSocket || (web->rxRemaining <= 0 && !web->chunked)) {
-        return 0;
-    }
-    buf = web->body;
-    do {
-        rReserveBufSpace(buf, ME_BUFSIZE);
-        nbytes = webRead(web, rGetBufEnd(buf), rGetBufSpace(buf));
-        if (nbytes < 0) {
-            return R_ERR_CANT_READ;
-        }
-        rAdjustBufEnd(buf, nbytes);
-        if (rGetBufLength(buf) > web->host->maxBody) {
-            webNetError(web, "Request is too big");
-            return R_ERR_CANT_READ;
-        }
-    } while (nbytes > 0 && web->rxRemaining > 0);
-    rAddNullToBuf(buf);
-
-    if (processBody(web) < 0) {
-        //  Continue
-        return 0;
-    }
-    return 0;
-}
-
-/*
-    Process the request body and parse JSON, url-encoded forms and query vars.
- */
-static int processBody(Web *web)
-{
-    if (web->host->flags & WEB_SHOW_REQ_BODY && rGetBufLength(web->body)) {
-        rLog("raw", "web", "Request Body <<<<\n\n%s\n\n", rBufToString(web->body));
-    }
-    if (web->jsonBody) {
-        if ((web->vars = webParseJson(web)) == 0) {
-            return webError(web, 400, "JSON body is malformed");
-        }
-    } else if (web->formBody) {
-        web->vars = jsonAlloc(0);
-        webParseForm(web);
-    }
-    return 0;
-}
-
-static void processQuery(Web *web)
-{
-    web->qvars = jsonAlloc(0);
-    webParseQuery(web);
-}
-
-static void processOptions(Web *web)
-{
-    RList *list;
-    RName *np;
-
-    list = rAllocList(0, 0);
-    for (ITERATE_NAMES(web->route->methods, np)) {
-        rAddItem(list, np->name);
-    }
-    rSortList(list, NULL, NULL);
-    webAddHeaderDynamicString(web, "Access-Control-Allow-Methods", rListToString(list, ","));
-    rFreeList(list);
-    webWriteResponse(web, 200, NULL);
-}
-
-PUBLIC int webHook(Web *web, int event)
-{
-    if (web->host->hook) {
-        return (web->host->hook)(web, event);
-    }
-    return 0;
-}
-
-/**
-    Extend the timeout for the request by updating the deadline.
-    DEPRECATED: Use webUpdateDeadline() instead.
- */
-PUBLIC void webExtendTimeout(Web *web, Ticks timeout)
-{
-    web->deadline = rGetTimeouts() ? rGetTicks() + timeout : 0;
-}
-
-/**
-    Reset the deadline for the request using the inactivity timeout and request timeout.
-    This is used typically when I/O activity is detected.
- */
-PUBLIC void webUpdateDeadline(Web *web)
-{
-    if (web->upgraded) return;
-    web->deadline = rGetTimeouts() ?
-                    min(rGetTicks() + web->host->inactivityTimeout, web->started + web->host->requestTimeout) : 0;
 }
 
 /*

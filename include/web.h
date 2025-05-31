@@ -113,7 +113,8 @@ typedef struct WebAction {
  */
 typedef struct WebRoute {
     cchar *match;                       /**< Matching URI path pattern */
-    bool exact;                         /**< Exact match vs prefix match. If trailing "/" in route. */
+    bool exact : 1;                     /**< Exact match vs prefix match. If trailing "/" in route. */
+    bool validate : 1;                  /**< Validate request signature */
     RHash *methods;                     /**< HTTP methods verbs */
     cchar *handler;                     /**< Request handler (file, action) */
     cchar *role;                        /**< Required user role */
@@ -155,10 +156,12 @@ typedef struct WebHost {
     RList *listeners;           /**< Listening endpoints for this host */
     RList *webs;                /**< Active web requests for this host */
     Json *config;               /**< Web server configuration for this host */
+    Json *signatures;           /**< Web Rest API signatures */
 
     int flags;                  /**< Control flags */
     bool freeConfig : 1;        /**< Config is allocated and must be freed */
     bool httpOnly : 1;          /**< Cookie httpOnly flag */
+    bool strictSignatures : 1;  /** Enforce strict signature compliance */
 
     WebHook hook;               /**< Web notification hook */
     RHash *users;               /**< Hash table of users */
@@ -469,7 +472,8 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, ssize limit, bool allowShort
 
 /**
     Respond to the request with an error.
-    @description This responds to the request with the given HTTP status and body data.
+    @description This responds to the request with the given HTTP status and body data. Use this only when a valid HTTP
+       error response can be generated. Use webNetError() for other cases when the HTTP connection is compromised.
     @param web Web object
     @param status HTTP response status code
     @param fmt Body data to send as the response. This is a printf style string.
@@ -689,6 +693,18 @@ PUBLIC void webSetStatus(Web *web, int status);
 PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
 
 /**
+    Validate a request body and query with the API signature.
+    The path is used as a JSON property path into the signatures.json5 file. It is typically based
+    upon the request URL path with "/" characters converted to ".".
+    This routine will generate an error response if the signature is not found and strictSignatures is true.
+    @param web Web object
+    @param path JSON property path into the signatures.json5 file.
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client..
+    @stability Evolving
+ */
+PUBLIC bool webValidateRequestBody(Web *web, cchar *path);
+
+/**
     Write response data
     @description This routine will block the current fiber if necessary. Other fibers continue to run.
         This routine will write the response HTTP headers if required.
@@ -743,6 +759,7 @@ PUBLIC ssize webWriteHeaders(Web *web);
 /**
     Write a response
     @description This routine writes a single plain text response in one API.
+        If status is zero, set the status to 400 and close the socket after issuing the response.
         It will block the current fiber if necessary. Other fibers continue to run.
         This will set the Content-Type header to text/plain.
     @pre Must only be called from a fiber.
@@ -766,11 +783,35 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...);
  */
 PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...);
 
+/**
+    Write response data from a JSON object and validate against the API signature
+    @description This routine only removes discard fields and does not validate response data types.
+    This routine will block the current fiber if necessary. Other fibers continue to run.
+    @pre Must only be called from a fiber.
+    @param web Web object
+    @param json JSON object
+    @param flags JSON flags JSON_PRETTY | JSON_QUOTES
+    @return The number of bytes written, or
+    @stability Evolving
+ */
+PUBLIC ssize webWriteValidatedJson(Web *web, Json *json, int flags);
+
+/**
+    Write a buffer with a validated signature
+    @pre Must only be called from a fiber.
+    @param web Web object
+    @param buf Buffer of data to write.
+    @return The number of bytes written.
+    @stability Evolving
+ */
+PUBLIC ssize webWriteValidated(Web *web, cchar *buf);
+
 /*
     Internal APIs
  */
 PUBLIC void webAddStandardHeaders(Web *web);
 PUBLIC int webAlloc(WebListen *listen, RSocket *sock);
+PUBLIC bool webCheckSignature(Web *web, Json *json, int nid, JsonNode *signature, int depth);
 PUBLIC int webConsumeInput(Web *web);
 PUBLIC int webFileHandler(Web *web);
 PUBLIC void webFree(Web *web);
@@ -780,9 +821,11 @@ PUBLIC void webParseQuery(Web *web);
 PUBLIC void webParseEncoded(Web *web, Json *vars, cchar *str);
 PUBLIC Json *webParseJson(Web *web);
 PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, bool upload);
-PUBLIC void webUpdateDeadline(Web *web);
-PUBLIC void webTestInit(WebHost *host, cchar *prefix);
 PUBLIC int webReadBody(Web *web);
+PUBLIC void webTestInit(WebHost *host, cchar *prefix);
+PUBLIC void webUpdateDeadline(Web *web);
+PUBLIC bool webValidateRequest(Web *web);
+PUBLIC int webValidateUrl(Web *web);
 
 /************************************ Session *********************************/
 
@@ -971,6 +1014,21 @@ PUBLIC cchar *webGetStatusMsg(int status);
     @stability Evolving
  */
 PUBLIC char *webNormalizePath(cchar *path);
+
+/**
+    Validate a controller/action against the API signatures.
+    @description This routine will check the request controller and action against the API signatures.
+        If the request is valid, it will return true. Otherwise, it will return false.
+    @param web Web object
+    @param controller Controller name
+    @param action Action name
+    @return True if the request is valid.
+    @stability Evolving
+ */
+PUBLIC bool webValidateControllerAction(Web *web, cchar *controller, cchar *action);
+
+//  DEPRECATED - use webValidateControllerAction() instead
+#define webCheckRequest webValidateControllerAction
 
 /**
     Validate a URL
