@@ -3,8 +3,12 @@
 
     Examples:
 
+    json <file
+    json file
     json [options] [cmd] file
-    json --stdin [cmd] <file
+    json --stdin [options] [cmd] <file
+
+    Commands:
     json field=value    # assign
     json field          # query
     json .              # convert formats
@@ -242,9 +246,15 @@ static int parseArgs(int argc, char **argv)
         }
     }
     if (argc == nextArg) {
-        return usage();
+        //  No args
+        cmd = JSON_CMD_CONVERT;
+        stdinput = 1;
+    } else if (argc == nextArg + 1) {
+        //  File only
+        cmd = JSON_CMD_CONVERT;
+    } else {
+        property = sclone(argv[nextArg++]);
     }
-    property = sclone(argv[nextArg++]);
     if (!cmd) {
         if (smatch(property, ".")) {
             cmd = JSON_CMD_CONVERT;
@@ -380,7 +390,7 @@ static int blendFiles(Json *json)
     blend = jsonParse(toBlend, JSON_PASS_TEXT);
     for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
         if (path && *path) {
-            dir = rDirname(sclone(path));
+            dir = (char*) rDirname(sclone(path));
             file = sjoin(dir, "/", item->value, NULL);
             rFree(dir);
         } else {
