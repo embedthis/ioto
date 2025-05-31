@@ -1,5 +1,5 @@
 /*
-    PinSchema.json5 -- GPIO Table
+    PinSchema.json5 -- GPIO Table for use in the cloud
  */
 {
     process: {

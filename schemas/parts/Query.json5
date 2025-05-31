@@ -1,0 +1,14 @@
+/*
+    Query parameters
+ */
+{
+    exists: {type: 'boolean', description: 'Set to true to require the item exists, otherwise null'},
+    filter: {type: 'string', description: 'Simple filter string to filter'},
+    hidden: {type: 'boolean', description: 'Return hidden fields', private : true},
+    index: {type: 'string', role: 'support', description: 'Database index to use'},
+    limit: {type: 'number', description: 'Number of items to retrieve. Defaults to 1.'},
+    next: {type: 'object', description: 'Pagination token for the next page'},
+    offset: {type: 'number', description: 'Offset in items to return'},
+    prev: {type: 'object', description: 'Pagination token for the previous page'},
+    where: {type: 'string', role: 'support', description: 'Where clause to filter'},
+}

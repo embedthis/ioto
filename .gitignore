@@ -88,3 +88,4 @@ proto/
 *.o
 *.guid
 bin/json
+.promoted

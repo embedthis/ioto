@@ -2,7 +2,7 @@
 
 The demo app is a simple cloud-based app that demonstrates sending data and metrics to the device cloud.
 
-The demo app uses the standard Ioto Device Manager UI with a customized data schema and custom device metrics and is an example of a [Styled Device Manager](https://www.embedthis.com/manager/doc/config/levels/). This means it adds a device data schema to the standard Ioto Device Manager web app.
+The demo app uses the standard app with a customized data schema and custom device metrics and is an example of a [Styled Device App](https://www.embedthis.com/manager/doc/config/levels/). This means it adds a device data schema to the standard device app.
 
 <img alt="Demo Dashboard" src="https://www.embedthis.com/images/demo/demo-home.avif" 
 class="screen" /><br>
@@ -11,23 +11,23 @@ The demo App demonstrates
 
 * How to download and build the Ioto agent with custom extensions
 * How to create a custom database schema
-* How to create a device cloud and manager app
+* How to create a device cloud and device app
 * How to send device data to the cloud
 
 This sample will:
 
 * Download and build the Ioto device agent with custom logic.
 * Create a regional device cloud.
-* Create a device manager app.
+* Create a device app.
 * Create a custom metric based on the device data.
 
 ## Device Agent
 
 The demo app extends the Ioto agent by providing an extension code module, database schema and agent configuration. 
 
-## Device Manager
+## Device App
 
-The demo app uses the unmodified, standard Ioto Device Manager app &mdash; so you don't need to build or upload a manager UI app. 
+The demo app uses the unmodified, standard device app &mdash; so you don't need to build or upload an app.
 
 The demo app UI is designed to run on a mobile device, but can also be used on a desktop.
 
@@ -38,9 +38,9 @@ The demo app UI is designed to run on a mobile device, but can also be used on a
 - [Download Agent](#download-agent)
 - [Build Agent](#build-agent)
 - [Create Device Cloud](#create-device-cloud)
-- [Create Device Manager](#create-device-manager)
+- [Create Device App](#create-device-app)
 - [Run Agent](#run-agent)
-- [Launch Device Manager](#launch-device-manager)
+- [Launch Device App](#launch-device-app)
 - [Claim Device](#claim-device)
 - [Device Data](#device-data)
 - [Data Metrics](#data-metrics)
@@ -67,7 +67,7 @@ Next, add the [ESP IDF](https://docs.espressif.com/projects/esp-idf/en/stable/es
 
 The next step is to create an demo product definition in the [Builder](https://admin.embedthis.com/).
 
-Because this demo will create a device cloud and manager, we need our own app definition so our devices will be kept private and not be publically visible.
+Because this demo will create a device cloud and device app, we need our own app definition so our devices will be kept private and not be publically visible.
 
 Navigate to the [Builder](https://admin.embedthis.com/clouds) site and select `Products` in the sidebar menu and click `Add Product`. Then create a product definition by entering a product name and description of your choosing. Select the `Ioto Agent` and select `By Device Volume` and enter `1` in the Total Device field. Your first device is free.
 
@@ -144,15 +144,15 @@ To create a device cloud, navigate to the [Builder Clouds List](https://admin.em
 
 Check the `Upload Schema` option and upload the `./schema.json5` file from your extracted Ioto source code. This schema defines the database model entities for the demo app.
 
-### Create Device Manager
+### Create Device App
 
-To view your device state, you need to create a Device Manager that will host the demo App UI. This will create an instance of the standard Ioto Device Manager and host it globally on the EmbedThis Ioto device cloud.
+To view your device state, you need to create a device app. This will create an instance of the standard device app and host it globally on the EmbedThis Ioto device cloud.
 
-Select `Managers` from the Builder side menu and click `Add Manager`. Enter your desired manager name (Demo) and pick a domain name for your app. The domain will be a subdomain of the `ioto.me` domain and will be automatically registered and published for you. Later, if you create a dedicated device cloud, you can select your own custom domain with any TLD extension.
+Select `Apps` from the Builder side menu and click `Add App`. Enter your desired app name (Demo) and pick a domain name for your app. The domain will be a subdomain of the `ioto.me` domain and will be automatically registered and published for you. Later, if you create a dedicated device cloud, you can select your own custom domain with any TLD extension.
 
-The demo App uses the standard Ioto Device Manager UI. In the future, if you wish to customize the UI, you can modify, rebuild or replace the portions or the whole of the underlying manager app with your own custom app.
+The demo App uses the standard device app. In the future, if you wish to customize the UI, you can modify, rebuild or replace the portions or the whole of the underlying app with your own custom app.
 
-The standard Ioto Device Manager is a VueJS app that provides the following components:
+The standard device app is a DevCore VueJS app that provides the following components:
 
 * Login and auth
 * Navigation
@@ -164,7 +164,7 @@ The standard Ioto Device Manager is a VueJS app that provides the following comp
 * Responsive mobile & desktop presentation
 * Dark/light mode support
 
-After creating the manager, you need to wait a few minutes (and sometimes up to 30 minutes) to let the domain name entries propagate globally. 
+After creating the app, you need to wait a few minutes (and sometimes up to 30 minutes) to let the domain name entries propagate globally. 
 
 ### The Demo App
 
@@ -174,13 +174,13 @@ In the console output, you will see a unique device ID displayed. This is a `Dev
 
 When Ioto starts, it will register with the Builder and wait to be claimed by your demo App.
 
-### Launch Device Manager
+### Launch Device App
 
-From the Builder manager list, click the "Manage" column to launch your device manager. This will launch your default browser and navigate to the domain URL you chose when creating the manager.
+From the Builder apps list, click the "Launch" column to run your device app. This will launch your default browser and navigate to the domain URL you chose when creating the app.
 
-<img src="https://www.embedthis.com/images/builder/manager-list.avif" alt="Manager List"><br>
+<img src="https://www.embedthis.com/images/builder/manager-list.avif" alt="App List"><br>
 
-Once launched, you will need to register and create a new account with the Device Manager. This is an "end-user" account for the owner of the device.
+Once launched, you will need to register and create a new account with the app. This is an "end-user" account for the owner of the device.
 
 > Note: this is not the same as your Builder login. 
 
@@ -200,7 +200,7 @@ The Ioto agent will poll regularly to see if it has been claimed. After starting
 
 ### Device Data
 
-After claiming the device for management, you will start to see device data in the Manager app. Navigate to `Device Data` and you will see a list of database models. If you are from a SQL background, database models are somewhat akin to SQL tables.
+After claiming the device for management, you will start to see device data in the device app. Navigate to `Device Data` and you will see a list of database models. If you are from a SQL background, database models are somewhat akin to SQL tables.
 
 <img src="https://www.embedthis.com/images/demo/demo-table-list.avif" alt="Table List" width="600"><br>
 
@@ -220,14 +220,14 @@ You can automatically create data metrics from device data so that you can track
 
 To create a device metric, navigate to the Builder `Automations` page and select the `Actions` tab, give your action a name and description and select `Database Update` as your trigger source. Select the table `Service`. This table is updated by the demo app embedded in the Ioto agent.
 
-For the action parameters, select `Manager Metric` as the Action and enter "COUNTER" as the Metric Name and "Device=${deviceId}" as the Metric Dimensions and "${value}" as the Metric Value.
+For the action parameters, select `Metric` as the Action and enter "COUNTER" as the Metric Name and "Device=${deviceId}" as the Metric Dimensions and "${value}" as the Metric Value.
 
 This will create a metric named "COUNTER" for each device and use the `value` field from the Service table as the metric value.
 
 
 ### Data Widgets
 
-You can display device data as graphical widgets from the Manager dashboard. Click `Home` to display the dashboard.
+You can display device data as graphical widgets from the device app's dashboard. Click `Home` to display the dashboard.
 
 Then click the `+` plus icon to open the `Create Widget` panel and select "Graph" as the Widget type from the selection list. Then click the `Data` tab at the top to configure the data source for the widget.
 

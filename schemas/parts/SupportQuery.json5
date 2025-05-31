@@ -1,0 +1,14 @@
+/*
+    Support query options
+ */
+{
+    exists: {type: 'boolean'},
+    filter: {type: 'string'},
+    hidden: {type: 'boolean'},
+    index: {type: 'string', role: 'support'},
+    limit: {type: 'number', role: 'support'},
+    next: {type: 'object', role: 'support'},
+    offset: {type: 'number'},
+    prev: {type: 'object', role: 'support'},
+    where: {type: 'string', role: 'support'},
+}

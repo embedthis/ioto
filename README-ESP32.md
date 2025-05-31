@@ -7,7 +7,7 @@ Please read the [README](./README.md) for general background first.
 See the [README-Cloud](./README-CLOUD.md) for more details about cloud-based
 management.
 
-Full documentation for the Ioto Agent, the Builder, Device Manager and Ioto
+Full documentation for the Ioto Agent, the Builder, Device Apps and Ioto
 service is available at:
 
 * https://www.embedthis.com/doc/
@@ -134,13 +134,12 @@ the product ID in the **device.json5** config file so your device can be
 recognized.
 
 During evalution, it is easiest to register your divice using the pre-existing
-**Eval cloud** and **Eval Device Manager**. The Eval cloud is a multi-tenant,
-shared cloud for evaluating Ioto. The Eval Device Manager is a developer device
-manager web app suitable for examining and monitoring device data. You can use
-the eval product token **"01H4R15D3478JD26YDYK408XE6"** when registering your
-device with the eval cloud. Later, you can change this to be the token for a
-Builder product definition of your own when you wish to use your own device
-cloud.
+**Eval cloud** and **Eval Device App**. The Eval cloud is a multi-tenant,
+shared cloud for evaluating Ioto. The Eval Device App is a developer device web
+app suitable for examining and monitoring device data. You can use the eval
+product token **"01H4R15D3478JD26YDYK408XE6"** when registering your device
+with the eval cloud. Later, you can change this to be the token for a Builder
+product definition of your own when you wish to use your own device cloud.
 
 ```javascript
 {

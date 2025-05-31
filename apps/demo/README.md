@@ -89,7 +89,7 @@ Check the `Upload Schema` option and upload the `./schema.json5` file from your 
 
 ### Create Device App
 
-To view your device state, you need to create a device app that will display the Demo UI. This will create a standard device management app and host it on the EmbedThis Ioto device cloud.
+To view your device state, you need to create a device app that will display the Demo UI. This will create a standard device app and host it on the EmbedThis Ioto device cloud.
 
 Select `Apps` from the Builder side menu and click `Add Apps`. Enter your desired app name (Demo) and pick a domain name for your app. The domain will be a subdomain of the `ioto.me` domain and will be automatically registered and published for you. Later, if you create a dedicated device cloud, you can select your own custom domain with any TLD extension.
 
