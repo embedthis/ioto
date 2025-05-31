@@ -824,7 +824,7 @@ static int parseJson(Json *json, cchar *atext, int flags)
             }
             type = sleuthValueType(value, json->next - value + 1);
             if (type != JSON_PRIMITIVE) {
-                if (flags & JSON_STRICT) {
+                if (level == 0 || (flags & JSON_STRICT)) {
                     return jerror(json, "Invalid primitive token");
                 }
             }
