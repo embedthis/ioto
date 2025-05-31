@@ -154,7 +154,7 @@ static void start(void)
 {
     if ((config = jsonParseFile("web.json5", NULL, 0)) == NULL) {
         if ((config = jsonParse(DEFAULT_CONFIG, 0)) == 0) {
-            rError("app", "Cannot parse config file \"web.json5\"");
+            rError("web", "Cannot parse config file \"web.json5\"");
             exit(1);
         }
     }
@@ -169,7 +169,10 @@ static void start(void)
         }
     }
     webInit();
-    host = webAllocHost(config, show);
+    if ((host = webAllocHost(config, show)) == NULL) {
+        rError("web", "Cannot allocate host");
+        exit(1);
+    }
 #if ME_DEBUG
     webTestInit(host, "/test");
 #endif
@@ -208,7 +211,7 @@ static void setLog(Json *config)
 
     if (trace) {
         if (rSetLog(trace, NULL, 1) < 0) {
-            rError("app", "Cannot open log %s", trace);
+            rError("web", "Cannot open log %s", trace);
             exit(1);
         }
         rSetLogFormat(TRACE_FORMAT, 1);
@@ -218,7 +221,7 @@ static void setLog(Json *config)
         types = jsonGet(config, 0, "log.types", 0);
         sources = jsonGet(config, 0, "log.sources", 0);
         if (path && rSetLogPath(path, 1) < 0) {
-            rError("app", "Cannot open log %s", path);
+            rError("web", "Cannot open log %s", path);
             exit(1);
         }
         if (types || sources) {
