@@ -463,11 +463,11 @@ PUBLIC Json *urlJson(Url *up, cchar *method, cchar *uri, cvoid *data, ssize len,
         rFree(errorMsg);
     } else {
         if (up->error) {
-            rError("url", "Cannot fetch %s. Error: %s", uri, urlGetError(up));
+            rTrace("url", "Cannot fetch %s. Error: %s", uri, urlGetError(up));
         } else {
-            rError("url", "Cannot fetch %s. Bad status %d", uri, up->status);
+            rTrace("url", "Cannot fetch %s. Bad status %d", uri, up->status);
         }
-        rError("url", "%s", urlGetResponse(up));
+        rTrace("url", "%s", urlGetResponse(up));
         json = 0;
     }
     rFree(headers);
