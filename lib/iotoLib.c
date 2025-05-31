@@ -5449,7 +5449,7 @@ static void processDeviceCommand(DbItem *item)
 
     cmd = dbField(item, "command");
 
-    rInfo("ioto", "Got device command %s\nData: %s", cmd, jsonString(dbJson(item)));
+    rInfo("ioto", "Device command \"%s\"\nData: %s", cmd, jsonString(dbJson(item)));
     if (smatch(cmd, "reboot")) {
         rSetState(R_RESTART);
 #if SERVICES_PROVISION
@@ -5579,36 +5579,37 @@ PUBLIC bool ioUpdate(void)
     rFree(body);
     urlFree(up);
 
-    if (json && json->count > 1) {
+    if (json) {
         /*
             Got an update response with checksum, version and image url
          */
-        checksum = jsonGet(json, 0, "checksum", 0);
-        version = jsonGet(json, 0, "version", 0);
         image = jsonGet(json, 0, "url", 0);
-        path = rGetFilePath("@state/update.bin");
-        rInfo("ioto", "Device has updated firmware: %s", version);
+        if (image) {
+            checksum = jsonGet(json, 0, "checksum", 0);
+            version = jsonGet(json, 0, "version", 0);
+            path = rGetFilePath("@state/update.bin");
+            rInfo("ioto", "Device has updated firmware: %s", version);
 
-        /*
-            Download the update with throttling
-         */
-        if (download(image, path) == 0) {
-            //  Validate
-            if (!checkSum(path, checksum)) {
-                rError("provision", "Checksum does not match for update image %s: %s", path, checksum);
-            } else {
-                //  Delayed application -- perhaps till off hours
-                apply = jsonGet(ioto->config, 0, "update.apply", "* * * * *");
-                delay = cronUntil(apply, rGetTime());
-                rStartEvent((REventProc) applyUpdate, sclone(path), delay);
+            /*
+                Download the update with throttling
+            */
+            if (download(image, path) == 0) {
+                //  Validate
+                if (!checkSum(path, checksum)) {
+                    rError("provision", "Checksum does not match for update image %s: %s", path, checksum);
+                } else {
+                    //  Delayed application -- perhaps till off hours
+                    apply = jsonGet(ioto->config, 0, "update.apply", "* * * * *");
+                    delay = cronUntil(apply, rGetTime());
+                    rStartEvent((REventProc) applyUpdate, sclone(path), delay);
+                }
             }
+            rFree(path);
+        } else {
+            rInfo("ioto", "Device has no pending updates for version: %s", ioto->version);
         }
-        rFree(path);
-
-    } else if (json) {
-        rInfo("ioto", "Device has no pending updates for version: %s", ioto->version);
+        jsonFree(json);
     }
-    jsonFree(json);
 
     date = rGetIsoDate(rGetTime());
     dbUpdate(ioto->db, "SyncState", DB_PROPS("lastUpdate", date), DB_PARAMS(.upsert = 1));
