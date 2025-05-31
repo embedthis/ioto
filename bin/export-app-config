@@ -33,11 +33,23 @@ if [ -d site ] ; then
 fi
 
 if [ -d ui/src ] ; then
-	if [ ! -f ui/src/schema.json5 ] 
-	then 
+	if [ ! -f ui/src/schema.json5 ] ; then
 		echo "     [Copy] cp ${CONFIG}/schema.json5 ui/src/schema.json5"
 		cp ${CONFIG}/schema.json5 ui/src/schema.json5
 	fi
-	echo "     [Make] make-api --schema state/config/schema.json5 config/signature.json5 state/config/signature.json5"
-	make-api --schema ${CONFIG}/schema.json5 config/signature.json5 ${CONFIG}/signature.json5
+fi
+
+if [ -f config/signatures.json5 ] ; then
+	if [ ! -f ${CONFIG}/signatures.json5 -o config/signatures.json5 -nt ${CONFIG}/signatures.json5 ] ; then
+		echo "       [Make] make-sig config/signatures.json5 ${CONFIG}/signatures.json5"
+		rm -f ${CONFIG}/signatures.json5
+		make-sig \
+			--blend Schema=${CONFIG}/schema.json5 \
+			--blend SupportQuery=${TOP}/paks/dev-schemas/parts/SupportQuery.json5 \
+			--blend Query=${TOP}/paks/dev-schemas/parts/Query.json5 \
+			--blend Match=${TOP}/paks/dev-schemas/parts/Match.json5 \
+			config/signatures.json5 ${CONFIG}/signatures.json5
+		pwd
+		ls -l config/signatures.json5 ${CONFIG}/signatures.json5
+	fi
 fi
