@@ -393,42 +393,42 @@ PUBLIC ssize rGetBlockFromBuf(RBuf *bp, char *buf, ssize size)
 #ifndef rGetBufLength
 PUBLIC ssize rGetBufLength(RBuf *bp)
 {
-    return bp->end - bp->start;
+    return bp ? bp->end - bp->start : 0;
 }
 #endif
 
 #ifndef rGetBufSize
 PUBLIC ssize rGetBufSize(RBuf *bp)
 {
-    return bp->buflen;
+    return bp ? bp->buflen : 0;
 }
 #endif
 
 #ifndef rGetBufSpace
 PUBLIC ssize rGetBufSpace(RBuf *bp)
 {
-    return bp->endbuf - bp->end;
+    return bp ? bp->endbuf - bp->end : 0;
 }
 #endif
 
 #ifndef rGetBuf
 PUBLIC char *rGetBuf(RBuf *bp)
 {
-    return bp->buf;
+    return bp ? bp->buf : 0;
 }
 #endif
 
 #ifndef rGetBufStart
 PUBLIC cchar *rGetBufStart(RBuf *bp)
 {
-    return bp->start;
+    return bp ? bp->start : 0;
 }
 #endif
 
 #ifndef rGetBufEnd
 PUBLIC cchar *rGetBufEnd(RBuf *bp)
 {
-    return (char*) bp->end;
+    return bp ? (char*) bp->end : 0;
 }
 #endif
 

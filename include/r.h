@@ -2159,12 +2159,12 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
 /*
     Macros for speed
  */
-#define rGetBufLength(bp) ((ssize) ((bp)->end - (bp)->start))
-#define rGetBufSize(bp)   ((bp)->buflen)
-#define rGetBufSpace(bp)  ((bp)->endbuf - (bp)->end)
-#define rGetBuf(bp)       ((bp)->data)
-#define rGetBufStart(bp)  ((bp)->start)
-#define rGetBufEnd(bp)    ((bp)->end)
+#define rGetBufLength(bp) ((bp) ? (ssize) ((bp)->end - (bp)->start) : 0)
+#define rGetBufSize(bp)   ((bp) ? (bp)->buflen : 0)
+#define rGetBufSpace(bp)  ((bp) ? ((bp)->endbuf - (bp)->end) : 0)
+#define rGetBuf(bp)       ((bp) ? (bp)->data : 0)
+#define rGetBufStart(bp)  ((bp) ? (bp)->start : 0)
+#define rGetBufEnd(bp)    ((bp) ? (bp)->end : 0)
 
 #endif /* R_USE_BUF */
 
@@ -3262,9 +3262,10 @@ PUBLIC cchar *rBasename(cchar *path);
 /**
     Return the directory name portion of a filename.
     @description This trims off the basename portion of the path by modifying the supplied path.
+    This takes a char* and returns a char* to the function can be composed as rDirname(sclone(path)).
     @param path Filename to examine and modify
     @return A pointer to the dirname portion of the supplied filename path.
-        This call does not allocate a new string and the caller must not free.
+        This call does not allocate a new string and the caller should not free.
     @stability Evolving
  */
 PUBLIC char *rDirname(char *path);
