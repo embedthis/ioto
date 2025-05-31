@@ -537,18 +537,21 @@ PUBLIC void ioUpdateDevice(void)
     json = jsonAlloc(0);
     jsonSet(json, 0, "id", ioto->id, JSON_STRING);
 #if SERVICES_CLOUD
-    if (ioto->account) {
-        jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
+    if (!ioto->account) {
+        //  Update later when we have an account ID
+        return;
     }
+    if (dbGet(ioto->db, "Device", json, NULL)) {
+        //  Only update once to avoid redundant sync updates
+        return;
+    }
+    jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
 #endif
     jsonSet(json, 0, "description", jsonGet(ioto->config, 0, "device.description", 0), JSON_STRING);
     jsonSet(json, 0, "model", jsonGet(ioto->config, 0, "device.model", 0), JSON_STRING);
     jsonSet(json, 0, "name", jsonGet(ioto->config, 0, "device.name", 0), JSON_STRING);
     jsonSet(json, 0, "product", jsonGet(ioto->config, 0, "device.product", 0), JSON_STRING);
 
-    if (rEmitLog("trace", "sync")) {
-        rInfo("database", "Update device item");
-    }
     if (dbCreate(ioto->db, "Device", json, DB_PARAMS(.upsert = 1)) == 0) {
         rError("sync", "Cannot update device item in database: %s", dbGetError(ioto->db));
     }
@@ -2829,7 +2832,6 @@ static void onCloudConnect()
 #endif
 #if SERVICES_SYNC
     ioConnectSync();
-    ioUpdateDevice();
 #endif
 }
 
@@ -4401,8 +4403,10 @@ static void parseProvisioningResponse(Json *json)
 {
     cchar *certificate, *key;
     char  *certMem, *keyMem, *path;
+    bool   priorAccount;
 
     key = certificate = path = 0;
+
     rInfo("ioto", "Device claimed");
 
     /*
@@ -4455,6 +4459,7 @@ static void parseProvisioningResponse(Json *json)
         }
         rFree(path);
     }
+    priorAccount = ioto->account ? 1 : 0;
     rFree(ioto->account);
     ioto->account = jsonGetClone(ioto->config, 0, "provision.accountId", 0);
     dbAddContext(ioto->db, "accountId", ioto->account);
@@ -4472,6 +4477,9 @@ static void parseProvisioningResponse(Json *json)
 #if SERVICES_SYNC
     rWatch("mqtt:connected", (RWatchProc) postProvisionSync, 0);
 #endif
+    if (!priorAccount) {
+        ioUpdateDevice();
+    }
     rSignal("device:provisioned", 0);
 
 #if SERVICES_KEYS
@@ -5495,7 +5503,6 @@ static void receiveSync(MqttRecv *rp)
             dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
             rSignal("db:syncdown:done", 0);
         }
-        rTrace("sync", "SyncDown complete");
 
     } else {
         sk = jsonGet(json, 0, "sk", "");
