@@ -386,7 +386,7 @@ static void s3Test(Json *json)
     urlFree(up);
     assert(rc);
 
-#if 0
+#if KEEP
     data = sfmt("{\"logGroupName\":\"%s\"}", "test-42");
     rc = aws(up, region, "logs", "Logs_20140328.CreateLogGroup", data, -1, NULL);
     urlFree(up);
