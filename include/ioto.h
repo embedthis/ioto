@@ -212,6 +212,7 @@ typedef struct Ioto {
     char *cloud;               /**< Builder cloud ID */
     char *cloudType;           /**< Type of cloud hosting: "hosted", "dedicated" */
     char *endpoint;            /**< Device cloud API endpoint */
+    REvent shadowEvent;        /**< Shadow event */
     char *shadowName;          /**< AWS IoT shadow name */
     char *shadowTopic;         /**< AWS IoT shadow topic */
 
@@ -285,10 +286,10 @@ PUBLIC int ioAutomation(cchar *name, cchar *context);
     Get a value from the shadow state.
     @param key Property key value. May contain dots.
     @param defaultValue Default value to return if the key is not found
-    @return Returns and allocated string. Caller must free.
+    @return Returns an allocated string. Caller must free.
     @stability Evolving
  */
-PUBLIC cchar *ioGetShadow(cchar *key, cchar *defaultValue);
+PUBLIC char *ioGetShadow(cchar *key, cchar *defaultValue);
 
 /**
     Set a key value in the shadow

@@ -4538,8 +4538,8 @@ PUBLIC int ioInitShadow(void)
         return R_ERR_CANT_READ;
     }
     ioto->shadowName = jsonGetClone(ioto->config, 0, "cloud.shadow", "default");
-    ioto->shadowTopic = sfmt("$aws/things/%s/shadow/name/%s", ioto->thing, ioto->shadowName);
-    ioOnConnect((RWatchProc) subscribeShadow, 1);
+    ioto->shadowTopic = sfmt("$aws/things/%s/shadow/name/%s", ioto->id, ioto->shadowName);
+    ioOnConnect((RWatchProc) subscribeShadow, NULL, 1);
     return 0;
 }
 
@@ -4550,8 +4550,8 @@ PUBLIC void ioTermShadow(void)
     json = ioto->shadow;
 
     if (json) {
-        if (json->event) {
-            rStopEvent(json->event);
+        if (ioto->shadowEvent) {
+            rStopEvent(ioto->shadowEvent);
             saveShadow(json);
         }
         jsonFree(json);
@@ -4585,8 +4585,8 @@ PUBLIC void ioSaveShadow()
 
 static void lazySave(Json *json, int delay)
 {
-    if (!json->event) {
-        json->event = rStartEvent((REventProc) saveShadow, json, delay);
+    if (!ioto->shadowEvent) {
+        ioto->shadowEvent = rStartEvent((REventProc) saveShadow, json, delay);
     }
 }
 
@@ -4595,7 +4595,7 @@ static int saveShadow(Json *json)
     char *path;
 
     if (ioto->nosave) return 0;
-    json->event = 0;
+    ioto->shadowEvent = 0;
 
     path = rGetFilePath(IO_SHADOW_FILE);
     if (jsonSave(json, 0, 0, path, ioGetFileMode(), JSON_PRETTY) < 0) {
@@ -4653,7 +4653,7 @@ static void onShadowReceive(MqttRecv *rp)
 {
     Json  *json;
     int   nid;
-    char  *data, *msg, path[ME_MAX_FNAME];
+    char  *data, *msg, *path;
     cchar *topic;
 
     topic = rp->topic;
