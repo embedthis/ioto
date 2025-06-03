@@ -19,3 +19,5 @@ config:
 
 build:
 	echo "      [Info] Built with the Unit App"
+
+clean:

@@ -23,6 +23,8 @@ config:
 build:
 	@echo "      [Info] Built with No App"
 
+clean:
+
 LOCAL_MAKEFILE := $(strip $(wildcard ./.local.mk))
 
 ifneq ($(LOCAL_MAKEFILE),)

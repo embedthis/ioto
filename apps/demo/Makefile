@@ -17,6 +17,8 @@ config:
 build:
 	@echo "      [Info] Built with the Demo App"
 
+clean:
+
 LOCAL_MAKEFILE := $(strip $(wildcard ./.local.mk))
 
 ifneq ($(LOCAL_MAKEFILE),)

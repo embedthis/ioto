@@ -24,7 +24,7 @@ int ioStart(void)
 {
     rWatch("device:command:power", (RWatchProc) deviceCommand, 0);
     rWatch("device:command:custom", (RWatchProc) customCommand, 0);
-    
+
     //  Read settings from the ioto.json5 config file
     if (jsonGetBool(ioto->config, 0, "demo.enable", 0)) {
         ioOnConnect((RWatchProc) demo, 0, 1);
@@ -169,7 +169,7 @@ static void customCommand(void *ctx, DbItem *item)
 
     program = dbField(item, "args.program");
     parameters = dbField(item, "args.parameters");
-    
+
     //  WARNING: no error checking of program or parameters here
     print("RUN %s %s", program, parameters);
     SFMT(cmd, "%s %s", program, parameters);
