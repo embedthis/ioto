@@ -5,6 +5,9 @@
     format: 'onetable:1.1.0',
     version: '0.0.1',
     indexes: {primary: {hash: 'pk', sort: 'sk'}},
+    process: {
+        Metric: { enable: 'cloud', show: false },
+    },
     models: {
         Metric: {
             pk: {type: 'string', value: 'metric#${version}#${owner}'},
@@ -54,12 +57,4 @@
             _source: {type: 'string'}, // When set, bypass DynamoDB steams change detection
         }
     },
-    /*
-    params: {
-        isoDates: false,
-        nulls: false,
-        timestamps: false,
-        typeField: '_type',
-    },
-    */
 }
