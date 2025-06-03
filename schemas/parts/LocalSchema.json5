@@ -118,7 +118,7 @@
             sk:             { type: 'string', value: 'user#${id}', hidden: true },
             id:             { type: 'string', generate: 'uid' },
             username:       { type: 'string', required: true, unique: true },
-            password:       { type: 'string', sync: 'none', discard: true },
+            password:       { type: 'string', sync: 'none', drop: true },
             role:           { type: 'string', required: true, enum: ['user', 'admin', 'super'], default: 'user' }
         },
     }
