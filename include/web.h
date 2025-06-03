@@ -113,8 +113,8 @@ typedef struct WebAction {
  */
 typedef struct WebRoute {
     cchar *match;                       /**< Matching URI path pattern */
+    bool validate : 1;                  /**< Validate request */
     bool exact : 1;                     /**< Exact match vs prefix match. If trailing "/" in route. */
-    bool validate : 1;                  /**< Validate request signature */
     RHash *methods;                     /**< HTTP methods verbs */
     cchar *handler;                     /**< Request handler (file, action) */
     cchar *role;                        /**< Required user role */
@@ -196,6 +196,7 @@ typedef struct WebHost {
 
     //  Limits
 #if ME_WEB_LIMITS || DOXYGEN
+    int64 maxBuffer;            /**< Max response buffer size */
     int64 maxHeader;            /**< Max header size */
     int64 maxConnections;       /**< Max number of connections */
     int64 maxBody;              /**< Max size of POST request */
@@ -343,6 +344,8 @@ typedef struct Web {
     RBuf *body;                 /**< Receive boday buffer transferred from rx */
     RBuf *rx;                   /**< Receive data buffer */
     RBuf *trace;                /**< Packet trace buffer */
+    RBuf *buffer;               /**< Buffered response */
+    Json *validatedJson;        /**< Used for validated responses that need to mutate the response */
 
     Offset chunkRemaining;      /**< Amount of chunked body to read */
     ssize rxLen;                /**< Receive content length (including chunked requests) */
@@ -356,7 +359,6 @@ typedef struct Web {
     uint authenticated : 1;     /**< User authenticated and roleId defined */
     uint authChecked : 1;       /**< Authentication has been checked */
     uint close : 1;             /**< Should the connection be closed after the request completes */
-    uint creatingHeaders : 1;   /**< Are headers being created */
     uint exists : 1;            /**< Does the requested resource exist */
     uint finalized : 1;         /**< The response has been finalized */
     uint formBody : 1;          /**< Is the current request a POSTed form */
@@ -365,6 +367,7 @@ typedef struct Web {
     uint moreBody : 1;          /**< More response body to trace */
     uint secure : 1;            /**< Has secure listening endpoint */
     uint upgraded : 1;          /**< Is the connection upgraded to a WebSocket */
+    uint writingHeaders : 1;    /**< Are headers being created and written */
     uint wroteHeaders : 1;      /**< Have the response headers been written */
 
     RFiber *fiber;              /**< Original owning fiber */
@@ -457,6 +460,19 @@ PUBLIC void webAddHeaderDynamicString(Web *web, cchar *key, char *value);
     @stability Evolving
  */
 PUBLIC void webAddAccessControlHeader(Web *web);
+
+/**
+    Buffer the response body.
+    @description This routine will cause webWrite calls to be buffered.
+        If the buffer is not allocated, it will be allocated to the given size.
+        If the buffer is already allocated, it will be resized if required.
+        When webFinalize is called, the content length will be set, the headers will be written, 
+        and the buffer will be flushed.
+    @param web Web object
+    @param size Size of the buffer.
+    @stability Evolving
+ */
+PUBLIC void webBuffer(Web *web, ssize size);
 
 /**
     Read data and buffer until a given pattern or limit is reached.
@@ -702,7 +718,52 @@ PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
     @return True if the request is valid. Otherwise, return false and generate an error response to the client..
     @stability Evolving
  */
-PUBLIC bool webValidateRequestBody(Web *web, cchar *path);
+PUBLIC bool webValidateRequest(Web *web, cchar *path);
+
+/**
+    Validate a JSON object against the API signature.
+    @param web Web object
+    @param json JSON object
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+    @stability Evolving
+ */
+PUBLIC bool webValidateJson(Web *web, const Json *json);
+
+/**
+    Validate a data buffer against the API signature.
+    @param web Web object
+    @param buf Data buffer
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+    @stability Evolving
+ */
+PUBLIC bool webValidateData(Web *web, cchar *buf);
+
+/**
+    Low level routine to validate a string body against a signature
+    @description Use this routine to validate request and response bodies if you cannot use the
+        integrated validation or webValidateRequestBody.
+    @param web Web object
+    @param tag Tag name for the request body. Set to "request", "response" or "query".
+    @param body Request body data
+    @param signature Signature to validate against
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+    @stability Evolving
+ */
+PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *body, JsonNode *signature);
+
+/**
+    Low level routine to validate a JSON body against a signature
+    @description Use this routine to validate request and response bodies if you cannot use the
+    @param web Web object
+    @param tag Tag name for the request body. Set to "request", "response" or "query".
+    @param json JSON object
+    @param jid Base JSON node ID from which to convert. Set to zero for the top level.
+    @param signature Signature to validate against
+    @param depth Depth of the JSON object
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+    @stability Evolving
+ */
+PUBLIC bool webValidateJsonSignature(Web *web, cchar *tag, const Json *json, int jid, JsonNode *signature, int depth);
 
 /**
     Write response data
@@ -732,17 +793,15 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize);
 PUBLIC ssize webWriteFmt(Web *web, cchar *fmt, ...);
 
 /**
-    Write response data from a JSON object
+    Write data from a JSON object
     @description This routine will block the current fiber if necessary. Other fibers continue to run.
     @pre Must only be called from a fiber.
     @param web Web object
     @param json JSON object
-    @param nid Base JSON node ID from which to convert. Set to zero for the top level.
-    @param key Property name to serialize below. This may include ".". For example: "settings.mode".
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC ssize webWriteJson(Web *web, Json *json, int nid, cchar *key);
+PUBLIC ssize webWriteJson(Web *web, const Json *json);
 
 /**
     Write request response headers
@@ -758,10 +817,10 @@ PUBLIC ssize webWriteHeaders(Web *web);
 
 /**
     Write a response
-    @description This routine writes a single plain text response in one API.
-        If status is zero, set the status to 400 and close the socket after issuing the response.
-        It will block the current fiber if necessary. Other fibers continue to run.
-        This will set the Content-Type header to text/plain.
+    @description This routine writes a single plain text response and finalizes the
+        response in one call.  If status is zero, set the status to 400 and close the
+        socket after issuing the response.  It will block the current fiber if necessary.
+        Other fibers continue to run. This will set the Content-Type header to text/plain.
     @pre Must only be called from a fiber.
     @param web Web object
     @param status HTTP status code.
@@ -790,11 +849,10 @@ PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...);
     @pre Must only be called from a fiber.
     @param web Web object
     @param json JSON object
-    @param flags JSON flags JSON_PRETTY | JSON_QUOTES
-    @return The number of bytes written, or
+    @return The number of bytes written, or -1 for errors.
     @stability Evolving
  */
-PUBLIC ssize webWriteValidatedJson(Web *web, Json *json, int flags);
+PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json);
 
 /**
     Write a buffer with a validated signature
@@ -804,7 +862,7 @@ PUBLIC ssize webWriteValidatedJson(Web *web, Json *json, int flags);
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC ssize webWriteValidated(Web *web, cchar *buf);
+PUBLIC ssize webWriteValidatedData(Web *web, cchar *buf);
 
 /*
     Internal APIs
@@ -824,7 +882,6 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
 PUBLIC int webReadBody(Web *web);
 PUBLIC void webTestInit(WebHost *host, cchar *prefix);
 PUBLIC void webUpdateDeadline(Web *web);
-PUBLIC bool webValidateRequest(Web *web);
 PUBLIC int webValidateUrl(Web *web);
 
 /************************************ Session *********************************/

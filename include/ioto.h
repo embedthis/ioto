@@ -559,25 +559,14 @@ PUBLIC void mqttRequestFree(Mqtt *mq, cchar *topic, ...);
  */
 #if SERVICES_WEB
 #if SERVICES_DATABASE
-/**
-    Write a database item as part of a web response
-    @description This routine serialize a database item into JSON and validates the item fields
-        against the web signature if defined. It will call webFinalize.
-    @param web Web object
-    @param item Database item
-    @return The number of bytes written.
-    @stability Evolving
- */
-PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item);
 
 /**
     Write a database item
-    @description This routine serialize a database item into JSON and and validate the item's fields
-        against the web signature if defined. It will NOT call webFinalize.
+    @description This routine serialize a database item into JSON. It will NOT call webFinalize.
     @param web Web object
     @param item Database item
     @return The number of bytes written.
-    @stability Evolving
+    @stability Deprecated
  */
 PUBLIC ssize webWriteItem(Web *web, const DbItem *item);
 
@@ -592,7 +581,41 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item);
 PUBLIC ssize webWriteItems(Web *web, RList *items);
 
 /**
-    Write a grid of database items as part of a web response
+    Write a database item response.
+    @description This routine serialize a database item into JSON and validates the item's fields
+        against the web signature if defined. It will call webFinalize.
+    @param web Web object
+    @param item Database item
+    @return The number of bytes written.
+    @stability Deprecated
+ */
+PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item);
+
+/**
+    Write a grid of database items as a response.
+    @description This routine serializes a database grid into JSON and validates the response
+        against the web signature if defined. It will call webFinalize.
+    @param web Web object
+    @param items Grid of database items
+    @return The number of bytes written.
+    @stability Evolving
+ */
+PUBLIC ssize webWriteValidatedItems(Web *web, RList *items);
+
+#if DEPRECATED && MOB && 0
+/**
+    Write a database item as the whole response and validate against the web signature.
+    @description This routine serialize a database item into JSON and validates the item fields
+        against the web signature if defined. It will call webFinalize.
+    @param web Web object
+    @param item Database item
+    @return The number of bytes written.
+    @stability Deprecated
+ */
+PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item);
+
+/**
+    Write a grid of database items as the whole response and validate against the web signature.
     @description This routine serializes a database grid into JSON and write it as a response.
         This will call webFinalize.
     @param web Web object
@@ -601,6 +624,7 @@ PUBLIC ssize webWriteItems(Web *web, RList *items);
     @stability Evolving
  */
 PUBLIC ssize webWriteItemsResponse(Web *web, RList *items);
+#endif
 
 /**
     Login action routine
