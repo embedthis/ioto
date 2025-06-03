@@ -113,6 +113,7 @@ typedef struct DbField {
     char *name;           /**< Field name */
     cchar *generate;      /**< Generate unique ID or ULID */
     uint ttl : 1;         /*<< Field is a TTL expiry field */
+    uint hidden : 1;      /**< The field is hidden normally (pk, sk, etc) */
     uint required : 1;    /**< The field is required on create */
     cchar *def;           /**< Default value */
     cchar *value;         /**< Value template */
@@ -479,10 +480,10 @@ PUBLIC int64 dbGetNum(Db *db, cchar *model, cchar *fieldName, Json *props, DbPar
 /*
     Get a JSON object representing the item.
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @return A JSON object. This is an internal reference into the datbase. Caller must NOT free.
+    @return A JSON object. This is an internal reference into the datbase. Caller must NOT modify or free.
     @stability Evolving
  */
-PUBLIC Json *dbJson(const DbItem *item);
+PUBLIC const Json *dbJson(const DbItem *item);
 
 /*
     Get a unique ID (ULID) based on the given time
@@ -510,10 +511,11 @@ PUBLIC char *dbListToString(RList *list);
 /*
     Convert an item to a JSON string representation
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @return A JSON string. Caller must free.
+    @param flags JSON_PRETTY, JSON_STRICT
+    @return A JSON string. Caller must not free.
     @stability Evolving
  */
-PUBLIC char *dbItemToString(const DbItem *item);
+PUBLIC cchar *dbString(const DbItem *item, int flags);
 
 /**
     Convert a list of keyword / value pairs into a JSON object

@@ -146,7 +146,7 @@ PUBLIC int main(int argc, char *argv[])
             for (ITERATE_ITEMS(grid, item, index)) {
                 jsonBlend(result, 0, "[$]", dbJson(item), 0, 0, 0);
             }
-            rPrintf("%s\n", jsonString(result));
+            rPrintf("%s\n", jsonString(result, JSON_PRETTY));
             jsonFree(result);
 
         } else {
@@ -184,7 +184,7 @@ PUBLIC int main(int argc, char *argv[])
                     for (ITERATE_ITEMS(grid, item, index)) {
                         jsonBlend(result, 0, "[$]", dbJson(item), 0, 0, 0);
                     }
-                    rPrintf("%s\n", jsonString(result));
+                    rPrintf("%s\n", jsonString(result, JSON_PRETTY));
                     rFree(result);
                 }
             }
@@ -209,7 +209,7 @@ static void emit(const DbItem *item)
             rPrintf("%s\n", dbField(item, field));
         }
     } else {
-        rPrintf("%s\n", jsonString(dbJson(item)));
+        rPrintf("%s\n", dbString((DbItem*) item, JSON_PRETTY));
     }
 }
 

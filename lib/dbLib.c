@@ -111,6 +111,7 @@ static void selectProperties(Db *db, DbModel *model, Json *props, DbParams *para
 static void setDefaults(Db *db, DbModel *model, Json *props);
 static void setTemplates(Db *db, DbModel *model, Json *props);
 static void setTimestamps(Db *db, DbModel *model, Json *props, cchar *cmd);
+static Json *toJson(DbItem *item);
 static int writeBlock(Db *db, cchar *buf);
 static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd);
 static int writeItem(FILE *fp, DbItem *item);
@@ -235,8 +236,10 @@ static int loadSchema(Db *db, cchar *schema)
         rFree(errorMsg);
         return R_ERR_CANT_READ;
     }
-    //  Keep (locked) schema to preserve memory that is used in DbModels and DbFields. Simplifies
-    // memory allocation / freeing.
+    /*
+        Keep (locked) schema to preserve memory that is used in DbModels and DbFields. 
+        Simplifies memory allocation / freeing.
+     */
     db->schema = json;
 
     blendId = jsonGetId(db->schema, 0, "blend");
@@ -578,7 +581,7 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     } else if (jsonGet(env->props, 0, env->indexSort, 0) == 0) {
         //  Check we have a key for non-find operations
         return dberror(db, R_ERR_BAD_ARGS, "Missing sort key in properties\n%s",
-                       jsonString(env->props));
+                       jsonString(env->props, JSON_PRETTY));
     }
 
     /*
@@ -591,14 +594,14 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
             env->compare = "begins";
         } else {
             return dberror(db, R_ERR_BAD_ARGS, "Incomplete sort key in properties: %s\n%s",
-                           env->search.key, jsonString(env->props));
+                           env->search.key, jsonString(env->props, JSON_PRETTY));
         }
     }
     //  Must be after find trims templates
     env->searchLen = slen(env->search.key);
 
     if (env->params->log) {
-        rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props));
+        rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props, JSON_PRETTY));
     }
     return 0;
 }
@@ -617,7 +620,7 @@ static void freeEnv(Env *env)
     if (env->expiredItems) {
         for (ITERATE_ITEMS(env->expiredItems, rp, next)) {
             if (env->params->log) {
-                rInfo("db", "Remove expired item:\n%s", jsonString(dbJson(rp->data)));
+                rInfo("db", "Remove expired item:\n%s", jsonString(toJson(rp->data), JSON_PRETTY));
             }
             rbRemove(env->index, rp, 0);
         }
@@ -665,7 +668,7 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *p
     change(db, env.model, item, params, env.params->upsert ? "upsert" : "create");
 
     if (env.params->log) {
-        rInfo("db", "Create result:\n%s", jsonString(item->json));
+        rInfo("db", "Create result:\n%s", jsonString(item->json, JSON_PRETTY));
     }
     freeEnv(&env);
     return item;
@@ -690,7 +693,7 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *modelName, Json *props, DbParams *para
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             if (env.params->log) {
                 dbPrintItem(item);
             }
@@ -720,9 +723,9 @@ PUBLIC cchar *dbGetField(Db *db, cchar *modelName, cchar *fieldName, Json *props
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             freeEnv(&env);
-            return jsonGet(dbJson(item), 0, fieldName, 0);
+            return jsonGet(toJson(item), 0, fieldName, 0);
         }
     }
     freeEnv(&env);
@@ -820,7 +823,7 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     }
     while (rp) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             rPushItem(list, item);
             if (++count >= limit) {
                 break;
@@ -855,7 +858,7 @@ PUBLIC const DbItem *dbFindOne(Db *db, cchar *modelName, Json *props, DbParams *
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             freeEnv(&env);
             return item;
         }
@@ -888,7 +891,7 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
     for (count = 0, rp = rbLookupFirst(env.index, search, &env); rp; rp = next) {
         next = rbLookupNext(env.index, rp, search, &env);
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             change(db, env.model, item, params, "remove");
             rbRemove(env.index, rp, 0);
             if (++count >= limit) {
@@ -942,7 +945,7 @@ again:
                     change(db, model, item, NULL, "remove");
                 }
                 if (rEmitLog("trace", "db")) {
-                    rTrace("db", "Remove expired item:\n%s", jsonString(json));
+                    rTrace("db", "Remove expired item:\n%s", jsonString(json, JSON_PRETTY));
                 }
                 rbRemove(db->primary, rp, 0);
                 count++;
@@ -1006,7 +1009,7 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
 
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             break;
         }
     }
@@ -1021,9 +1024,9 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
         }
     }
     if (value == NULL) {
-        jsonRemove(dbJson(item), 0, fieldName);
+        jsonRemove(toJson(item), 0, fieldName);
     } else {
-        jsonSet(dbJson(item), 0, fieldName, value, 0);
+        jsonSet(toJson(item), 0, fieldName, value, 0);
     }
     change(db, env.model, item, params, env.params->upsert ? "upsert" : "update");
     freeEnv(&env);
@@ -1089,7 +1092,7 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
     item = 0;
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, dbJson(item), 0, &env)) {
+        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             break;
         }
     }
@@ -1100,7 +1103,7 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
             item->json = env.props;
         } else {
             //  Preserve existing properties that are not being updated
-            jsonBlend(dbJson(item), 0, 0, env.props, 0, 0, JSON_REMOVE_UNDEF);
+            jsonBlend(toJson(item), 0, 0, env.props, 0, 0, JSON_REMOVE_UNDEF);
         }
 
     } else {
@@ -1126,7 +1129,7 @@ PUBLIC cchar *dbField(const DbItem *item, cchar *fieldName)
     if (!item || !fieldName) {
         return 0;
     }
-    return jsonGet(dbJson((DbItem*) item), 0, fieldName, 0);
+    return jsonGet(toJson((DbItem*) item), 0, fieldName, 0);
 }
 
 PUBLIC double dbFieldDouble(const DbItem *item, cchar *fieldName)
@@ -1152,11 +1155,6 @@ PUBLIC Time dbFieldDate(const DbItem *item, cchar *fieldName)
     return rParseIsoDate(dbField(item, fieldName));
 }
 
-PUBLIC char *dbItemToString(const DbItem *item)
-{
-    return jsonToString(dbJson((DbItem*) item), 0, 0, JSON_QUOTES);
-}
-
 PUBLIC char *dbListToString(RList *items)
 {
     const DbItem *item;
@@ -1168,7 +1166,7 @@ PUBLIC char *dbListToString(RList *items)
     buf = rAllocBuf(0);
     rPutCharToBuf(buf, '[');
     for (ITERATE_ITEMS(items, item, index)) {
-        rPutStringToBuf(buf, jsonToString(dbJson((DbItem*) item), 0, 0, JSON_QUOTES));
+        rPutStringToBuf(buf, jsonToString(toJson((DbItem*) item), 0, 0, JSON_QUOTES));
         rPutCharToBuf(buf, ',');
     }
     rAdjustBufEnd(buf, -1);
@@ -1181,7 +1179,7 @@ static void printItem(DbItem *item)
     char *value;
 
     if (!item) return;
-    value = jsonToString(dbJson(item), 0, 0, JSON_PRETTY);
+    value = jsonToString(toJson(item), 0, 0, JSON_PRETTY);
     value[slen(value) - 1] = '\0';
     rPrintf("%s", value);
     rFree(value);
@@ -1197,7 +1195,7 @@ PUBLIC void dbPrintItem(const DbItem *item)
     char *value;
 
     if (item) {
-        value = jsonToString(dbJson((DbItem*) item), 0, 0, JSON_PRETTY);
+        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_PRETTY);
         rPrintf("%s: %s\n", item->key, value);
         rFree(value);
     } else {
@@ -1212,7 +1210,7 @@ PUBLIC void dbPrintList(RList *list)
     int          index;
 
     for (ITERATE_ITEMS(list, item, index)) {
-        value = jsonToString(dbJson((DbItem*) item), 0, 0, JSON_PRETTY);
+        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_PRETTY);
         rPrintf("    %s: %s\n", item->key, value);
         rFree(value);
     }
@@ -1234,23 +1232,14 @@ PUBLIC void dbPrint(Db *db)
 }
 
 /*
-    Convert an item value to JSON for queries.
-    This will create item.json and zero item.value
-    Force a const DbItem so callers don't need to cast returns from dbGet etc.
-    Caller must not free return result.
+    This will convert an item value to JSON for queries and will create item.json and zero item.value
  */
-PUBLIC Json *dbJson(const DbItem *citem)
+static Json *toJson(DbItem *item)
 {
-    DbItem *item;
-
-    assert(citem);
-    item = (DbItem*) citem;
-
     if (!item) {
         return 0;
     }
     if (!item->json) {
-        jsonFree(item->json);
         item->json = jsonParse(item->value, 0);
         if (item->allocatedValue) {
             rFree(item->value);
@@ -1258,6 +1247,32 @@ PUBLIC Json *dbJson(const DbItem *citem)
         item->value = 0;
     }
     return item->json;
+}
+
+/*
+    Public function to get the JSON object for an item. Because this returns a reference to 
+    the internal data, we return a const pointer.
+    Force a const DbItem so callers don't need to cast returns from dbGet etc.
+    Caller must not modify or free the return result.
+ */
+PUBLIC const Json *dbJson(const DbItem *citem)
+{
+    return toJson((DbItem*) citem);
+}
+
+PUBLIC cchar *dbString(const DbItem *citem, int flags)
+{
+    DbItem *item;
+
+    item = (DbItem*) citem;
+    if (item->json) {
+        if (item->allocatedValue) {
+            rFree(item->value);
+        }
+        item->value = jsonToString(item->json, 0, NULL, flags);
+        item->allocatedValue = 1;
+    }
+    return item->value;
 }
 
 static int getTypeFromSchema(cchar *type)
@@ -1528,9 +1543,14 @@ static DbModel *allocModel(Db *db, cchar *name, cchar *sync, Time delay)
     model->delay = delay;
     model->fields = rAllocHash(0, 0);
 
+    /*
+        Add type field to the model
+     */
     field = rAllocType(DbField);
     field->name = sclone(name);
+    field->hidden = 1;
     rAddName(model->fields, db->type, field, R_TEMPORAL_NAME | R_STATIC_VALUE);
+
     rAddName(db->models, model->name, model, 0);
     return model;
 }
@@ -1580,6 +1600,7 @@ static DbField *allocField(Db *db, cchar *name, Json *json, int fid)
     field->name = sclone(name);
     field->def = jsonGet(json, fid, "default", 0);
     field->generate = jsonGet(json, fid, "generate", 0);
+    field->hidden = jsonGetBool(json, fid, "hidden", smatch(name, "pk") || smatch(name, "sk"));
     field->required = jsonGetBool(json, fid, "required", 0);
     field->type = jsonGet(json, fid, "type", 0);
     field->value = jsonGet(json, fid, "value", 0);
@@ -1589,9 +1610,7 @@ static DbField *allocField(Db *db, cchar *name, Json *json, int fid)
         field->enums = jsonToString(json, fid, "enum", 0);
     }
 #if KEEP
-    //  FUTURE - probably have to support: map, ttl
     field->crypt = jsonGetBool(json, fid, "crypt", 0);
-    field->hidden = jsonGetBool(json, fid, "hidden", 0);
     field->map = jsonGet(json, fid, "map", 0);
     field->unique = jsonGetBool(json, fid, "unique", 0);
     field->validate = jsonGet(json, fid, "validate", 0);

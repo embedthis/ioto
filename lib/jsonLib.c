@@ -1091,7 +1091,7 @@ static char *copyProperty(Json *json, cchar *key)
 /*
     Get the JSON tree node for a given key that is rooted at the "nid" node.
  */
-PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key)
+PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key)
 {
     assert(json);
 
@@ -1104,9 +1104,9 @@ PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key)
 /*
     Get the node ID for a given tree node
  */
-PUBLIC int jsonGetNodeId(Json *json, JsonNode *node)
+PUBLIC int jsonGetNodeId(const Json *json, JsonNode *node)
 {
-    if (!json || node < json->nodes || node >= &json->nodes[json->count]) {
+    if (!json || !node || node < json->nodes || node >= &json->nodes[json->count]) {
         return -1;
     }
     return (int) (node - json->nodes);
@@ -1115,13 +1115,13 @@ PUBLIC int jsonGetNodeId(Json *json, JsonNode *node)
 /*
     Get the node ID for a given key that is rooted at the "nid" node.
  */
-PUBLIC int jsonGetId(Json *json, int nid, cchar *key)
+PUBLIC int jsonGetId(const Json *json, int nid, cchar *key)
 {
     if (!json || nid < 0 || nid >= json->count) {
         return R_ERR_CANT_FIND;
     }
     if (key && *key) {
-        if ((nid = jquery(json, nid, key, 0, 0)) < 0) {
+        if ((nid = jquery((Json*)json, nid, key, 0, 0)) < 0) {
             return R_ERR_CANT_FIND;
         }
     }
@@ -1458,7 +1458,7 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags)
     }
 }
 
-static int nodeToString(Json *json, RBuf *buf, int nid, int indent, int flags)
+static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int flags)
 {
     JsonNode *node;
     bool     pretty;
@@ -1551,7 +1551,10 @@ static int nodeToString(Json *json, RBuf *buf, int nid, int indent, int flags)
     return nid;
 }
 
-PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags)
+/*
+    Serialize a JSON object to a string. The caller must free the result.
+ */
+PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags)
 {
     RBuf *buf;
 
@@ -1575,13 +1578,27 @@ PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags)
     return rBufToStringAndFree(buf);
 }
 
-PUBLIC cchar *jsonString(Json *json)
+/*
+    Serialize a JSON object to a string. The string is saved in json->value so the caller 
+    does not need to free the result.
+ */
+PUBLIC cchar *jsonString(const Json *cjson, int flags)
 {
-    if (!json) {
+    Json *json;
+
+    if (!cjson) {
         return 0;
     }
+    /* 
+        We except modifying the json->value from the const
+        The downside of this exception is exceeded by the benefit of using (const Json*) elsewhere
+     */
+    json = (Json*) cjson;
     rFree(json->value);
-    json->value = jsonToString(json, 0, 0, JSON_PRETTY);
+    if (flags == 0) {
+        flags = JSON_PRETTY;
+    }
+    json->value = jsonToString(json, 0, 0, flags);
     return json->value;
 }
 
@@ -1618,14 +1635,16 @@ PUBLIC void jsonPrint(Json *json)
  */
 #if JSON_BLEND
 
-PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar *skey, int flags)
+PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags)
 {
-    Json     *tmpSrc;
+    Json     *src, *tmpSrc;
     JsonNode *dp, *sp, *spc, *dpc;
     cchar    *property;
     char     *srcData, *value;
     int      at, id, dlen, slen, didc, kind, pflags;
 
+    //  Cast const away because ITERATE macros make this difficult
+    src = (Json*) csrc;
     if (dest->flags & JSON_LOCK) {
         return jerror(dest, "Cannot blend into a locked JSON object");
     }
@@ -1812,12 +1831,12 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
 /*
     Deep copy of a JSON tree
  */
-PUBLIC Json *jsonClone(Json *src, int flags)
+PUBLIC Json *jsonClone(const Json *csrc, int flags)
 {
     Json *dest;
 
     dest = jsonAlloc(flags);
-    jsonBlend(dest, 0, 0, src, 0, 0, 0);
+    jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
     return dest;
 }
 #endif /* JSON_BLEND */
