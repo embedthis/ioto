@@ -114,6 +114,9 @@ PUBLIC int rGetState(void)
     return rState;
 }
 
+/*
+    Async thread safe
+ */
 PUBLIC void rSetState(int state)
 {
     rState = state;
@@ -222,6 +225,7 @@ PUBLIC void rTermBuf(RBuf *bp)
 {
     if (bp && bp->buf) {
         rFree(bp->buf);
+        bp->buf = 0;
     }
 }
 
@@ -366,9 +370,12 @@ PUBLIC ssize rGetBlockFromBuf(RBuf *bp, char *buf, ssize size)
 {
     ssize thisLen, bytesRead;
 
-    assert(buf);
-    assert(size >= 0);
-    assert(bp->buflen == (bp->endbuf - bp->buf));
+    if (!buf || size < 0 || (size > SIZE_MAX - 8)) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (bp->buflen != (bp->endbuf - bp->buf)) {
+        return R_ERR_BAD_STATE;
+    }
 
     /*
         Get the max bytes in a straight copy
@@ -1240,6 +1247,9 @@ static void signalFiber(Watch *watch)
     watch->proc(watch->data, watch->arg);
 }
 
+/*
+    Signal watchers of an event
+ */
 PUBLIC void rSignal(cchar *name, cvoid *arg)
 {
     RList *list;
@@ -2276,9 +2286,9 @@ static cchar *getNextFile(void *dir, int flags, bool *isDir)
 
 #elif ME_WIN_LIKE
     WIN32_FIND_DATA f;
-    HANDLE          h = 0;
+    HANDLE          h;
 
-    //  TODO incomplete
+    h = 0;
     while (FindNextFile(h, &f) != 0) {
         if (f.cFileName[0] == '.' && (f.cFileName[1] == '\0' || f.cFileName[1] == '.')) {
             continue;
@@ -2305,7 +2315,10 @@ PUBLIC char *rGetCwd(void)
 {
     char buf[ME_MAX_FNAME];
 
-    return sclone(getcwd(buf, sizeof(buf)));
+    if (getcwd(buf, sizeof(buf)) == NULL) {
+        return sclone(".");
+    }
+    return sclone(buf);
 }
 
 /*
@@ -5158,6 +5171,10 @@ PUBLIC void *rAllocMem(size_t size)
 {
     void *ptr;
 
+    if (size > SIZE_MAX - 8) {  // Check for overflow
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
     size = R_ALLOC_ALIGN(size, 8);
 #if ESP32
     //  Allocate memory from PSIRAM
@@ -8266,9 +8283,8 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port)
     struct sockaddr_storage addrStorage;
     struct sockaddr         *addr;
     Socklen                 addrLen;
-
 #if (ME_UNIX_LIKE || ME_WIN_LIKE)
-    char service[NI_MAXSERV];
+    char                    service[NI_MAXSERV];
 #endif
 
     *port = 0;
@@ -8357,10 +8373,10 @@ PUBLIC char *rGetSocketMac(char *iface)
             return sfmt("%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         }
     }
-#if KEEP
+#if 0
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_addr.sa_family = AF_INET;
-    strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+    scopy(ifr.ifr_name, IFNAMSIZ, iface);
     mac = (uchar*) ifr.ifr_hwaddr.sa_data;
     close(fd);
     return sfmt("%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -8603,7 +8619,9 @@ PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src)
 {
     ssize len;
 
-    assert(dest);
+    if (!dest || destMax <= 0 || (destMax > SIZE_MAX - 8)) {
+        return R_ERR_BAD_ARGS;
+    }
     assert(0 < destMax && destMax < MAXINT);
 
     len = slen(src);
@@ -10358,15 +10376,30 @@ PUBLIC int gettimeofday(struct timeval *tv, struct timezone *tz)
 
 #if ME_UNIX_LIKE
 /*********************************** Code *************************************/
-
+/*
+    Signal handler for SIGUSR1 and SIGUSR2
+ */
 static void termHandler(int signo)
 {
+    /*
+        This is safe to call from a signal handler.
+        rSetState is async thread safe.
+     */
     rSetState(signo == SIGUSR1 ? R_RESTART : R_STOPPED);
 }
 
-static void logHandler(int signo)
+#if R_USE_EVENT
+static void setLogFilter(void)
 {
     rSetLogFilter("all", "all", 1);
+}
+#endif
+
+static void logHandler(int signo)
+{
+#if R_USE_EVENT
+    rStartEvent((RFiberProc) setLogFilter, 0, 0);
+#endif
 }
 
 static void contHandler(int signo)
@@ -10745,6 +10778,9 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
 #endif
 }
 
+/*
+    Async thread safe
+ */
 PUBLIC void rWakeup(void)
 {
 #if ME_WIN_LIKE
@@ -10986,6 +11022,7 @@ static Ticks getTimeout(Ticks deadline)
     if (timeout < 0) {
         timeout = 0;
     } else if (timeout > MAXINT) {
+        //  Reduce to MAXINT to permit callers to be able to do ticks arithmetic
         timeout = MAXINT;
     }
     return timeout;

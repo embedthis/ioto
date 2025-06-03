@@ -69,13 +69,13 @@ PUBLIC Json *openaiChatCompletion(Json *props)
         jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
     }
     data = jsonToString(request, 0, NULL, JSON_STRICT);
-    rDebug("openai", "Request: %s", jsonString(request));
+    rDebug("openai", "Request: %s", jsonString(request, JSON_PRETTY));
     jsonFree(request);
 
     response = urlPostJson(SFMT(url, "%s/chat/completions", openai->endpoint), data, -1, "%s", openai->headers);
     rFree(data);
 
-    rDebug("openai", "Response: %s", jsonString(response));
+    rDebug("openai", "Response: %s", jsonString(response, JSON_PRETTY));
     //  Caller must free response
     return response;
 }
@@ -109,7 +109,7 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
     do {
         data = jsonToString(request, 0, NULL, JSON_STRICT);
         if (openai->flags & AI_SHOW_REQ) {
-            rInfo("openai", "Request: %s", jsonString(request));
+            rInfo("openai", "Request: %s", jsonString(request, JSON_PRETTY));
         }
         up = urlAlloc(0);
         response = urlJson(up, "POST", SFMT(url, "%s/responses", openai->endpoint), data, -1, openai->headers);
@@ -149,7 +149,7 @@ static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, v
     int      count;
 
     if (openai->flags & AI_SHOW_RESP) {
-        rInfo("openai", "Response: %s", jsonString(response));
+        rInfo("openai", "Response: %s", jsonString(response, JSON_PRETTY));
     }
     if (!smatch(jsonGet(response, 0, "output[0].type", 0), "function_call")) {
         //  No agents/tools required
@@ -229,7 +229,7 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
     }
     jsonSetBool(request, 0, "stream", 1);
     data = jsonToString(request, 0, NULL, JSON_STRICT);
-    rDebug("openai", "Request: %s", jsonString(request));
+    rDebug("openai", "Request: %s", jsonString(request, JSON_PRETTY));
     jsonFree(request);
 
     /*
