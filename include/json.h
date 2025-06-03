@@ -58,17 +58,21 @@ struct JsonNode;
     Parse flags
  */
 #define JSON_STRICT     0x10               /**< Expect strict JSON format. Otherwise allow relaxed Json6. */
-#define JSON_SINGLE     0x20               /**< Save objects on a sinle line where possible. */
+#define JSON_SINGLE     0x20               /**< Save on a sinle line where possible. Convert chars to \\alternatives */
 #define JSON_PASS_TEXT  0x40               /**< Transfer ownership of the parsed text to json. */
 
 /*
     ToString flags
+    Use JSON_PRETTY for a human-readable multiline format in json6.
+    Use JSON_QUOTES for a strict JSON format with key quotes.
+    Use JSON_SINGLE for a single line format.
+    Use JSON_STRICT for (JSON_QUOTES | JSON_SINGLE)
  */
-#define JSON_PRETTY     0x100              /**< Save in Json6 format without quotes arounds keys */
-#define JSON_QUOTES     0x200              /**< Save in strict JSON format */
-#define JSON_KEY        0x400              /* Internal flag to designate Property key */
-#define JSON_DEBUG      0x800              /* Internal flag for debug formatting */
-#define JSON_BARE       0x1000             /**< Save on a single line without quotes or [] */
+#define JSON_PRETTY     0x100              /**< Save in multiline, indented Json6 format without key quotes */
+#define JSON_QUOTES     0x200              /**< Save in strict JSON format with key quotes */
+#define JSON_BARE       0x400              /**< Save on a single line without quotes or [], {} */
+#define JSON_KEY        0x800              /* Internal flag to designate Property key */
+#define JSON_DEBUG      0x1000             /* Internal flag for debug formatting */
 
 /**
     These macros iterates over the children under the "parent" id. The child->last points to one past the end of the
@@ -260,7 +264,7 @@ PUBLIC void jsonUnlock(Json *json);
     @return Zero if successful.
     @stability Evolving
  */
-PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar *skey, int flags);
+PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *src, int sid, cchar *skey, int flags);
 
 /**
     Clone a json object
@@ -269,7 +273,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
     @return The copied JSON tree. Caller must free with #jsonFree.
     @stability Evolving
  */
-PUBLIC Json *jsonClone(Json *src, int flags);
+PUBLIC Json *jsonClone(const Json *src, int flags);
 
 /**
     Get a json node value as an allocated string
@@ -394,7 +398,7 @@ PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
     @return The node ID for the specified key
     @stability Evolving
  */
-PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
+PUBLIC int jsonGetId(const Json *json, int nid, cchar *key);
 
 /**
     Get a json node object
@@ -406,7 +410,7 @@ PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
     @return The node object for the specified key. Returns NULL if not found.
     @stability Evolving
  */
-PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
+PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 
 /*
     Get a json node object ID
@@ -417,7 +421,7 @@ PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
     @return The node ID.
     @stability Evolving
  */
-PUBLIC int jsonGetNodeId(Json *json, JsonNode *node);
+PUBLIC int jsonGetNodeId(const Json *json, JsonNode *node);
 
 /**
     Get the Nth child node for a json node.
@@ -680,20 +684,26 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
     @param nid Base node ID from which to convert. Set to zero for the top level.
     @param key Property name to serialize below. This may include ".". For example: "settings.mode".
     @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
-    JSON_QUOTES to wrap Property names in quotes. Use JSON_QUOTES to emit all Property values as quoted strings.
+    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
     Defaults to JSON_PRETTY if set to zero.
     @return Returns a serialized JSON character string. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags);
+PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags);
 
 /**
-    Serialize an entire JSON object into a string using a human readable format (JSON_PRETTY).
+    Serialize a JSON object into a string
+    @description Serializes a top level JSON object created via jsonParse into a characters string in JSON format.
+        This serialize the result into the json->value so the caller does not need to free the result.
     @param json Source json
-    @return Returns a serialized JSON character string. Caller must NOT free.
+    @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
+    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
+    Defaults to JSON_PRETTY if set to zero.
+    @return Returns a serialized JSON character string. Caller must NOT free. The string is owned by the json
+    object and will be overwritten by subsequent calls to jsonString. It will be freed when jsonFree is called.
     @stability Evolving
  */
-PUBLIC cchar *jsonString(Json *json);
+PUBLIC cchar *jsonString(const Json *json, int flags);
 
 /**
     Print a JSON object

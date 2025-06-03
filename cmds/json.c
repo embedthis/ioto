@@ -495,10 +495,10 @@ static void outputAll(Json *json)
         rFree(output);
 
     } else if (format == JSON_FORMAT_JS) {
-        rPrintf("export default %s\n", jsonString(json));
+        rPrintf("export default %s\n", jsonString(json, JSON_PRETTY));
 
     } else if (format == JSON_FORMAT_JSON5) {
-        rPrintf("%s\n", jsonString(json));
+        rPrintf("%s\n", jsonString(json, JSON_PRETTY));
 
     } else if (format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
         name = "";
