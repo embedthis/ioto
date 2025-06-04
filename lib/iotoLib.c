@@ -492,7 +492,14 @@ PUBLIC int ioInitDb(void)
         return R_ERR_CANT_READ;
     }
 #endif
-    ioUpdateDevice();
+#if SERVICES_CLOUD
+    if (!ioto->account) {
+        rWatch("UpdateDevice", (RWatchProc) ioUpdateDevice, "device:provisioned");
+    } else
+#endif
+    if (!dbGet(ioto->db, "Device", DB_JSON("{id:'%s'}", ioto->id), NULL)) {
+        ioUpdateDevice();
+    }
     if (service) {
         rStartEvent((RFiberProc) dbService, 0, service);
     }
@@ -516,6 +523,9 @@ PUBLIC void ioRestartDb(void)
     ioInitDb();
 }
 
+/*
+    Perform periodic database maintenance. Remove TTL expired items.
+ */
 static void dbService(void)
 {
     Ticks service;
@@ -539,10 +549,6 @@ PUBLIC void ioUpdateDevice(void)
 #if SERVICES_CLOUD
     if (!ioto->account) {
         //  Update later when we have an account ID
-        return;
-    }
-    if (dbGet(ioto->db, "Device", json, NULL)) {
-        //  Only update once to avoid redundant sync updates
         return;
     }
     jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
@@ -865,6 +871,7 @@ static int initServices(void)
     } else
 #endif
     rInfo("ioto", "The LICENSE requires that you declare device volumes at https://admin.embedthis.com");
+
 #if SERVICES_DATABASE
     if (ioto->dbService && ioInitDb() < 0) {
         return R_ERR_CANT_READ;
@@ -1100,20 +1107,18 @@ PUBLIC void ioScheduleConnect(void)
         } else {
             wait = 0;
         }
-        if (wait <= 0) {
-            ioConnect();
-        } else {
+        if (wait > 0) {
             jitter = svalue(jsonGet(ioto->config, 0, "mqtt.jitter", "0")) * TPS;
             if (jitter) {
                 jitter = rand() % jitter;
                 wait += jitter;
             }
-            if (ioto->scheduledConnect) {
-                rStopEvent(ioto->scheduledConnect);
-            }
-            rInfo("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
-            ioto->scheduledConnect = rStartEvent((REventProc) ioConnect, 0, wait);
         }
+        if (ioto->scheduledConnect) {
+            rStopEvent(ioto->scheduledConnect);
+        }
+        rInfo("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
+        ioto->scheduledConnect = rStartEvent((REventProc) ioConnect, 0, wait);
     }
 }
 
@@ -1130,10 +1135,10 @@ PUBLIC int ioConnect(void)
     if (ioto->connected) {
         return 0;
     }
-    maxRetries = CONNECT_MAX_RETRIES;
-
     ioWakeProvisioner();
     rEnter(&connecting, 0);
+
+    maxRetries = CONNECT_MAX_RETRIES;
 
     /*
         Retry connection attempts
@@ -1270,8 +1275,9 @@ static int attachSocket(int retry)
     mqttSubscribe(ioto->mqtt, throttle, 1, MQTT_WAIT_NONE | MQTT_WAIT_FAST,
                   SFMT(topic, "ioto/device/%s/mqtt/throttle", ioto->id));
 
-    rSignal("mqtt:connected", 0);
     rInfo("mqtt", "Connected to mqtt://%s:%d", endpoint, port);
+    ioOnCloudConnect();
+    rSignal("mqtt:connected", 0);
     return 0;
 }
 
@@ -2531,9 +2537,9 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item)
  */
 PUBLIC ssize webWriteItems(Web *web, RList *items)
 {
-    DbItem   *item;
-    ssize    index, rc, wrote;
-    bool     prior;
+    DbItem *item;
+    ssize  index, rc, wrote;
+    bool   prior;
 
     if (!items) {
         return 0;
@@ -2721,10 +2727,6 @@ void dummyWeb(void)
 
 
 #if SERVICES_CLOUD
-/*********************************** Forwards *********************************/
-
-static void onCloudConnect(void);
-
 /************************************* Code ***********************************/
 
 PUBLIC int ioInitCloud(void)
@@ -2744,7 +2746,6 @@ PUBLIC int ioInitCloud(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
-    ioOnConnect((RWatchProc) onCloudConnect, 0, 1);
     rSignal("cloud:ready", 0);
     return 0;
 }
@@ -2772,7 +2773,10 @@ PUBLIC void ioTermCloud(void)
     ioto->instance = 0;
 }
 
-static void onCloudConnect()
+/*
+    Called directly from ioConnect() to subscribe to device provisioning and sync events
+ */
+PUBLIC void ioOnCloudConnect(void)
 {
 #if SERVICES_PROVISION
     mqttSubscribe(ioto->mqtt, ioRelease, 1, MQTT_WAIT_NONE, "ioto/device/%s/provision/+", ioto->id);
@@ -4350,7 +4354,6 @@ static void parseProvisioningResponse(Json *json)
 {
     cchar *certificate, *key;
     char  *certMem, *keyMem, *path;
-    bool  priorAccount;
 
     key = certificate = path = 0;
 
@@ -4406,7 +4409,6 @@ static void parseProvisioningResponse(Json *json)
         }
         rFree(path);
     }
-    priorAccount = ioto->account ? 1 : 0;
     rFree(ioto->account);
     ioto->account = jsonGetClone(ioto->config, 0, "provision.accountId", 0);
     dbAddContext(ioto->db, "accountId", ioto->account);
@@ -4424,10 +4426,8 @@ static void parseProvisioningResponse(Json *json)
 #if SERVICES_SYNC
     rWatch("mqtt:connected", (RWatchProc) postProvisionSync, 0);
 #endif
-    if (!priorAccount) {
-        ioUpdateDevice();
-    }
-    rSignal("device:provisioned", 0);
+    //  Run by event to decrease stack length
+    rStartEvent((REventProc) rSignal, "device:provisioned", 0);
 
 #if SERVICES_KEYS
     ioGetKeys();
@@ -5697,7 +5697,7 @@ static void applyUpdate(char *path)
 {
 #if ME_UNIX_LIKE
     cchar *script;
-    char  command[ME_MAX_FNAME + 32], *output;
+    char  command[ME_MAX_FNAME + 32], *directive;
     int   fd, status;
 
     //  Need hook/way for apps to prevent update
@@ -5711,19 +5711,19 @@ static void applyUpdate(char *path)
     script = jsonGet(ioto->config, 0, "scripts.update", 0);
     if (script) {
         SFMT(command, "%s \"%s\"", script, path);
-        output = rRun(command, &status);
-        rInfo("ioto", "Update returned status %d, output: %s", status, output);
+        directive = rRun(command, &status);
+        rInfo("ioto", "Update returned status %d, directive: \"%s\"", status, directive);
 
         if (status != 0) {
-            rError("update", "Update command failed: %s", output);
+            rError("update", "Update command failed: %s", directive);
         } else {
-            if (smatch(output, "exit\n")) {
+            if (smatch(directive, "exit\n")) {
                 rGracefulStop();
-            } else if (smatch(output, "restart\n")) {
+            } else if (smatch(directive, "restart\n")) {
                 rSetState(R_RESTART);
             }
         }
-        rFree(output);
+        rFree(directive);
     }
     unlink(path);
     rFree(path);
