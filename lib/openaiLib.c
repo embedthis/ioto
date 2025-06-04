@@ -20,6 +20,10 @@
 
 #if ME_COM_OPENAI
 
+/*********************************** Locals ***********************************/
+
+static OpenAI *openai;
+
 /*********************************** Defines **********************************/
 
 #ifndef OPENAI_MAX_URL
@@ -337,5 +341,7 @@ PUBLIC Json *openaiFineTune(cchar *training)
  */
 
 #else
-void dummyOpenAI(){}
+void dummyOpenAI()
+{
+}
 #endif /* ME_COM_OPENAI */

@@ -29,8 +29,6 @@ typedef struct OpenAI {
     int flags;                          /**< OpenAI flags */
 } OpenAI;
 
-static OpenAI *openai;
-
 /**
     OpenAI Agent callback function
     @param name is the name of the agent
