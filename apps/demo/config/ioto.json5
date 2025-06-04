@@ -39,10 +39,14 @@
         service: '1hr',
     },
     demo: {
-        count: 20,
-        delay: '15sec',
         enable: true,
-        type: 'sync',
+        count: 10,
+        delay: '15sec',
+        counter: false,
+        log: false,
+        metric: true,
+        service: false,
+        sync: true,
     },
     limits: {
         reprovision: 5,

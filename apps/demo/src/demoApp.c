@@ -87,23 +87,29 @@ static void demo(void)
             rError("demo", "Cloud connection lost, suspending demo");
             break;
         }
-        rInfo("demo", "Updating Store.counter via MQTT request");
-        ioSetNum("counter", counter);
-
-        rInfo("demo", "Updating Store.counter via DB Sync");
-        if (dbUpdate(ioto->db, "Store",
-                     DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
-                     DB_PARAMS(.upsert = 1)) == 0) {
-            rError("demo", "Cannot update store item in database: %s", dbGetError(ioto->db));
+        if (jsonGetBool(ioto->config, 0, "demo.counter", 0)) {
+            rInfo("demo", "Updating Store.counter via MQTT request");
+            ioSetNum("counter", counter);
         }
 
-        //  Update a cloud metric called "RANDOM" via MQTT request
-        double value = ((double) random() / RAND_MAX) * 10;
-        ioSetMetric("RANDOM", value, "", 0);
+        if (jsonGetBool(ioto->config, 0, "demo.sync", 0)) {
+            rInfo("demo", "Updating Store.counter via DB Sync");
+            if (dbUpdate(ioto->db, "Store",
+                         DB_JSON("{key: 'counter', value: '%d', type: 'number'}", counter),
+                         DB_PARAMS(.upsert = 1)) == 0) {
+                rError("demo", "Cannot update store item in database: %s", dbGetError(ioto->db));
+            }
+        }
 
-        //  Read the metric average for the last 5 minutes back from the cloud
-        value = ioGetMetric("RANDOM", "", "avg", 5 * 60);
-        rInfo("demo", "Random metric has average: %f", value);
+        if (jsonGetBool(ioto->config, 0, "demo.metric", 0)) {
+            //  Update a cloud metric called "RANDOM" via MQTT request
+            double value = ((double) random() / RAND_MAX) * 10;
+            ioSetMetric("RANDOM", value, "", 0);
+            
+            //  Read the metric average for the last 5 minutes back from the cloud
+            value = ioGetMetric("RANDOM", "", "avg", 5 * 60);
+            rInfo("demo", "Random metric has average: %f", value);
+        }
 
         if (!smatch(ioto->product, EVAL_PRODUCT)) {
             /*
@@ -111,19 +117,22 @@ static void demo(void)
                 Updates to these tables require a device cloud with the schema.json5 uploaded.
                 Cannot be used on the eval cloud which is shared among all users.
              */
-            rInfo("demo", "Updating Service table");
-            if (dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", counter), DB_PARAMS(.upsert = 1)) == 0) {
-                rError("demo", "Cannot update service value item in database: %s", dbGetError(ioto->db));
+            if (jsonGetBool(ioto->config, 0, "demo.service", 0)) {
+                rInfo("demo", "Updating Service table");
+                if (dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", counter), DB_PARAMS(.upsert = 1)) == 0) {
+                    rError("demo", "Cannot update service value item in database: %s", dbGetError(ioto->db));
+                }
             }
-
             /*
                 Update the cloud Log table with a new item.
                 The expires field is optional and if not specified, the item will not be deleted.
              */
-            rInfo("demo", "Updating Log table");
-            if (dbCreate(ioto->db, "Log", DB_JSON("{message: 'message-%d', expires: '%ld'}", counter, expires),
-                         NULL) == 0) {
-                rError("demo", "Cannot update log item in database: %s", dbGetError(ioto->db));
+            if (jsonGetBool(ioto->config, 0, "demo.log", 0)) {
+                rInfo("demo", "Updating Log table");
+                if (dbCreate(ioto->db, "Log", DB_JSON("{message: 'message-%d', expires: '%ld'}", counter, expires),
+                             NULL) == 0) {
+                    rError("demo", "Cannot update log item in database: %s", dbGetError(ioto->db));
+                }
             }
         }
 

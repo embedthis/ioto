@@ -796,6 +796,7 @@ PUBLIC int ioProvision();
 
 PUBLIC void ioDeprovision(void);
 PUBLIC int ioConnect(void);
+PUBLIC void ioOnCloudConnect(void);
 PUBLIC void ioDisconnect(void);
 PUBLIC void ioWakeProvisioner(void);
 PUBLIC void ioRelease(MqttRecv *rp);
