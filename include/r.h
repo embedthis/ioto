@@ -601,7 +601,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *data);
     The second and subsequent fibers will yield on this call until the first fiber
     leaves the critical section
     @param access Pointer to a boolean initialized to false.
-    @param deadline Time in ticks to wait for access. Set to zero for an infinite wait.
+    @param deadline Time in ticks to wait for access. Set to zero for an infinite wait. Set to < 0 to not wait.
     @return Zero if access is granted.
     @stability Prototype
  */

@@ -466,7 +466,7 @@ PUBLIC void webAddAccessControlHeader(Web *web);
     @description This routine will cause webWrite calls to be buffered.
         If the buffer is not allocated, it will be allocated to the given size.
         If the buffer is already allocated, it will be resized if required.
-        When webFinalize is called, the content length will be set, the headers will be written, 
+        When webFinalize is called, the content length will be set, the headers will be written,
         and the buffer will be flushed.
     @param web Web object
     @param size Size of the buffer.

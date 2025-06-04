@@ -1474,7 +1474,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
         //  Validate header name
         for (t = key; t < endKey; t++) {
             if (!validHeaderChars[(uchar) * t]) {
-                return NULL;
+                return 0;
             }
         }
         c = tolower(*key);
@@ -3241,7 +3241,6 @@ static void bufferAction(Web *web)
     webWriteFmt(web, "Hello World %d\n", 7);
     webFinalize(web);
 }
-
 
 static void sigAction(Web *web)
 {

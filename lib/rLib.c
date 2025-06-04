@@ -1592,6 +1592,7 @@ PUBLIC ssize rGetFiberStackSize(void)
 /*
     Create a fiber critical section where a fiber can sleep and ensure no other fibers can
     enter the critical section until the first fiber leaves.
+    If deadline is < 0, then don't wait. If deadline is 0, then wait forever. Otherwise wait for the deadline.
  */
 PUBLIC int rEnter(bool *access, Ticks deadline)
 {
