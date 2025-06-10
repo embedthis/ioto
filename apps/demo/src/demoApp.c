@@ -28,11 +28,14 @@ int ioStart(void)
     //  Read settings from the ioto.json5 config file
     if (jsonGetBool(ioto->config, 0, "demo.enable", 0)) {
         ioOnConnect((RWatchProc) demo, 0, 1);
-        /*
-            If offline, this update will be queued for sync to the cloud when connected
-         */
-        dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", 0), DB_PARAMS(.upsert = 1));
         rInfo("demo", "Demo started\n");
+
+        if (jsonGetBool(ioto->config, 0, "demo.service", 0)) {
+            /*
+                If offline, this update will be queued for sync to the cloud when connected
+             */
+            dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", 0), DB_PARAMS(.upsert = 1));
+        }
     } else {
         rInfo("demo", "Demo disabled");
     }
@@ -105,7 +108,7 @@ static void demo(void)
             //  Update a cloud metric called "RANDOM" via MQTT request
             double value = ((double) random() / RAND_MAX) * 10;
             ioSetMetric("RANDOM", value, "", 0);
-            
+
             //  Read the metric average for the last 5 minutes back from the cloud
             value = ioGetMetric("RANDOM", "", "avg", 5 * 60);
             rInfo("demo", "Random metric has average: %f", value);
@@ -135,8 +138,8 @@ static void demo(void)
                 }
             }
         }
-
         rInfo("demo", "Demo iteration %d/%d", counter, count);
+        rPrintf("\n");
 
         if (++counter < count) {
 #if ESP32
@@ -174,15 +177,22 @@ static void deviceCommand(void *ctx, DbItem *item)
 static void customCommand(void *ctx, DbItem *item)
 {
     cchar *parameters, *program;
-    char  cmd[160];
+    char  cmd[160], *output;
+    int   status;
 
     program = dbField(item, "args.program");
     parameters = dbField(item, "args.parameters");
 
-    //  WARNING: no error checking of program or parameters here
-    print("RUN %s %s", program, parameters);
-    SFMT(cmd, "%s %s", program, parameters);
-    system(cmd);
+    /*
+        WARNING: no error checking of program or parameters here
+        REVIEW Acceptable: This is demo code and is not used in production.
+    */
+    print("Run custom command: %s %s", program, parameters ? parameters : "");
+    SFMT(cmd, "%s %s", program, parameters ? parameters : "");
+    status = rRun(cmd, &output);
+    if (status != 0) {
+        rError("demo", "Failed to run custom command: %s", output);
+    }
 }
 
 /*
