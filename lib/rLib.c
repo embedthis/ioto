@@ -37,7 +37,7 @@ PUBLIC int rInit(RFiberProc fn, cvoid *arg)
 {
     int rc;
 
-    srand((uint) time(NULL));
+    srand((uint) rGetHiResTicks());
     rc = rInitOs();
 #if R_USE_FILE
     rc += rInitFile();
@@ -153,6 +153,7 @@ PUBLIC int rWritePid(void)
     if (getuid() == 0) {
         path = "/var/run/" ME_NAME ".pid";
         if ((buf = rReadFile(path, NULL)) != 0) {
+            //  REVIEW Acceptable: acceptable risk reading pid file
             pid = atoi(buf);
             if (kill(pid, 0) == 0) {
                 rError("app", "Already running as PID %d", pid);
@@ -204,6 +205,9 @@ PUBLIC int rInitBuf(RBuf *bp, ssize size)
 {
     assert(bp);
 
+    if (!bp || size <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     memset(bp, 0, sizeof(*bp));
     if (size <= 0) {
         return 0;
@@ -257,22 +261,33 @@ PUBLIC void rFreeBuf(RBuf *bp)
 PUBLIC int rGrowBuf(RBuf *bp, ssize need)
 {
     char  *newbuf;
-    ssize growBy;
+    ssize growBy, newSize;
 
-    if (bp->start > bp->end) {
+    if (need <= 0 || need > ME_R_MAX_BUF) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (bp->buflen + need > ME_R_MAX_BUF) {
+        return R_ERR_MEMORY;
+    }
+    if (bp->start > bp->buf) {
         rCompactBuf(bp);
     }
     growBy = min(ME_R_MAX_BUF, need);
     growBy = max(growBy, ME_BUFSIZE);
-    if ((newbuf = rAlloc(bp->buflen + growBy)) == 0) {
-        assert(!R_ERR_MEMORY);
+
+    if (growBy > 0 && bp->buflen > SSIZE_MAX - growBy) {
+        // Integer overflow
+        return R_ERR_MEMORY;
+    }
+    newSize = bp->buflen + growBy;
+    if ((newbuf = rAlloc(newSize)) == 0) {
         return R_ERR_MEMORY;
     }
     if (bp->buf) {
         memcpy(newbuf, bp->buf, bp->buflen);
     }
     memset(&newbuf[bp->buflen], 0, growBy);
-    bp->buflen += growBy;
+    bp->buflen = newSize;
     bp->end = newbuf + (bp->end - bp->buf);
     bp->start = newbuf + (bp->start - bp->buf);
     bp->endbuf = &newbuf[bp->buflen];
@@ -303,7 +318,11 @@ PUBLIC void rAddNullToBuf(RBuf *bp)
         space = bp->endbuf - bp->end;
         if (space < sizeof(char)) {
             if (rGrowBuf(bp, 1) < 0) {
-                return;
+                if (bp->end > bp->start) {
+                    bp->end--;
+                } else {
+                    return;
+                }
             }
         }
         assert(bp->end < bp->endbuf);
@@ -315,19 +334,21 @@ PUBLIC void rAddNullToBuf(RBuf *bp)
 
 PUBLIC void rAdjustBufEnd(RBuf *bp, ssize size)
 {
+    char *end;
+
     assert(bp->buflen == (bp->endbuf - bp->buf));
     assert(size <= bp->buflen);
     assert((bp->end + size) >= bp->buf);
     assert((bp->end + size) <= bp->endbuf);
 
-    bp->end += size;
-    if (bp->end > bp->endbuf) {
-        assert(bp->end <= bp->endbuf);
-        bp->end = bp->endbuf;
+    if (!bp) {
+        return;
     }
-    if (bp->end < bp->buf) {
-        bp->end = bp->buf;
+    end = bp->end + size;
+    if (end < bp->start || end > bp->endbuf) {
+        return;
     }
+    bp->end = end;
 }
 
 /*
@@ -340,6 +361,9 @@ PUBLIC void rAdjustBufStart(RBuf *bp, ssize size)
     assert((bp->start + size) >= bp->buf);
     assert((bp->start + size) <= bp->end);
 
+    if (!bp || size < 0 || (bp->start + size > bp->end)) {
+        return;
+    }
     bp->start += size;
     if (bp->start > bp->end) {
         bp->start = bp->end;
@@ -469,9 +493,11 @@ PUBLIC int rPutCharToBuf(RBuf *bp, int c)
     char  *cp;
     ssize space;
 
+    if (!bp) {
+        return R_ERR_BAD_ARGS;
+    }
     assert(bp->buflen == (bp->endbuf - bp->buf));
-
-    space = bp->buflen - rGetBufLength(bp);
+    space = rGetBufSpace(bp);
     if (space < sizeof(char)) {
         if (rGrowBuf(bp, 1) < 0) {
             return R_ERR_MEMORY;
@@ -499,6 +525,9 @@ PUBLIC ssize rPutBlockToBuf(RBuf *bp, cchar *str, ssize size)
     assert(size >= 0);
     assert(size < ME_R_MAX_BUF);
 
+    if (!bp || !str || size < 0 || size > MAXINT) {
+        return R_ERR_BAD_ARGS;
+    }
     bytes = 0;
     while (size > 0) {
         space = rGetBufSpace(bp);
@@ -602,6 +631,10 @@ PUBLIC cchar *rBufToString(RBuf *bp)
     return rGetBufStart(bp);
 }
 
+/*
+    Transfers ownership of the buffer contents to the caller.
+    The buffer is freed and the user must not reference it again.
+ */
 PUBLIC char *rBufToStringAndFree(RBuf *bp)
 {
     char *s;
@@ -610,9 +643,13 @@ PUBLIC char *rBufToStringAndFree(RBuf *bp)
         return NULL;
     }
     rAddNullToBuf(bp);
+    if (rGetBufLength(bp) > 0) {
+        rCompactBuf(bp);
+    }
     s = bp->buf;
     bp->buf = 0;
     rFree(bp);
+    // REVIEW Acceptable - transfer ownership of the buffer to the caller
     return s;
 }
 
@@ -1314,21 +1351,21 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 /*
     Guard character for stack overflow detection
  */
-#define GUARD_CHAR 0xFE
+#define GUARD_CHAR              0xFE
 
 /*
     Enable to add some extra debug checks
 
-    #define ME_FIBER_ALLOC_DEBUG 1
+ #define ME_FIBER_ALLOC_DEBUG 1
  */
 
 /*
     Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
  */
-#define FIBER_MIN_STACK  ((size_t) (16 * 1024))
+#define FIBER_MIN_STACK ((size_t) (16 * 1024))
 
 //  Write to stderr to avoid printf
-#define DWRITE(str)      write(2, str, strlen(str))
+#define DWRITE(str) write(2, str, strlen(str))
 
 static RFiber mainFiberState;
 static RFiber *mainFiber;
@@ -1405,6 +1442,10 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
     size = sizeof(RFiber);
     if (uctx_needstack()) {
         size += stackSize;
+        if (size > MAXINT) {
+            rAllocException(R_MEM_STACK, (int) size);
+            return NULL;
+        }
     }
     if ((fiber = rAllocMem(size)) == 0) {
         rAllocException(R_MEM_FAIL, size);
@@ -1629,7 +1670,7 @@ PUBLIC void rCheckFiber(void)
     if (used > peak) {
         peak = (used + 1023) / 1024 * 1024;
 #if ME_FIBER_ALLOC_DEBUG
-        char  num[16];
+        char num[16];
         sitosbuf(num, sizeof(num), peak / 1024, 10);
         DWRITE("Peak fiber stack usage "); DWRITE(num); DWRITE("k (+16k for o/s)\n");
 #endif
@@ -1792,13 +1833,17 @@ PUBLIC char *rReadFile(cchar *path, ssize *lenp)
     ssize       rc;
     int         fd;
 
-    if (stat(path, &sbuf) < 0) {
+    if ((fd = open(path, O_RDONLY | O_BINARY | O_CLOEXEC, 0)) < 0) {
+        rError("runtime", "Cannot open %s", path);
+        return 0;
+    }
+    if (fstat(fd, &sbuf) < 0) {
+        close(fd);
         return 0;
     }
     buf = rAlloc(sbuf.st_size + 1);
-    if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
-        rError("runtime", "Cannot open %s", path);
-        rFree(buf);
+    if (buf == 0) {
+        close(fd);
         return 0;
     }
     if ((rc = read(fd, buf, sbuf.st_size)) < 0) {
@@ -1832,11 +1877,11 @@ PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode)
     if (len < 0) {
         len = slen(buf);
     }
-    if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_BINARY, mode)) < 0) {
+    if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_BINARY | O_CLOEXEC, mode)) < 0) {
         rError("runtime", "Cannot open %s", path);
         return R_ERR_CANT_OPEN;
     }
-    if (write(fd, buf, (int) len) != (int) len) {
+    if (write(fd, buf, len) != len) {
         close(fd);
         return R_ERR_CANT_WRITE;
     }
@@ -1913,6 +1958,7 @@ PUBLIC int rWalkDir(cchar *pathArg, cchar *patternArg, RWalkDirProc callback, vo
 {
     char  *path, *pattern, *prefix, *special;
     ssize len, offset;
+    int   rc;
 
     if (!pathArg || !*pathArg || !patternArg || !*patternArg) {
         return R_ERR_BAD_ARGS;
@@ -1924,7 +1970,9 @@ PUBLIC int rWalkDir(cchar *pathArg, cchar *patternArg, RWalkDirProc callback, vo
         Optimize the pattern by moving any pure (non-wild) prefix onto the path.
      */
     len = strlen(patternArg) + 1;
-    prefix = alloca(len);
+    if ((prefix = rAlloc(len)) == NULL) {
+        return R_ERR_MEMORY;
+    }
     pattern = makeCanonicalPattern(patternArg, prefix, len);
     offset = (flags & R_WALK_RELATIVE) ? ((int) slen(pathArg)) : 0;
 
@@ -1940,16 +1988,25 @@ PUBLIC int rWalkDir(cchar *pathArg, cchar *patternArg, RWalkDirProc callback, vo
         // Split prefix and pattern with wild-cards
         *pattern++ = '\0';
         len = strlen(pathArg) + 1 + strlen(prefix) + 1;
-        path = alloca(len);
+        path = rAlloc(len);
+        if (!path) {
+            rFree(prefix);
+            return R_ERR_MEMORY;
+        }
         if (isAbs(prefix)) {
-            path = prefix;
+            scopy(path, len, prefix);
         } else {
             rJoinFileBuf(path, len, pathArg, prefix);
         }
     } else {
         path = (char*) pathArg;
     }
-    return dirWalk(path, offset, 0, pattern, callback, arg, flags);
+    rc = dirWalk(path, offset, 0, pattern, callback, arg, flags);
+    if (path != pathArg) {
+        rFree(path);
+    }
+    rFree(prefix);
+    return rc;
 }
 
 static int dirCallback(RWalkDirProc callback, void *arg, cchar *path, ssize offset, cchar *name, int flags)
@@ -1971,8 +2028,8 @@ static int dirCallback(RWalkDirProc callback, void *arg, cchar *path, ssize offs
 static int dirWalk(cchar *dir, ssize offset, cchar *file, cchar *pattern, RWalkDirProc callback, void *arg, int flags)
 {
     void  *handle;
-    cchar *name, *nextPat, *path;
-    char  *thisPat;
+    cchar *name, *nextPat;
+    char  *path, *thisPat;
     ssize len;
     bool  isDir, dwild;
     int   add, count, matched, rc;
@@ -1982,11 +2039,15 @@ static int dirWalk(cchar *dir, ssize offset, cchar *file, cchar *pattern, RWalkD
 
     if (file) {
         len = strlen(dir) + 1 + strlen(file) + 1;
-        path = rJoinFileBuf(alloca(len), len, dir, file);
+        path = rAlloc(len);
+        rJoinFileBuf(path, len, dir, file);
     } else {
-        path = dir;
+        path = (char*) dir;
     }
     if ((handle = openDirList(path)) == 0) {
+        if (path != dir) {
+            rFree(path);
+        }
         if (flags & R_WALK_MISSING) {
             return 0;
         }
@@ -1997,7 +2058,7 @@ static int dirWalk(cchar *dir, ssize offset, cchar *file, cchar *pattern, RWalkD
         pattern++;
     }
     len = strlen(pattern) + 1;
-    thisPat = alloca(len);
+    thisPat = rAlloc(len);
     getNextPattern(pattern, thisPat, len, &nextPat, &dwild);
 
     while ((name = getNextFile(handle, flags, &isDir)) != 0) {
@@ -2048,6 +2109,10 @@ static int dirWalk(cchar *dir, ssize offset, cchar *file, cchar *pattern, RWalkD
         }
     }
     closeDirList(handle);
+    if (path != dir) {
+        rFree(path);
+    }
+    rFree(thisPat);
     return count;
 }
 
@@ -2055,6 +2120,7 @@ static int dirWalk(cchar *dir, ssize offset, cchar *file, cchar *pattern, RWalkD
     Get the next path segment of the pattern
     Skip leading double wild segments and set *dwild.
     Returns the next pattern segment in *thisPat and a pointer to the next in *nextPat
+ * dwild is set if the next pattern segment is a double wild '**'.
  */
 static void getNextPattern(cchar *pattern, char *thisPat, ssize thisPatLen, cchar **nextPat, bool *dwild)
 {
@@ -2323,7 +2389,7 @@ PUBLIC char *rGetCwd(void)
 }
 
 /*
-    Insitu dirname
+    Insitu dirname. Path is modified.
  */
 PUBLIC char *rDirname(char *path)
 {
@@ -2406,41 +2472,37 @@ PUBLIC char *rGetAppDir(void)
 
 PUBLIC int rBackupFile(cchar *path, int count)
 {
-    char *base, *from, *to, *ext;
+    char from[ME_MAX_PATH], to[ME_MAX_PATH], base[ME_MAX_PATH];
+    char *ext;
     int  i;
 
-    if (!path) {
+    if (!path || !rFileExists(path)) {
         return R_ERR_BAD_ARGS;
     }
-    base = sclone(path);
+    scopy(base, sizeof(base), path);
     if ((ext = strrchr(base, '.')) != 0) {
         *ext++ = '\0';
+    } else {
+        ext = "";
     }
     for (i = count - 1; i > 0; i--) {
-        if (ext) {
-            from = sfmt("%s-%d.%s", base, i - 1, ext);
-            to = sfmt("%s-%d.%s", base, i, ext);
+        if (*ext) {
+            sfmtbuf(from, sizeof(from), "%s-%d.%s", base, i - 1, ext);
+            sfmtbuf(to, sizeof(to), "%s-%d.%s", base, i, ext);
         } else {
-            from = sfmt("%s-%d", base, i - 1);
-            to = sfmt("%s-%d", base, i);
+            sfmtbuf(from, sizeof(from), "%s-%d", base, i - 1);
+            sfmtbuf(to, sizeof(to), "%s-%d", base, i);
         }
-        unlink(to);
-        rename(from, to);
-        rFree(from);
-        rFree(to);
+        if (rFileExists(from)) {
+            rename(from, to);
+        }
     }
-    if (ext) {
-        from = sfmt("%s", path);
-        to = sfmt("%s-0.%s", base, ext);
+    if (*ext) {
+        sfmtbuf(to, sizeof(to), "%s-0.%s", base, ext);
     } else {
-        from = sfmt("%s", path);
-        to = sfmt("%s-0", path);
+        sfmtbuf(to, sizeof(to), "%s-0", path);
     }
-    unlink(to);
-    rename(from, to);
-    rFree(from);
-    rFree(to);
-    rFree(base);
+    rename(path, to);
     return 0;
 }
 
@@ -2488,8 +2550,8 @@ PUBLIC RList *rGetFiles(cchar *path, cchar *pattern, int flags)
 
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
 {
-    static int count = 0;
-    char       sep;
+    char *path, sep;
+    int  fd;
 
     sep = '/';
     if (!dir || *dir == '\0') {
@@ -2505,7 +2567,29 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
     if (!prefix) {
         prefix = "tmp";
     }
-    return sfmt("%s%c%s-%d.tmp", dir, sep, prefix, count++);
+    path = sfmt("%s%c%s-XXXXXX.tmp", dir, sep, prefix);
+
+#if ME_WIN_LIKE
+    if (_mktemp(path) == NULL) {
+        rError("runtime", "Cannot create temporary filename");
+        rFree(path);
+        return NULL;
+    }
+    if ((fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_BINARY | O_CLOEXEC, 0600)) < 0) {
+        rError("runtime", "Cannot create temporary file %s", path);
+        rFree(path);
+        return NULL;
+    }
+#else
+    if ((fd = mkstemps(path, 4)) < 0) {
+        rError("runtime", "Cannot create temporary file %s", path);
+        rFree(path);
+        return NULL;
+    }
+    fchmod(fd, 0600);
+#endif
+    close(fd);
+    return path;
 }
 
 PUBLIC void rAddDirectory(cchar *token, cchar *path)
@@ -2513,10 +2597,15 @@ PUBLIC void rAddDirectory(cchar *token, cchar *path)
     rAddName(directories, token, rGetFilePath(path), R_DYNAMIC_VALUE);
 }
 
+/*
+    Routine to get a filename from a path for internal use only.
+    Not to be used for external input.
+ */
 PUBLIC char *rGetFilePath(cchar *path)
 {
     char  token[ME_MAX_FNAME];
     cchar *cp, *dir;
+    char  *result;
 
     if (!path) {
         return NULL;
@@ -2530,12 +2619,16 @@ PUBLIC char *rGetFilePath(cchar *path)
         if ((dir = rLookupName(directories, token)) == 0) {
             dir = token;
         }
-        if (cp) {
-            return rJoinFile(dir, &cp[1]);
-        }
-        return sclone(dir);
+        result = cp ? rJoinFile(dir, &cp[1]) : sclone(dir);
+    } else {
+        result = sclone(path);
     }
-    return sclone(path);
+    /*
+        REVIEW Acceptable: Do not flag this as a security issue.
+        We permit paths like "../file" as this is used to access files in the parent and sibling directories.
+        It is the callers responsibility to validate and check user paths before calling this function.
+     */
+    return result;
 }
 
 PUBLIC int rFlushFile(int fd)
@@ -2756,9 +2849,11 @@ PUBLIC RName *rAddName(RHash *hash, cchar *name, void *ptr, int flags)
 
 PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, ssize nameSize, char *value, ssize valueSize)
 {
-    name = snclone(name, nameSize);
-    value = snclone(value, valueSize);
-    return rAddName(hash, name, value, R_DYNAMIC_NAME | R_DYNAMIC_VALUE);
+    char *cname, *cvalue;
+
+    cname = snclone(name, nameSize);
+    cvalue = snclone(value, valueSize);
+    return rAddName(hash, cname, cvalue, R_DYNAMIC_NAME | R_DYNAMIC_VALUE);
 }
 
 PUBLIC RName *rAddFmtName(RHash *hash, cchar *name, int flags, cchar *fmt, ...)
@@ -2786,7 +2881,7 @@ PUBLIC ssize rIncName(RHash *hash, cchar *name, int64 value)
     ssize current;
 
     if ((np = rLookupNameEntry(hash, name)) != 0) {
-        current = (ssize) np;
+        current = (ssize) np->value;
         rAddName(hash, name, (void*) (ssize) (current + value), 0);
     } else {
         current = 0;
@@ -2805,7 +2900,9 @@ PUBLIC RHash *rCloneHash(RHash *master)
     void  *item;
 
     assert(master);
-
+    if (!master) {
+        return 0;
+    }
     if ((hash = rAllocHash(master->size, master->flags)) == 0) {
         return 0;
     }
@@ -2916,8 +3013,12 @@ static void growNames(RHash *hash, ssize size)
         assert(hash->size < size);
         size = hash->size + ME_R_MIN_HASH;
     }
+    if (size > SIZE_MAX / sizeof(RName)) {
+        rAllocException(R_MEM_FAIL, size * sizeof(RName));
+        return;
+    }
     len = size * sizeof(RName);
-    hash->names = realloc(hash->names, len);
+    hash->names = rRealloc(hash->names, len);
 
     inc = size - hash->size;
     memset(&hash->names[hash->size], 0, inc * sizeof(RName));
@@ -3163,6 +3264,10 @@ PUBLIC RList *rAllocList(int len, int flags)
     lp->items = 0;
     lp->flags = flags;
     if (len > 0) {
+        if (len > SIZE_MAX / sizeof(void)) {
+            rAllocException(R_MEM_FAIL, len * sizeof(void));
+            return 0;
+        }
         size = len * sizeof(void*);
         if (lp->items == 0) {
             if ((lp->items = rAlloc(size)) == 0) {
@@ -3198,6 +3303,9 @@ PUBLIC void *rSetItem(RList *lp, int index, cvoid *item)
     assert(lp && lp->length >= 0);
     assert(index >= 0);
 
+    if (!lp || index < 0 || lp->capacity < 0 || lp->length < 0) {
+        return 0;
+    }
     length = lp->length;
     if (index >= (int) length) {
         length = index + 1;
@@ -3231,6 +3339,9 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
     assert(lp && lp->capacity >= 0);
     assert(lp && lp->length >= 0);
 
+    if (!lp || lp->capacity < 0 || lp->length < 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (lp->length >= lp->capacity) {
         if (rGrowList(lp, lp->length + 1) < 0) {
             return R_ERR_TOO_MANY;
@@ -3249,6 +3360,9 @@ PUBLIC int rAddNullItem(RList *lp)
     assert(lp && lp->capacity >= 0);
     assert(lp && lp->length >= 0);
 
+    if (!lp || lp->capacity < 0 || lp->length < 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (lp->length != 0 && lp->items[lp->length - 1] == 0) {
         index = lp->length - 1;
     } else {
@@ -3277,6 +3391,9 @@ PUBLIC int rInsertItemAt(RList *lp, int index, cvoid *item)
     assert(lp && lp->length >= 0);
     assert(index >= 0);
 
+    if (!lp || lp->capacity < 0 || lp->length < 0 || index < 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (index < 0) {
         index = 0;
     }
@@ -3337,8 +3454,8 @@ PUBLIC int rRemoveItemAt(RList *lp, int index)
     assert(lp && index >= 0 && index < (int) lp->capacity);
     assert(lp && lp->length > 0);
 
-    if (index < 0 || index >= (int) lp->length) {
-        return R_ERR_CANT_FIND;
+    if (!lp || lp->capacity <= 0 || index < 0 || index >= (int) lp->length) {
+        return R_ERR_BAD_ARGS;
     }
     items = lp->items;
     if (lp->flags & (R_DYNAMIC_VALUE | R_TEMPORAL_VALUE) && items[index]) {
@@ -3359,7 +3476,9 @@ PUBLIC int rRemoveStringItem(RList *lp, cchar *str)
     int index;
 
     assert(lp);
-
+    if (!lp || !str) {
+        return R_ERR_BAD_ARGS;
+    }
     index = rLookupStringItem(lp, str);
     if (index < 0) {
         return index;
@@ -3387,7 +3506,7 @@ PUBLIC void *rGetNextItem(RList *lp, int *next)
     assert(next);
     assert(next && *next >= 0);
 
-    if (lp == 0) {
+    if (!lp || !next || *next < 0) {
         return 0;
     }
     index = *next;
@@ -3416,15 +3535,16 @@ PUBLIC void rClearList(RList *lp)
 
     assert(lp);
 
-    if (lp) {
-        if (lp->flags & (R_DYNAMIC_VALUE | R_TEMPORAL_VALUE)) {
-            for (ITERATE_ITEMS(lp, data, next)) {
-                rFree(data);
-                lp->items[next] = 0;
-            }
-        }
-        lp->length = 0;
+    if (!lp) {
+        return;
     }
+    if (lp->flags & (R_DYNAMIC_VALUE | R_TEMPORAL_VALUE)) {
+        for (ITERATE_ITEMS(lp, data, next)) {
+            rFree(data);
+            lp->items[next] = 0;
+        }
+    }
+    lp->length = 0;
 }
 
 PUBLIC int rLookupItem(RList *lp, cvoid *item)
@@ -3432,7 +3552,9 @@ PUBLIC int rLookupItem(RList *lp, cvoid *item)
     uint i;
 
     assert(lp);
-
+    if (!lp) {
+        return R_ERR_BAD_ARGS;
+    }
     for (i = 0; i < lp->length; i++) {
         if (lp->items[i] == item) {
             return i;
@@ -3447,6 +3569,9 @@ PUBLIC int rLookupStringItem(RList *lp, cchar *str)
 
     assert(lp);
 
+    if (!lp) {
+        return R_ERR_BAD_ARGS;
+    }
     for (i = 0; i < lp->length; i++) {
         if (smatch(lp->items[i], str)) {
             return i;
@@ -3477,7 +3602,7 @@ PUBLIC int rGrowList(RList *lp, int size)
     }
     memsize = len * sizeof(void*);
 
-    if ((lp->items = realloc(lp->items, memsize)) == NULL) {
+    if ((lp->items = rRealloc(lp->items, memsize)) == NULL) {
         assert(!R_ERR_MEMORY);
         return R_ERR_MEMORY;
     }
@@ -4068,14 +4193,15 @@ PUBLIC void rBreakpoint(void)
 
 PUBLIC void rLog(cchar *type, cchar *source, cchar *fmt, ...)
 {
+    char *buf;
+
     if (rEmitLog(type, source)) {
         va_list args;
-        char    *buf;
         va_start(args, fmt);
-        buf = rVsnprintf(NULL, -1, fmt, args);
-        // vasprintf(&buf, fmt, args);
-        (rLogHandler) (type, source, buf);
-        rFree(buf);
+        if (rVsaprintf(&buf, -1, fmt, args) >= 0) {
+            (rLogHandler) (type, source, buf);
+            rFree(buf);
+        }
         va_end(args);
     }
 }
@@ -4084,10 +4210,10 @@ PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args)
 {
     char *buf;
 
-    buf = rVsnprintf(NULL, -1, fmt, args);
-    // vasprintf(&buf, fmt, args);
-    (rLogHandler) (type, source, buf);
-    rFree(buf);
+    if (rVsaprintf(&buf, -1, fmt, args) >= 0) {
+        (rLogHandler) (type, source, buf);
+        rFree(buf);
+    }
 }
 
 /*
@@ -4467,6 +4593,8 @@ PUBLIC void dump(cchar *msg, uchar *data, ssize len)
 
 /*********************************** Locals ***********************************/
 
+#define R_MAX_CERT_SIZE (64 * 1024)
+
 typedef struct Rtls {
     RSocket *sock;                         /* Owning socket */
     Socket fd;                             /* Socket file descriptor */
@@ -4609,6 +4737,7 @@ PUBLIC void rCloseTls(Rtls *tp)
 PUBLIC int rConfigTls(Rtls *tp, bool server)
 {
     RSocketCustom custom;
+    char          *alpn, *last, *token;
     int           flags, rc;
 
     if (tp->configured) {
@@ -4693,7 +4822,11 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         //  Must be null terminated
         rFreeList(tp->alpnList);
         tp->alpnList = rAllocList(2, R_DYNAMIC_VALUE);
-        rAddItem(tp->alpnList, sclone(tp->alpn));
+        alpn = sclone(tp->alpn);
+        for (token = stok(alpn, ", \t", &last); token; token = stok(NULL, ", \t", &last)) {
+            rAddItem(tp->alpnList, sclone(token));
+        }
+        rFree(alpn);
         mbedtls_ssl_conf_alpn_protocols(&tp->conf, (cchar**) tp->alpnList->items);
     }
     if ((custom = rGetSocketCustom()) != NULL) {
@@ -4815,13 +4948,15 @@ PUBLIC bool rIsTlsConnected(Rtls *tp)
 
 PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
 {
-    int rc;
+    int    rc;
+    size_t toRead;
 
     if (tp->fd == INVALID_SOCKET) {
         return R_ERR_CANT_READ;
     }
     while (1) {
-        rc = mbedtls_ssl_read(&tp->ctx, buf, (int) len);
+        toRead = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
+        rc = mbedtls_ssl_read(&tp->ctx, buf, toRead);
         if (rc < 0) {
             if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
                 rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
@@ -4849,8 +4984,9 @@ PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
  */
 PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
 {
-    ssize totalWritten;
-    int   rc;
+    ssize  totalWritten;
+    int    rc;
+    size_t toWrite;
 
     if (len <= 0) {
         return R_ERR_BAD_ARGS;
@@ -4858,7 +4994,8 @@ PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
     totalWritten = 0;
     rc = 0;
     do {
-        rc = mbedtls_ssl_write(&tp->ctx, (uchar*) buf, (int) len);
+        toWrite = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
+        rc = mbedtls_ssl_write(&tp->ctx, (uchar*) buf, toWrite);
         if (rc <= 0) {
             if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
                 rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
@@ -4902,6 +5039,11 @@ static int *getCipherSuite(char *ciphers)
         Get all ciphers supported by MbedTLS
      */
     for (nciphers = 0, cp = mbedtls_ssl_list_ciphersuites(); cp && *cp; cp++, nciphers++) {
+    }
+
+    if (nciphers + 1 > MAXINT) {
+        rError("runtime", "mbedtls getCipherSuite integer overflow");
+        return NULL;
     }
     result = rAlloc((nciphers + 1) * sizeof(int));
 
@@ -4949,6 +5091,10 @@ static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
         cp = (uchar*) &path[1];
         buf = 0;
     } else {
+        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+            rSetSocketError(tp->sock, "Certificate file is too large %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
         if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
             rSetSocketError(tp->sock, "Unable to read certificate %s", path);
             return R_ERR_CANT_INITIALIZE;
@@ -4963,6 +5109,7 @@ static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
         rSetSocketError(tp->sock, "Unable to parse certificate %s", path);
         if (buf) {
             memset(buf, 0, len);
+            rFree(buf);
         }
         return R_ERR_CANT_INITIALIZE;
     }
@@ -4983,6 +5130,10 @@ static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
         cp = (uchar*) &path[1];
         buf = 0;
     } else {
+        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+            rSetSocketError(tp->sock, "Key file is too large %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
         if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
             rSetSocketError(tp->sock, "Unable to read key %s", path);
             return R_ERR_CANT_INITIALIZE;
@@ -4992,10 +5143,11 @@ static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
     if (scontains((char*) cp, "-----BEGIN ")) {
         len++;
     }
-    if (mbedtls_pk_parse_key(key, cp, len, NULL, 0, mbedtls_ctr_drbg_random, NULL) != 0) {
+    if (mbedtls_pk_parse_key(key, cp, len, NULL, 0, mbedtls_ctr_drbg_random, &ctr) != 0) {
         rSetSocketError(tp->sock, "Unable to parse key %s", path);
         if (buf) {
             memset(buf, 0, len);
+            rFree(buf);
         }
         return R_ERR_CANT_INITIALIZE;
     }
@@ -5011,6 +5163,10 @@ static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path)
     uchar *buf;
     ssize len;
 
+    if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+        rSetSocketError(tp->sock, "CRL file is too large %s", path);
+        return R_ERR_CANT_INITIALIZE;
+    }
     if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
         rSetSocketError(tp->sock, "Unable to read crl %s", path);
         return R_ERR_CANT_INITIALIZE;
@@ -5021,9 +5177,11 @@ static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path)
     if (mbedtls_x509_crl_parse(crl, buf, len) != 0) {
         memset(buf, 0, len);
         rSetSocketError(tp->sock, "Unable to parse crl %s", path);
+        rFree(buf);
         return R_ERR_CANT_INITIALIZE;
     }
     memset(buf, 0, len);
+    rFree(buf);
     return 0;
 }
 
@@ -5170,13 +5328,24 @@ static RMemProc memHandler;
 
 PUBLIC void *rAllocMem(size_t size)
 {
-    void *ptr;
+    void   *ptr;
+    size_t aligned;
 
-    if (size > SIZE_MAX - 8) {  // Check for overflow
+    // Check for overflow before alignment
+    if (size > SIZE_MAX - 8) {
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
-    size = R_ALLOC_ALIGN(size, 8);
+    if (size == 0) {
+        //  Ensure that we allocate at least 1 byte
+        size = 1;
+    }
+    aligned = R_ALLOC_ALIGN(size, 8);
+    if (aligned < size) {
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
+    size = aligned;
 #if ESP32
     //  Allocate memory from PSIRAM
     ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
@@ -5204,6 +5373,9 @@ PUBLIC void *rMemdup(cvoid *ptr, size_t usize)
 {
     char *newp;
 
+    if (ptr == NULL) {
+        return NULL;
+    }
     if ((newp = rAlloc(usize)) != 0) {
         memcpy(newp, ptr, usize);
     }
@@ -5216,8 +5388,6 @@ PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len)
 
     assert(s1);
     assert(s2);
-    assert(s1Len >= 0);
-    assert(s2Len >= 0);
 
     if ((rc = memcmp(s1, s2, min(s1Len, s2Len))) == 0) {
         if (s1Len < s2Len) {
@@ -5230,19 +5400,18 @@ PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len)
 }
 
 /*
-    Insitu copy where src and destination overlap
+    Support Insitu copy where src and destination overlap
  */
 PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes)
 {
     assert(dest);
-    assert(destMax <= 0 || destMax >= nbytes);
     assert(src);
-    assert(nbytes >= 0);
+
     if (!dest || !src) {
         return 0;
     }
-    if (destMax > 0 && nbytes > destMax) {
-        assert(!R_ERR_WONT_FIT);
+    if (nbytes > destMax) {
+        rAllocException(R_ERR_WONT_FIT, nbytes);
         return 0;
     }
     if (nbytes > 0) {
@@ -5255,9 +5424,19 @@ PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes)
 
 PUBLIC void *rReallocMem(void *mem, size_t size)
 {
-    void *ptr;
+    void   *ptr;
+    size_t aligned;
 
-    size = R_ALLOC_ALIGN(size, 8);
+    if (size > SIZE_MAX - 8) {
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
+    aligned = R_ALLOC_ALIGN(size, 8);
+    if (aligned < size) {
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
+    size = aligned;
     if ((ptr = realloc(mem, size)) == 0) {
         rAllocException(R_MEM_FAIL, size);
         return 0;
@@ -5341,7 +5520,8 @@ PUBLIC void rAllocException(int cause, size_t size)
                 SSL_OP_SINGLE_ECDH_USE | \
                 SSL_OP_NO_SSLv2 | \
                 SSL_OP_NO_SSLv3 | \
-                SSL_OP_NO_TLSv1)
+                SSL_OP_NO_TLSv1 | \
+                SSL_OP_NO_TLSv1_1)
 #endif
 #ifndef ME_R_TLS_CLEAR_OPTIONS
     #define ME_R_TLS_CLEAR_OPTIONS 0
@@ -5515,7 +5695,7 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
 
     tp->server = server;
 
-    if ((ctx = SSL_CTX_new(SSLv23_method())) == 0) {
+    if ((ctx = SSL_CTX_new(TLS_method())) == 0) {
         return rSetSocketError(tp->sock, "Unable to create SSL context");
     }
     tp->ctx = ctx;
@@ -5597,6 +5777,7 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         if (tp->server) {
             SSL_CTX_set_alpn_select_cb(ctx, selectAlpn, (void*) tp);
         } else {
+            // NOTE: This ALPN protocol string format only supports one protocol
             SFMT(abuf, "%c%s", (uchar) slen(tp->alpn), tp->alpn);
             SSL_CTX_set_alpn_protos(ctx, (cuchar*) abuf, (int) slen(abuf));
         }
@@ -5638,6 +5819,7 @@ static int selectAlpn(SSL *ssl, cuchar **out, uchar *outlen, cuchar *in, uint in
     }
     /*
         WARNING: this appalling API expects pbuf to be static / persistent and sets *out to refer to it.
+        NOTE: ALPN protocol string only supports one protocol.
      */
     if (SSL_select_next_proto((uchar**) out, outlen, (cuchar*) alpn, (int) slen(alpn), in,
                               inlen) != OPENSSL_NPN_NEGOTIATED) {
@@ -5753,13 +5935,14 @@ static int handshake(Rtls *tp, Ticks deadline)
  */
 PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
 {
-    int rc, error;
+    int rc, error, toRead;
 
     if (tp->handle == 0) {
         return R_ERR_BAD_STATE;
     }
     ERR_clear_error();
-    rc = SSL_read(tp->handle, buf, (int) len);
+    toRead = (len > INT_MAX) ? INT_MAX : (int) len;
+    rc = SSL_read(tp->handle, buf, toRead);
     if (rc <= 0) {
         error = SSL_get_error(tp->handle, rc);
         if (!(error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_CONNECT || error == SSL_ERROR_WANT_ACCEPT)) {
@@ -5781,7 +5964,7 @@ PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
 PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
 {
     ssize totalWritten;
-    int   error, rc;
+    int   error, rc, toWrite;
 
     if (tp->bio == 0 || tp->handle == 0 || len <= 0) {
         return R_ERR_BAD_STATE;
@@ -5790,7 +5973,8 @@ PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
 
     do {
         ERR_clear_error();
-        rc = SSL_write(tp->handle, buf, (int) len);
+        toWrite = (len > INT_MAX) ? INT_MAX : (int) len;
+        rc = SSL_write(tp->handle, buf, toWrite);
         if (rc <= 0) {
             error = SSL_get_error(tp->handle, rc);
             if (error != SSL_ERROR_WANT_WRITE) {
@@ -5911,7 +6095,10 @@ static int parseCert(Rtls *tp, cchar *certFile)
             rc = rSetSocketError(tp->sock, "Unable to load certificate %s", certFile);
         }
     }
-    free(buf);
+    if (buf) {
+        memset(buf, 0, len);
+        free(buf);
+    }
     return rc;
 }
 
@@ -5997,7 +6184,10 @@ static int parseKey(Rtls *tp, SSL_CTX *ctx, cchar *keyFile)
                loadKey(tp, ctx, buf, len, FORMAT_DER, keyFile) < 0) {
         rc = rSetSocketError(tp->sock, "Unable to load key %s", keyFile);
     }
-    rFree(buf);
+    if (buf) {
+        memset(buf, 0, len);
+        rFree(buf);
+    }
     return rc;
 }
 
@@ -6239,6 +6429,12 @@ void opensslDummy(void)
 
 
 
+/*
+    WARNING: The R_OWN_PRINTF=0 build configuration is not recommended for production use.
+    It relies on the system's printf implementation, which may be vulnerable to format string attacks
+    (e.g., using "%n"). The default build uses a secure, smaller, custom printf implementation.
+    Disabling this should only be done with a full understanding of the security implications.
+ */
 #ifndef R_OWN_PRINTF
     #define R_OWN_PRINTF 1
 #endif
@@ -6332,7 +6528,6 @@ PUBLIC char classMap[] = {
 typedef struct PContext {
     uchar *buf;
     uchar *endbuf;
-    uchar *start;
     uchar *end;
     ssize growBy;
     ssize maxsize;
@@ -6342,10 +6537,12 @@ typedef struct PContext {
     int width;
     int upper;
     int floating;
+    int overflow;
 } PContext;
 
 #define BPUT(ctx, c) \
         do { \
+            (ctx)->len++; \
             /* Less one to allow room for the null */ \
             if ((ctx)->end >= ((ctx)->endbuf - sizeof(char))) { \
                 if (growBuf(ctx) > 0) { \
@@ -6358,7 +6555,7 @@ typedef struct PContext {
 
 #define BPUT_NULL(ctx) \
         do { \
-            if ((ctx)->end > (ctx)->endbuf) { \
+            if ((ctx)->end >= (ctx)->endbuf) { \
                 if (growBuf(ctx) > 0) { \
                     *(ctx)->end = '\0'; \
                 } \
@@ -6371,6 +6568,7 @@ typedef struct PContext {
 
 static int  getNextState(char c, int state);
 static int  growBuf(PContext *ctx);
+static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args);
 static void outFloat(PContext *ctx, char specChar, double value);
 static void outNum(PContext *ctx, int radix, int64 value);
 static void outString(PContext *ctx, char *str, ssize len);
@@ -6385,95 +6583,113 @@ PUBLIC ssize rPrintf(cchar *fmt, ...)
     ssize   len;
 
     va_start(ap, fmt);
-    buf = rVsnprintf(NULL, -1, fmt, ap);
+    len = rVsaprintf(&buf, -1, fmt, ap);
     va_end(ap);
-    if (buf != 0) {
-        len = write(1, buf, (int) slen(buf));
+
+    if (len > 0) {
+        len = write(1, buf, len);
         rFree(buf);
-    } else {
-        len = -1;
     }
     return len;
 }
 
 PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...)
 {
-    ssize   len;
     va_list ap;
     char    *buf;
+    ssize   len;
 
     if (fp == 0) {
         return R_ERR_BAD_HANDLE;
     }
     va_start(ap, fmt);
-    buf = rVsnprintf(NULL, -1, fmt, ap);
+    len = rVsaprintf(&buf, -1, fmt, ap);
     va_end(ap);
-    if (buf) {
-        len = write(fileno(fp), buf, (int) slen(buf));
+
+    if (len > 0) {
+        len = write(fileno(fp), buf, len);
         rFree(buf);
-    } else {
-        len = -1;
     }
     return len;
 }
 
-PUBLIC char *rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...)
+PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...)
 {
     va_list ap;
+    ssize   len;
 
     va_start(ap, fmt);
-    buf = rVsnprintf(buf, maxsize, fmt, ap);
+    len = rVsnprintf(buf, maxsize, fmt, ap);
     va_end(ap);
-    return buf;
+    return len;
 }
 
 #if R_OWN_PRINTF
+PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
+{
+    return innerSprintf(&buf, maxsize, spec, args);
+}
+
+PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
+{
+    *buf = 0;
+    return innerSprintf(buf, maxsize, spec, args);
+}
+
 /*
-    If buf is null, allocate and caller must free
+    Format a string into a buffer. If *buf is null, allocate and caller must free.
+    Returns the count of characters stored in buf or a negative error code for memory errors.
+    If a buffer is supplied and is not large enough, the return value will be >= maxsize.
  */
-PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
+static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
 {
     PContext ctx;
     ssize    len;
     int64    iValue;
     uint64   uValue;
+    bool     allocating;
     int      state;
     char     c;
 
+    assert(buf);
+    if (!buf) {
+        return R_ERR_BAD_ARGS;
+    }
     if (spec == 0) {
         spec = "";
     }
-    if (buf != 0) {
-        if (maxsize < 0) {
-            maxsize = 0;
+    allocating = (*buf == 0);
+    if (!allocating) {
+        //  User supplied buffer
+        if (maxsize <= 0) {
+            return R_ERR_BAD_ARGS;
         }
-        ctx.buf = (uchar*) buf;
+        ctx.buf = (uchar*) *buf;
         ctx.endbuf = &ctx.buf[maxsize];
         ctx.growBy = -1;
     } else {
-        if (maxsize < 0) {
-            maxsize = MAXINT;
+        if (maxsize <= 0) {
+            //  No limit
+            maxsize = 0;
+            len = ME_BUFSIZE;
         } else {
-            maxsize = ME_BUFSIZE * 8;
+            len = min(ME_BUFSIZE, maxsize);
         }
-        len = min(ME_BUFSIZE, maxsize);
-        if ((buf = rAlloc(len)) == 0) {
-            return 0;
+        if ((ctx.buf = rAlloc(len)) == 0) {
+            return R_ERR_MEMORY;
         }
-        ctx.buf = (uchar*) buf;
         ctx.endbuf = &ctx.buf[len];
-        ctx.growBy = min(ME_BUFSIZE, maxsize - len);
+        ctx.growBy = ME_BUFSIZE;
     }
+    ctx.maxsize = maxsize;
     ctx.precision = 0;
     ctx.floating = 0;
     ctx.width = 0;
     ctx.upper = 0;
-    ctx.maxsize = maxsize;
-    ctx.start = ctx.buf;
-    ctx.end = ctx.buf;
     ctx.len = 0;
     ctx.flags = 0;
-    *ctx.start = '\0';
+    ctx.end = ctx.buf;
+    *ctx.buf = '\0';
 
     state = STATE_NORMAL;
 
@@ -6526,7 +6742,11 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
                 }
             } else {
                 while (isdigit((uchar) c)) {
-                    ctx.width = ctx.width * 10 + (c - '0');
+                    if (ctx.width > (INT_MAX - (c - '0')) / 10) {
+                        ctx.width = INT_MAX;
+                    } else {
+                        ctx.width = ctx.width * 10 + (c - '0');
+                    }
                     c = *spec++;
                 }
                 spec--;
@@ -6542,7 +6762,11 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
                 ctx.precision = va_arg(args, int);
             } else {
                 while (isdigit((uchar) c)) {
-                    ctx.precision = ctx.precision * 10 + (c - '0');
+                    if (ctx.precision > (INT_MAX - (c - '0')) / 10) {
+                        ctx.precision = INT_MAX;
+                    } else {
+                        ctx.precision = ctx.precision * 10 + (c - '0');
+                    }
                     c = *spec++;
                 }
                 spec--;
@@ -6643,18 +6867,20 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
                 }
                 break;
 
-            case 'n':       /* Count of chars seen thus far */
+#if 0 && DEPRECATE    // SECURITY
+            case 'n': /* Count of chars seen thus far */
                 if (ctx.flags & SPRINTF_SHORT) {
                     short *count = va_arg(args, short*);
-                    *count = (int) (ctx.end - ctx.start);
+                    *count = (int) (ctx.end - ctx.buf);
                 } else if (ctx.flags & SPRINTF_LONG) {
                     long *count = va_arg(args, long*);
-                    *count = (int) (ctx.end - ctx.start);
+                    *count = (int) (ctx.end - ctx.buf);
                 } else {
                     int *count = va_arg(args, int*);
-                    *count = (int) (ctx.end - ctx.start);
+                    *count = (int) (ctx.end - ctx.buf);
                 }
                 break;
+#endif
 
             case 'p':       /* Pointer */
 #if ME_64
@@ -6672,18 +6898,27 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
         }
     }
     BPUT_NULL(&ctx);
-    return (char*) ctx.buf;
+    *buf = (char*) ctx.buf;
+
+    if (allocating) {
+        if (ctx.maxsize > 0 && ctx.len >= ctx.maxsize) {
+            rFree(ctx.buf);
+            *buf = NULL;
+            return R_ERR_MEMORY;
+        }
+    }
+    return ctx.len;
 }
 
 static int getNextState(char c, int state)
 {
-    int chrClass;
+    int chrClass, index;
 
-    if (c < ' ' || c > 'z') {
+    index = c - ' ';
+    if (index < 0 || index >= (int) sizeof(classMap)) {
         chrClass = CLASS_NORMAL;
     } else {
-        assert((c - ' ') < (int) sizeof(classMap));
-        chrClass = classMap[(c - ' ')];
+        chrClass = classMap[index];
     }
     assert((chrClass * STATE_COUNT + state) < (int) sizeof(stateMap));
     state = stateMap[chrClass * STATE_COUNT + state];
@@ -6699,8 +6934,7 @@ static void outString(PContext *ctx, char *str, ssize len)
         str = "null";
         len = 4;
     } else if (ctx->flags & SPRINTF_LEAD_PREFIX) {
-        str++;
-        len = (ssize) * str;
+        len = slen(str);
     } else if (ctx->precision >= 0) {
         for (cp = str, len = 0; len < ctx->precision; len++) {
             if (*cp++ == '\0') {
@@ -6731,6 +6965,7 @@ static void outNum(PContext *ctx, int radix, int64 value)
     char        *cp, *endp;
     cchar       *prefix;
     int         letter, len, leadingZeros, i, fill, precision;
+    uint64      uval;
 
     cp = endp = &numBuf[sizeof(numBuf) - 1];
     *endp = '\0';
@@ -6748,14 +6983,18 @@ static void outNum(PContext *ctx, int radix, int64 value)
         prefix = "+";
     } else if (value < 0) {
         prefix = "-";
-        value = -value;
     }
     /*
         Convert to ascii
      */
+    if (value < 0) {
+        uval = (value == INT64_MIN) ? (uint64) INT64_MAX + 1 : (uint64) -value;
+    } else {
+        uval = value;
+    }
     if (radix == 16) {
         do {
-            letter = (int) (value % radix);
+            letter = (int) (uval % radix);
             if (letter > 9) {
                 if (ctx->flags & SPRINTF_UPPER_CASE) {
                     letter = 'A' + letter - 10;
@@ -6766,23 +7005,25 @@ static void outNum(PContext *ctx, int radix, int64 value)
                 letter += '0';
             }
             *--cp = letter;
-            value /= radix;
-        } while (value > 0);
+            uval /= radix;
+        } while (uval != 0);
 
     } else if (ctx->flags & SPRINTF_COMMA) {
         i = 1;
         do {
-            *--cp = '0' + (int) (value % radix);
-            value /= radix;
-            if ((i++ % 3) == 0 && value > 0) {
+            int digit = (int) (uval % radix);
+            *--cp = '0' + digit;
+            uval /= radix;
+            if ((i++ % 3) == 0 && uval != 0) {
                 *--cp = ',';
             }
-        } while (value > 0);
+        } while (uval != 0);
     } else {
         do {
-            *--cp = '0' + (int) (value % radix);
-            value /= radix;
-        } while (value > 0);
+            int digit = (int) (uval % radix);
+            *--cp = '0' + digit;
+            uval /= radix;
+        } while (uval != 0);
     }
 
     len = (int) (endp - cp);
@@ -6799,7 +7040,6 @@ static void outNum(PContext *ctx, int radix, int64 value)
         if (prefix) {
             fill -= (int) slen(prefix);
         }
-        // fill -= leadingZeros;
         if (fill < 0) {
             fill = 0;
         }
@@ -6845,9 +7085,12 @@ static void outNum(PContext *ctx, int radix, int64 value)
 
 /*
     Does not handle %e, %g
+    REVIEW Acceptable - This uses recursion to handle the fractional part, but it is limited and acceptable.
  */
-static void outFloat(PContext *ctx, char specChar, double value)
+static void outFloat(PContext *ctx, char specchar, double value)
 {
+    double fpart, round;
+    char   digit;
     uint64 ipart;
     uchar  *mark;
 
@@ -6858,19 +7101,19 @@ static void outFloat(PContext *ctx, char specChar, double value)
     if (ctx->precision > 0) {
         BPUT(ctx, '.');
     }
-    double fpart = value - (double) ipart;
+    fpart = value - (double) ipart;
     if (fpart < 0) {
         fpart = -fpart;
     }
     for (int i = 0; i < ctx->precision; i++) {
         fpart *= 10;
-        char digit = (int) fpart;
+        digit = (int) fpart;
         if (i == ctx->precision - 1 && fpart * 10 >= 5) {
             if ((fpart - digit + 0.5) >= 1) {
                 ctx->end = mark;
-                double round = 0.5 / pow(10, ctx->precision);
+                round = 0.5 / pow(10, ctx->precision);
                 value += round;
-                outFloat(ctx, specChar, value);
+                outFloat(ctx, specchar, value);
                 break;
             }
         }
@@ -6880,41 +7123,42 @@ static void outFloat(PContext *ctx, char specChar, double value)
 }
 
 /*
-    Grow the buffer to fit new data. Return 1 if the buffer can grow.
-    Grow using the growBy size specified when creating the buffer.
+    grow the buffer to fit new data. return 1 if the buffer can grow.
+    grow using the growby size specified when creating the buffer.
  */
 static int growBuf(PContext *ctx)
 {
     uchar *newbuf;
-    ssize buflen;
+    ssize buflen, newSize;
 
-    buflen = (int) (ctx->endbuf - ctx->buf);
-    if (ctx->maxsize >= 0 && buflen >= ctx->maxsize) {
-        return 0;
+    buflen = (ssize) (ctx->endbuf - ctx->buf);
+    if (ctx->maxsize > 0 && buflen >= ctx->maxsize) {
+        return R_ERR_BAD_ARGS;
     }
     if (ctx->growBy <= 0) {
-        /*
-            User supplied buffer
-         */
+        //  User supplied buffer
         return 0;
     }
-    if ((newbuf = rAlloc(buflen + ctx->growBy)) == 0) {
-        return -1;
+    if (ctx->growBy > 0 && buflen > SSIZE_MAX - ctx->growBy) {
+        // Integer overflow
+        return R_ERR_MEMORY;
+    }
+    newSize = buflen + ctx->growBy;
+    if ((newbuf = rAlloc(newSize)) == 0) {
+        return R_ERR_MEMORY;
     }
     if (ctx->buf) {
         memcpy(newbuf, ctx->buf, buflen);
         rFree(ctx->buf);
     }
-    buflen += ctx->growBy;
     ctx->end = newbuf + (ctx->end - ctx->buf);
-    ctx->start = newbuf + (ctx->start - ctx->buf);
     ctx->buf = newbuf;
-    ctx->endbuf = &ctx->buf[buflen];
+    ctx->endbuf = &ctx->buf[newSize];
 
     /*
         Increase growBy to reduce overhead
      */
-    if ((buflen + (ctx->growBy * 2)) < ctx->maxsize) {
+    if (ctx->growBy <= (SSIZE_MAX / 2)) {
         ctx->growBy *= 2;
     }
     return 1;
@@ -6925,19 +7169,14 @@ static int growBuf(PContext *ctx)
 /*
     Incase you want to map onto the real printf
  */
-PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
+PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *spec, va_list args)
 {
-    if (buf) {
-        if (vsnprintf(buf, maxsize, spec, args) < 0) {
-            *buf = '\0';
-            return NULL;
-        }
-    } else {
-        if (vasprintf(&buf, spec, args) < 0) {
-            return NULL;
-        }
-    }
-    return buf;
+    return vsnprintf(buf, maxsize, spec, args);
+}
+
+PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
+{
+    return vasprintf(buf, spec, args);
 }
 #endif /* R_OWN_PRINTF */
 
@@ -7017,12 +7256,13 @@ PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg)
 PUBLIC void rbFree(RbTree *rbt)
 {
     if (rbt) {
+        //  REVIEW Acceptable - This is recursive
         freeNode(rbt, RB_FIRST(rbt));
         rFree(rbt);
     }
 }
 
-//  This is recursive
+//  REVIEW Acceptable - This is recursive
 static void freeNode(RbTree *rbt, RbNode *n)
 {
     assert(rbt);
@@ -7626,7 +7866,7 @@ static void printTree(RbTree *rbt, RbNode *n, void (*proc)(void*), int depth, ch
 /********* Start of file src/run.c ************/
 
 /**
-    run.c - Run a command using the system shell and pipes on Posix systems.
+    run.c - Securely run a command
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -7636,52 +7876,219 @@ static void printTree(RbTree *rbt, RbNode *n, void (*proc)(void*), int depth, ch
 
 
 #if R_USE_RUN
-/************************************ Code ************************************/
-#if ME_UNIX_LIKE
-/*
-    Run a command using the system shell
- */
-PUBLIC char *rRun(cchar *command, int *status)
-{
-    FILE  *fp;
-    RBuf  *buf;
-    ssize nbytes;
-    int   code;
 
-    if ((fp = popen(command, "r")) == 0) {
-        rError("r", "Cannot start command");
-        return 0;
-    }
-    buf = rAllocBuf(0);
-    while (1) {
-        if (rGetState() >= R_STOPPED) {
-            if (status) {
-                *status = ECONNABORTED;
-            }
-            break;
-        }
-        if ((nbytes = read(fileno(fp), rGetBufEnd(buf), (size_t) rGetBufSpace(buf) - 1)) < 0) {
-            if (rGetOsError() == EAGAIN || rGetOsError() == EINTR) continue;
-            if (status) {
-                *status = rGetOsError();
-            }
-            break;
-        } else if (nbytes == 0) {
-            break;
-        }
-        rAdjustBufEnd(buf, nbytes);
-        if (rGetBufSpace(buf) < (ME_BUFSIZE / 2)) {
-            rGrowBuf(buf, max(buf->buflen / 2, ME_BUFSIZE));
-        }
-    }
-    code = pclose(fp);
-    if (status) {
-        *status = code;
-    }
-    return rBufToStringAndFree(buf);
-}
+/*********************************** Defines **********************************/
+
+#ifndef R_RUN_ARGS_MAX
+    #define R_RUN_ARGS_MAX   1024        /* Max args to parse */
 #endif
 
+#ifndef R_RUN_MAX_OUTPUT
+    #define R_RUN_MAX_OUTPUT 1024 * 1024 /* Max output to return */
+#endif
+
+/********************************** Forwards **********************************/
+
+static int makeArgs(cchar *command, char ***argvp, bool argsOnly);
+
+/************************************ Code ************************************/
+#if ME_UNIX_LIKE
+
+PUBLIC int rRun(cchar *command, char **output)
+{
+    RBuf  *buf;
+    pid_t pid;
+    char  **argv;
+    ssize nbytes;
+    int   fds[2] = { -1, -1 };
+    int   exitStatus, status;
+
+    if (!command || *command == '\0') {
+        return R_ERR_BAD_ARGS;
+    }
+    if (output) {
+        *output = NULL;
+    }
+    if (makeArgs(command, &argv, 0) < 0) {
+        rError("run", "Failed to parse command: %s", command);
+        return R_ERR_BAD_ARGS;
+    }
+    if (pipe(fds) < 0) {
+        rError("run", "Failed to create pipe");
+        rFree(argv);
+        return R_ERR_CANT_OPEN;
+    }
+    if ((pid = fork()) < 0) {
+        rError("run", "Failed to fork");
+        close(fds[0]);
+        close(fds[1]);
+        rFree(argv);
+        return R_ERR_CANT_CREATE;
+    }
+    if (pid == 0) {
+        /* Child: redirect stdout & stderr to pipe */
+        dup2(fds[1], STDOUT_FILENO);
+        dup2(fds[1], STDERR_FILENO);
+        close(fds[0]);
+        close(fds[1]);
+
+        /* Use execvp so PATH is searched for the command */
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    /* Parent */
+    close(fds[1]);
+
+    buf = rAllocBuf(ME_BUFSIZE);
+    while ((nbytes = read(fds[0], rGetBufEnd(buf), rGetBufSpace(buf))) > 0) {
+        if (rGetBufLength(buf) + nbytes > R_RUN_MAX_OUTPUT) {
+            break;
+        }
+        if (output) {
+            rAdjustBufEnd(buf, nbytes);
+            if (rGetBufSpace(buf) < ME_BUFSIZE) {
+                rGrowBuf(buf, ME_BUFSIZE);
+            }
+        }
+    }
+    close(fds[0]);
+    rAddNullToBuf(buf);
+
+    //  Wait for child completion
+    status = 0;
+    if (waitpid(pid, &status, 0) < 0) {
+        rError("run", "Failed to wait for child");
+        rFree(argv);
+        rFreeBuf(buf);
+        return R_ERR_CANT_COMPLETE;
+    }
+    rFree(argv);
+
+    if (WIFEXITED(status)) {
+        exitStatus = WEXITSTATUS(status);
+        if (exitStatus != 0) {
+            rError("run", "Command failed with status: %d", exitStatus);
+            rFreeBuf(buf);
+            return exitStatus;
+        }
+        //  continue
+
+    } else if (WIFSIGNALED(status)) {
+        rError("run", "Command terminated by signal: %d", WTERMSIG(status));
+        rFreeBuf(buf);
+        return R_ERR_BAD_STATE;
+
+    } else {
+        rError("run", "Command terminated abnormally, status: %d", status);
+        rFreeBuf(buf);
+        return R_ERR_BAD_STATE;
+    }
+    if (output) {
+        *output = rBufToStringAndFree(buf);
+    } else {
+        rFreeBuf(buf);
+    }
+    return 0;
+}
+
+/*
+    Parse the args and return the count of args.
+ */
+static int parseArgs(char *args, char **argv, int maxArgc)
+{
+    char *dest, *src, *start;
+    int  quote, argc;
+
+    /*
+        Example     "showColors" red 'light blue' "yellow white" 'Cannot \"render\"'
+        Becomes:    ["showColors", "red", "light blue", "yellow white", "Cannot \"render\""]
+     */
+    for (argc = 0, src = args; src && *src != '\0' && argc < maxArgc; argc++) {
+        while (isspace((uchar) * src)) {
+            src++;
+        }
+        if (*src == '\0') {
+            break;
+        }
+        start = dest = src;
+        if (*src == '"' || *src == '\'') {
+            quote = *src;
+            src++;
+            dest++;
+        } else {
+            quote = 0;
+        }
+        if (argv) {
+            argv[argc] = src;
+        }
+        while (*src) {
+            if (*src == '\\' && src[1] && (src[1] == '\\' || src[1] == '"' || src[1] == '\'')) {
+                src++;
+            } else {
+                if (quote) {
+                    if (*src == quote && !(src > start && src[-1] == '\\')) {
+                        break;
+                    }
+                } else if (*src == ' ') {
+                    break;
+                }
+            }
+            if (argv) {
+                *dest++ = *src;
+            }
+            src++;
+        }
+        if (*src != '\0') {
+            src++;
+        }
+        if (argv) {
+            *dest++ = '\0';
+        }
+    }
+    return argc;
+}
+
+/*
+    Make an argv array. All args are in a single memory block of which argv
+    points to the start. Program name at [0], first arg starts at argv[1].
+ */
+static int makeArgs(cchar *command, char ***argvp, bool argsOnly)
+{
+    char  **argv, *vector, *args;
+    ssize len, size;
+    int   argc;
+
+    assert(command);
+    if (!command) {
+        return R_ERR_BAD_ARGS;
+    }
+    // Count the args
+    len = slen(command) + 1;
+    argc = parseArgs((char*) command, NULL, R_RUN_ARGS_MAX);
+    if (argsOnly) {
+        argc++;
+    }
+    // Allocate one vector for argv and the actual args themselves
+    size = ((argc + 1) * sizeof(char*)) + len;
+    if ((vector = (char*) rAlloc(size)) == 0) {
+        return R_ERR_MEMORY;
+    }
+    args = &vector[(argc + 1) * sizeof(char*)];
+    scopy(args, size - (args - vector), command);
+    argv = (char**) vector;
+
+    if (argsOnly) {
+        parseArgs(args, &argv[1], argc);
+        argv[0] = "";
+    } else {
+        parseArgs(args, argv, argc);
+    }
+    argv[argc] = 0;
+    *argvp = (char**) argv;
+    return argc;
+}
+
+#endif /* ME_UNIX_LIKE */
 #endif /* R_USE_RUN */
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.
@@ -7749,7 +8156,7 @@ PUBLIC void rFreeSocket(RSocket *sp)
 
 PUBLIC void rCloseSocket(RSocket *sp)
 {
-    char buf[1024];
+    char buf[64];
 
     if (!sp || (sp->flags & R_SOCKET_CLOSED)) {
         return;
@@ -7920,6 +8327,9 @@ static void acceptSocket(RSocket *listen)
     Socket                  fd;
 
     assert(!rIsMain());
+    if (rIsMain()) {
+        return;
+    }
     addrLen = sizeof(addr);
 
     if ((sp = rAllocSocket()) == 0) {
@@ -7966,6 +8376,7 @@ static void acceptSocket(RSocket *listen)
         rSetSocketError(sp, "Missing socket handler");
 
     } else if (sp->handler) {
+        // Handler must not free the socket
         (sp->handler)(sp->arg, sp);
     }
     rFreeSocket(sp);
@@ -7976,12 +8387,10 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize)
     ssize bytes;
     int   error;
 
-    if (!sp) {
-        return 0;
-    }
     assert(buf);
     assert(bufsize > 0);
-    if (!buf || bufsize <= 0) {
+
+    if (!sp || !buf || bufsize <= 0) {
         return R_ERR_BAD_ARGS;
     }
     if (sp->flags & R_SOCKET_EOF) {
@@ -7996,7 +8405,7 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize)
     }
 #endif
     while (1) {
-        bytes = recv(sp->fd, buf, (int) bufsize, MSG_NOSIGNAL);
+        bytes = recv(sp->fd, buf, bufsize, MSG_NOSIGNAL);
         if (bytes < 0) {
             error = getSocketError(sp);
             if (error == EINTR) {
@@ -8063,11 +8472,9 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, ssize bufsize)
     ssize len, written, bytes;
     int   error;
 
-    if (!sp) {
-        return 0;
+    if (!sp || !buf || bufsize < 0) {
+        return R_ERR_BAD_ARGS;
     }
-    assert(buf);
-
     if (sp->flags & R_SOCKET_EOF) {
         bytes = R_ERR_CANT_WRITE;
     } else {
@@ -8083,7 +8490,7 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, ssize bufsize)
         }
 #endif
         for (len = bufsize, bytes = 0; len > 0; ) {
-            written = send(sp->fd, &((char*) buf)[bytes], (int) len, MSG_NOSIGNAL);
+            written = send(sp->fd, &((char*) buf)[bytes], len, MSG_NOSIGNAL);
             if (written < 0) {
                 error = getSocketError(sp);
                 if (error == EINTR) {
@@ -8273,7 +8680,18 @@ PUBLIC void rSetSocketCustom(RSocketCustom custom)
 
 PUBLIC bool rCheckInternet(void)
 {
-    return gethostbyname("www.google.com") ? 1 : 0;
+    struct addrinfo hints, *res = NULL;
+    int             rc;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    rc = getaddrinfo("www.google.com", "http", &hints, &res);
+    if (res) {
+        freeaddrinfo(res);
+    }
+    return rc == 0;
 }
 
 /*
@@ -8284,8 +8702,9 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port)
     struct sockaddr_storage addrStorage;
     struct sockaddr         *addr;
     Socklen                 addrLen;
+
 #if (ME_UNIX_LIKE || ME_WIN_LIKE)
-    char                    service[NI_MAXSERV];
+    char service[NI_MAXSERV];
 #endif
 
     *port = 0;
@@ -8293,7 +8712,9 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port)
 
     addr = (struct sockaddr*) &addrStorage;
     addrLen = sizeof(addrStorage);
-    getsockname(sp->fd, addr, &addrLen);
+    if (getsockname(sp->fd, addr, &addrLen) < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
 
 #if (ME_UNIX_LIKE || ME_WIN_LIKE)
 #if ME_WIN_LIKE || defined(IN6_IS_ADDR_V4MAPPED)
@@ -8340,7 +8761,7 @@ PUBLIC char *rGetSocketMac(char *iface)
     struct ifconf ifc;
     struct ifreq  *ifr;
     uchar         *mac;
-    char          buf[1024], *name;
+    char          buf[64], *name;
     int           fd, count, i;
 
     if (!iface) {
@@ -8453,12 +8874,15 @@ PUBLIC char *rGetSocketMac(char *iface)
 #define HASH_PRIME 0x01000193
 
 /************************************ Code ************************************/
-
+/*
+    Convert an integer to a string buffer with the specified radix
+ */
 PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix)
 {
-    char *cp, *end;
-    char digits[] = "0123456789ABCDEF";
-    int  negative;
+    uint64 uval;
+    char   *cp, *end;
+    char   digits[] = "0123456789ABCDEF";
+    int    negative;
 
     if (radix <= 0) {
         radix = 10;
@@ -8471,19 +8895,21 @@ PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix)
     *--cp = '\0';
 
     if (value < 0) {
+        uval = (value == INT64_MIN) ? (uint64_t) INT64_MAX + 1 : (uint64_t) (-value);
         negative = 1;
-        value = -value;
         size--;
     } else {
+        uval = (uint64_t) value;
         negative = 0;
     }
     do {
-        *--cp = digits[value % radix];
-        value /= radix;
-    } while (value > 0 && cp > buf);
+        if (cp == buf) return 0; // Out of space
+        *--cp = digits[uval % radix];
+        uval /= radix;
+    } while (uval > 0);
 
     if (negative) {
-        if (cp <= buf) {
+        if (cp == buf) {
             return 0;
         }
         *--cp = '-';
@@ -8498,17 +8924,19 @@ PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix)
 /*
     Format a number as a string. Suppor radix 10 and 16.
  */
-PUBLIC char *sitosradix(int64 value, int radix)
+PUBLIC char *sitosx(int64 value, int radix)
 {
     char num[32];
 
-    sitosbuf(num, sizeof(num), value, radix);
+    if (sitosbuf(num, sizeof(num), value, radix) == 0) {
+        return sclone("");
+    }
     return sclone(num);
 }
 
 PUBLIC char *sitos(int64 value)
 {
-    return sitosradix(value, 10);
+    return sitosx(value, 10);
 }
 
 PUBLIC char *scamel(cchar *str)
@@ -8620,22 +9048,18 @@ PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src)
 {
     ssize len;
 
-    if (!dest || destMax <= 0 || (destMax > SIZE_MAX - 8)) {
+    if (!dest || destMax <= 0 || (destMax > MAXINT - 8)) {
         return R_ERR_BAD_ARGS;
     }
-    assert(0 < destMax && destMax < MAXINT);
-
     len = slen(src);
-    // Must ensure room for null
-    if (destMax <= len && destMax > 1) {
-        assert(!R_ERR_WONT_FIT);
+    if (destMax <= len) {
+        // Must ensure room for null
         return R_ERR_WONT_FIT;
     }
     if (len > 0) {
-        strcpy(dest, src);
-    } else {
-        *dest = '\0';
+        memcpy(dest, src, len);
     }
+    dest[len] = '\0';
     return len;
 }
 
@@ -8697,7 +9121,7 @@ PUBLIC char *sfmt(cchar *format, ...)
         format = "%s";
     }
     va_start(ap, format);
-    buf = rVsnprintf(NULL, -1, format, ap);
+    rVsaprintf(&buf, -1, format, ap);
     va_end(ap);
     return buf;
 }
@@ -8706,7 +9130,7 @@ PUBLIC char *sfmtv(cchar *format, va_list arg)
 {
     char *buf;
 
-    buf = rVsnprintf(NULL, -1, format, arg);
+    rVsaprintf(&buf, -1, format, arg);
     return buf;
 }
 
@@ -8718,6 +9142,9 @@ PUBLIC char *sfmtbuf(char *buf, ssize bufsize, cchar *fmt, ...)
     assert(fmt);
     assert(bufsize > 0);
 
+    if (!buf || !fmt || bufsize <= 0) {
+        return 0;
+    }
     va_start(ap, fmt);
     rVsnprintf(buf, bufsize, fmt, ap);
     va_end(ap);
@@ -8730,9 +9157,18 @@ PUBLIC char *sfmtbufv(char *buf, ssize bufsize, cchar *fmt, va_list arg)
     assert(fmt);
     assert(bufsize > 0);
 
-    return rVsnprintf(buf, bufsize, fmt, arg);
+    if (!buf || !fmt || bufsize <= 0) {
+        return 0;
+    }
+    if (rVsnprintf(buf, bufsize, fmt, arg) < 0) {
+        return NULL;
+    }
+    return buf;
 }
 
+/*
+    Simple case sensitive hash function.
+ */
 PUBLIC uint shash(cchar *cname, ssize len)
 {
     uint hash;
@@ -8740,7 +9176,7 @@ PUBLIC uint shash(cchar *cname, ssize len)
     assert(cname);
     assert(0 <= len && len < MAXINT);
 
-    if (cname == 0) {
+    if (cname == 0 || len < 0 || len > MAXINT) {
         return 0;
     }
     hash = (uint) len;
@@ -8752,7 +9188,7 @@ PUBLIC uint shash(cchar *cname, ssize len)
 }
 
 /*
-    Hash the lower case name
+    Simple case insensitive hash function.
  */
 PUBLIC uint shashlower(cchar *cname, ssize len)
 {
@@ -8761,7 +9197,7 @@ PUBLIC uint shashlower(cchar *cname, ssize len)
     assert(cname);
     assert(0 <= len && len < MAXINT);
 
-    if (cname == 0) {
+    if (cname == 0 || len < 0 || len > MAXINT) {
         return 0;
     }
     hash = (uint) len;
@@ -8789,7 +9225,7 @@ PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...)
     char    *buf, *result;
 
     va_start(ap, fmt);
-    buf = rVsnprintf(NULL, -1, fmt, ap);
+    rVsaprintf(&buf, -1, fmt, ap);
     va_end(ap);
     result = sjoin(str, buf, NULL);
     rFree(buf);
@@ -8800,16 +9236,25 @@ PUBLIC char *sjoinv(cchar *buf, va_list args)
 {
     va_list ap;
     char    *dest, *str, *dp;
-    ssize   required;
+    ssize   len, required;
 
     va_copy(ap, args);
     required = 1;
     if (buf) {
+        if (required + slen(buf) > MAXINT) {
+            return 0;
+        }
         required += slen(buf);
     }
     str = va_arg(ap, char*);
     while (str) {
-        required += slen(str);
+        ssize slen_str = slen(str);
+        if (required > MAXINT - slen_str) {
+            rLog("error security", "sjoinv", "Integer overflow");
+            va_end(ap);
+            return 0;
+        }
+        required += slen_str;
         str = va_arg(ap, char*);
     }
     if ((dest = rAlloc(required)) == 0) {
@@ -8818,14 +9263,16 @@ PUBLIC char *sjoinv(cchar *buf, va_list args)
     }
     dp = dest;
     if (buf) {
-        strcpy(dp, buf);
-        dp += slen(buf);
+        len = slen(buf);
+        memcpy(dp, buf, len);
+        dp += len;
     }
     va_copy(ap, args);
     str = va_arg(ap, char*);
     while (str) {
-        strcpy(dp, str);
-        dp += slen(str);
+        len = slen(str);
+        memcpy(dp, str, len);
+        dp += len;
         str = va_arg(ap, char*);
     }
     *dp = '\0';
@@ -8890,6 +9337,9 @@ PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize n)
 
     assert(0 <= n && n < MAXINT);
 
+    if (n < 0 || n > MAXINT) {
+        return 0;
+    }
     if (s1 == 0) {
         return -1;
     } else if (s2 == 0) {
@@ -8943,6 +9393,9 @@ PUBLIC int sncmp(cchar *s1, cchar *s2, ssize n)
 
     assert(0 <= n && n < MAXINT);
 
+    if (n < 0 || n > MAXINT) {
+        return 0;
+    }
     if (s1 == 0 && s2 == 0) {
         return 0;
     } else if (s1 == 0) {
@@ -8980,12 +9433,14 @@ PUBLIC ssize sncopy(char *dest, ssize destMax, cchar *src, ssize count)
     assert(0 <= count && count < MAXINT);
     assert(0 < destMax && destMax < MAXINT);
 
+    if (!dest || !src || dest == src || count < 0 || count > MAXINT || destMax <= 0 || destMax > MAXINT) {
+        return R_ERR_BAD_ARGS;
+    }
     len = slen(src);
     if (count >= 0) {
         len = min(len, count);
     }
     if (destMax <= len || destMax < 1) {
-        assert(!R_ERR_WONT_FIT);
         return R_ERR_WONT_FIT;
     }
     if (len > 0) {
@@ -9108,43 +9563,46 @@ PUBLIC char *srchr(cchar *s, int c)
  */
 PUBLIC uint64 svalue(cchar *svalue)
 {
-    char   *tok, *value;
-    uint64 number;
+    char   value[80];
+    char   *tok;
+    uint64 factor, number;
 
-    //  OPT - use static buffer
-    value = sclone(svalue);
+    if (slen(svalue) >= sizeof(value)) {
+        return 0;
+    }
+    scopy(value, sizeof(value), svalue);
     tok = strim(slower(value), " \t", R_TRIM_BOTH);
     if (sstarts(tok, "unlimited") || sstarts(tok, "infinite")) {
         number = MAXINT64;
     } else if (sstarts(tok, "never") || sstarts(tok, "forever")) {
         //  Year 2200
         number = 7260757200000L;
-    } else if (sends(tok, "sec") || sends(tok, "secs") || sends(tok, "second") || sends(tok, "seconds")) {
-        number = stoi(tok);
-    } else if (sends(tok, "min") || sends(tok, "mins") || sends(tok, "minute") || sends(tok, "minutes")) {
-        number = stoi(tok) * 60;
-    } else if (sends(tok, "hr") || sends(tok, "hrs") || sends(tok, "hour") || sends(tok, "hours")) {
-        number = stoi(tok) * 60 * 60;
-    } else if (sends(tok, "day") || sends(tok, "days")) {
-        number = stoi(tok) * 60 * 60 * 24;
-    } else if (sends(tok, "week") || sends(tok, "weeks")) {
-        number = stoi(tok) * 60 * 60 * 24 * 7;
-    } else if (sends(tok, "month") || sends(tok, "months")) {
-        number = stoi(tok) * 60 * 60 * 24 * 30;
-    } else if (sends(tok, "year") || sends(tok, "years")) {
-        number = stoi(tok) * 60 * 60 * 24 * 365;
-    } else if (sends(tok, "kb") || sends(tok, "k")) {
-        number = stoi(tok) * 1024;
-    } else if (sends(tok, "mb") || sends(tok, "m")) {
-        number = stoi(tok) * 1024 * 1024;
-    } else if (sends(tok, "gb") || sends(tok, "g")) {
-        number = stoi(tok) * 1024 * 1024 * 1024;
-    } else if (sends(tok, "byte") || sends(tok, "bytes")) {
-        number = stoi(tok);
     } else {
         number = stoi(tok);
+        if (sends(tok, "min") || sends(tok, "mins") || sends(tok, "minute") || sends(tok, "minutes")) {
+            factor = 60;
+        } else if (sends(tok, "hr") || sends(tok, "hrs") || sends(tok, "hour") || sends(tok, "hours")) {
+            factor = 60 * 60;
+        } else if (sends(tok, "day") || sends(tok, "days")) {
+            factor = 60 * 60 * 24;
+        } else if (sends(tok, "week") || sends(tok, "weeks")) {
+            factor = 60 * 60 * 24 * 7;
+        } else if (sends(tok, "month") || sends(tok, "months")) {
+            factor = 60 * 60 * 24 * 30;
+        } else if (sends(tok, "year") || sends(tok, "years")) {
+            factor = 60 * 60 * 24 * 365;
+        } else if (sends(tok, "kb") || sends(tok, "k")) {
+            factor = 1024;
+        } else if (sends(tok, "mb") || sends(tok, "m")) {
+            factor = 1024 * 1024;
+        } else if (sends(tok, "gb") || sends(tok, "g")) {
+            factor = (uint64) 1024 * 1024 * 1024;
+        } else {
+            // bytes, bytes, sec, secs, second, seconds
+            factor = 1;
+        }
+        number = ((uint64) number > UINT64_MAX / factor) ? UINT64_MAX : number * factor;
     }
-    rFree(value);
     return number;
 }
 
@@ -9169,20 +9627,31 @@ PUBLIC char *srejoinv(char *buf, va_list args)
     len = slen(buf);
     required = len + 1;
     str = va_arg(ap, char*);
+
     while (str) {
-        required += slen(str);
+        ssize strLen = slen(str);
+        if (required > MAXINT - strLen) {
+            rError("runtime", "srejoinv integer overflow");
+            va_end(ap);
+            rFree(buf);
+            return 0;
+        }
+        required += strLen;
         str = va_arg(ap, char*);
     }
     if ((dest = rAlloc(required)) == 0) {
         va_end(ap);
+        rFree(buf);
         return 0;
     }
+    memcpy(dest, buf, len);
     dp = &dest[len];
     va_copy(ap, args);
     str = va_arg(ap, char*);
     while (str) {
-        strcpy(dp, str);
-        dp += slen(str);
+        ssize slen_str = slen(str);
+        memcpy(dp, str, slen_str);
+        dp += slen_str;
         str = va_arg(ap, char*);
     }
     *dp = '\0';
@@ -9275,9 +9744,19 @@ PUBLIC double stod(cchar *str)
 
 PUBLIC int64 stoi(cchar *str)
 {
-    return stoiradix(str, 10, NULL);
+    return stoix(str, NULL, 10);
 }
 
+PUBLIC int64 stoix(cchar *str, char **end, int radix)
+{
+    int64 result;
+
+    errno = 0;
+    result = strtoll(str, end, radix);
+    return result;
+}
+
+#if KEEP && 0
 /*
     Parse a number and check for parse errors. Suppors radix 8, 10 or 16.
     If radix is <= 0, then the radix is sleuthed from the input.
@@ -9286,11 +9765,11 @@ PUBLIC int64 stoi(cchar *str)
         [(+|-)][0][(x|X)][HEX_DIGITS]
         [(+|-)][DIGITS]
  */
-PUBLIC int64 stoiradix(cchar *str, int radix, int *err)
+PUBLIC int64 stoix(cchar *str, char **end, int radix, int *err)
 {
-    cchar *start;
-    int64 val;
-    int   n, c, negative;
+    cchar  *start;
+    uint64 val;
+    int    n, c, negative;
 
     if (err) {
         *err = 0;
@@ -9307,6 +9786,9 @@ PUBLIC int64 stoiradix(cchar *str, int radix, int *err)
     val = 0;
     if (*str == '-') {
         negative = 1;
+        str++;
+    } else if (*str == '+') {
+        negative = 0;
         str++;
     } else {
         negative = 0;
@@ -9336,12 +9818,17 @@ PUBLIC int64 stoiradix(cchar *str, int radix, int *err)
         while (*str) {
             c = tolower((uchar) * str);
             if (isdigit((uchar) c)) {
-                val = (val * radix) + c - '0';
+                n = c - '0';
             } else if (c >= 'a' && c <= 'f') {
-                val = (val * radix) + c - 'a' + 10;
+                n = c - 'a' + 10;
             } else {
                 break;
             }
+            if (val > (UINT64_MAX - n) / (uint64) radix) {
+                if (err) *err = R_ERR_BAD_VALUE;
+                return (negative) ? INT64_MIN : INT64_MAX;
+            }
+            val = (val * radix) + n;
             str++;
         }
     } else {
@@ -9349,6 +9836,10 @@ PUBLIC int64 stoiradix(cchar *str, int radix, int *err)
             n = *str - '0';
             if (n >= radix) {
                 break;
+            }
+            if (val > (UINT64_MAX - n) / (uint64) radix) {
+                if (err) *err = R_ERR_BAD_VALUE;
+                return (negative) ? INT64_MIN : INT64_MAX;
             }
             val = (val * radix) + n;
             str++;
@@ -9361,8 +9852,24 @@ PUBLIC int64 stoiradix(cchar *str, int radix, int *err)
         }
         return 0;
     }
-    return (negative) ? -val: val;
+    if (end) {
+        *end = (char*) str;
+    }
+    if (negative) {
+        if (val > (uint64) INT64_MAX + 1) {
+            if (err) *err = R_ERR_BAD_VALUE;
+            return INT64_MIN;
+        }
+        return -(int64) val;
+    } else {
+        if (val > INT64_MAX) {
+            if (err) *err = R_ERR_BAD_VALUE;
+            return INT64_MAX;
+        }
+        return (int64) val;
+    }
 }
+#endif
 
 PUBLIC double stof(cchar *str)
 {
@@ -9383,6 +9890,9 @@ PUBLIC char *stok(char *str, cchar *delim, char **last)
 
     assert(delim);
 
+    if (!delim) {
+        return 0;
+    }
     if (str) {
         start = str;
     } else if (last) {
@@ -9456,7 +9966,7 @@ PUBLIC char *ssub(cchar *str, ssize offset, ssize len)
     assert(offset >= 0);
     assert(0 <= len && len < MAXINT);
 
-    if (str == 0) {
+    if (str == 0 || offset < 0 || len < 0 || len > MAXINT) {
         return 0;
     }
     size = len + 1;
@@ -9515,7 +10025,7 @@ PUBLIC char *stemplate(cchar *str, void *keys)
 {
     RBuf  *buf;
     cchar *value;
-    char  *src, *result, *cp, *tok;
+    char  *src, *result, *cp, *tok, *start;
 
     if (str) {
         if (schr(str, '$') == 0) {
@@ -9524,6 +10034,7 @@ PUBLIC char *stemplate(cchar *str, void *keys)
         buf = rAllocBuf(0);
         for (src = (char*) str; *src; ) {
             if (*src == '$') {
+                start = src;
                 if (*++src == '{') {
                     for (cp = ++src; *cp && *cp != '}'; cp++);
                     tok = snclone(src, cp - src);
@@ -9532,21 +10043,25 @@ PUBLIC char *stemplate(cchar *str, void *keys)
                     tok = snclone(src, cp - src);
                 }
                 value = rLookupName(keys, tok);
-                rFree(tok);
                 if (value != 0) {
                     rPutStringToBuf(buf, value);
-                    if (src > str && src[-1] == '{') {
+                    if (start[1] == '{') {
                         src = cp + 1;
                     } else {
                         src = cp;
                     }
                 } else {
-                    rPutCharToBuf(buf, '$');
-                    if (src > str && src[-1] == '{') {
-                        rPutCharToBuf(buf, '{');
+                    // Token not found, so copy original text
+                    ssize tag_len;
+                    if (start[1] == '{') {
+                        tag_len = (cp + 1) - start;
+                    } else {
+                        tag_len = cp - start;
                     }
-                    rPutCharToBuf(buf, *src++);
+                    rPutSubToBuf(buf, start, tag_len);
+                    src = (char*) start + tag_len;
                 }
+                rFree(tok);
             } else {
                 rPutCharToBuf(buf, *src++);
             }
@@ -10042,9 +10557,23 @@ PUBLIC Time rParseIsoDate(cchar *when)
     if (sscanf(when, "%4d-%2d-%2dT%2d:%2d:%2d",
                &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
                &tm.tm_hour, &tm.tm_min, &tm.tm_sec) != 6) {
-        // Handle parsing error
         return -1;
     }
+    if (tm.tm_mon < 0 || tm.tm_mon > 11) {
+        return -1;
+    }
+    if (tm.tm_mday < 1 || tm.tm_mday > 31) {
+        return -1;
+    }
+    if (tm.tm_hour < 0 || tm.tm_hour > 23) {
+        return -1;
+    }
+    if (tm.tm_min < 0 || tm.tm_min > 59) {
+    }
+    if (tm.tm_sec < 0 || tm.tm_sec > 60) {
+        return -1;
+    }
+
     tm.tm_year -= 1900; // Adjust year
     tm.tm_mon -= 1;     // Adjust month
 

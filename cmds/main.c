@@ -101,13 +101,13 @@ int main(int argc, char **argv)
             background = 1;
 
         } else if (smatch(argp, "--config")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdConfigDir = sclone(argv[++argind]);
 
         } else if (smatch(argp, "--count") || smatch(argp, "-c")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdCount = (int) stoi(argv[++argind]);
@@ -117,19 +117,23 @@ int main(int argc, char **argv)
             show = "hH";
 
         } else if (smatch(argp, "--exit")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             exitEvent = argv[++argind];
 
         } else if (smatch(argp, "--id")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdId = sclone(argv[++argind]);
+            if (slen(ioto->cmdId) > 20) {
+                rError("main", "Device ID must be less than 20 characters");
+                exit(1);
+            }
 
         } else if (smatch(argp, "--ioto")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdIotoFile = argv[++argind];
@@ -139,7 +143,7 @@ int main(int argc, char **argv)
             exit(0);
 
         } else if (smatch(argp, "--home")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             home = argv[++argind];
@@ -148,13 +152,13 @@ int main(int argc, char **argv)
             ioto->nosave = 1;
 
         } else if (smatch(argp, "--product")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdProduct = argv[++argind];
 
         } else if (smatch(argp, "--profile")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdProfile = argv[++argind];
@@ -167,7 +171,7 @@ int main(int argc, char **argv)
 
         } else if (smatch(argp, "--show") || smatch(argp, "-s")) {
             //  Show (trace) HTTP requests and responses
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             } else {
                 show = argv[++argind];
@@ -175,19 +179,19 @@ int main(int argc, char **argv)
 
         } else if (smatch(argp, "--state")) {
             //  Set an alternate state directory
-            if (argind >= argc) {
+                if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdStateDir = sclone(argv[++argind]);
 
         } else if (smatch(argp, "--sync")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdSync = argv[++argind];
 
         } else if (smatch(argp, "--test")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdTest = argv[++argind];
@@ -200,15 +204,12 @@ int main(int argc, char **argv)
             rSetTimeouts(0);
 
         } else if (smatch(argp, "--trace") || smatch(argp, "-t")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             trace = argv[++argind];
 
         } else if (smatch(argp, "--verbose") || smatch(argp, "-v")) {
-            if (argind >= argc) {
-                usage();
-            }
             if (!smatch(trace, TRACE_DEBUG_FILTER)) {
                 trace = TRACE_VERBOSE_FILTER;
                 show = "hH";
@@ -217,17 +218,18 @@ int main(int argc, char **argv)
         } else if (smatch(argp, "--version") || smatch(argp, "-V")) {
             rPrintf("%s\n", ME_VERSION);
             exit(0);
+
 #if SERVICES_CLOUD
         } else if (smatch(argp, "--account")) {
             //  Define a manager account to auto-register the device with
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdAccount = argv[++argind];
 
         } else if (smatch(argp, "--cloud")) {
             //  Define a builder cloud to auto-register the device with
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             ioto->cmdCloud = argv[++argind];

@@ -115,6 +115,10 @@ PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
         buildDecodeMap();
     }
     len = slen(input);
+    if (len > SIZE_MAX / 4 * 3) {
+        //  Sanity check length
+        return NULL;
+    }
     if (len % 4 != 0) {
         return NULL;
     }
@@ -122,10 +126,9 @@ PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
     if (input[len - 1] == '=') pad++;
     if (input[len - 2] == '=') pad++;
 
-
     // Calculate the output length
     size = len / 4 * 3 - pad;
-    
+
     if ((decoded = rAlloc(size + 1)) == NULL) {
         return NULL;
     }
@@ -503,7 +506,6 @@ PUBLIC char *cryptGetSha1(cuchar *s, ssize ilen)
     return cryptGetSha1WithPrefix(s, ilen, NULL);
 }
 
-
 PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen)
 {
     CryptSha1 sha;
@@ -519,7 +521,6 @@ PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen)
     return cryptEncode64Block((cuchar*) hash, CRYPT_SHA1_SIZE);
 }
 
-
 PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix)
 {
     CryptSha1 sha;
@@ -533,26 +534,36 @@ PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix)
     if (length <= 0) {
         length = slen((char*) buf);
     }
+    len = (prefix) ? slen(prefix) : 0;
+
+    //  Sanity check args
+    if ((len + length) > MAXINT) {
+        return NULL;
+    }
+
+    //  Initialize sha1 context
     cryptSha1Init(&sha);
     cryptSha1Update(&sha, (cuchar*) buf, length);
     cryptSha1Finalize(&sha, hash);
 
+    //  Convert hash to hex string
     for (i = 0, r = result; i < CRYPT_SHA1_SIZE; i++) {
         *r++ = hex[hash[i] >> 4];
         *r++ = hex[hash[i] & 0xF];
     }
     *r = '\0';
-    len = (prefix) ? slen(prefix) : 0;
+
+    //  Allocate memory for result
     str = rAlloc(sizeof(result) + len);
     if (str) {
         if (prefix) {
-            strcpy(str, prefix);
+            memcpy(str, prefix, len);
         }
-        strcpy(str + len, result);
+        memcpy(&str[len], result, slen(result));
+        str[len + slen(result)] = '\0';
     }
     return str;
 }
-
 
 PUBLIC void cryptSha1Init(CryptSha1 *sha)
 {
@@ -565,7 +576,6 @@ PUBLIC void cryptSha1Init(CryptSha1 *sha)
     sha->hash[3] = 0x10325476;
     sha->hash[4] = 0xC3D2E1F0;
 }
-
 
 static void cryptSha1Process(CryptSha1 *sha)
 {
@@ -628,7 +638,6 @@ static void cryptSha1Process(CryptSha1 *sha)
     sha->index = 0;
 }
 
-
 PUBLIC void cryptSha1Update(CryptSha1 *sha, cuchar *msg, ssize len)
 {
     while (len--) {
@@ -643,7 +652,6 @@ PUBLIC void cryptSha1Update(CryptSha1 *sha, cuchar *msg, ssize len)
         msg++;
     }
 }
-
 
 static void cryptSha1Pad(CryptSha1 *sha)
 {
@@ -672,7 +680,6 @@ static void cryptSha1Pad(CryptSha1 *sha)
     sha->block[63] = sha->lowLength;
     cryptSha1Process(sha);
 }
-
 
 PUBLIC void cryptSha1Finalize(CryptSha1 *sha, uchar *digest)
 {
@@ -703,7 +710,6 @@ PUBLIC void cryptSha1Finalize(CryptSha1 *sha, uchar *digest)
             b[i + 3] = (uchar) ((n)); \
         } else
 
-
 static const uint32 K256[] =
 {
     0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
@@ -733,12 +739,10 @@ static const uint32 K256[] =
 #define F0(x, y, z) ((x &y) | (z & (x | y)))
 #define F1(x, y, z) (z ^ (x & (y ^ z)))
 
-
 PUBLIC void cryptSha256Init(CryptSha256 *ctx)
 {
     memset(ctx, 0, sizeof(CryptSha256));
 }
-
 
 PUBLIC void cryptSha256Term(CryptSha256 *ctx)
 {
@@ -746,7 +750,6 @@ PUBLIC void cryptSha256Term(CryptSha256 *ctx)
         memset(ctx, 0, sizeof(CryptSha256));
     }
 }
-
 
 PUBLIC void cryptSha256Start(CryptSha256 *ctx)
 {
@@ -763,7 +766,6 @@ PUBLIC void cryptSha256Start(CryptSha256 *ctx)
     ctx->state[6] = 0x1F83D9AB;
     ctx->state[7] = 0x5BE0CD19;
 }
-
 
 static void sha256Process(CryptSha256 *ctx, cuchar data[64])
 {
@@ -810,7 +812,6 @@ static void sha256Process(CryptSha256 *ctx, cuchar data[64])
     }
 }
 
-
 PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *input, ssize ilen)
 {
     uint32 left;
@@ -844,7 +845,6 @@ PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *input, ssize ilen)
         memcpy((void*) (ctx->buffer + left), input, ilen);
     }
 }
-
 
 PUBLIC void cryptSha256Finalize(CryptSha256 *ctx, uchar output[CRYPT_SHA256_SIZE])
 {
@@ -880,7 +880,6 @@ PUBLIC void cryptSha256Finalize(CryptSha256 *ctx, uchar output[CRYPT_SHA256_SIZE
     PUT(ctx->state[7], output, 28);
 }
 
-
 PUBLIC void cryptGetSha256Block(cuchar *input, ssize ilen, uchar output[CRYPT_SHA256_SIZE])
 {
     CryptSha256 ctx;
@@ -891,7 +890,6 @@ PUBLIC void cryptGetSha256Block(cuchar *input, ssize ilen, uchar output[CRYPT_SH
     cryptSha256Finalize(&ctx, output);
     cryptSha256Term(&ctx);
 }
-
 
 PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
 {
@@ -908,7 +906,6 @@ PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
     cryptSha256Term(&ctx);
     return cryptSha256HashToString(output);
 }
-
 
 PUBLIC char *cryptGetSha256Base64(cchar *s, ssize ilen)
 {
@@ -951,7 +948,6 @@ PUBLIC char *cryptGetFileSha256(cchar *path)
     close(fd);
     return cryptSha256HashToString(hash);
 }
-
 
 PUBLIC char *cryptSha256HashToString(uchar hash[CRYPT_SHA256_SIZE])
 {
@@ -1428,7 +1424,7 @@ PUBLIC char *cryptMakeSalt(ssize size)
     size = (size + sizeof(int) - 1) & ~(sizeof(int) - 1);
     random = rAlloc(size + 1);
     result = rAlloc(size + 1);
-    if (cryptGetRandomBytes(random, size, 0) < 0) {
+    if (cryptGetRandomBytes(random, size, 1) < 0) {
         return 0;
     }
     clen = slen(chars);
@@ -1462,12 +1458,33 @@ PUBLIC char *cryptMakePassword(cchar *password, int saltLength, int rounds)
     return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, rounds, salt, cryptEncodePassword(password, salt, rounds));
 }
 
+/*
+    Constant-time string comparison.
+    This prevents timing attacks by taking the same amount of time regardless of whether the strings match or not.
+    It compares up to the length of the shortest string, and then checks if the lengths are equal.
+ */
+static bool secureCompare(cchar *a, cchar *b)
+{
+    ssize aLen, bLen, diff;
+
+    if (!a || !b) {
+        return 0;
+    }
+    aLen = slen(a);
+    bLen = slen(b);
+    diff = aLen ^ bLen;
+    for (int i = 0; i < aLen; i++) {
+        diff |= a[i] ^ b[i % bLen];
+    }
+    return diff == 0;
+}
+
 
 PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
 {
-    cchar *algorithm, *given, *rounds, *salt, *s1, *s2;
-    char  *tok, *hash;
-    ssize match;
+    cchar *algorithm, *rounds, *salt;
+    char  *given, *tok, *hash;
+    bool   result;
 
     if (!passwordHash || !plainTextPassword) {
         return 0;
@@ -1486,12 +1503,11 @@ PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
         return 0;
     }
     given = cryptEncodePassword(plainTextPassword, salt, atoi(rounds));
-
-    match = slen(given) ^ slen(hash);
-    for (s1 = given, s2 = hash; *s1 && *s2; s1++, s2++) {
-        match |= (*s1 & 0xFF) ^ (*s2 & 0xFF);
+    result = secureCompare(given, hash);
+    if (given) {
+        rFree(given);
     }
-    return !match;
+    return result;
 }
 #endif /* BCRYPT */
 
@@ -1668,18 +1684,18 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
     return rc;
 
 #else
-    int i;
-    for (i = 0; i < length; i++) {
+    rError("security", "No secure random number generator available");
+    for (int i = 0; i < length; i++) {
+        //  Review Acceptable - this is just a fallback which will not be used
         buf[i] = (char) (rand() & 0xff);
     }
 #endif
     return 0;
 }
 
-
 PUBLIC char *cryptGetPassword(cchar *prompt)
 {
-    char *cp, *password, *result;
+    char *password, *result;
 
 #if ME_BSD_LIKE
     char passbuf[ME_BUFSIZE];
@@ -1688,15 +1704,23 @@ PUBLIC char *cryptGetPassword(cchar *prompt)
         prompt = "Password: ";
     }
     if ((password = readpassphrase(prompt, passbuf, sizeof(passbuf), 0)) == 0) {
-        return 0;
+        return NULL;
     }
+    result = sclone(password);
+    memset(passbuf, 0, sizeof(passbuf));
+    return result;
+
 #elif ME_UNIX_LIKE
     if (!prompt || !*prompt) {
         prompt = "Password: ";
     }
     if ((password = getpass(prompt)) == 0) {
-        return 0;
+        return NULL;
     }
+    result = sclone(password);
+    /* Can't erase static buffer returned by getpass */
+    return result;
+
 #elif ME_WIN_LIKE || VXWORKS
     char passbuf[ME_BUFSIZE];
     int  c, i;
@@ -1705,56 +1729,39 @@ PUBLIC char *cryptGetPassword(cchar *prompt)
         prompt = "Password: ";
     }
     fputs(prompt, stdout);
+    fflush(stdout);
     for (i = 0; i < (int) sizeof(passbuf) - 1; i++) {
 #if VXWORKS
         c = getchar();
 #else
         c = _getch();
 #endif
-        if (c == '\r' || c == EOF) {
+        if (c == '\r' || c == '\n') {
             break;
         }
-        if ((c == '\b' || c == 127) && i > 0) {
-            passbuf[--i] = '\0';
-            fputs("\b \b", stdout);
-            i--;
-        } else if (c == 26) {           /* Control Z */
-            c = EOF;
-            break;
-        } else if (c == 3) {            /* Control C */
-            fputs("^C\n", stdout);
-            exit(255);
-        } else if (!iscntrl((uchar) c) && (i < (int) sizeof(passbuf) - 1)) {
-            passbuf[i] = c;
-            fputc('*', stdout);
-        } else {
-            fputc('', stdout);
-            i--;
-        }
+        passbuf[i] = c;
     }
-    if (c == EOF) {
-        return "";
-    }
-    fputc('\n', stdout);
     passbuf[i] = '\0';
     password = passbuf;
-#else
-    return 0;
-#endif
     result = sclone(password);
-    for (cp = password; *cp; cp++) {
-        *cp = 0;
-    }
+    memset(passbuf, 0, sizeof(passbuf));
     return result;
+
+#else
+    /*
+        Non-interactive password retrieval is not supported on this platform.
+        This could be a security risk if an application expects a password
+        but cannot securely obtain one. Returning NULL to indicate failure.
+     */
+    return NULL;
+#endif
 }
-
-
-static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
-
 
 /*
     Generate a random ID
  */
+static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
+
 PUBLIC char *cryptID(ssize size)
 {
     char *bytes;
@@ -1764,7 +1771,7 @@ PUBLIC char *cryptID(ssize size)
         return 0;
     }
     lettersLen = (int) slen(LETTERS) - 1;
-    if (cryptGetRandomBytes((uchar*) bytes, size, 0) < 0) {
+    if (cryptGetRandomBytes((uchar*) bytes, size, 1) < 0) {
         return 0;
     }
     for (i = 0; i < size; i++) {
@@ -1778,7 +1785,6 @@ PUBLIC char *cryptID(ssize size)
 
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.
-    Copyright (C) 2006-2015, ARM Limited, All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 

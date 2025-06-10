@@ -1,4 +1,4 @@
-#define SERVICES_AI 1
+#define SERVICES_AI 0
 #define SERVICES_DATABASE 1
 #define SERVICES_DEMO 1
 #define SERVICES_KEYS 0

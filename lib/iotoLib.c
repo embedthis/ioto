@@ -30,7 +30,8 @@ PUBLIC int ioInitAI(void)
     if ((key = getenv("OPENAI_API_KEY")) == NULL) {
         if ((key = jsonGet(ioto->config, 0, "ai.key", 0)) == NULL) {
             rInfo("openai", "OPENAI_API_KEY not set, define in environment or in config ai.key");
-            return R_ERR_CANT_INITIALIZE;
+            // Allow rest of services to initialize
+            return 0;
         }
     }
     endpoint = jsonGet(ioto->config, 0, "endpoint", "https://api.openai.com/v1");
@@ -128,7 +129,7 @@ static int perMonth[12] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 static int nextValue(int current, cchar *str);
 static int atoia(cchar **ptr);
-static int between(int m1, int d1, int y1, int m2, int d2, int y2);
+static int64 between(int m1, int d1, int y1, int m2, int d2, int y2);
 static int daysPerMonth(int m, int y);
 
 /*********************************** Code *************************************/
@@ -171,6 +172,8 @@ static Cron *cronAlloc(cchar *spec)
     if (cp->minute == NULL || cp->hour == NULL || cp->day == NULL ||
         cp->month == NULL || cp->dayofweek == NULL ||
         ((mth < 1 || mth > 12) && !smatch(cp->month, "*"))) {
+        rFree(buf);
+        rFree(cp);
         return 0;
     }
     return cp;
@@ -197,13 +200,16 @@ Ticks cronUntil(cchar *spec, Time when)
     struct tm *tm;
     Time      now;
     time_t    t;
+    int64     days, db;
     int       tm_mon, tm_mday, tm_wday, wday, m, min, h, hr, carry, day,
-              days, d1, day1, carry1, d2, day2, carry2, daysahead, mon,
-              yr, db, wd, today;
+              d1, day1, carry1, d2, day2, carry2, daysahead, mon,
+              yr, wd, today;
 
     assert(spec);
 
-    cp = cronAlloc(spec);
+    if ((cp = cronAlloc(spec)) == NULL) {
+        return -1;
+    }
 
     now = rGetTime() / TPS;
     t = (time_t) when / TPS;
@@ -386,11 +392,23 @@ static int nextValue(int current, cchar *str)
 static int atoia(cchar **ptr)
 {
     Ticks n;
+    int   digit;
 
     n = 0;
     while (isdigit((int) **ptr)) {
-        n = n * 10 + (**ptr - '0');
+        digit = **ptr - '0';
+        if (n > (LLONG_MAX - digit) / 10) {
+            n = LLONG_MAX;
+            while (isdigit((int) **ptr)) {
+                *ptr += 1;
+            }
+            break;
+        }
+        n = n * 10 + digit;
         *ptr += 1;
+    }
+    if (n > INT_MAX) {
+        return INT_MAX;
     }
     return (int) n;
 }
@@ -398,7 +416,7 @@ static int atoia(cchar **ptr)
 /*
     Return the number of complete days between two dates
  */
-static int between(int m1, int d1, int y1, int m2, int d2, int y2)
+static int64 between(int m1, int d1, int y1, int m2, int d2, int y2)
 {
     int days, m;
 
@@ -497,7 +515,7 @@ PUBLIC int ioInitDb(void)
         rWatch("UpdateDevice", (RWatchProc) ioUpdateDevice, "device:provisioned");
     } else
 #endif
-    if (!dbGet(ioto->db, "Device", DB_JSON("{id:'%s'}", ioto->id), NULL)) {
+    if (!dbGet(ioto->db, "Device", DB_PROPS("id", ioto->id), NULL)) {
         ioUpdateDevice();
     }
     if (service) {
@@ -773,7 +791,12 @@ PUBLIC void ioTerm(void)
 
 #if ME_UNIX_LIKE
     if (script && *script) {
-        output = rRun(script, &status);
+        /*
+            Security: The reset script is configured via a config file. Ensure the config files
+            have permissions that prevent modification by unauthorized users.
+            Review Acceptable - the script is provided by the developer configuration scripts.reset and is secure.
+         */
+        status = rRun(script, &output);
         if (status != 0) {
             rError("ioto", "Reset script failure: %d, %s", status, output);
         }
@@ -947,6 +970,7 @@ PUBLIC int ioUpdateLog(bool force)
         return 0;
 #endif
     }
+    // Review Acceptable - the log path is provided by the developer configuration log.path and is secure
     fullPath = rJoinFile(dir, path);
     if (rSetLogPath(fullPath, force) < 0) {
         rError("ioto", "Cannot open log %s", fullPath);
@@ -969,11 +993,13 @@ PUBLIC int ioUpdateLog(bool force)
 PUBLIC Json *ioAPI(cchar *url, cchar *data)
 {
     Json *response;
-    char urlbuf[160];
+    char *api;
 
-    SFMT(urlbuf, "%s/%s", ioto->api, url);
-    response = urlPostJson(urlbuf, data, -1,
+    // Review Acceptable - the ioto-api is provided by the cloud service and is secure
+    api = sfmt("%s/%s", ioto->api, url);
+    response = urlPostJson(api, data, -1,
                            "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
+    rFree(api);
     if (!response) {
         rError("ai", "Cannot invoke automation");
         return 0;
@@ -988,17 +1014,36 @@ PUBLIC Json *ioAPI(cchar *url, cchar *data)
  */
 PUBLIC int ioAutomation(cchar *name, cchar *context)
 {
-    Json *response;
-    char *data;
+    Json  *response, *jsonContext, *data;
+    cchar *args;
+    int   rc;
 
-    data = sfmt("{\"name\":\"%s\", \"context\":%s}", name, context);
-    response = ioAPI("tok/action/invoke", data);
-    rFree(data);
-    if (!response) {
-        rError("ai", "Cannot invoke automation");
-        return R_ERR_CANT_COMPLETE;
+    data = jsonAlloc(0);
+    jsonSet(data, 0, "name", name, JSON_STRING);
+
+    if ((jsonContext = jsonParse(context, 0)) == 0) {
+        rError("ai", "Invalid JSON context provided to ioAutomation");
+        jsonFree(data);
+        return R_ERR_BAD_ARGS;
     }
-    return 0;
+    jsonBlend(data, 0, "context", jsonContext, 0, 0, 0);
+    jsonFree(jsonContext);
+
+    args = jsonString(data, 0);
+    response = ioAPI("tok/action/invoke", args);
+    jsonFree(data);
+
+    rc = R_ERR_CANT_COMPLETE;
+    if (response) {
+        if (jsonGet(response, 0, "error", 0) == 0) {
+            rc = 0;
+        }
+        jsonFree(response);
+    }
+    if (rc != 0) {
+        rError("ai", "Cannot invoke automation");
+    }
+    return rc;
 }
 #endif /* SERVICES_CLOUD */
 
@@ -1043,9 +1088,10 @@ static Time  lastDisconnect = 0;
 /************************************ Forwards ********************************/
 
 static int attachSocket(int retry);
+static void freeRR(RR *rr);
 static void onEvent(Mqtt *mq, int event);
-static void rrResponse(MqttRecv *rp);
-static void throttle(MqttRecv *rp);
+static void rrResponse(const MqttRecv *rp);
+static void throttle(const MqttRecv *rp);
 
 /************************************* Code ***********************************/
 
@@ -1194,7 +1240,7 @@ PUBLIC void ioDisconnect()
  */
 static int attachSocket(int retry)
 {
-    char    topic[MQTT_TOPIC_SIZE];
+    char    topic[MQTT_MAX_TOPIC_SIZE];
     RSocket *sock;
     Json    *config;
     cchar   *alpn, *endpoint;
@@ -1281,7 +1327,7 @@ static int attachSocket(int retry)
     return 0;
 }
 
-static void throttle(MqttRecv *rp)
+static void throttle(const MqttRecv *rp)
 {
     mqttThrottle(ioto->mqtt);
     rSignal("mqtt:throttle", 0);
@@ -1315,10 +1361,11 @@ static void onEvent(Mqtt *mqtt, int event)
 
 /*
     Alloc a request/response. This manages the MQTT subscriptions for specific topics.
+    REVIEW Acceptable - Request IDs will wrap around after 2^31. 
  */
 static RR *allocRR(Mqtt *mq, cchar *topic)
 {
-    char subscribe[MQTT_TOPIC_SIZE];
+    char subscription[MQTT_MAX_TOPIC_SIZE];
     RR   *rr, *rp;
     int  index;
 
@@ -1334,15 +1381,26 @@ static RR *allocRR(Mqtt *mq, cchar *topic)
         }
     }
     if (!rp) {
-        //  Subscribe to all sequence numbers on this topic
-        SFMT(subscribe, "%s/+", topic);
-        mqttSubscribe(mq, rrResponse, 1, MQTT_WAIT_NONE, subscribe);
+        //  Subscribe to all sequence numbers on this topic, this will use the master subscription.
+        SFMT(subscription, "%s/+", topic);
+        mqttSubscribe(mq, rrResponse, 1, MQTT_WAIT_NONE, subscription);
         rr->topic = sclone(topic);
     }
     rPushItem(ioto->rr, rr);
     return rr;
 }
 
+static void freeRR(RR *rr)
+{
+    if (rr) {
+        // Optimization: no benefit from local unsubscription when using master subscriptions.
+        // mqttUnsubscribe(mq, topic, MQTT_WAIT_NONE);
+        rFree(rr->topic);
+        rFree(rr);
+    }
+}
+
+#if UNUSED
 static void freeRR(Mqtt *mq, cchar *topic)
 {
     RR  *rp;
@@ -1359,11 +1417,12 @@ static void freeRR(Mqtt *mq, cchar *topic)
         rFree(rp);
     }
 }
+#endif
 
 /*
-    Process a response
+    Process a response. Resume the fiber and pass the response data. The caller of mqttRequest must free.
  */
-static void rrResponse(MqttRecv *rp)
+static void rrResponse(const MqttRecv *rp)
 {
     RR  *rr;
     int index, seq;
@@ -1376,6 +1435,7 @@ static void rrResponse(MqttRecv *rp)
             }
             rResumeFiber(rr->fiber, (void*) sclone(rp->data));
             rRemoveItem(ioto->rr, rr);
+            freeRR(rr);
             return;
         }
     }
@@ -1402,14 +1462,15 @@ PUBLIC char *mqttRequest(Mqtt *mq, cchar *body, Ticks timeout, cchar *topicFmt, 
 {
     va_list ap;
     RR      *rr;
-    char    publish[MQTT_TOPIC_SIZE], subscribe[MQTT_TOPIC_SIZE], topic[MQTT_TOPIC_SIZE];
+    char    publish[MQTT_MAX_TOPIC_SIZE], subscription[MQTT_MAX_TOPIC_SIZE], topic[MQTT_MAX_TOPIC_SIZE];
 
     va_start(ap, topicFmt);
     sfmtbufv(topic, sizeof(topic), topicFmt, ap);
     va_end(ap);
 
-    SFMT(subscribe, "ioto/device/%s/%s", ioto->id, topic);
-    if ((rr = allocRR(mq, subscribe)) == 0) {
+    //  This will use the master subscription
+    SFMT(subscription, "ioto/device/%s/%s", ioto->id, topic);
+    if ((rr = allocRR(mq, subscription)) == 0) {
         return NULL;
     }
     timeout = timeout > 0 ? timeout : RR_DEFAULT_TIMEOUT;
@@ -1426,18 +1487,23 @@ PUBLIC char *mqttRequest(Mqtt *mq, cchar *body, Ticks timeout, cchar *topicFmt, 
     return rYieldFiber(0);
 }
 
+#if UNUSED
+/*
+    Release a request/response subscription
+ */
 PUBLIC void mqttRequestFree(Mqtt *mq, cchar *topicFmt, ...)
 {
     va_list ap;
-    char    subscribe[MQTT_TOPIC_SIZE], topic[MQTT_TOPIC_SIZE];
+    char    subscription[MQTT_MAX_TOPIC_SIZE], topic[MQTT_MAX_TOPIC_SIZE];
 
     va_start(ap, topicFmt);
     sfmtbufv(topic, sizeof(topic), topicFmt, ap);
     va_end(ap);
 
-    SFMT(subscribe, "ioto/device/%s/%s", ioto->id, topic);
-    freeRR(mq, subscribe);
+    SFMT(subscription, "ioto/device/%s/%s", ioto->id, topic);
+    freeRR(mq, subscription);
 }
+#endif
 
 /*
     Get an accumulated metric value for a period
@@ -1648,6 +1714,7 @@ PUBLIC int ioRegister(void)
         rInfo("ioto", "Device registering with %s\n%s", ioto->builder, data);
     }
 
+    // Review Acceptable - the ioto-api is provided by the developer configuration and is secure
     sfmtbuf(url, sizeof(url), "%s/device/register", ioto->builder);
     response = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
                            ioto->product);
@@ -1666,6 +1733,10 @@ static int parseRegisterResponse(Json *json)
     static int once = 0;
     char       *path;
 
+    /*
+        Security: The registration response is trusted and is used to configure the device.
+        The device security is thus dependent on the security of the registration server.
+     */
     if (json == 0 || json->count < 2) {
         rError("ioto", "Cannot register device");
         return R_ERR_CANT_COMPLETE;
@@ -1682,7 +1753,7 @@ static int parseRegisterResponse(Json *json)
         if (ioto->provisionService) {
             //  Registered but not yet claimed
             if (once++ == 0) {
-                rInfo("ioto", "Device not claimed. Claim via the product Device App");
+                rInfo("ioto", "Device not claimed. Claim device with the product device app.");
             }
         }
     }
@@ -1781,8 +1852,8 @@ static bool getSerial(void)
 {
     Url   *up;
     Json  *config, *result;
-    cchar *id, *mode, *serialize;
-    char  *def, *path, *saveId;
+    cchar *mode, *serialize;
+    char  *def, *id, *path, *saveId;
     int   did;
 
     id = saveId = 0;
@@ -1810,23 +1881,39 @@ static bool getSerial(void)
             //  Ask manufacturing controller for device ID
             def = jsonToString(config, did, 0, JSON_QUOTES);
             urlSetTimeout(up, SERIALIZE_TIMEOUT);
-            if ((result = urlJson(up, "POST", serialize, def, -1, 0)) == 0) {
+            result = urlJson(up, "POST", serialize, def, -1, 0);
+            if (result == 0) {
                 rError("serialize", "Cannot fetch device ID from %s: %s", serialize, urlGetError(up));
-
-            } else if ((id = jsonGet(result, 0, "id", 0)) == 0) {
-                rError("serialize", "Cannot find device ID in response");
+            } else {
+                if ((id = jsonGetClone(result, 0, "id", 0)) == 0) {
+                    rError("serialize", "Cannot find device ID in response");
+                } else {
+                    saveId = id;
+                }
+                jsonFree(result);
             }
             rFree(def);
 
 #if ME_UNIX_LIKE
         } else {
             cchar *product;
-            char  *command, *output;
+            char  *p, *command, *output;
             int   status;
 
             product = jsonGet(config, did, "product", 0);
+            for (p = (char*) product; *p; p++) {
+                if (!isalnum((int) *p)) {
+                    rError("serialize", "Product name has invalid characters for command");
+                    urlFree(up);
+                    return 0;
+                }
+            }
+            /*  
+                Review Acceptable: This program is a tool not used in production devices.
+                This is an acceptable security risk.
+             */
             command = sfmt("serialize \"%s\"", product);
-            output = rRun(command, &status);
+            status = rRun(command, &output);
             if (status != 0) {
                 rError("serialize", "Cannot serialize %s", command);
                 rFree(output);
@@ -2096,6 +2183,7 @@ PUBLIC int ioLoadConfig(void)
 
     /*
         Command line --config, --state and --ioto can set the config/state and ioto.json paths.
+        Review Acceptable: ioto->cmdStateDir is set internally and is not a security risk.
      */
     rAddDirectory("state", ioto->cmdStateDir ? ioto->cmdStateDir : IO_STATE_DIR);
 
@@ -2266,6 +2354,7 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
         return 0;
     }
     if ((extra = jsonParseFile(path, NULL, 0)) == 0) {
+        // Emit error even if optional is specified
         rError("ioto", "Cannot parse %s", path);
         rFree(path);
         return R_ERR_CANT_READ;
@@ -2305,8 +2394,10 @@ static int blendConditional(Json *json, cchar *property)
     if ((text = jsonToString(json, rootId, "conditional", 0)) == NULL) {
         return 0;
     }
-    conditional = jsonParse(text, JSON_PASS_TEXT);
-
+    conditional = jsonParseKeep(text, 0);
+    if (!conditional) {
+        return 0;
+    }
     for (ITERATE_JSON(conditional, NULL, collection, nid)) {
         value = 0;
         if (smatch(collection->name, "profile")) {
@@ -2330,6 +2421,7 @@ static int blendConditional(Json *json, cchar *property)
         }
     }
     jsonRemove(json, rootId, "conditional");
+    jsonFree(conditional);
     return 0;
 }
 
@@ -2338,7 +2430,7 @@ static int blendConditional(Json *json, cchar *property)
  */
 PUBLIC char *ioExpand(cchar *str)
 {
-    return jsonTemplate(ioto->properties, str);
+    return jsonTemplate(ioto->properties, str, 1);
 }
 
 /*
@@ -2353,6 +2445,7 @@ static Json *makeTemplate(void)
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         scopy(hostname, sizeof(hostname), "localhost");
     }
+    hostname[sizeof(hostname) - 1] = '\0';
     jsonSet(json, 0, "hostname", hostname, 0);
 #if SERVICES_CLOUD
     jsonSet(json, 0, "id", ioto->id, 0);
@@ -2393,7 +2486,9 @@ static void reset(void)
     removeFile(IO_KEY);
     removeFile("@db/device.db.jnl");
     removeFile("@db/device.db.sync");
-
+    /*
+        Review Acceptable: TOCTOU race risk is accepted. Expect file system to be secured. 
+     */
     path = rGetFilePath("@db/device.db.reset");
     if (rAccessFile(path, R_OK) == 0) {
         dest = rGetFilePath("@db/device.db");
@@ -2631,7 +2726,7 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items)
     return rc;
 }
 
-#if DEPRECATED && MOB && 0
+#if DEPRECATED & 0
 /*
     Write a database item as a response. The item is validated against the API signature
     and the request is finalized.
@@ -2664,23 +2759,23 @@ PUBLIC ssize webWriteItemsResponse(Web *web, RList *items)
  */
 PUBLIC void webLoginUser(Web *web)
 {
-    CDbItem *user;
-    cchar   *role, *username;
+    /*
+        Security: This function does not have provide legacy CSRF protection 
+        other than the SameSite cookie protections.
+        For extra security, users can implement anti-CSRF tokens themselves.
+     */
+    const DbItem *user;
+    cchar        *password, *role, *username;
 
     username = webGetVar(web, "username", 0);
-
+    password = webGetVar(web, "password", 0);
     user = dbFindOne(ioto->db, "User", DB_PROPS("username", username), NULL);
-    if (!user) {
-        webWriteResponse(web, 400, "Unknown user");
-        return;
-    }
-    if (!cryptCheckPassword(webGetVar(web, "password", 0), dbField(user, "password"))) {
-        rTrace("auth", "Password does not match");
-        webWriteResponse(web, 401, "Password failed to authenticate");
-        //  Security: throttle rate of attempts
-        rSleep(500);
-        return;
 
+    if (!user || !cryptCheckPassword(password, dbField(user, "password"))) {
+        //  Security: a generic message and fixed delay defeats username enumeration and timing attacks.
+        rSleep(500);
+        webWriteResponse(web, 401, "Invalid username or password");
+        return;
     }
     role = dbField(user, "role");
     if (!webLogin(web, username, role)) {
@@ -3185,12 +3280,13 @@ static int createLogGroup(IotoLog *log)
     status = aws(up, log->region, "logs", "Logs_20140328.CreateLogGroup", data, -1, NULL);
 
     rFree(data);
-    urlFree(up);
 
     if (status != URL_CODE_OK) {
-        rError("log", "Cannot create group %s, %s", log->group, urlGetResponse(log->up));
+        rError("log", "Cannot create group %s, %s", log->group, urlGetResponse(up));
+        urlFree(up);
         return R_ERR_CANT_CREATE;
     }
+    urlFree(up);
     return 0;
 }
 
@@ -3283,7 +3379,7 @@ static int createLogStream(IotoLog *log)
     rFree(data);
 
     if (status != URL_CODE_OK) {
-        rError("log", "Cannot create stream %s in group %s, %s", log->stream, log->group, urlGetResponse(log->up));
+        rError("log", "Cannot create stream %s in group %s, %s", log->stream, log->group, urlGetResponse(up));
         urlFree(up);
         return R_ERR_CANT_CREATE;
     }
@@ -3450,7 +3546,7 @@ static void sign(char hash[CRYPT_SHA256_SIZE], cchar *key, ssize keyLen, cchar *
 
 static void genKey(char result[CRYPT_SHA256_SIZE], cchar *secret, cchar *date, cchar *region, cchar *service)
 {
-    char cacheKey[256], kDate[CRYPT_SHA256_SIZE], kRegion[CRYPT_SHA256_SIZE], kService[CRYPT_SHA256_SIZE];
+    char cacheKey[512], kDate[CRYPT_SHA256_SIZE], kRegion[CRYPT_SHA256_SIZE], kService[CRYPT_SHA256_SIZE];
     char *asecret;
 
     sfmtbuf(cacheKey, sizeof(cacheKey), "%s-%s-%s-%s", secret, date, region, service);
@@ -3683,19 +3779,19 @@ PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *bod
 }
 
 /*
-    Simple header extraction. Must be no spaces after ":"
+    Simple request header extraction. Must be no spaces after ":"
     Caller must free result.
  */
 static char *getHeader(cchar *headers, cchar *header, cchar *defaultValue)
 {
-    cchar *end, *start;
+    cchar *end, *start, *value;
 
     if (headers && header) {
-        if (sncaselesscontains(headers, header, -1) != 0) {
-            if ((start = schr(headers, ':')) != 0) {
-                while (*start++ == ' ') start++;
-                if ((end = schr(start, '\r')) != 0) {
-                    return snclone(start, end - start);
+        if ((start = sncaselesscontains(headers, header, -1)) != 0) {
+            if ((value = schr(start, ':')) != 0) {
+                while (*value++ == ' ') value++;
+                if ((end = schr(value, '\r')) != 0) {
+                    return snclone(value, end - value);
                 }
             }
         }
@@ -3901,12 +3997,17 @@ static Log *allocLog(Json *json, int id, cchar *path)
     ioSetTemplateVar("filename", rBasename(path));
     stream = ioExpand(jsonGet(json, id, "stream", "${hostname}-${filename}"));
 
-    lp->log = ioAllocLog(lp->path, ioto->awsRegion, create, group, stream, maxEvents, maxSize, linger);
+    if ((lp->log = ioAllocLog(lp->path, ioto->awsRegion, create, group, stream, maxEvents, maxSize, linger)) == 0) {
+        freeLog(lp);
+        rFree(stream);
+        return 0;
+    }
     rFree(stream);
 
 #if LINUX && HAS_INOTIFY
     if ((lp->notifyFd = inotify_init()) < 0) {
         rError("logs", "Cannot initialize inotify");
+        freeLog(lp);
         return 0;
     }
     lp->notifyWait = rAllocWait(lp->notifyFd);
@@ -4071,6 +4172,9 @@ static int openLog(Log *lp)
     if (lp->command) {
         rTrace("logs", "Run command: %s", lp->command);
         assert(lp->fp == 0);
+        /*
+            REVIEW Acceptable: The command is configured by device developer and is deemed secure.
+         */
         if ((lp->fp = popen(lp->command, "r")) == 0) {
             rError("logs", "Cannnot open command \"%s\", errno %d", lp->command, errno);
             return R_ERR_CANT_OPEN;
@@ -4315,6 +4419,9 @@ static Ticks backoff(Ticks delay)
     /*
         Use this rather than sleep so that we can wakeup prematurely if required
      */
+    if (provisioningEvent) {
+        rStopEvent(provisioningEvent);
+    }
     provisioningEvent = rStartEvent(NULL, 0, delay);
     rYieldFiber(0);
     provisioningEvent = 0;
@@ -4327,10 +4434,11 @@ static Ticks backoff(Ticks delay)
 static bool provisionDevice(void)
 {
     Json *json;
-    char data[80], url[160];
+    char data[80], url[512];
 
     /*
         Talk to the device cloud to get certificates
+        Review Acceptable: ioto->api is of limited length and is not a security risk.
      */
     SFMT(url, "%s/tok/provision/getCerts", ioto->api);
     SFMT(data, "{\"id\":\"%s\"}", ioto->id);
@@ -4446,7 +4554,7 @@ static void postProvisionSync(void)
 /*
     Receive provisioning command (release)
  */
-PUBLIC void ioRelease(MqttRecv *rp)
+PUBLIC void ioRelease(const MqttRecv *rp)
 {
     Time  timestamp;
     cchar *cmd;
@@ -4517,7 +4625,7 @@ PUBLIC void ioDeprovision(void)
 PUBLIC void ioGetKeys(void)
 {
     Json  *json, *config;
-    char  url[160];
+    char  url[512];
     Ticks delay;
 
     SFMT(url, "%s/tok/provision/getCreds", ioto->api);
@@ -4690,7 +4798,7 @@ PUBLIC void ioSetShadow(cchar *key, cchar *value, bool save)
 
 PUBLIC int ioGetFileMode(void)
 {
-    return smatch(ioto->profile, "dev") ?  0666 : 0600;
+    return smatch(ioto->profile, "dev") ?  0660 : 0600;
 }
 
 static Json *loadShadow()
@@ -4698,22 +4806,21 @@ static Json *loadShadow()
     Json *json;
     char *errorMsg, *path;
 
+    path = rGetFilePath(IO_SHADOW_FILE);
     if (rAccessFile(path, R_OK) == 0) {
-        path = rGetFilePath(IO_SHADOW_FILE);
-        json = jsonParseFile(path, &errorMsg, 0);
-        rFree(path);
-
         if ((json = jsonParseFile(path, &errorMsg, 0)) == 0) {
             rError("shadow", "%s", errorMsg);
             rFree(errorMsg);
+            rFree(path);
             return 0;
         }
     } else {
         json = jsonAlloc(0);
     }
 #if KEEP
-    rPrintf("%s\n%s\n", path, jsonString(json));
+    rPrintf("%s\n%s\n", path, jsonString(json, 0));
 #endif
+    rFree(path);
     return json;
 }
 
@@ -4847,7 +4954,7 @@ static void logChange(Change *change);
 static void processDeviceCommand(DbItem *item);
 static cchar *readBlock(FILE *fp, RBuf *buf);
 static int readSize(FILE *fp);
-static void receiveSync(MqttRecv *rp);
+static void receiveSync(const MqttRecv *rp);
 static void recreateSyncLog(void);
 static void scheduleSync(Change *change);
 static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd, bool guarantee);
@@ -5069,6 +5176,9 @@ static cchar *readBlock(FILE *fp, RBuf *buf)
     cchar *result;
     int   len;
 
+    if (!buf) {
+        return NULL;
+    }
     //  The length includes a trailing null
     if (fread(&len, sizeof(len), 1, fp) != 1) {
         rError("sync", "Corrupt sync log");
@@ -5085,6 +5195,7 @@ static cchar *readBlock(FILE *fp, RBuf *buf)
     result = rGetBufStart(buf);
     rAdjustBufEnd(buf, len);
     rAdjustBufStart(buf, rGetBufLength(buf));
+    rAddNullToBuf(buf);
     return result;
 }
 
@@ -5417,7 +5528,7 @@ PUBLIC void ioConnectSync(void)
 /*
     Receive sync down responses
  */
-static void receiveSync(MqttRecv *rp)
+static void receiveSync(const MqttRecv *rp)
 {
     Db      *db;
     CDbItem *prior;
@@ -5584,7 +5695,7 @@ PUBLIC bool ioUpdate(void)
     Url   *up;
     Time  delay, jitter, lastUpdate, period;
     cchar *apply, *checksum, *image, *response, *schedule, *version;
-    char  *body, *date, *headers, *path, url[160];
+    char  *body, *date, *headers, *path, url[512];
     bool  enable;
 
     /*
@@ -5697,21 +5808,19 @@ static void applyUpdate(char *path)
 {
 #if ME_UNIX_LIKE
     cchar *script;
-    char  command[ME_MAX_FNAME + 32], *directive;
-    int   fd, status;
+    char  command[ME_MAX_FNAME + 256], *directive;
+    int   status;
 
     //  Need hook/way for apps to prevent update
     rSignal("device:update", path);
 
-    if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0600)) < 0) {
-        rError("provision", "Cannot open image temp file");
-        rFree(path);
-        return;
-    }
     script = jsonGet(ioto->config, 0, "scripts.update", 0);
     if (script) {
+        /*
+            REVIEW Acceptable: The command is configured by device developer and is deemed secure.
+         */
         SFMT(command, "%s \"%s\"", script, path);
-        directive = rRun(command, &status);
+        status = rRun(command, &directive);
         rInfo("ioto", "Update returned status %d, directive: \"%s\"", status, directive);
 
         if (status != 0) {
@@ -5727,7 +5836,6 @@ static void applyUpdate(char *path)
     }
     unlink(path);
     rFree(path);
-    close(fd);
 #endif
 }
 

@@ -37,7 +37,7 @@
     #define ME_JSON_INC              64
 #endif
 #ifndef ME_JSON_MAX_RECURSION
-    #define ME_JSON_MAX_RECURSION    10000
+    #define ME_JSON_MAX_RECURSION    1000
 #endif
 
 #ifndef ME_JSON_DEFAULT_PROPERTY
@@ -49,12 +49,13 @@
 /********************************** Forwards **********************************/
 
 static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value);
+static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth);
 static char *copyProperty(Json *json, cchar *key);
 static void freeNode(JsonNode *node);
 static bool isfnumber(cchar *s, ssize len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
-static int parseJson(Json *json, cchar *atext, int flags);
+static int parseJson(Json *json, char *text, int flags);
 static int sleuthValueType(cchar *value, ssize len);
 static void spaces(RBuf *buf, int count);
 
@@ -120,15 +121,27 @@ static void freeNode(JsonNode *node)
 
 static bool growNodes(Json *json, int num)
 {
+    void *p;
+
     assert(json);
     assert(num > 0);
 
+    if (num > ME_JSON_MAX_NODES) {
+        jerror(json, "Too many nodes");
+        return 0;
+    }
     if ((json->count + num) > json->size) {
         json->size += max(num, ME_JSON_INC);
-        if ((json->nodes = realloc(json->nodes, sizeof(JsonNode) * json->size)) == 0) {
+        if (json->size > ME_JSON_MAX_NODES) {
+            jerror(json, "Too many nodes");
+            return 0;
+        }
+        p = rRealloc(json->nodes, sizeof(JsonNode) * json->size);
+        if (p == 0) {
             jerror(json, "Cannot allocate memory");
             return 0;
         }
+        json->nodes = p;
     }
     return 1;
 }
@@ -242,10 +255,12 @@ static void copyNodes(Json *dest, int did, Json *src, int sid, ssize slen)
             rFree(dp->value);
         }
         *dp = *sp;
-        dp->name = sclone(sp->name);
-        dp->value = sclone(sp->value);
-        dp->allocatedName = 1;
-        dp->allocatedValue = 1;
+        if ((dp->name = sclone(sp->name)) != 0) {
+            dp->allocatedName = 1;
+        }
+        if ((dp->value = sclone(sp->value)) != 0) {
+            dp->allocatedValue = 1;
+        }
         dp->last = did + sp->last - sid;
     }
 }
@@ -336,7 +351,30 @@ PUBLIC void jsonUnlock(Json *json)
     Parse json text and return a JSON tree.
     Tolerant of null or empty text.
  */
-PUBLIC Json *jsonParse(cchar *text, int flags)
+PUBLIC Json *jsonParse(cchar *ctext, int flags)
+{
+    Json *json;
+    char *text;
+
+    json = jsonAlloc(flags);
+    text = sclone(ctext);
+    if (parseJson(json, text, flags) < 0) {
+        if (json->errorMsg && !rEmitLog("json", "trace")) {
+            rError("json", "%s", json->errorMsg);
+        }
+        jsonFree(json);
+        return 0;
+    }
+    return json;
+}
+
+/**
+    Parse a json string into a json object and assume ownership of the supplied text memory.
+    The caller must not free the text which will be freed by this function.
+    Use this method if you are sure the supplied JSON text is valid or do not 
+    need to receive diagnostics of parse failures other than the return value.
+ */
+PUBLIC Json *jsonParseKeep(char *text, int flags)
 {
     Json *json;
 
@@ -349,6 +387,7 @@ PUBLIC Json *jsonParse(cchar *text, int flags)
         return 0;
     }
     return json;
+
 }
 
 PUBLIC Json *jsonParseFmt(cchar *fmt, ...)
@@ -359,7 +398,7 @@ PUBLIC Json *jsonParseFmt(cchar *fmt, ...)
 
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
-    json = jsonParse(buf, JSON_PASS_TEXT);
+    json = jsonParseKeep(buf, 0);
     va_end(ap);
     return json;
 }
@@ -375,7 +414,7 @@ PUBLIC char *jsonConvert(cchar *fmt, ...)
 
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
-    json = jsonParse(buf, JSON_PASS_TEXT);
+    json = jsonParseKeep(buf, 0);
     va_end(ap);
     msg = jsonToString(json, 0, 0, JSON_STRICT);
     jsonFree(json);
@@ -394,8 +433,8 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
     va_start(ap, fmt);
     sfmtbufv(buf, size, fmt, ap);
     va_end(ap);
+
     json = jsonParse(buf, 0);
-    va_end(ap);
     msg = jsonToString(json, 0, 0, JSON_STRICT);
     sncopy(buf, size, msg, slen(msg));
     rFree(msg);
@@ -406,14 +445,16 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
 /*
     Parse JSON text and return a JSON tree and error message if parsing fails.
  */
-PUBLIC Json *jsonParseString(cchar *text, char **errorMsg, int flags)
+PUBLIC Json *jsonParseString(cchar *atext, char **errorMsg, int flags)
 {
     Json *json;
+    char *text;
 
     if (errorMsg) {
         *errorMsg = 0;
     }
     json = jsonAlloc(flags);
+    text = sclone(atext);
 
     if (parseJson(json, text, flags) < 0) {
         if (errorMsg) {
@@ -450,7 +491,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
     if (path) {
         json->path = sclone(path);
     }
-    if (parseJson(json, text, flags | JSON_PASS_TEXT) < 0) {
+    if (parseJson(json, text, flags) < 0) {
         if (errorMsg) {
             *errorMsg = json->errorMsg;
             json->errorMsg = 0;
@@ -469,7 +510,8 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
 PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int flags)
 {
     char *text, *tmp;
-    int  fd, len;
+    int  fd;
+    ssize len;
 
     assert(json);
     assert(path && *path);
@@ -486,7 +528,7 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
         rFree(tmp);
         return R_ERR_CANT_OPEN;
     }
-    len = (int) slen(text);
+    len = slen(text);
     if (write(fd, text, len) != len) {
         rFree(text);
         rFree(tmp);
@@ -658,6 +700,10 @@ static int parseString(Json *json)
                         return R_ERR_BAD_STATE;
                     }
                 }
+                if (j < 4) {
+                    jerror(json, "Invalid unicode characters");
+                    return R_ERR_BAD_STATE;
+                }
                 next--;
                 break;
 
@@ -714,22 +760,18 @@ static int parseComment(Json *json)
     return 0;
 }
 
-static int parseJson(Json *json, cchar *atext, int flags)
+/*
+    Parse the text and assume ownership of the text.
+ */
+static int parseJson(Json *json, char *text, int flags)
 {
     JsonNode *node;
-    char     *name, *value, *text;
+    char     *name, *value;
     uchar    c;
     int      level, parent, prior, type, rc;
 
     assert(json);
 
-    if (!atext) {
-        text = sclone("");
-    } else if (flags & JSON_PASS_TEXT) {
-        text = (char*) atext;
-    } else {
-        text = sclone(atext);
-    }
     json->next = json->text = text;
     json->end = &json->text[slen(text)];
 
@@ -909,7 +951,13 @@ static char *getNextTerm(char *str, char **rest, int *type)
     ssize i;
 
     seps = ".[]";
-    start = str ? str : *rest;
+    start = str;
+    if (start == NULL) {
+        if (rest == NULL) {
+            return 0;
+        }
+        start = *rest;
+    }
     if (start == 0) {
         if (rest) {
             *rest = 0;
@@ -968,7 +1016,7 @@ static int findProperty(Json *json, int nid, cchar *property)
         return R_ERR_CANT_FIND;
     }
     if (node->type == JSON_ARRAY) {
-        if (!isdigit((uchar) * property) || (index = atoi(property)) < 0) {
+        if (!isdigit((uchar) * property) || (index = (int) stoi(property)) < 0) {
             for (id = nid + 1; id < node->last; id = np->last) {
                 np = &json->nodes[id];
                 if (smatch(property, np->value)) {
@@ -978,10 +1026,11 @@ static int findProperty(Json *json, int nid, cchar *property)
             return R_ERR_CANT_FIND;
 
         } else {
-            id = nid + 1;
-            np = &json->nodes[id];
-            while (index-- > 0) {
-                id = np->last;
+            if (index >= INT_MAX) {
+                return R_ERR_CANT_FIND;
+            }
+            for (id = nid + 1; index-- > 0 && id < node->last; id = np->last) {
+                np = &json->nodes[id];
             }
             if (id <= nid || id >= node->last) {
                 return R_ERR_CANT_FIND;
@@ -1078,11 +1127,17 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 static char *copyProperty(Json *json, cchar *key)
 {
     ssize len;
+    void *p;
 
     len = slen(key) + 1;
     if (len > json->propertyLength) {
-        json->property = realloc(json->property, len);
-        json->propertyLength = (int) len;
+        p = rRealloc(json->property, len);
+        if (p == NULL) {
+            jerror(json, "Cannot allocate memory for property");
+            return NULL;
+        }
+        json->property = p;
+        json->propertyLength = len;
     }
     scopy(json->property, json->propertyLength, key);
     return json->property;
@@ -1356,7 +1411,7 @@ PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags)
         rFree(node->value);
         node->allocatedValue = 0;
     }
-    if (flags & JSON_PASS_TEXT) {
+    if (flags & JSON_PASS_VALUE) {
         node->value = (char*) value;
     } else {
         node->value = sclone(value);
@@ -1615,6 +1670,7 @@ PUBLIC void jsonPrint(Json *json)
     rFree(str);
 }
 
+#if JSON_BLEND
 /*
     Blend sub-trees by copying.
     This performs an N-level deep clone of the source JSON nodes to be blended into the destination object.
@@ -1633,15 +1689,22 @@ PUBLIC void jsonPrint(Json *json)
     NOTE: This is recursive when blending properties for each level of property nest.
     It uses 16 words of stack plus stack frame for each recursion. i.e. >64bytes on 32-bit CPU.
  */
-#if JSON_BLEND
-
 PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags)
+{
+    return blendRecurse(dest, did, dkey, csrc, sid, skey, flags, 0);
+}
+
+static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth)
 {
     Json     *src, *tmpSrc;
     JsonNode *dp, *sp, *spc, *dpc;
     cchar    *property;
     char     *srcData, *value;
     int      at, id, dlen, slen, didc, kind, pflags;
+
+    if (depth > ME_JSON_MAX_RECURSION) {
+        return jerror(dest, "Blend recursion limit exceeded");
+    }
 
     //  Cast const away because ITERATE macros make this difficult
     src = (Json*) csrc;
@@ -1678,7 +1741,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid
     }
     if (skey && *skey) {
         if ((id = jquery(src, sid, skey, 0, 0)) < 0) {
-            sid = jquery(src, sid, skey, "", JSON_OBJECT);
+            return 0;
         } else {
             sid = id;
         }
@@ -1727,7 +1790,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid
                     dp = &dest->nodes[did];
                     if (spc->type & (JSON_ARRAY | JSON_OBJECT)) {
                         setNode(dest, at, spc->type, property, 1, 0, 0);
-                        if (jsonBlend(dest, at, 0, src, sidc, 0, pflags & ~JSON_CCREATE) < 0) {
+                        if (blendRecurse(dest, at, 0, src, sidc, 0, pflags & ~JSON_CCREATE, depth + 1) < 0) {
                             jsonFree(tmpSrc);
                             return R_ERR_BAD_ARGS;
                         }
@@ -1745,7 +1808,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid
                     removeNodes(dest, didc, dpc->last - didc - 1);
                     setNode(dest, didc, JSON_OBJECT, property, 1, 0, 0);
                 }
-                if (jsonBlend(dest, didc, 0, src, sidc, 0, pflags) < 0) {
+                if (blendRecurse(dest, didc, 0, src, sidc, 0, pflags, depth + 1) < 0) {
                     jsonFree(tmpSrc);
                     return R_ERR_BAD_ARGS;
                 }
@@ -1836,7 +1899,9 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
     Json *dest;
 
     dest = jsonAlloc(flags);
-    jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
+    if (csrc) {
+        jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
+    }
     return dest;
 }
 #endif /* JSON_BLEND */
@@ -1863,52 +1928,43 @@ PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg)
 
 /*
     Expand ${token} references in a path or string.
+    Unexpanded tokens are replaced with $^{token}
+    Return clone of the string if passed NULL or empty string or json not defined.
+    Unterminated tokens are an error and return NULL.
  */
-PUBLIC char *jsonTemplate(Json *json, cchar *str)
+PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
 {
     RBuf  *buf;
     cchar *value;
-    char  *src, *result, *cp, *tok;
+    char  *src, *cp, *start, *tok;
 
-    if (str) {
-        if (schr(str, '$') == 0) {
-            return sclone(str);
-        }
-        buf = rAllocBuf(0);
-        for (src = (char*) str; *src; ) {
-            if (*src == '$') {
-                if (*++src == '{') {
-                    for (cp = ++src; *cp && *cp != '}'; cp++);
-                    tok = snclone(src, cp - src);
-                } else {
-                    for (cp = src; *cp && (isalnum((uchar) * cp) || *cp == '_'); cp++);
-                    tok = snclone(src, cp - src);
-                }
-                value = jsonGet(json, 0, tok, 0);
-                rFree(tok);
-                if (value != 0) {
-                    rPutStringToBuf(buf, value);
-                    if (src > str && src[-1] == '{') {
-                        src = cp + 1;
-                    } else {
-                        src = cp;
-                    }
-                } else {
-                    rPutCharToBuf(buf, '$');
-                    if (src > str && src[-1] == '{') {
-                        rPutCharToBuf(buf, '{');
-                    }
-                    rPutCharToBuf(buf, *src++);
-                }
-            } else {
-                rPutCharToBuf(buf, *src++);
-            }
-        }
-        result = rBufToStringAndFree(buf);
-    } else {
-        result = sclone("");
+    if (!str || schr(str, '$') == 0 || !json) {
+        return sclone(str);
     }
-    return result;
+    buf = rAllocBuf(0);
+    for (src = (char*) str; *src; src++) {
+        if (src[0] == '$' && src[1] == '{') {
+            for (cp = start = src + 2; *cp && *cp != '}'; cp++) {}
+            if (*cp == '\0') {
+                // Unterminated token
+                return NULL;
+            }
+            tok = snclone(start, cp - start);
+            value = jsonGet(json, 0, tok, 0);
+            if (*tok && value) {
+                rPutStringToBuf(buf, value);
+            } else if (keep) {
+                rPutStringToBuf(buf, "${");
+                rPutStringToBuf(buf, tok);
+                rPutCharToBuf(buf, '}');
+            }
+            src = (*cp == '}') ? cp : cp - 1;
+            rFree(tok);
+        } else {
+            rPutCharToBuf(buf, *src);
+        }
+    }
+    return rBufToStringAndFree(buf);
 }
 
 PUBLIC int jsonCheckIteration(struct Json *json, int count, int nid)

@@ -174,7 +174,7 @@ static int parseArgs(int argc, char **argv)
             trace = TRACE_DEBUG_FILTER;
 
         } else if (smatch(argp, "--default")) {
-            if (nextArg >= argc) {
+            if (nextArg + 1 >= argc) {
                 return usage();
             } else {
                 defaultValue = argv[++nextArg];
@@ -205,7 +205,7 @@ static int parseArgs(int argc, char **argv)
             overwrite = 1;
 
         } else if (smatch(argp, "--profile")) {
-            if (nextArg >= argc) {
+            if (nextArg + 1 >= argc) {
                 usage();
             }
             profile = argv[++nextArg];
@@ -224,7 +224,7 @@ static int parseArgs(int argc, char **argv)
             strict = 1;
 
         } else if (smatch(argp, "--trace") || smatch(argp, "-t")) {
-            if (nextArg >= argc) {
+            if (nextArg + 1 >= argc) {
                 return usage();
             } else {
                 trace = argv[++nextArg];
@@ -254,6 +254,9 @@ static int parseArgs(int argc, char **argv)
         cmd = JSON_CMD_CONVERT;
     } else {
         property = sclone(argv[nextArg++]);
+        if (property == NULL) {
+            return error("Cannot allocate memory for property");
+        }
     }
     if (!cmd) {
         if (smatch(property, ".")) {
@@ -308,11 +311,11 @@ static int run()
             format = JSON_FORMAT_JSON5;
         }
     }
-    flags = JSON_PASS_TEXT;
+    flags = 0;
     if (strict) {
         flags |= JSON_STRICT;
     }
-    json = jsonParse(data, flags);
+    json = jsonParseKeep(data, flags);
     if (json == 0) {
         error("Cannot parse input");
         return R_ERR_CANT_READ;
@@ -387,7 +390,11 @@ static int blendFiles(Json *json)
     if ((toBlend = jsonToString(json, 0, "blend", 0)) == NULL) {
         return 0;
     }
-    blend = jsonParse(toBlend, JSON_PASS_TEXT);
+    blend = jsonParseKeep(toBlend, 0);
+    if (blend == NULL) {
+        rFree(toBlend);
+        return error("Cannot parse blended properties");
+    }
     for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
         if (path && *path) {
             dir = (char*) rDirname(sclone(path));
@@ -427,7 +434,11 @@ static int mergeConditionals(Json *json, cchar *property)
     if ((text = jsonToString(json, rootId, "conditional", 0)) == NULL) {
         return 0;
     }
-    conditional = jsonParse(text, JSON_PASS_TEXT);
+    conditional = jsonParseKeep(text, 0);
+    if (conditional == NULL) {
+        rFree(text);
+        return error("Cannot parse conditional properties");
+    }
 
     for (ITERATE_JSON(conditional, NULL, collection, nid)) {
         //  Collection name: profile
@@ -450,12 +461,13 @@ static int mergeConditionals(Json *json, cchar *property)
         }
     }
     jsonRemove(json, rootId, "conditional");
+    jsonFree(conditional);
     return 0;
 }
 
 static char *readInput()
 {
-    char  *buf;
+    char  *buf, *newBuf;
     ssize bytes, pos;
 
     if (path) {
@@ -464,18 +476,41 @@ static char *readInput()
                 return sclone("{}");
             }
             error("Cannot locate file %s", path);
+            return 0;
         }
         if ((buf = rReadFile(path, NULL)) == 0) {
             error("Cannot read input from %s", path);
             return 0;
         }
     } else {
-        buf = malloc(ME_BUFSIZE + 1);
+        buf = rAlloc(ME_BUFSIZE + 1);
         pos = 0;
         do {
-            buf = realloc(buf, pos + ME_BUFSIZE + 1);
-            bytes = fread(&buf[pos], 1, sizeof(buf), stdin);
-            pos += bytes;
+            if (pos >= SSIZE_MAX - (ME_BUFSIZE + 1)) {
+                rFree(buf);
+                error("Input too large");
+                return NULL;
+            }
+            if ((newBuf = rRealloc(buf, pos + ME_BUFSIZE + 1)) == NULL) {
+                rFree(buf);
+                error("Cannot reallocate memory for input");
+                return NULL;
+            }
+            buf = newBuf;
+            bytes = fread(&buf[pos], 1, ME_BUFSIZE, stdin);
+            if (ferror(stdin)) {
+                rFree(buf);
+                error("Cannot read from stdin");
+                return NULL;
+            }
+            if (bytes > 0) {
+                if (pos > SSIZE_MAX - bytes) {
+                    rFree(buf);
+                    error("Input too large, size overflow");
+                    return NULL;
+                }
+                pos += bytes;
+            }
         } while (bytes > 0);
         buf[pos] = '\0';
     }

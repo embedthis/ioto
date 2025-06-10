@@ -5,8 +5,8 @@
     version: 'latest',
     description: 'Default database schema for local managememt',
     blend: [
-        '../../../schemas/OneTable.json5',
-        '../../../schemas/LocalSchema.json5'
+        '../../../schemas/parts/OneTable.json5',
+        '../../../schemas/parts/LocalSchema.json5'
     ],
     process: { },
     models: { }

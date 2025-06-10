@@ -51,9 +51,9 @@ static void s3Test(Json *json);
 PUBLIC void unitTest(cchar *suite)
 {
     REvent   timeoutEvent;
-    Json     *args, *json;
+    Json     *json;
     JsonNode *run, *test;
-    char     *error, *key, *path, sbuf[80];
+    char     *error, *path, sbuf[80];
     bool     exit, parallel;
     int      delay, i, count, sid;
 
@@ -82,15 +82,12 @@ PUBLIC void unitTest(cchar *suite)
 
     rInfo("test", "Running %d tests %s", count, parallel ? "in parallel" : "");
 
+    jsonPrint(json);
+    
     for (i = 0; i < count; i++) {
         rInfo("test", "Iteration %d", i);
         //  Iterate over the "run" list of tests
         for (ITERATE_JSON(json, run, test, nid)) {
-            args = jsonAlloc(0);
-            key = sfmt("test.%s", test->value);
-            jsonBlend(args, 0, 0, json, 0, key, 0);
-            rFree(key);
-
             rInfo("test", "Running %s tests", test->value);
             if (rGetTimeouts()) {
                 timeoutEvent = rStartEvent((REventProc) testTimeout, test, UNIT_TIMEOUT);
@@ -140,8 +137,6 @@ PUBLIC void unitTest(cchar *suite)
             if (smatch(test->value, "debug")) {
                 // debugTest(json);
             }
-            jsonFree(args);
-
             if (rGetTimeouts()) {
                 rStopEvent(timeoutEvent);
             }

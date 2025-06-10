@@ -136,6 +136,8 @@ PUBLIC WebSocket *webSocketAlloc(RSocket *sock, bool client)
 PUBLIC void webSocketFree(WebSocket *ws)
 {
     if (!ws) return;
+
+    //  Review Acceptable - Defer free until the callback completes
     if (ws->inCallback) {
         ws->needFree = 1;
         return;
@@ -383,8 +385,14 @@ static int parseFrame(WebSocket *ws)
     }
     fp++;
     while (--lenBytes > 0) {
+        if (len > SSIZE_MAX / 8) {
+            return wsError(ws, 0, "Protocol error, frame length too big");
+        }
         len <<= 8;
         len += (uchar) * fp++;
+    }
+    if (len < 0) {
+        return wsError(ws, 0, "Protocol error, bad frame length");
     }
     if (opcode >= WS_MSG_CONTROL && len > WS_MAX_CONTROL) {
         return wsError(ws, 0, "Protocol error, control frame too big");
@@ -424,6 +432,9 @@ static int parseMessage(WebSocket *ws)
         return 0;
     }
     if (ws->maskOffset >= 0) {
+        if (ws->frameLength > rGetBufLength(buf)) {
+            return wsError(ws, 0, "Frame length exceeds buffer size");
+        }
         //  Unmask the message
         end = &buf->start[ws->frameLength];
         for (cp = buf->start; cp < end; cp++) {
@@ -459,6 +470,9 @@ static int parseMessage(WebSocket *ws)
             }
         }
         //  Update total message length over all frames
+        if (ws->messageLength > SSIZE_MAX - rGetBufLength(buf)) {
+            return wsError(ws, 0, "Protocol error, message length too big");
+        }
         ws->messageLength += rGetBufLength(buf);
 
         if (ws->callback) {
@@ -498,7 +512,7 @@ static int parseMessage(WebSocket *ws)
             if (ws->closeStatus < 1000 || ws->closeStatus >= 5000 ||
                 (1004 <= ws->closeStatus && ws->closeStatus <= 1006) ||
                 (1012 <= ws->closeStatus && ws->closeStatus <= 1016) ||
-                (1100 <= ws->closeStatus && ws->closeStatus <= 2999)) {
+                (1200 <= ws->closeStatus && ws->closeStatus <= 2999)) {
                 return wsError(ws, 0, "Bad close status %d", ws->closeStatus);
             }
             rAdjustBufStart(buf, 2);
@@ -832,11 +846,11 @@ static int validUTF8(WebSocket *ws, cchar *str, ssize len)
 
     state = UTF8_ACCEPT;
     for (cp = (uchar*) str; cp < (uchar*) &str[len]; cp++) {
-        c = *cp;
-        type = utfTable[c];
         /*
             codepoint = (*state != UTF8_ACCEPT) ? (byte & 0x3fu) | (*codep << 6) : (0xff >> type) & (byte);
          */
+        c = *cp;
+        type = utfTable[c];
         state = utfTable[256 + (state * 16) + type];
         if (state == UTF8_REJECT) {
             wsError(ws, WS_STATUS_INVALID_UTF8, "Invalid UTF8 at offset %d", cp - (uchar*) str);

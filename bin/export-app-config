@@ -20,9 +20,13 @@ for file in db.json5 device.json5 display.json5 ioto.json5 local.json5 schema.js
 do
 	if [ -f config/${file} ] ; then
 		json -q --check config/${file} || echo "Cannot parse `pwd`/config/${file}.json5"
-		if [ ! -f ${CONFIG}/${file} ] ; then
+		if [ ! -f ${CONFIG}/${file} -o ! -s ${CONFIG}/${file} -o config/${file} -nt ${CONFIG}/${file} ] ; then
 			echo "      [Copy] json --blend . config/${file} >state/config/${file}"
 			json --blend . config/${file} >${CONFIG}/${file}
+			if [ ! -s config/${file} ] ; then
+				echo "Error blending config/${file}"
+				exit 255
+			fi
 		fi
 	fi
 done

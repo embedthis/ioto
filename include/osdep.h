@@ -141,18 +141,18 @@
 
 #elif defined(__riscv_32)
     #define ME_CPU "riscv"
-    #define ME_CPU_ARCH CPU_RISCV
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_RISCV
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 
 #elif defined(__riscv_64)
     #define ME_CPU "riscv64"
-    #define ME_CPU_ARCH CPU_RISCV64
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_RISCV64
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 
 #elif defined(__XTENSA__)
     #define ME_CPU "xtensa"
-    #define ME_CPU_ARCH CPU_XTENSA
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_XTENSA
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 #else
     #error "Cannot determine CPU type in osdep.h"
 #endif
@@ -589,7 +589,9 @@
 #endif
 
 #if ME_COMPILER_HAS_ATOMIC
-    #include   <stdatomic.h>
+    #ifndef __cplusplus
+        #include   <stdatomic.h>
+    #endif
 #endif
 
 #if FREERTOS
@@ -1388,6 +1390,7 @@ typedef int64 Ticks;
     #define getpid      _getpid
     #define gettimezone _gettimezone
     #define lseek       _lseek
+    //  Review Acceptable - the omode parameter is ignored on Windows
     #define mkdir(a,b)  _mkdir(a)
     #define open        _open
     #define putenv      _putenv

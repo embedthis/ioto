@@ -31,7 +31,7 @@ void uctx_setstack(uctx_t *up, void *stack, size_t stackSize)
 
 void *uctx_getstack(uctx_t *up)
 {
-	return up->uc_stack.ss_sp + up->uc_stack.ss_size;
+	return (char*) up->uc_stack.ss_sp + up->uc_stack.ss_size;
 }
 
 
@@ -309,7 +309,7 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
     if (entry) {
         va_start(args, argc);
         ucp->entry = (void*) entry;
-        for (int i = 0; i < argc && i < 8; i++) {
+        for (int i = 0; i < argc && i < UCTX_MAX_ARGS; i++) {
             ucp->args[i] = va_arg(args, void*);
         }
         int words = ucp->uc_stack.ss_size / sizeof(int);
@@ -1297,7 +1297,7 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
     if (entry) {
         va_start(args, argc);
         ucp->entry = (void*) entry;
-        for (int i = 0; i < argc && i < 8; i++) {
+        for (int i = 0; i < argc && i < UCTX_MAX_ARGS; i++) {
             ucp->args[i] = va_arg(args, void*);
         }
         pthread_attr_init(&attr);

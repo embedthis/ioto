@@ -107,6 +107,7 @@ PUBLIC Url *urlAlloc(int flags)
     up->bufLimit = URL_MAX_RESPONSE;
 
     if (flags == 0) {
+        //  Review Acceptable: acceptable risk to use getenv here to modify log level
         if ((show = getenv("URL_SHOW")) != 0) {
             if (schr(show, 'H')) {
                 flags |= URL_SHOW_REQ_HEADERS;
@@ -729,7 +730,7 @@ PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize)
 static ssize readChunk(Url *up, char *buf, ssize bufsize)
 {
     ssize chunkSize, nbytes;
-    char  cbuf[32];
+    char  cbuf[32], *end;
 
     nbytes = 0;
 
@@ -738,11 +739,11 @@ static ssize readChunk(Url *up, char *buf, ssize bufsize)
             return urlError(up, "Bad chunk data");
         }
         cbuf[sizeof(cbuf) - 1] = '\0';
-        chunkSize = (int) stoiradix(cbuf, 16, NULL);
-        if (chunkSize < 0) {
+        chunkSize = strtol(cbuf, &end, 16);
+        if (chunkSize < 0 || chunkSize > SSIZE_MAX || (*end != '\0' && !isspace(*end))) {
             return urlError(up, "Bad chunk specification");
-
-        } else if (chunkSize) {
+        }
+        if (chunkSize) {
             //  Set rxRemaining to the next chunk size
             up->rxRemaining = chunkSize;
             up->chunked = URL_CHUNK_DATA;
@@ -886,12 +887,19 @@ PUBLIC void urlSetVerify(Url *up, int verifyPeer, int verifyIssuer)
     rSetSocketVerify(up->sock, verifyPeer, verifyIssuer);
 }
 
+/*
+    Parse the URL and set the up->host, up->port, up->path, up->hash, and up->query fields.
+    Return 0 on success or a negative error code.
+    The uri is already trimmed of whitespace.
+ */
 PUBLIC int urlParse(Url *up, cchar *uri)
 {
     char *next, *tok;
     bool hasScheme;
-
+    char *end;
+    
     rFree(up->urlbuf);
+    
     up->urlbuf = sclone(uri);
     up->scheme = "http";
     up->host = "localhost";
@@ -934,7 +942,15 @@ PUBLIC int urlParse(Url *up, cchar *uri)
         if ((tok = spbrk(tok, ":/")) != 0) {
             if (*tok == ':') {
                 *tok++ = 0;
-                up->port = atoi(tok);
+                up->port = (int) strtol(tok, &end, 10);
+                if (*end != '\0' && *end != '/') {
+                    urlError(up, "Invalid port number");
+                    return R_ERR_BAD_STATE;
+                }
+                if (up->port < 1 || up->port > 65535) {
+                    urlError(up, "Invalid port number");
+                    return R_ERR_BAD_STATE;
+                }
                 if ((tok = schr(tok, '/')) != 0) {
                     tok++;
                 } else {
@@ -950,7 +966,15 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     } else if (*tok && *tok == ':') {
         //  :port/path without hostname
         *tok++ = 0;
-        up->port = atoi(tok);
+        up->port = (int) strtol(tok, &end, 10);
+        if (*end != '\0' && *end != '/') {
+            urlError(up, "Invalid port number");
+            return R_ERR_BAD_STATE;
+        }
+        if (up->port < 1 || up->port > 65535) {
+            urlError(up, "Invalid port number");
+            return R_ERR_BAD_STATE;
+        }
         if ((tok = schr(tok, '/')) != 0) {
             tok++;
         } else {
@@ -959,6 +983,10 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     }
     if (*tok) {
         up->path = tok;
+    }
+    if (slen(up->host) > 255) {
+        urlError(up, "Invalid host name");
+        return R_ERR_BAD_STATE;
     }
     return 0;
 }
@@ -1095,7 +1123,7 @@ static ssize getContentLength(cchar *headers, ssize size)
         if (sncaselesscmp(cp, header, len) == 0) {
             cp += len + 1;
             while (*cp == ' ') cp++;
-            return atoi(cp);
+            return stoi(cp);
         }
         //  Step over header
         cp += len + 1;
@@ -1130,7 +1158,7 @@ static char *getHeader(char *line, char **key, char **value, int flags)
 
     //  Validate header key
     for (tok = *key; *tok; tok++) {
-        if (!validHeaderChars[(uchar) * tok]) {
+        if (*tok >= sizeof(validHeaderChars) || !validHeaderChars[*tok & 0x7f]) {
             return 0;
         }
     }
@@ -1160,12 +1188,9 @@ static char *getHeader(char *line, char **key, char **value, int flags)
 
     if (flags & HDR_HTTP) {
         // Trim white space from end of value
-        for (tok = *value - 2; tok >= *value; tok--) {
-            if (isWhite(*tok)) {
-                *tok = '\0';
-            } else {
-                break;
-            }
+        tok = &(*value)[slen(*value) - 1];
+        while (tok >= *value && isWhite(*tok)) {
+            *tok-- = '\0';
         }
     }
     return cp;
@@ -1187,7 +1212,7 @@ static bool parseHeaders(Url *up)
         c = tolower(*key);
         if (c == 'c') {
             if (scaselessmatch(key, "content-length")) {
-                up->rxLen = atoi(value);
+                up->rxLen = stoi(value);
                 up->rxRemaining = smatch(up->method, "HEAD") ? 0 : up->rxLen;
 
             } else if (scaselessmatch(key, "connection")) {
@@ -1371,7 +1396,10 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
     }
     if (files) {
         for (ITERATE_ITEMS(files, path, next)) {
-            if (!rFileExists(path)) {
+            /* 
+                Review Acceptable - Must allow relative and absolute paths.  Assume caller is trusted.
+            */
+            if (!rFileExists(path) || scontains(path, "..")) {
                 return urlError(up, "Cannot open %s", path);
             }
             name = rBasename(path);

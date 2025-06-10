@@ -40,7 +40,8 @@ PUBLIC bool webAuthenticate(Web *web)
 
     if (web->cookie && webGetSession(web, 0) != 0) {
         /*
-            Retrieve authentication state from the session storage. Faster than re-authenticating.
+            Review Acceptable: Retrieve authentication state from the session storage.
+            Faster than re-authenticating.
          */
         if ((web->username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
             web->role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
@@ -176,7 +177,6 @@ static int deleteFile(Web *web, cchar *path);
 static int getFile(Web *web, cchar *path, FileInfo *info);
 static int putFile(Web *web, cchar *path);
 static int redirectToDir(Web *web);
-static int sumPath(cchar *path);
 
 /************************************* Code ***********************************/
 
@@ -186,6 +186,7 @@ PUBLIC int webFileHandler(Web *web)
     char     *path;
     int      rc;
 
+    // Review Acceptable: the path is already validated and normalized in webValidateRequest / webNormalizePath
     path = sjoin(webGetDocs(web->host), web->path, NULL);
 
     web->exists = stat(path, &info) == 0;
@@ -211,7 +212,6 @@ PUBLIC int webFileHandler(Web *web)
 static int getFile(Web *web, cchar *path, FileInfo *info)
 {
     char  date[32], *lpath;
-    int64 ino;
     int   fd;
 
     if (!web->exists) {
@@ -248,8 +248,9 @@ static int getFile(Web *web, cchar *path, FileInfo *info)
     if (info->st_mtime > 0) {
         webAddHeader(web, "Last-Modified", "%s", webDate(date, info->st_mtime));
     }
-    ino = info->st_ino ? info->st_ino : sumPath(path);
-    webAddHeader(web, "ETag", "%Ld", ino + info->st_size + (int64) info->st_mtime);
+
+    //  ETag is a hash of the file's inode, size and last modified time.
+    webAddHeader(web, "ETag", "\"%Ld\"", (uint64) info->st_ino ^ (uint64) info->st_size ^ (uint64) info->st_mtime);
 
     if (smatch(web->method, "HEAD")) {
         webFinalize(web);
@@ -298,7 +299,7 @@ static int putFile(Web *web, cchar *path)
     ssize nbytes;
     int   fd;
 
-    if ((fd = open(path, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, 0644)) < 0) {
+    if ((fd = open(path, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, 0600)) < 0) {
         return webError(web, 404, "Cannot open document");
     }
     while ((nbytes = webRead(web, buf, sizeof(buf))) > 0) {
@@ -333,17 +334,6 @@ PUBLIC ssize webSendFile(Web *web, int fd)
         written += nbytes;
     }
     return written;
-}
-
-static int sumPath(cchar *path)
-{
-    cchar *cp;
-    int   sum = 0;
-
-    for (cp = path; *cp; cp++) {
-        sum += *cp;
-    }
-    return sum;
 }
 
 /*
@@ -453,6 +443,7 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->maxBody = svalue(jsonGet(host->config, 0, "web.limits.body", "100K"));
     host->maxSessions = svalue(jsonGet(host->config, 0, "web.limits.sessions", "20"));
     host->maxUpload = svalue(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
+    host->maxUploads = svalue(jsonGet(host->config, 0, "web.limits.uploads", "128"));
 #endif
 
     host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
@@ -582,16 +573,8 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
 {
     WebListen *listen;
     RSocket   *sock;
-    char      *hostname, *sport, *scheme, *tok;
+    char      *hostname, *sport, *scheme, *tok, *end;
     int       port;
-
-    if ((listen = rAllocType(WebListen)) == 0) {
-        rError("web", "Cannot allocate memory for WebListen");
-        return 0;
-    }
-    listen->host = host;
-    listen->endpoint = sclone(endpoint);
-    rInfo("web", "Listening %s", endpoint);
 
     tok = sclone(endpoint);
     scheme = sptok(tok, "://", &hostname);
@@ -604,12 +587,16 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
     }
     hostname = sptok(hostname, ":", &sport);
     if (!sport) {
-        hostname = "localhost";
-        sport = "80";
+        sport = smatch(scheme, "https") ? "443" : "80";
     }
-    port = atoi(sport);
+    port = (int) strtol(sport, &end, 10);
+    if (*end) {
+        rError("web", "Bad characters in port of endpoint \"%s\"", sport);
+        rFree(tok);
+        return 0;
+    }
 
-    if (port == 0) {
+    if (port <= 0 || port > 65535) {
         rError("web", "Bad or missing port %d in Listen directive", port);
         rFree(tok);
         return 0;
@@ -617,6 +604,16 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
     if (*hostname == 0) {
         hostname = NULL;
     }
+
+    if ((listen = rAllocType(WebListen)) == 0) {
+        rError("web", "Cannot allocate memory for WebListen");
+        return 0;
+    }
+    listen->host = host;
+    listen->endpoint = sclone(endpoint);
+    rInfo("web", "Listening %s", endpoint);
+
+
     listen->sock = sock = rAllocSocket();
     listen->port = port;
 
@@ -693,15 +690,19 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
 }
 #endif
 
+/*
+    Get a timeout value in milliseconds. If the value is greater than MAXINT / TPS, return MAXINT / TPS.
+    This is to prevent overflow.
+ */
 static int getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
 {
     uint64 value;
 
     value = svalue(jsonGet(host->config, 0, field, defaultValue));
-    if (value > MAXINT / 1000) {
-        return MAXINT;
+    if (value > MAXINT / TPS) {
+        return MAXINT / TPS;
     }
-    return (int) value * 1000;
+    return (int) value * TPS;
 }
 
 static cchar *uploadDir(void)
@@ -1433,6 +1434,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
     struct tm tm;
     cchar     *end;
     char      c, *cp, *endKey, *key, *prior, *t, *value;
+    bool      hasCL = 0, hasTE = 0;
 
     if (!headers || *headers == '\0') {
         return 1;
@@ -1447,10 +1449,18 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
         }
         endKey = cp;
         *cp++ = '\0';
-        while (*cp && isWhite(*cp)) cp++;
+        while (*cp && isWhite(*cp)) {
+            cp++;
+        }
         value = cp;
-        while (*cp && *cp != '\r') cp++;
-
+        while (*cp && *cp != '\r') {
+            //  Only permit strict \r\n header terminator
+            if (*cp == '\n') {
+                webNetError(web, "Bad headers");
+                return 0;
+            }
+            cp++;
+        }
         if (*cp != '\r') {
             webNetError(web, "Bad headers");
             return 0;
@@ -1473,7 +1483,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
 
         //  Validate header name
         for (t = key; t < endKey; t++) {
-            if (!validHeaderChars[(uchar) * t]) {
+            if (*t >= sizeof(validHeaderChars) || !validHeaderChars[*t & 0x7f]) {
                 return 0;
             }
         }
@@ -1508,7 +1518,8 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
                     web->close = 1;
                 }
             } else if (scaselessmatch(key, "content-length")) {
-                web->rxLen = web->rxRemaining = atoi(value);
+                hasCL = 1;
+                web->rxLen = web->rxRemaining = stoi(value);
 
             } else if (scaselessmatch(key, "cookie")) {
                 if (web->cookie) {
@@ -1533,10 +1544,17 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
             web->origin = value;
 
         } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
-            web->chunked = WEB_CHUNK_START;
+            if (scaselessmatch(value, "chunked")) {
+                hasTE = 1;
+                web->chunked = WEB_CHUNK_START;
+            }
         } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
             web->upgrade = value;
         }
+    }
+    if (hasCL && hasTE) {
+        webNetError(web, "Cannot have both Content-Length and Transfer-Encoding");
+        return 0;
     }
     if (!web->chunked && !web->uploads && web->rxLen < 0) {
         web->rxRemaining = 0;
@@ -1797,7 +1815,7 @@ static ssize readChunk(Web *web, char *buf, ssize bufsize)
             return webNetError(web, "Bad chunk data");
         }
         cbuf[sizeof(cbuf) - 1] = '\0';
-        chunkSize = (int) stoiradix(cbuf, 16, NULL);
+        chunkSize = (int) stoix(cbuf, NULL, 16);
         if (chunkSize < 0) {
             return webNetError(web, "Bad chunk specification");
 
@@ -2339,7 +2357,6 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
 
     webAddHeaderStaticString(web, "Content-Type", "text/plain");
 
-    rc = 0;
     if (webWriteHeaders(web) < 0) {
         rc = R_ERR_CANT_WRITE;
     } else {
@@ -2634,9 +2651,17 @@ PUBLIC void webFreeSession(WebSession *sp)
 
 PUBLIC void webDestroySession(Web *web)
 {
+    WebHost    *host;
     WebSession *session;
+    cchar      *httpOnly, *secure, *sameSite;
 
     if ((session = webGetSession(web, 0)) != 0) {
+        host = web->host;
+        httpOnly = host->httpOnly ? "HttpOnly; " : "";
+        secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
+        sameSite = host->sameSite ? host->sameSite : "Lax";
+        webAddHeader(web, "Set-Cookie", "%s=; Max-Age=0; path=/; %s%sSameSite=%s",
+                     WEB_SESSION_COOKIE, secure, httpOnly, sameSite);
         rRemoveName(web->host->sessions, session->id);
         webFreeSession(session);
         web->session = 0;
@@ -2681,7 +2706,7 @@ static WebSession *createSession(Web *web)
 {
     WebSession *session;
     WebHost    *host;
-    cchar      *httpOnly, *secure;
+    cchar      *httpOnly, *secure, *sameSite;
     int        count;
 
     host = web->host;
@@ -2696,8 +2721,9 @@ static WebSession *createSession(Web *web)
     }
     secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
     httpOnly = host->httpOnly ? "HttpOnly; " : "";
-    webAddHeader(web, "Set-Cookie", "%s=%s; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE, session->id, secure,
-                 httpOnly, host->sameSite);
+    sameSite = host->sameSite ? host->sameSite : "Lax";
+    webAddHeader(web, "Set-Cookie", "%s=%s; MaxAge=%d; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE,
+                 session->id, host->sessionTimeout / TPS, secure, httpOnly, sameSite);
     return session;
 }
 
@@ -2707,7 +2733,8 @@ PUBLIC char *webParseCookie(Web *web, char *name)
 
     assert(web);
 
-    if (web->cookie == 0 || name == 0 || *name == '\0') {
+    //  Limit cookie size to 8192 bytes for security
+    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > 8192) {
         return 0;
     }
     buf = sclone(web->cookie);
@@ -2819,13 +2846,12 @@ static void pruneSessions(WebHost *host)
 
 static char *makeSessionID(Web *web)
 {
-    static int nextSession = 0;
-    char       idBuf[64];
+    uchar idBuf[64];
 
     assert(web);
-    sfmtbuf(idBuf, sizeof(idBuf), ":web.session:%08x%08x%d", PTOI(web) + PTOI(web->url),
-            (int) rGetTicks(), nextSession++);
-    return cryptGetSha256((cuchar*) idBuf, slen(idBuf));
+
+    cryptGetRandomBytes(idBuf, sizeof(idBuf), 0);
+    return cryptEncode64Block(idBuf, sizeof(idBuf));
 }
 #endif /* ME_WEB_SESSION */
 
@@ -2917,13 +2943,21 @@ static int selectProtocol(Web *web, cchar *protocol)
     WebSocket *ws;
     char      *protocols, *tok;
     cchar     *kind;
+    int       count;
 
     ws = web->webSocket;
     protocols = sclone(webGetHeader(web, "sec-websocket-protocol"));
     if (protocols && *protocols) {
-        // Just select the first protocol
+        // Just select the first matching protocol
+        count = 0;
         for (kind = stok(protocols, " \t,", &tok); kind; kind = stok(NULL, " \t,", &tok)) {
             if (!protocol || smatch(protocol, kind)) {
+                break;
+            }
+            if (++count > 10) {
+                //  DOS protection
+                rFree(protocols);
+                return webError(web, 400, "Too many protocols");
                 break;
             }
         }
@@ -2933,8 +2967,8 @@ static int selectProtocol(Web *web, cchar *protocol)
         }
         webSocketSelectProtocol(ws, kind);
     } else {
-        //  Select the first protocol
-        webSocketSelectProtocol(ws, stok(protocols, " ,", NULL));
+        //  Client did not send a protocol list.
+        webSocketSelectProtocol(ws, NULL);
     }
     rFree(protocols);
     return 0;
@@ -3190,16 +3224,24 @@ static void eventAction(Web *web)
 
 static void formAction(Web *web)
 {
+    char *name, *address;
+
     webAddHeaderStaticString(web, "Cache-Control", "no-cache");
+    name = webEscapeHtml(webGetVar(web, "name", ""));
+    address = webEscapeHtml(webGetVar(web, "address", ""));
+
     webWriteFmt(web, "<html><head><title>form.esp</title></head>\n");
     webWriteFmt(web, "<body><form name='details' method='post' action='form'>\n");
-    webWriteFmt(web, "Name <input type='text' name='name' value='%s'>\n", webGetVar(web, "name", ""));
-    webWriteFmt(web, "Address <input type='text' name='address' value='%s>\n", webGetVar(web, "address", ""));
+    webWriteFmt(web, "Name <input type='text' name='name' value='%s'>\n", name);
+    webWriteFmt(web, "Address <input type='text' name='address' value='%s'>\n", address);
     webWriteFmt(web, "<input type='submit' name='submit' value='OK'></form>\n\n");
     webWriteFmt(web, "<h3>Request Details</h3>\n\n");
+    webWriteFmt(web, "<pre>\n");
     showRequest(web);
     webWriteFmt(web, "</pre>\n</body>\n</html>\n");
     webFinalize(web);
+    rFree(name);
+    rFree(address);
 }
 
 static void errorAction(Web *web)
@@ -3394,6 +3436,7 @@ PUBLIC int webInitUpload(Web *web)
         return R_ERR_BAD_ARGS;
     }
     web->uploads = rAllocHash(0, 0);
+    web->numUploads = 0;
     //  Freed in freeWebFields (web.c)
     web->vars = jsonAlloc(0);
     return 0;
@@ -3434,6 +3477,9 @@ PUBLIC int webProcessUpload(Web *web)
 
     buf = web->rx;
     while (1) {
+        if (web->host->maxUploads > 0 && ++web->numUploads > web->host->maxUploads) {
+            return webError(web, 413, "Too many files uploaded");
+        }
         if ((nbytes = webBufferUntil(web, web->boundary, ME_BUFSIZE, 0)) < 0) {
             return webNetError(web, "Bad upload request boundary");
         }
@@ -3497,7 +3543,9 @@ static WebUpload *processUploadHeaders(Web *web)
                 } else if (scaselessmatch(field, "name")) {
                     name = value;
                 } else if (scaselessmatch(field, "filename")) {
-                    filename = webNormalizePath(value);
+                    if ((filename = webNormalizePath(value)) == 0) {
+                        webNetError(web, "Bad upload client filename");
+                    }
                 }
                 field = rest;
             }
@@ -3519,6 +3567,9 @@ static WebUpload *processUploadHeaders(Web *web)
     return upload;
 }
 
+/*
+    Path is already normalized
+ */
 static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *contentType)
 {
     WebUpload *upload;
@@ -3534,7 +3585,7 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *content
     upload->fd = -1;
 
     if (path) {
-        if (*path == '.' || !webValidatePath(path) || strpbrk(path, "\\/:*?<>|~\"'%`^\n\r\t\f")) {
+        if (*path == '.' || strpbrk(path, "\\/:*?<>|~\"'%`^\n\r\t\f")) {
             webError(web, 400, "Bad upload client filename");
             return 0;
         }
@@ -3581,8 +3632,8 @@ static int processUploadData(Web *web, WebUpload *upload)
                 //  Preserve boundary and \r\n
                 len -= web->boundaryLen + 2;
             } else if (memchr(buf->start, web->boundary[0], rGetBufLength(web->rx)) != NULL) {
-                //  Preserve a potential partial boundary
-                len -= web->boundaryLen + -1 + 2;
+                //  Preserve a potential partial boundary. i.e. we've seen the start of the boundary only.
+                len -= web->boundaryLen - 1 + 2;
             }
             if (len > 0) {
                 if ((upload->size + len) > web->host->maxUpload) {
@@ -3783,7 +3834,7 @@ PUBLIC char *webParseUrl(cchar *uri,
                          cchar **query,
                          cchar **hash)
 {
-    char *buf, *next, *tok;
+    char *buf, *end, *next, *tok;
 
     if (scheme) *scheme = 0;
     if (host) *host = 0;
@@ -3842,7 +3893,16 @@ PUBLIC char *webParseUrl(cchar *uri,
                 if (*tok == ':') {
                     *tok++ = 0;
                     if (port) {
-                        *port = atoi(tok);
+                        *port = (int) strtol(tok, &end, 10);
+                        if (end == tok || (*end != '\0' && *end != '/')) {
+                            //  Invalid characters in port
+                            rFree(buf);
+                            return 0;
+                        }
+                        if (*port <= 0 || *port > 65535) {
+                            rFree(buf);
+                            return 0;
+                        }
                     }
                     if ((tok = schr(tok, '/')) == 0) {
                         tok = "";
@@ -3872,81 +3932,96 @@ PUBLIC char *webParseUrl(cchar *uri,
 }
 
 /*
-    Normalize a path to remove "./",  "../" and redundant separators. This does not make an abs path
-    and does not map separators nor change case. This validates the path and expects it to begin with "/".
-    Returns an allocated path, caller must free.
+    Normalize a path to remove "./",  "../" and redundant separators. 
+    This does not map separators nor change case. Returns an allocated path, caller must free.
+
+    Security: This routine is safe because callers (webFileHandler) uses simple string
+    concatenation to join the result with the document root. 
  */
 PUBLIC char *webNormalizePath(cchar *pathArg)
 {
-    char *dupPath, *path, *sp, *dp, *mark, **segments;
-    int  firstc, j, i, nseg, len;
+    char  *dupPath, *path, *sp, *mark, **segments, **stack;
+    ssize len, nseg, i, j;
+    bool  isAbs, hasTrail;
 
     if (pathArg == 0 || *pathArg == '\0') {
         return 0;
     }
-    len = (int) slen(pathArg);
-    if ((dupPath = rAlloc(len + 2)) == 0) {
+    len = slen(pathArg);
+    dupPath = sclone(pathArg);
+    isAbs = (pathArg[0] == '/');
+    hasTrail = (len > 1 && pathArg[len - 1] == '/');
+
+    //  Split path into segments
+    if ((segments = rAlloc(sizeof(char*) * (len + 2))) == 0) {
+        rFree(dupPath);
         return 0;
     }
-    strcpy(dupPath, pathArg);
-
-    if ((segments = rAlloc(sizeof(char*) * (len + 1))) == 0) {
-        rFree(dupPath);
-        return NULL;
-    }
-    nseg = len = 0;
-    firstc = *dupPath;
-    for (mark = sp = dupPath; *sp; sp++) {
+    for (nseg = 0, mark = sp = dupPath; *sp; sp++) {
         if (*sp == '/') {
             *sp = '\0';
+            segments[nseg++] = mark;
             while (sp[1] == '/') {
                 sp++;
             }
-            segments[nseg++] = mark;
-            len += (int) (sp - mark);
             mark = sp + 1;
         }
     }
+    // Add the last segment
     segments[nseg++] = mark;
-    len += (int) (sp - mark);
-    for (j = i = 0; i < nseg; i++, j++) {
+
+    if ((stack = rAlloc(sizeof(char*) * (nseg + 1))) == 0) {
+        rFree(dupPath);
+        rFree(segments);
+        return 0;
+    }
+    for (j = 0, i = 0; i < nseg; i++) {
         sp = segments[i];
-        if (sp[0] == '.') {
-            if (sp[1] == '\0') {
-                if ((i + 1) == nseg) {
-                    // Trim trailing "."
-                    segments[j] = "";
-                } else {
-                    j--;
-                }
-            } else if (sp[1] == '.' && sp[2] == '\0') {
-                j = max(j - 2, -1);
-                if ((i + 1) == nseg) {
-                    nseg--;
-                }
-            } else {
-                // more-chars
-                segments[j] = segments[i];
+        if (*sp == '\0' || smatch(sp, ".")) {
+            continue;
+        }
+        if (smatch(sp, "..")) {
+            if (j > 0) {
+                j--;
+            } else if (!isAbs) {
+                //  Attempt to traverse up from a relative path's root. This is a security risk.
+                rFree(dupPath);
+                rFree(segments);
+                rFree(stack);
+                return NULL;
             }
         } else {
-            segments[j] = segments[i];
+            stack[j++] = sp;
         }
     }
     nseg = j;
-    assert(nseg >= 0);
-    if ((path = rAlloc(len + nseg + 1)) != 0) {
-        for (i = 0, dp = path; i < nseg; ) {
-            strcpy(dp, segments[i]);
-            len = (int) slen(segments[i]);
-            dp += len;
-            if (++i < nseg || (nseg == 1 && *segments[0] == '\0' && firstc == '/')) {
-                *dp++ = '/';
-            }
-        }
-        *dp = '\0';
+
+    //  Rebuild the path
+    RBuf *buf = rAllocBuf(len + 2);
+    if (isAbs) {
+        rPutCharToBuf(buf, '/');
     }
+    for (i = 0; i < nseg; i++) {
+        rPutStringToBuf(buf, stack[i]);
+        if (i < nseg - 1) {
+            rPutCharToBuf(buf, '/');
+        }
+    }
+    if (hasTrail && rGetBufLength(buf) > 0 && rLookAtLastCharInBuf(buf) != '/') {
+        rPutCharToBuf(buf, '/');
+    }
+    if (rGetBufLength(buf) == 0) {
+        if (isAbs) {
+            rPutCharToBuf(buf, '/');
+        } else {
+            rPutCharToBuf(buf, '.');
+        }
+    }
+    path = rBufToStringAndFree(buf);
+
     rFree(dupPath);
     rFree(segments);
+    rFree(stack);
     return path;
 }
 
@@ -3955,62 +4030,45 @@ PUBLIC char *webNormalizePath(cchar *pathArg)
  */
 PUBLIC char *webEscapeHtml(cchar *html)
 {
-    cchar *ip;
-    char  *result, *op;
-    int   len;
+    RBuf *buf;
 
     if (!html) {
         return sclone("");
     }
-    for (len = 1, ip = html; *ip; ip++, len++) {
-        if (charMatch[(int) (uchar) * ip] & WEB_ENCODE_HTML) {
-            len += 5;
-        }
-    }
-    if ((result = rAlloc(len)) == 0) {
-        return 0;
-    }
-    /*
-        Leave room for the biggest expansion
-     */
-    op = result;
+    buf = rAllocBuf(slen(html) + 1);
     while (*html != '\0') {
-        if (charMatch[(uchar) * html] & WEB_ENCODE_HTML) {
-            if (*html == '&') {
-                strcpy(op, "&amp;");
-                op += 5;
-            } else if (*html == '<') {
-                strcpy(op, "&lt;");
-                op += 4;
-            } else if (*html == '>') {
-                strcpy(op, "&gt;");
-                op += 4;
-            } else if (*html == '#') {
-                strcpy(op, "&#35;");
-                op += 5;
-            } else if (*html == '(') {
-                strcpy(op, "&#40;");
-                op += 5;
-            } else if (*html == ')') {
-                strcpy(op, "&#41;");
-                op += 5;
-            } else if (*html == '"') {
-                strcpy(op, "&quot;");
-                op += 6;
-            } else if (*html == '\'') {
-                strcpy(op, "&#39;");
-                op += 5;
-            } else {
-                assert(0);
-            }
-            html++;
-        } else {
-            *op++ = *html++;
+        switch (*html) {
+        case '&':
+            rPutStringToBuf(buf, "&amp;");
+            break;
+        case '<':
+            rPutStringToBuf(buf, "&lt;");
+            break;
+        case '>':
+            rPutStringToBuf(buf, "&gt;");
+            break;
+        case '#':
+            rPutStringToBuf(buf, "&#35;");
+            break;
+        case '(':
+            rPutStringToBuf(buf, "&#40;");
+            break;
+        case ')':
+            rPutStringToBuf(buf, "&#41;");
+            break;
+        case '"':
+            rPutStringToBuf(buf, "&quot;");
+            break;
+        case '\'':
+            rPutStringToBuf(buf, "&#39;");
+            break;
+        default:
+            rPutCharToBuf(buf, *html);
+            break;
         }
+        html++;
     }
-    assert(op < &result[len]);
-    *op = '\0';
-    return result;
+    return rBufToStringAndFree(buf);
 }
 
 /*
@@ -4418,7 +4476,6 @@ PUBLIC bool webValidateJsonSignature(Web *web, cchar *tag, const Json *cjson, in
                         return valError(web, json, "Missing required %s field '%s'", tag, field->name);
                     } else if (def) {
                         jsonSet(json, jid, field->name, def, 0);
-                        value = def;
                     }
                 } else {
                     if ((drop = jsonGetNode(signatures, fid, "drop")) != 0) {
@@ -4451,7 +4508,7 @@ PUBLIC bool webValidateJsonSignature(Web *web, cchar *tag, const Json *cjson, in
                         }
                     } else if (smatch(ftype, "array")) {
                         id = jsonGetId(json, jid, field->name);
-                        of = jsonGetNode(signatures, fid, "of");
+                        // of = jsonGetNode(signatures, fid, "of");
                         if (!webValidateJsonSignature(web, tag, json, id, field, depth + 1)) {
                             return 0;
                         }
@@ -4516,7 +4573,6 @@ again:
         }
     } else {
         //  Primitive types
-        //  MOB - test this
         value = jsonGet(json, jid, 0, 0);
         if (!webValidateDataSignature(web, tag, value, signature)) {
             return 0;
@@ -4711,6 +4767,11 @@ static int parseUrl(Web *web)
     webDecode(path);
     webDecode(web->hash);
 
+    /*
+        Normalize and sanitize the path. This routine will process ".." and "." segments.
+        This is safe because callers (webFileHandler) uses simple string concatenation to
+        join the result with the document root.
+    */
     if ((web->path = webNormalizePath(path)) == 0) {
         return webNetError(web, "Illegal URL");
     }

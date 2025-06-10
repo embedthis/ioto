@@ -602,7 +602,7 @@ PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item);
  */
 PUBLIC ssize webWriteValidatedItems(Web *web, RList *items);
 
-#if DEPRECATED && MOB && 0
+#if DEPRECATED && 0
 /**
     Write a database item as the whole response and validate against the web signature.
     @description This routine serialize a database item into JSON and validates the item fields
@@ -799,7 +799,7 @@ PUBLIC int ioConnect(void);
 PUBLIC void ioOnCloudConnect(void);
 PUBLIC void ioDisconnect(void);
 PUBLIC void ioWakeProvisioner(void);
-PUBLIC void ioRelease(MqttRecv *rp);
+PUBLIC void ioRelease(const MqttRecv *rp);
 #endif
 
 /*

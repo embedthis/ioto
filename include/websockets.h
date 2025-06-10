@@ -109,7 +109,7 @@ typedef struct WebSocket {
 #define WS_CLIENT                   1      /**< Instance executing as a client */
 
 #define WS_MAX_FRAME                131072 /**< Maximum frame size */
-#define WS_MAX_MESSAGE              MAXINT /**< Maximum message size, zero for no limit */
+#define WS_MAX_MESSAGE              (1024 * 1024) /**< Maximum message size, zero for no limit */
 
 /*
     webSendBlock message types

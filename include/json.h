@@ -38,6 +38,10 @@ struct JsonNode;
     #define JSON_BLEND  1
 #endif
 
+#ifndef ME_JSON_MAX_NODES
+    #define ME_JSON_MAX_NODES 100000
+#endif
+
 /*
     Json types
  */
@@ -59,12 +63,12 @@ struct JsonNode;
  */
 #define JSON_STRICT     0x10               /**< Expect strict JSON format. Otherwise allow relaxed Json6. */
 #define JSON_SINGLE     0x20               /**< Save on a sinle line where possible. Convert chars to \\alternatives */
-#define JSON_PASS_TEXT  0x40               /**< Transfer ownership of the parsed text to json. */
+#define JSON_PASS_VALUE 0x40               /**< Transfer ownership of the parsed value to json. */
 
 /*
     ToString flags
     Use JSON_PRETTY for a human-readable multiline format in json6.
-    Use JSON_QUOTES for a strict JSON format with key quotes.
+    Use JSON_QUOTES for a strict JSON format with key double quotes and value double quotes.
     Use JSON_SINGLE for a single line format.
     Use JSON_STRICT for (JSON_QUOTES | JSON_SINGLE)
  */
@@ -162,7 +166,7 @@ typedef struct Json {
     char *errorMsg;                         /**< Parsing error details */
     char *value;                            /**< Result from jsonString */
     char *property;                         /**< Current property buffer */
-    uint propertyLength;                    /**< Property buffer length */
+    ssize propertyLength;                   /**< Property buffer length */
     uint size;                              /**< Size of Json.nodes in elements (includes spare) */
     uint count;                             /**< Number of allocated nodes (count <= size) */
     uint lineNumber : 16;                   /**< Current parse line number */
@@ -445,17 +449,32 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key);
 
 /**
     Parse a json string into a json object
-    @description Use this method if you are sure the supplied JSON text is valid. Use jsonParseString if you need
-        to receive notification of parse errors.
+    @description Use this method if you are sure the supplied JSON text is valid or do not need to receive
+        diagnostics of parse failures other than the return value.
     @param text Json string to parse.
     @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
-    Set JSON_PASS_TEXT to transfer ownership of the text to json which will free when jsonFree is called.
     Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
     This will make returned references via jsonGetRef and jsonGetNode stable.
     @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
     @stability Evolving
  */
 PUBLIC Json *jsonParse(cchar *text, int flags);
+
+/**
+    Parse a json string into a json object and assume ownership of the supplied text memory.
+    @description This is an optimized version of jsonParse that avoids copying the text to be parsed.
+    The ownership of the supplied text is transferred to the Json object and will be freed when 
+    jsonFree is called. The caller must not free the text which will be freed by this function.
+    Use this method if you are sure the supplied JSON text is valid or do not 
+    need to receive diagnostics of parse failures other than the return value.
+    @param text Json string to parse. Caller must NOT free.
+    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
+    Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGetRef and jsonGetNode stable.
+    @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
+    @stability Evolving
+ */
+PUBLIC Json *jsonParseKeep(char *text, int flags);
 
 /**
     Convert a string into strict json
@@ -516,8 +535,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
         The top level of the JSON string must be an object, array, string, number or boolean value.
     @param text JSON string to deserialize.
     @param errorMsg Error message string set if the parse fails. Caller must not free.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported. Set JSON_PASS_TEXT to
-       transfer ownership of the text to json which will free when jsonFree is called.
+    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported. 
     @return Returns a tree of Json objects. Each object represents a level in the JSON input stream.
         Caller must free errorMsg via rFree on errors.
     @stability Evolving
@@ -653,7 +671,7 @@ PUBLIC int jsonSetString(Json *json, int nid, cchar *key, cchar *value);
     @param node Json node
     @param value String value to update with.
     @param type Json node type
-    @param flags Set to JSON_PASS_TEXT to transfer ownership of a string. JSON will then free.
+    @param flags Set to JSON_PASS_VALUE to transfer ownership of a string. JSON will then free.
     @stability Internal
  */
 PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags);
@@ -715,12 +733,14 @@ PUBLIC void jsonPrint(Json *json);
 
 /**
     Expand a string template with ${prop.prop...} references
+    @description Unexpanded references are replaced with $^{token}
     @param json Json object
     @param str String template to expand
+    @param keep If true, unexpanded references are retained as ${token}
     @return An allocated expanded string. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonTemplate(Json *json, cchar *str);
+PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep);
 
 /**
     Check if the iteration is valid

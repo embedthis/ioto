@@ -144,18 +144,18 @@
 
 #elif defined(__riscv_32)
     #define ME_CPU "riscv"
-    #define ME_CPU_ARCH CPU_RISCV
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_RISCV
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 
 #elif defined(__riscv_64)
     #define ME_CPU "riscv64"
-    #define ME_CPU_ARCH CPU_RISCV64
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_RISCV64
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 
 #elif defined(__XTENSA__)
     #define ME_CPU "xtensa"
-    #define ME_CPU_ARCH CPU_XTENSA
-    #define ME_CPU_ENDIAN LITTLE_ENDIAN
+    #define ME_CPU_ARCH ME_CPU_XTENSA
+    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
 #else
     #error "Cannot determine CPU type in osdep.h"
 #endif
@@ -592,7 +592,9 @@
 #endif
 
 #if ME_COMPILER_HAS_ATOMIC
-    #include   <stdatomic.h>
+    #ifndef __cplusplus
+        #include   <stdatomic.h>
+    #endif
 #endif
 
 #if FREERTOS
@@ -1391,6 +1393,7 @@ typedef int64 Ticks;
     #define getpid      _getpid
     #define gettimezone _gettimezone
     #define lseek       _lseek
+    //  Review Acceptable - the omode parameter is ignored on Windows
     #define mkdir(a,b)  _mkdir(a)
     #define open        _open
     #define putenv      _putenv
@@ -1950,16 +1953,28 @@ PUBLIC void rBreakpoint(void);
 #undef assert
 #if DOXYGEN
 /**
-    Asser that a condition is true
+    Assert that a condition is true
+    @description This routine is only active in debug builds. In production builds it is a no-op.
     @param cond Boolean result of a conditional test
     @stability Evolving
  */
 PUBLIC void assert(bool cond);
 #elif ME_R_DEBUG_LOGGING
-    #define assert(C)           if (C); else rAssert(R_LOC, #C)
+    #define assert(C) if (C); else rAssert(R_LOC, #C)
 #else
-    #define assert(C)           if (1); else {}
+    #define assert(C) if (1); else {}
 #endif
+
+#if DOXYGEN
+/**
+    Assert that a condition is true
+    @description This routine is active in both debug and production builds.
+    @param cond Boolean result of a conditional test
+    @stability Evolving
+ */
+PUBLIC void rassert(bool cond);
+#endif
+#define rassert(C)              if (C); else rAssert(R_LOC, #C)
 
 #define R_ALLOC_ALIGN(x, bytes) (((x) + bytes - 1) & ~(bytes - 1))
 
@@ -2044,6 +2059,18 @@ PUBLIC void *rReallocMem(void *ptr, size_t size);
 PUBLIC void rFreeMem(void *ptr);
 
 /**
+    Copy a block of memory
+    @description Safe version of memcpy. Handles null args and overlapping src and dest.
+    @param dest Destination pointer
+    @param destMax Maximum size of the destination buffer
+    @param src Source pointer
+    @param nbytes Number of bytes to copy
+    @return Returns the number of bytes copied
+    @stability Evolving
+ */
+PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes);
+
+/**
     Duplicate a block of memory.
     @description Copy a block of memory into a newly allocated block.
     @param ptr Pointer to the block to duplicate.
@@ -2088,7 +2115,8 @@ typedef struct RFiber {
     uint stackId;
 #endif
 #if ME_FIBER_GUARD_STACK
-    char guard[64];
+    //  REVIEW Acceptable - small guard is enough for embedded systems
+    char guard[128];
 #endif
     uchar stack[];
 } RFiber;
@@ -2199,7 +2227,7 @@ PUBLIC ssize rGetFiberStackSize(void);
 
 /**
     Set the default fiber stack size
-    @param size Size of fiber stack in bytes
+    @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
     @stability Evolving
  */
 PUBLIC void rSetFiberStack(ssize size);
@@ -2249,7 +2277,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *data);
     The second and subsequent fibers will yield on this call until the first fiber
     leaves the critical section
     @param access Pointer to a boolean initialized to false.
-    @param deadline Time in ticks to wait for access. Set to zero for an infinite wait.
+    @param deadline Time in ticks to wait for access. Set to zero for an infinite wait. Set to < 0 to not wait.
     @return Zero if access is granted.
     @stability Prototype
  */
@@ -2771,18 +2799,35 @@ PUBLIC void rWakeup(void);
 
 /**
     Format a string into a buffer.
-    @description This routine will format the arguments into a result. If a buffer is supplied,
-        it will be used. Otherwise if the buf argument is NULL, a buffer will be allocated.
+    @description This routine will format the arguments into a result. The buffer must be supplied
+        and maxsize must be set to its length.
         The arguments will be formatted up to the maximum size supplied by the maxsize argument.
         A trailing NULL will always be appended.
     @param buf Optional buffer to contain the formatted result
-    @param maxsize Maximum size of the result. If set to -1, thee will be no limit.
+    @param maxsize Maximum size of the result.
     @param fmt Printf style format string
     @param args Variable arguments to format
-    @return Returns the original buffer if supplied or else an allocated string
+    @return Returns the count of characters stored in buf or the count of characters that would have been
+        stored if not limited by maxsize. Will be >= maxsize if the result is truncated.
     @stability Prototype
  */
-PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
+PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
+
+/**
+    Format a string into a buffer.
+    @description This routine will format the arguments into a result. A buffer will be allocated and returned
+        in *buf. The maxsize argument may specific the maximum size of the buffer to allocate. If set to -1, the
+        size will as large as needed. The arguments will be formatted up to the maximum size supplied by the maxsize
+           argument.
+        A trailing NULL will always be appended.
+    @param buf Optional buffer to contain the formatted result
+    @param maxsize Maximum size of the result.
+    @param fmt Printf style format string
+    @param args Variable arguments to format
+    @return Returns the count of characters stored in buf or a negative error code for memory errors.
+    @stability Prototype
+ */
+PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
 
 /**
     Format a string into a buffer.
@@ -2793,10 +2838,11 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
     @param maxsize Maximum size of the result
     @param fmt Printf style format string
     @param ... Variable arguments to format
-    @return Returns the original buffer if supplied or else an allocated string
+    @return Returns the count of characters in buf or the count of characters that would have been written if not
+        limited by maxsize.
     @stability Prototype
  */
-PUBLIC char *rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
+PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
 
 /**
     Formatted print. This is a secure verion of printf that can handle null args.
@@ -2825,7 +2871,7 @@ PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
     R String Module
     @description The RT provides a suite of r ascii string manipulation routines to help prevent buffer overflows
         and other potential security traps.
-    @see RString itos itosradix itosbuf rEprintf rPrintf scaselesscmp schr
+    @see RString itos sitox itosbuf rEprintf rPrintf scaselesscmp schr
         sclone scmp scontains scopy sends sfmt sfmtv sfmtbuf sfmtbufv shash shashlower sjoin sjoinv slen slower
         smatch sncaselesscmp snclone sncmp sncopy stitle spbrk srchr sreplace sspn sstarts ssub stemplate
         stok strim supper sncontains
@@ -2860,7 +2906,7 @@ PUBLIC char *sitos(int64 value);
     @return An allocated string with the converted number.
     @stability Evolving
  */
-PUBLIC char *sitosradix(int64 value, int radix);
+PUBLIC char *sitosx(int64 value, int radix);
 
 /**
     Convert an integer to a string buffer.
@@ -3368,14 +3414,15 @@ PUBLIC double stod(cchar *str);
 PUBLIC int64 stoi(cchar *str);
 
 /**
-    Convert a string to an integer.
+    Parse a string to an integer.
     @description This call convers the supplied string to an integer using the specified radix (base).
     @param str Pointer to the string to parse.
+    @param end Pointer to the end of the parsed string. If not NULL, the end pointer is set to the first character after
+       the number.
     @param radix Base to use when parsing the string
-    @param err Return error code. Set to 0 if successful.
     @return Returns the integer equivalent value of the string.
  */
-PUBLIC int64 stoiradix(cchar *str, int radix, int *err);
+PUBLIC int64 stoix(cchar *str, char **end, int radix);
 
 /**
     Tokenize a string
@@ -3583,6 +3630,8 @@ PUBLIC cchar *rBufToString(RBuf *buf);
 
 /**
     Convert the buffer contents to a string.  The string is allocated and the buffer is freed.
+    @description Transfers ownership of the buffer contents to the caller.
+    The buffer is freed and the user must not reference it again.
     @param buf Buffer created via rAllocBuf
     @returns Allocated string
     @stability Evolving
@@ -4710,7 +4759,7 @@ PUBLIC cchar *rGetFileExt(cchar *path);
 /**
     Get a file path name
     @description Expand any "@directory" prefix in the path that have been defined via
-        the rAddDirectories.
+        the rAddDirectories. Do not use this function with user input. It permits ".." in paths.
     @param path Source file path
     @return The expanded path. Caller must free.
     @stability Evolving
@@ -4910,12 +4959,14 @@ PUBLIC cchar *rBasename(cchar *path);
 /**
     Return the directory name portion of a filename.
     @description This trims off the basename portion of the path by modifying the supplied path.
+    This takes a char* and returns a char* to the function can be composed as rDirname(sclone(path)).
+    The supplied path is modified.
     @param path Filename to examine and modify
     @return A pointer to the dirname portion of the supplied filename path.
-        This call does not allocate a new string and the caller must not free.
+        This call does not allocate a new string and the caller should not free.
     @stability Evolving
  */
-PUBLIC cchar *rDirname(char *path);
+PUBLIC char *rDirname(char *path);
 
 /**
     Return the size of a file.
@@ -5645,11 +5696,13 @@ PUBLIC RThread rGetMainThread(void);
 #if ME_UNIX_LIKE
 /**
     Run a command using the system shell
+    @description SECURITY: must only call with fully sanitized command input.
     @param command Command string to run using popen()
-    @param status Returns the command exit status
+    @param output Returns the command output. Caller must free.
+    @return The command exit status or a negative error code.
     @stability Evolving.
  */
-PUBLIC char *rRun(cchar *command, int *status);
+PUBLIC int rRun(cchar *command, char **output);
 #endif
 #endif /* R_USE_RUN */
 
@@ -5944,6 +5997,10 @@ struct JsonNode;
     #define JSON_BLEND  1
 #endif
 
+#ifndef ME_JSON_MAX_NODES
+    #define ME_JSON_MAX_NODES 100000
+#endif
+
 /*
     Json types
  */
@@ -5964,17 +6021,21 @@ struct JsonNode;
     Parse flags
  */
 #define JSON_STRICT     0x10               /**< Expect strict JSON format. Otherwise allow relaxed Json6. */
-#define JSON_SINGLE     0x20               /**< Save objects on a sinle line where possible. */
-#define JSON_PASS_TEXT  0x40               /**< Transfer ownership of the parsed text to json. */
+#define JSON_SINGLE     0x20               /**< Save on a sinle line where possible. Convert chars to \\alternatives */
+#define JSON_PASS_VALUE 0x40               /**< Transfer ownership of the parsed value to json. */
 
 /*
     ToString flags
+    Use JSON_PRETTY for a human-readable multiline format in json6.
+    Use JSON_QUOTES for a strict JSON format with key double quotes and value double quotes.
+    Use JSON_SINGLE for a single line format.
+    Use JSON_STRICT for (JSON_QUOTES | JSON_SINGLE)
  */
-#define JSON_PRETTY     0x100              /**< Save in Json6 format without quotes arounds keys */
-#define JSON_QUOTES     0x200              /**< Save in strict JSON format */
-#define JSON_KEY        0x400              /* Internal flag to designate Property key */
-#define JSON_DEBUG      0x800              /* Internal flag for debug formatting */
-#define JSON_BARE       0x1000             /**< Save on a single line without quotes or [] */
+#define JSON_PRETTY     0x100              /**< Save in multiline, indented Json6 format without key quotes */
+#define JSON_QUOTES     0x200              /**< Save in strict JSON format with key quotes */
+#define JSON_BARE       0x400              /**< Save on a single line without quotes or [], {} */
+#define JSON_KEY        0x800              /* Internal flag to designate Property key */
+#define JSON_DEBUG      0x1000             /* Internal flag for debug formatting */
 
 /**
     These macros iterates over the children under the "parent" id. The child->last points to one past the end of the
@@ -6064,7 +6125,7 @@ typedef struct Json {
     char *errorMsg;                         /**< Parsing error details */
     char *value;                            /**< Result from jsonString */
     char *property;                         /**< Current property buffer */
-    uint propertyLength;                    /**< Property buffer length */
+    ssize propertyLength;                   /**< Property buffer length */
     uint size;                              /**< Size of Json.nodes in elements (includes spare) */
     uint count;                             /**< Number of allocated nodes (count <= size) */
     uint lineNumber : 16;                   /**< Current parse line number */
@@ -6166,7 +6227,7 @@ PUBLIC void jsonUnlock(Json *json);
     @return Zero if successful.
     @stability Evolving
  */
-PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar *skey, int flags);
+PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *src, int sid, cchar *skey, int flags);
 
 /**
     Clone a json object
@@ -6175,7 +6236,7 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, Json *src, int sid, cchar
     @return The copied JSON tree. Caller must free with #jsonFree.
     @stability Evolving
  */
-PUBLIC Json *jsonClone(Json *src, int flags);
+PUBLIC Json *jsonClone(const Json *src, int flags);
 
 /**
     Get a json node value as an allocated string
@@ -6300,7 +6361,7 @@ PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
     @return The node ID for the specified key
     @stability Evolving
  */
-PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
+PUBLIC int jsonGetId(const Json *json, int nid, cchar *key);
 
 /**
     Get a json node object
@@ -6312,7 +6373,7 @@ PUBLIC int jsonGetId(Json *json, int nid, cchar *key);
     @return The node object for the specified key. Returns NULL if not found.
     @stability Evolving
  */
-PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
+PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 
 /*
     Get a json node object ID
@@ -6323,7 +6384,7 @@ PUBLIC JsonNode *jsonGetNode(Json *json, int nid, cchar *key);
     @return The node ID.
     @stability Evolving
  */
-PUBLIC int jsonGetNodeId(Json *json, JsonNode *node);
+PUBLIC int jsonGetNodeId(const Json *json, JsonNode *node);
 
 /**
     Get the Nth child node for a json node.
@@ -6347,17 +6408,32 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key);
 
 /**
     Parse a json string into a json object
-    @description Use this method if you are sure the supplied JSON text is valid. Use jsonParseString if you need
-        to receive notification of parse errors.
+    @description Use this method if you are sure the supplied JSON text is valid or do not need to receive
+        diagnostics of parse failures other than the return value.
     @param text Json string to parse.
     @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
-    Set JSON_PASS_TEXT to transfer ownership of the text to json which will free when jsonFree is called.
     Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
     This will make returned references via jsonGetRef and jsonGetNode stable.
     @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
     @stability Evolving
  */
 PUBLIC Json *jsonParse(cchar *text, int flags);
+
+/**
+    Parse a json string into a json object and assume ownership of the supplied text memory.
+    @description This is an optimized version of jsonParse that avoids copying the text to be parsed.
+    The ownership of the supplied text is transferred to the Json object and will be freed when 
+    jsonFree is called. The caller must not free the text which will be freed by this function.
+    Use this method if you are sure the supplied JSON text is valid or do not 
+    need to receive diagnostics of parse failures other than the return value.
+    @param text Json string to parse. Caller must NOT free.
+    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
+    Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGetRef and jsonGetNode stable.
+    @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
+    @stability Evolving
+ */
+PUBLIC Json *jsonParseKeep(char *text, int flags);
 
 /**
     Convert a string into strict json
@@ -6418,8 +6494,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
         The top level of the JSON string must be an object, array, string, number or boolean value.
     @param text JSON string to deserialize.
     @param errorMsg Error message string set if the parse fails. Caller must not free.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported. Set JSON_PASS_TEXT to
-       transfer ownership of the text to json which will free when jsonFree is called.
+    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported. 
     @return Returns a tree of Json objects. Each object represents a level in the JSON input stream.
         Caller must free errorMsg via rFree on errors.
     @stability Evolving
@@ -6555,7 +6630,7 @@ PUBLIC int jsonSetString(Json *json, int nid, cchar *key, cchar *value);
     @param node Json node
     @param value String value to update with.
     @param type Json node type
-    @param flags Set to JSON_PASS_TEXT to transfer ownership of a string. JSON will then free.
+    @param flags Set to JSON_PASS_VALUE to transfer ownership of a string. JSON will then free.
     @stability Internal
  */
 PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags);
@@ -6586,20 +6661,26 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
     @param nid Base node ID from which to convert. Set to zero for the top level.
     @param key Property name to serialize below. This may include ".". For example: "settings.mode".
     @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
-    JSON_QUOTES to wrap Property names in quotes. Use JSON_QUOTES to emit all Property values as quoted strings.
+    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
     Defaults to JSON_PRETTY if set to zero.
     @return Returns a serialized JSON character string. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonToString(Json *json, int nid, cchar *key, int flags);
+PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags);
 
 /**
-    Serialize an entire JSON object into a string using a human readable format (JSON_PRETTY).
+    Serialize a JSON object into a string
+    @description Serializes a top level JSON object created via jsonParse into a characters string in JSON format.
+        This serialize the result into the json->value so the caller does not need to free the result.
     @param json Source json
-    @return Returns a serialized JSON character string. Caller must NOT free.
+    @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
+    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
+    Defaults to JSON_PRETTY if set to zero.
+    @return Returns a serialized JSON character string. Caller must NOT free. The string is owned by the json
+    object and will be overwritten by subsequent calls to jsonString. It will be freed when jsonFree is called.
     @stability Evolving
  */
-PUBLIC cchar *jsonString(Json *json);
+PUBLIC cchar *jsonString(const Json *json, int flags);
 
 /**
     Print a JSON object
@@ -6611,12 +6692,14 @@ PUBLIC void jsonPrint(Json *json);
 
 /**
     Expand a string template with ${prop.prop...} references
+    @description Unexpanded references are replaced with $^{token}
     @param json Json object
     @param str String template to expand
+    @param keep If true, unexpanded references are retained as ${token}
     @return An allocated expanded string. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonTemplate(Json *json, cchar *str);
+PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep);
 
 /**
     Check if the iteration is valid

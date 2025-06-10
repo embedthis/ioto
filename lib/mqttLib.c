@@ -159,7 +159,7 @@ static void resetConnection(Mqtt *mq);
 static int sendMsgs(Mqtt *mq);
 static int setError(Mqtt *mq, int error, cchar *fmt, ...);
 static void setState(Mqtt *mq, MqttMsg *msg, int state);
-static cchar **splitTopic(cchar *topic, ssize topicLen, char **segbuf);
+static cchar **splitTopic(cchar *topic, int topicLen, char **segbuf);
 static void stopProcessing(Mqtt *mq);
 static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags wait, cchar *topic);
 static int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *bp);
@@ -186,6 +186,9 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
         return 0;
     }
     if ((mq->topics = rAllocList(0, 0)) == 0) {
+        return 0;
+    }
+    if (slen(clientId) > MQTT_MAX_CLIENT_ID_SIZE) {
         return 0;
     }
     mq->id = sclone(clientId);
@@ -289,12 +292,20 @@ static void processMqtt(Mqtt *mq)
     }
 }
 
-PUBLIC void mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password)
+PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password)
 {
     rFree(mq->password);
     rFree(mq->username);
+
+    if (slen(username) > MQTT_MAX_USERNAME_SIZE) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (slen(password) > MQTT_MAX_PASSWORD_SIZE) {
+        return R_ERR_BAD_ARGS;
+    }
     mq->password = sclone(password);
     mq->username = sclone(username);
+    return 0;
 }
 
 PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
@@ -318,20 +329,28 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     hdr.type = MQTT_PACKET_CONNECT;
     hdr.flags = 0x00;
 
-    /*
-        Size of variable portion: 10 + string + topic + will message + user name + password
-     */
-    length = 10;
-
     if (id[0] == '\0' && !(flags & MQTT_CONNECT_CLEAN_SESSION)) {
         // Clean session if empty id
         return setError(mq, R_ERR_BAD_SESSION, "Missing client ID");
     }
-    length += getStringLen(id);
+
+    /*
+        Size of variable portion: 10 + string + topic + will message + user name + password
+     */
+    length = 10;
+    rc = getStringLen(id);
+    if (rc < 0) {
+        return setError(mq, R_ERR_BAD_ARGS, "Client ID too long");
+    }
+    length += rc;
 
     if (mq->willTopic && mq->willMsg) {
         flags |= MQTT_CONNECT_WILL_FLAG;
-        length += getStringLen(mq->willTopic);
+        rc = getStringLen(mq->willTopic);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Will topic too long");
+        }
+        length += rc;
 
         if (mq->willMsg == NULL) {
             return setError(mq, R_ERR_BAD_ARGS, "Missing will message");
@@ -352,18 +371,26 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
 
     if (mq->username && *mq->username) {
         flags |= MQTT_CONNECT_USER_NAME;
-        length += getStringLen(mq->username);
+        rc = getStringLen(mq->username);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Username too long");
+        }
+        length += rc;
     } else {
         flags &= ~MQTT_CONNECT_USER_NAME;
     }
 
     if (mq->password && *mq->password) {
         flags |= MQTT_CONNECT_PASSWORD;
-        length += getStringLen(mq->password);
+        rc = getStringLen(mq->password);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Password too long");
+        }
+        length += rc;
     } else {
         flags &= ~MQTT_CONNECT_PASSWORD;
     }
-    hdr.length = length;
+    hdr.length = (int) length;
 
     if ((msg = allocMsg(mq, MQTT_PACKET_CONNECT, 0, length)) == 0) {
         return R_ERR_MEMORY;
@@ -391,19 +418,35 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         Set the server side up to the max keep alive
      */
     bp += packUnit16(bp, (int) (mq->keepAlive / TPS));
-    bp += packString(bp, id);
+    rc = packString(bp, id);
+    if (rc < 0) {
+        return setError(mq, R_ERR_BAD_ARGS, "Client ID too long");
+    }
+    bp += rc;
 
     if (flags & MQTT_CONNECT_WILL_FLAG) {
-        bp += packString(bp, mq->willTopic);
+        rc = packString(bp, mq->willTopic);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Will topic too long");
+        }
+        bp += rc;
         bp += packUnit16(bp, (uint16) mq->willMsgSize);
         memcpy(bp, mq->willMsg, mq->willMsgSize);
         bp += mq->willMsgSize;
     }
     if (flags & MQTT_CONNECT_USER_NAME) {
-        bp += packString(bp, mq->username);
+        rc = packString(bp, mq->username);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Username too long");
+        }
+        bp += rc;
     }
     if (flags & MQTT_CONNECT_PASSWORD) {
-        bp += packString(bp, mq->password);
+        rc = packString(bp, mq->password);
+        if (rc < 0) {
+            return setError(mq, R_ERR_BAD_ARGS, "Password too long");
+        }
+        bp += rc;
     }
     if (!mq->processing) {
         rSetWaitHandler(mq->sock->wait, (RWaitProc) processMqtt, mq, R_IO, rGetTicks() + MQTT_WAIT_TIMEOUT);
@@ -508,37 +551,52 @@ static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags wait)
 PUBLIC int mqttPublish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags wait, cchar *topic, ...)
 {
     va_list ap;
-    char    topicBuf[MQTT_TOPIC_SIZE];
+    char    topicBuf[MQTT_MAX_TOPIC_SIZE];
+    ssize   len;
 
+    assert(buf);
     if (mq == 0) {
         rError("mqtt", "Publish on bad Mqtt object");
         return R_ERR_BAD_ARGS;
     }
-    assert(mq);
-    assert(buf);
-    assert(topic);
-
+    if (topic == 0) {
+        rError("mqtt", "Publish with null topic");
+        return R_ERR_BAD_ARGS;
+    }
     va_start(ap, topic);
-    sfmtbufv(topicBuf, sizeof(topicBuf), topic, ap);
+    len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
     va_end(ap);
-
+    if (len >= sizeof(topicBuf)) {
+        rError("mqtt", "Topic is too big");
+        return R_ERR_BAD_ARGS;
+    }
     return publish(mq, buf, bufsize, qos, wait, 0, topicBuf);
 }
 
 PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags wait, cchar *topic, ...)
 {
     va_list ap;
-    char    topicBuf[MQTT_TOPIC_SIZE];
+    char    topicBuf[MQTT_MAX_TOPIC_SIZE];
+    ssize   len;
 
-    assert(mq);
     assert(buf);
     assert(bufsize > 0);
-    assert(topic);
 
+    if (mq == 0) {
+        rError("mqtt", "Publish on bad Mqtt object");
+        return R_ERR_BAD_ARGS;
+    }
+    if (topic == 0) {
+        rError("mqtt", "Publish with null topic");
+        return R_ERR_BAD_ARGS;
+    }
     va_start(ap, topic);
-    sfmtbufv(topicBuf, sizeof(topicBuf), topic, ap);
+    len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
     va_end(ap);
-
+    if (len >= sizeof(topicBuf)) {
+        rError("mqtt", "Topic is too big");
+        return R_ERR_BAD_ARGS;
+    }
     return publish(mq, buf, bufsize, qos, wait, MQTT_RETAIN, topicBuf);
 }
 
@@ -559,7 +617,7 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
     }
     id = getId(mq);
 
-    if (topic == NULL) {
+    if (topic == NULL || slen(topic) > MQTT_MAX_TOPIC_SIZE) {
         return R_ERR_BAD_NULL;
     }
     flags = (retain ? MQTT_RETAIN : 0) | (qos << 1 & 0x6);
@@ -567,6 +625,7 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
         return R_ERR_BAD_ARGS;
     }
     if (bufsize < 0) {
+        // If bufsize is negative, the caller is passing a null terminated string in the buf parameter
         bufsize = slen(buf);
     }
     if (bufsize > mq->maxMessage) {
@@ -575,13 +634,17 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
     hdr.flags = flags;
     hdr.type = MQTT_PACKET_PUBLISH;
 
-    length = getStringLen(topic);
+    rc = getStringLen(topic);
+    if (rc < 0) {
+        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    }
+    length = rc;
     if (qos > 0) {
         //  Add room for the packet ID for retransmits
         length += 2;
     }
     length += (int) bufsize;
-    hdr.length = length;
+    hdr.length = (int) length;
 
     if ((msg = allocMsg(mq, hdr.type, id, length)) == 0) {
         return R_ERR_MEMORY;
@@ -595,7 +658,12 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
         return (int) rc;
     }
     bp += rc;
-    bp += packString(bp, topic);
+    rc = packString(bp, topic);
+    if (rc < 0) {
+        freeMsg(msg);
+        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    }
+    bp += rc;
     if (qos > 0) {
         bp += packUnit16(bp, id);
     }
@@ -657,18 +725,23 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     va_list ap;
     char    *topic;
     int     rc;
+    ssize   len;
 
     va_start(ap, fmt);
     topic = sfmtv(fmt, ap);
     va_end(ap);
-
+    if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
+        rError("mqtt", "Topic is too big");
+        return R_ERR_BAD_ARGS;
+    }
     rTrace("mqtt", "Define master MQTT subscription \"%s\"", topic);
-    
+
     if ((rc = mqttSubscribe(mq, NULL, maxQos, wait, "%s", topic)) == 0) {
-        if (sends(topic, "/+") || sends(topic, "/#")) {
-            topic[slen(topic) - 2] = '\0';
+        len = slen(topic);
+        if (len > 1 && (sends(topic, "/+") || sends(topic, "/#"))) {
+            topic[len - 2] = '\0';
         }
-        //  Give topic to list to own and free
+        //  The masterTopics list will own the topic memory and will free when exiting.
         rAddItem(mq->masterTopics, topic);
     } else {
         rFree(topic);
@@ -681,7 +754,8 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
     MqttTopic *tp;
     va_list   ap;
     cchar     *masterTopic;
-    char      topic[MQTT_TOPIC_SIZE];
+    char      topic[MQTT_MAX_TOPIC_SIZE];
+    ssize     len;
     int       mid;
 
     if (mq == 0) {
@@ -689,9 +763,12 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
         return R_ERR_BAD_ARGS;
     }
     va_start(ap, fmt);
-    sfmtbufv(topic, sizeof(topic), fmt, ap);
+    len = rVsnprintf(topic, sizeof(topic), fmt, ap);
     va_end(ap);
-
+    if (len >= sizeof(topic)) {
+        rError("mqtt", "Topic is too big");
+        return R_ERR_BAD_ARGS;
+    }
     if (callback) {
         if ((tp = allocTopic(mq, callback, topic, wait)) == 0) {
             return R_ERR_MEMORY;
@@ -724,7 +801,11 @@ static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags 
     /*
         String length + string + QOS
      */
-    hdr.length = 2 + getStringLen(topic) + 1;
+    rc = getStringLen(topic);
+    if (rc < 0) {
+        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    }
+    hdr.length = 2 + rc + 1;
 
     id = getId(mq);
     if ((msg = allocMsg(mq, hdr.type, id, hdr.length)) == 0) {
@@ -752,11 +833,24 @@ static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags 
 
 PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
 {
+    cchar *masterTopic;
+    int   mid;
+
+    for (ITERATE_ITEMS(mq->masterTopics, masterTopic, mid)) {
+        if (sstarts(topic, masterTopic)) {
+            rDebug("mqtt", "Unsubscribe locally from \"%s\" via master \"%s\"", topic, masterTopic);
+            return 0;
+        }
+    }
+    return mqttUnsubscribeMaster(mq, topic, wait);
+}
+
+PUBLIC int mqttUnsubscribeMaster(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
+{
     MqttHdr hdr;
     MqttMsg *msg;
     uchar   *bp;
-    int     id;
-    int     rc;
+    int     id, rc;
 
     if (!onDemandAttach(mq)) {
         return R_ERR_CANT_WRITE;
@@ -765,7 +859,11 @@ PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
 
     hdr.type = MQTT_PACKET_UNSUB;
     hdr.flags = 2;
-    hdr.length = 2 + getStringLen(topic);
+    rc = getStringLen(topic);
+    if (rc < 0) {
+        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    }
+    hdr.length = 2 + rc;
 
     if ((msg = allocMsg(mq, hdr.type, id, hdr.length)) == 0) {
         return R_ERR_MEMORY;
@@ -778,8 +876,12 @@ PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
         return rc;
     }
     bp += rc;
-    bp += packUnit16(bp, id);
-    bp += packString(bp, topic);
+    rc = packString(bp, topic);
+    if (rc < 0) {
+        freeMsg(msg);
+        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    }
+    bp += rc;
 
     queueMsg(mq, msg, bp);
     freeTopics(mq, topic);
@@ -1152,6 +1254,10 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             } else {
                 arg = rAllocType(MqttRecv);
                 memcpy(arg, rp, sizeof(MqttRecv));
+                /*
+                    Allocate the topic here as it is not null terminated in the header
+                    incomingMsg will free it
+                 */
                 arg->topic = rAlloc(rp->topicSize + 1);
                 sncopy(arg->topic, rp->topicSize + 1, (char*) rp->topic, rp->topicSize);
                 if (rp->dataSize > 0) {
@@ -1286,10 +1392,14 @@ static void incomingMsg(MqttRecv *rp)
 {
     assert(rp && rp->matched && rp->matched->callback);
 
+    if (!rp) {
+        return;
+    }
     (rp->matched->callback)(rp);
 
-    rFree(rp->data);
+    //  This was allocated in processRecvMsg
     rFree(rp->topic);
+    rFree(rp->data);
     rFree(rp);
 }
 
@@ -1301,9 +1411,13 @@ static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, Mqtt
     assert(topic);
     assert(callback);
 
+    if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
+        rError("mqtt", "Topic is too big");
+        return NULL;
+    }
     tp = rAllocType(MqttTopic);
     tp->topic = sclone(topic);
-    tp->segments = splitTopic(topic, slen(topic), &tp->segbuf);
+    tp->segments = splitTopic(topic, (int) slen(topic), &tp->segbuf);
     tp->callback = callback;
     tp->wait = wait;
     return tp;
@@ -1372,7 +1486,7 @@ static MqttTopic *getTopic(Mqtt *mq, MqttRecv *rp)
     return 0;
 }
 
-static cchar **splitTopic(cchar *topic, ssize topicLen, char **segbuf)
+static cchar **splitTopic(cchar *topic, int topicLen, char **segbuf)
 {
     cchar *cp;
     char  *next, **segments;
@@ -1381,12 +1495,13 @@ static cchar **splitTopic(cchar *topic, ssize topicLen, char **segbuf)
     assert(topic);
     assert(segbuf);
 
-    assert(topic);
     for (count = 1, cp = topic; cp < &topic[topicLen]; cp++) {
         if (*cp == '/') count++;
     }
     segments = rAlloc((count + 1) * sizeof(char*));
-    *segbuf = sclone(topic);
+    *segbuf = rAlloc(topicLen + 1);
+    memcpy(*segbuf, topic, topicLen);
+    (*segbuf)[topicLen] = '\0';
 
     for (i = 0, next = *segbuf; next != 0; i++) {
         segments[i] = stok(next, "/", &next);
@@ -1403,19 +1518,23 @@ static bool matchTopic(MqttTopic *tp, cchar **segments)
     assert(segments);
 
     for (mp = tp->segments, ip = segments; *mp && *ip; mp++, ip++) {
-        if (*mp[0] == '#') {
-            mp++;
-            break;
-        } else if (*mp[0] == '+') {
+        if ((*mp)[0] == '#') {
+            // Multi-level wildcard (must be last term)
+            return *(mp + 1) == NULL;
+        }
+        if ((*mp)[0] == '+') {
+            // Single-level wildcard (can be in the middle)
             continue;
-        } else if (!smatch(*mp, *ip)) {
+        }
+        if (!smatch(*mp, *ip)) {
             return 0;
         }
     }
-    if (*mp) {
-        return 0;
+    if (*ip == NULL && *mp != NULL) {
+        // Topic is exhausted, filter is not. Match only if filter has '#' left.
+        return (*mp)[0] == '#' && *(mp + 1) == NULL;
     }
-    return 1;
+    return *mp == NULL && *ip == NULL;
 }
 
 static int checkHdr(Mqtt *mq, MqttHdr *hdr)
@@ -1447,8 +1566,8 @@ static int unpackRespHdr(Mqtt *mq, MqttRecv *rp)
     RBuf    *buf;
     cuchar  *bp, *end, *start;
     uchar   c;
-    int     err;
-    int     shift;
+    uint32  lvalue;
+    int     err, shift;
 
     assert(rGetBufLength(mq->buf) > 0);
 
@@ -1471,12 +1590,19 @@ static int unpackRespHdr(Mqtt *mq, MqttRecv *rp)
             return 0;
         }
         c = (uchar) * bp++;
-        hdr->length += (c & 0x7F) << shift;
+        lvalue = (c & 0x7F) << shift;
+        if (hdr->length > UINT32_MAX - lvalue) {
+            return setError(mq, R_ERR_BAD_RESPONSE, "Message length overflow");
+        }
+        hdr->length += lvalue;
         shift += 7;
     } while (c & 0x80);
 
     if ((err = checkHdr(mq, hdr)) != 0) {
         return err;
+    }
+    if (hdr->length > mq->maxMessage) {
+        return setError(mq, R_ERR_BAD_RESPONSE, "Message length %d too big", hdr->length);
     }
     if (&bp[hdr->length] > end) {
         //  Have not read all remaining input
@@ -1487,8 +1613,8 @@ static int unpackRespHdr(Mqtt *mq, MqttRecv *rp)
 
 static int packHdr(Mqtt *mq, uchar *start, MqttHdr *hdr)
 {
-    uchar    *bp;
-    int      err;
+    uchar  *bp;
+    int    err;
     uint32 length;
 
     if (!hdr || !start) {
@@ -1524,10 +1650,14 @@ static MqttMsg *allocMsg(Mqtt *mq, int type, int id, ssize size)
 {
     MqttMsg *msg;
 
+    if (size > UINT32_MAX) {
+        //  Message too big
+        return NULL;
+    }
     if ((msg = rAllocType(MqttMsg)) == NULL) {
         return NULL;
     }
-    //  Fixed header is at least 7 bytes
+    //  Fixed header is 5 bytes. So reserve 7 bytes for safety
     size += 7;
     if (size <= MQTT_INLINE_BUF_SIZE) {
         msg->buf = msg->inlineBuf;
@@ -1552,12 +1682,8 @@ static void freeMsg(MqttMsg *msg)
     }
 }
 
-int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *start)
+static int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
-    cuchar *bp;
-
-    bp = start;
-
     if (rp->hdr.length != 2) {
         return setError(mq, R_ERR_BAD_VALUE, "Bad header length");
     }
@@ -1573,19 +1699,17 @@ int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *start)
     } else {
         rp->code = (MqttConnCode) * bp++;
     }
-    return (int) (bp - start);
+    return (int) (bp - rp->start);
 }
 
 /*
     Receive and unpack a publish message
  */
-int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *start)
+static int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
     MqttHdr *hdr;
-    cuchar  *bp;
     int     topicSize;
 
-    bp = start;
     hdr = &(rp->hdr);
 
     rp->dup = (hdr->flags & MQTT_DUP) >> 3;
@@ -1597,11 +1721,17 @@ int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *start)
     }
     topicSize = unpackUint16(bp);
     bp += 2;
+    if (topicSize > hdr->length - 2) {
+        return setError(mq, R_ERR_BAD_RESPONSE, "Topic size exceeds buffer");
+    }
     rp->topic = (char*) bp;
     rp->topicSize = topicSize;
     bp += topicSize;
 
     if (rp->qos > 0) {
+        if ((bp + 2) > (rp->start + rp->hdr.length)) {
+            return setError(mq, R_ERR_BAD_RESPONSE, "Bad received message length for packet ID");
+        }
         rp->id = unpackUint16(bp);
         bp += 2;
     }
@@ -1611,11 +1741,14 @@ int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *start)
     } else {
         rp->dataSize = hdr->length - topicSize - 4;
     }
+    if (rp->dataSize < 0) {
+        return setError(mq, R_ERR_BAD_RESPONSE, "Bad received message length");
+    }
     bp += rp->dataSize;
-    return (int) (bp - start);
+    return (int) (bp - rp->start);
 }
 
-MqttMsg *packPub(Mqtt *mq, MqttPacketType type, int id)
+static MqttMsg *packPub(Mqtt *mq, MqttPacketType type, int id)
 {
     MqttHdr hdr;
     MqttMsg *msg;
@@ -1648,55 +1781,47 @@ MqttMsg *packPub(Mqtt *mq, MqttPacketType type, int id)
     return msg;
 }
 
-int unpackPub(Mqtt *mq, MqttRecv *rp, cuchar *start)
+static int unpackPub(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
     uint16 id;
-    cuchar   *bp;
 
-    bp = start;
     if (rp->hdr.length != 2) {
         return R_ERR_BAD_RESPONSE;
     }
     id = unpackUint16(bp);
     bp += 2;
     rp->id = id;
-    return (int) (bp - start);
+    return (int) (bp - rp->start);
 }
 
-int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *start)
+static int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
-    int    length;
-    cuchar *bp;
+    int length;
 
-    bp = start;
-    length = rp->hdr.length;
-    if (length < 3) {
+    if (rp->hdr.length < 3) {
         return R_ERR_BAD_RESPONSE;
     }
     rp->id = unpackUint16(bp);
     bp += 2;
-    length -= 2;
+    length = rp->hdr.length - 2;
 
     rp->numCodes = length;
     rp->codes = bp;
     bp += length;
-    return (int) (bp - start);
+    return (int) (bp - rp->start);
 }
 
-int unpackUnsubAck(Mqtt *mq, MqttRecv *rp, cuchar *start)
+static int unpackUnsubAck(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
-    cuchar *bp;
-
-    bp = start;
     if (rp->hdr.length != 2) {
         return R_ERR_BAD_RESPONSE;
     }
     rp->id = unpackUint16(bp);
     bp += 2;
-    return (int) (bp - start);
+    return (int) (bp - rp->start);
 }
 
-int unpackResp(Mqtt *mq, MqttRecv *rp)
+static int unpackResp(Mqtt *mq, MqttRecv *rp)
 {
     cuchar *bp, *start;
     int    rc;
@@ -1708,6 +1833,7 @@ int unpackResp(Mqtt *mq, MqttRecv *rp)
         return rc;
     }
     bp = &start[rc];
+    rp->start = bp;
 
     switch (rp->hdr.type) {
     case MQTT_PACKET_CONN_ACK:
@@ -1746,7 +1872,7 @@ int unpackResp(Mqtt *mq, MqttRecv *rp)
     return (int) (bp - start);
 }
 
-int packUnit16(uchar *bp, uint16 integer)
+static int packUnit16(uchar *bp, uint16 integer)
 {
     uint16 integer_htons = MQTT_HTONS(integer);
 
@@ -1754,7 +1880,7 @@ int packUnit16(uchar *bp, uint16 integer)
     return 2;
 }
 
-uint16 unpackUint16(cuchar *bp)
+static uint16 unpackUint16(cuchar *bp)
 {
     uint16 integer_htons;
 
@@ -1762,19 +1888,24 @@ uint16 unpackUint16(cuchar *bp)
     return MQTT_NTOHS(integer_htons);
 }
 
-int packString(uchar *bp, cchar *str)
+static int packString(uchar *bp, cchar *str)
 {
-    int length;
-    int i;
+    ssize length;
+    int   i;
 
-    length = (int) strlen(str);
-    bp += packUnit16(bp, length);
+    length = slen(str);
+    if (length > 0xFFFF) {
+        return -1;
+    }
+    packUnit16(bp, (uint16) length);
+    bp += 2;
     for (i = 0; i < length; ++i) {
         *(bp++) = str[i];
     }
-    return length + 2;
+    return (int) length + 2;
 }
 
+#if OLD && 0
 /*
     Get the next message ID
     LFSR taps taken from: https://en.wikipedia.org/wiki/Linear-feedback_shift_register
@@ -1784,6 +1915,7 @@ static int getId(Mqtt *mq)
     MqttMsg *msg;
     uint    lsb;
     int     exist = 0;
+    int     retries = 65536;
 
     if (mq->nextId == 0) {
         mq->nextId = 163;
@@ -1792,6 +1924,7 @@ static int getId(Mqtt *mq)
         lsb = mq->nextId & 1;
         (mq->nextId) >>= 1;
         if (lsb) {
+            // Review Acceptable - this is a LFSR sequence and message won't live long enough to wrap IDs
             mq->nextId ^= 0xB400u;
         }
         // check that the ID is unique
@@ -1802,10 +1935,56 @@ static int getId(Mqtt *mq)
                 break;
             }
         }
-
+        if (--retries < 0) {
+            setError(mq, R_ERR_CANT_COMPLETE, "Cannot allocate unique message ID");
+            return -1;
+        }
     } while (exist);
     return mq->nextId;
 }
+#else
+static int getId(Mqtt *mq)
+{
+    uint16  id;
+    MqttMsg *msg;
+    int     tries;
+
+    /*  Initialise the counter on first use or after wrap  */
+    if (mq->nextId == 0 || mq->nextId > 0xFFFF) {
+        mq->nextId = 1;                 /* 0 is forbidden by the spec */
+    }
+    /*
+        Search for a free identifier.
+        We will make at most 65535 attempts – guaranteed to terminate
+        because the queue cannot hold more than that many in-flight msgs.
+     */
+    for (tries = 0; tries < 0xFFFF; tries++) {
+        id = mq->nextId++;
+
+        //  Wrap around and skip 0 (invalid)
+        if (mq->nextId > 0xFFFF) {
+            mq->nextId = 1;
+        }
+        if (id == 0) {
+            continue;
+        }
+        //  Check if this id is already in use
+        bool inUse = 0;
+        for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
+            if (msg->id == id) {
+                inUse = 1;
+                break;
+            }
+        }
+        if (!inUse) {
+            return (int) id;
+        }
+    }
+    //  All ids are in use – treat as fatal protocol error
+    setError(mq, R_ERR_CANT_COMPLETE, "Cannot allocate unique MQTT message-id");
+    return -1;
+}
+#endif
 
 static void queueMsg(Mqtt *mq, MqttMsg *msg, uchar *end)
 {
@@ -1887,15 +2066,23 @@ static MqttMsg *findMsgByType(Mqtt *mq, MqttPacketType type)
     return 0;
 }
 
-PUBLIC void mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize size)
+PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize size)
 {
     assert(topic && msg && size > 0);
 
+    if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (size > MQTT_MAX_MESSAGE_SIZE) {
+        return R_ERR_BAD_ARGS;
+    }
     rFree(mq->willTopic);
     rFree(mq->willMsg);
     mq->willTopic = sclone(topic);
-    mq->willMsg = sclone(msg);
+    mq->willMsg = rAlloc(size);
+    memcpy(mq->willMsg, msg, size);
     mq->willMsgSize = size;
+    return 0;
 }
 
 static void setState(Mqtt *mq, MqttMsg *msg, int state)
@@ -1947,9 +2134,15 @@ PUBLIC cchar *mqttGetError(Mqtt *mq)
 
 static int getStringLen(cchar *s)
 {
+    ssize len;
+
     assert(s);
 
-    return (int) (2 + strlen(s));
+    len = slen(s);
+    if (len > 0xFFFF) {
+        return -1;
+    }
+    return 2 + (int) len;
 }
 
 /*

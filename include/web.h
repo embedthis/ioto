@@ -187,10 +187,10 @@ typedef struct WebHost {
     bool removeUploads : 1;     /**< Remove uploads when request completes (default) */
 #endif
     //  Timeouts
-    int inactivityTimeout;      /**< Timeout for inactivity on a connection */
-    int parseTimeout;           /**< Timeout while parsing a request */
-    int requestTimeout;         /**< Total request timeout */
-    int sessionTimeout;         /**< Inactivity timeout for session state */
+    int inactivityTimeout;      /**< Timeout in secs for inactivity on a connection */
+    int parseTimeout;           /**< Timeout in secs while parsing a request */
+    int requestTimeout;         /**< Total request timeout in secs */
+    int sessionTimeout;         /**< Inactivity timeout in secs for session state */
 
     ssize connections;          /**< Number of active connections */
 
@@ -202,6 +202,7 @@ typedef struct WebHost {
     int64 maxBody;              /**< Max size of POST request */
     int64 maxSessions;          /**< Max number of sessions */
     int64 maxUpload;            /**< Max size of file upload */
+    int64 maxUploads;           /**< Max number of files to upload */
 
 #if ME_COM_WEBSOCKETS
     cchar *webSocketsProtocol;  /** WebSocket application protocol */
@@ -413,6 +414,7 @@ typedef struct Web {
     //  Upload
     RHash *uploads;             /**< Table of uploaded files for this request */
     WebUpload *upload;          /**< Current uploading file */
+    int numUploads;             /**< Count of uploaded files */
     cchar *uploadDir;           /**< Directory to place uploaded files */
     char *boundary;             /**< Upload file boundary */
     ssize boundaryLen;          /**< Length of the boundary */
@@ -1037,7 +1039,7 @@ PUBLIC int webWait(Web *web);
 PUBLIC char *webDate(char *buf, time_t when);
 
 /**
-    Decode a string using punycode
+    Decode a URL
     @description The string is converted in-situ.
     @param str String to decode
     @return The original string reference.
@@ -1046,13 +1048,22 @@ PUBLIC char *webDate(char *buf, time_t when);
 PUBLIC char *webDecode(char *str);
 
 /**
-    Encode a string using punycode
+    Encode a URL
     @description The string is converted in-situ.
     @param uri Uri to encode.
     @return An allocated, escaped URI. Caller must free.
     @stability Evolving
  */
 PUBLIC char *webEncode(cchar *uri);
+
+/**
+    Escape HTML
+    @description The string is converted in-situ.
+    @param html Html to escape.
+    @return An allocated, escaped HTML. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webEscapeHtml(cchar *html);
 
 /**
     Get a status message corresponding to a HTTP status code.

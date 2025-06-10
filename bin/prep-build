@@ -29,7 +29,7 @@ cc -I tools \
     -DR_USE_HASH=1 \
     -DR_USE_LIST=1 \
     -DR_USE_STRING=1 \
-    -DR_OWN_PRINTF=0 \
+    -DR_OWN_PRINTF=1 \
     -DME_COM_R=1 \
     -DME_COM_JSON=1 \
     -DME_NAME="\"json\"" \

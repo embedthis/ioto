@@ -498,7 +498,6 @@ PUBLIC int cryptGetPubKey(RKey *skey, uchar *buf, ssize bufsize);
 PUBLIC int cryptLoadPubKey(RKey *skey, uchar *buf, ssize bufsize);
 PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen);
 PUBLIC int cryptSign(RKey *skey, uchar *sum, ssize sumsize);
-PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen);
 PUBLIC int cryptVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, ssize siglen);
 #endif
 

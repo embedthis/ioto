@@ -22,7 +22,7 @@
 #define DEFAULT_CONFIG \
         "{\
     web: {\
-        documents: '.',\
+        documents: 'web',\
         listen: ['http://:80', 'https://:443'],\
         routes: [\
             { match: '', handler: 'file' }\
@@ -35,11 +35,12 @@ static WebHost *host;               /* Single serving host */
 static cchar   *trace = 0;          /* Module trace logging */
 static Json    *config;             /* web.json5 contents */
 static cchar   *event;              /* Exit event */
-static char    endpoint[ME_MAX_IP]; /* Listen endpoint override */
+static char    *endpoint;           /* Listen endpoint override */
 static int     show;                /* Request / response elements to display */
 
 /*********************************** Forwards *********************************/
 
+static void dropPrivileges(cchar *username, cchar *groupname);
 static void onExit(void *data, void *arg);
 static int parseShow(cchar *arg);
 static void setEvent(void);
@@ -67,9 +68,10 @@ static int usage(void)
 
 int main(int argc, char **argv)
 {
-    cchar *argp;
+    cchar *arg, *argp;
     int   argind;
 
+    endpoint = 0;
     event = 0;
     trace = TRACE_FILTER;
 
@@ -82,7 +84,7 @@ int main(int argc, char **argv)
             trace = TRACE_DEBUG_FILTER;
 
         } else if (smatch(argp, "--exit")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 return usage();
             }
             event = argv[++argind];
@@ -91,20 +93,21 @@ int main(int argc, char **argv)
             show = WEB_SHOW_NONE;
 
         } else if (smatch(argp, "--listen") || smatch(argp, "-l")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 return usage();
             } else {
-                argind++;
-                if (scontains(endpoint, "http://")) {
-                    SFMT(endpoint, "%s", argv[argind]);
-                } else if (snumber(endpoint)) {
-                    SFMT(endpoint, "http://:%s", argv[argind]);
+                //  Review Acceptable: repeat --listen override previous listen endpoints
+                arg = argv[++argind];
+                if (scontains(arg, "http://")) {
+                    endpoint = sfmt("%s", argv[argind]);
+                } else if (snumber(arg)) {
+                    endpoint = sfmt("http://:%s", argv[argind]);
                 } else {
-                    SFMT(endpoint, "http://%s", argv[argind]);
+                    endpoint = sfmt("http://%s", argv[argind]);
                 }
             }
         } else if (smatch(argp, "--show") || smatch(argp, "-s")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 return usage();
             } else {
                 show = parseShow(argv[++argind]);
@@ -115,13 +118,13 @@ int main(int argc, char **argv)
             rSetTimeouts(0);
 
         } else if (smatch(argp, "--trace") || smatch(argp, "-t")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 return usage();
             }
             trace = argv[++argind];
 
         } else if (smatch(argp, "--verbose") || smatch(argp, "-v")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 return usage();
             }
             trace = TRACE_VERBOSE_FILTER;
@@ -136,7 +139,7 @@ int main(int argc, char **argv)
         }
     }
     if (argind < argc) {
-        SFMT(endpoint, "%s", argv[argind++]);
+        endpoint = sfmt("%s", argv[argind++]);
     }
     if (rInit((RFiberProc) start, 0) < 0) {
         rFprintf(stderr, "web: Cannot initialize runtime\n");
@@ -145,6 +148,7 @@ int main(int argc, char **argv)
     setEvent();
     rServiceEvents();
 
+    rFree(endpoint);
     stop();
     rTerm();
     return 0;
@@ -158,7 +162,7 @@ static void start(void)
             exit(1);
         }
     }
-    if (endpoint[0]) {
+    if (endpoint) {
         jsonSetJsonFmt(config, 0, "web", "{listen: ['%s']}", endpoint);
     }
     setLog(config);
@@ -177,6 +181,16 @@ static void start(void)
     webTestInit(host, "/test");
 #endif
     webStartHost(host);
+
+    //  Drop privileges after binding to ports
+    if (getuid() == 0) {
+        cchar *user = jsonGet(config, 0, "web.user", "nobody");
+        cchar *group = jsonGet(config, 0, "web.group", "nobody");
+        if (user || group) {
+            rInfo("web", "Dropping privileges to %s:%s", user, group);
+            dropPrivileges(user, group);
+        }
+    }
 }
 
 static void stop(void)
@@ -261,6 +275,39 @@ static void onExit(void *data, void *arg)
     rInfo("main", "Exiting");
     rWatchOff(event, (RWatchProc) onExit, 0);
     rStop();
+}
+
+static void dropPrivileges(cchar *username, cchar *groupname)
+{
+#if !ME_WIN_LIKE
+    struct group  *grp;
+    struct passwd *pwd;
+
+    if (groupname) {
+        grp = getgrnam(groupname);
+        if (grp == NULL) {
+            rError("web", "Cannot find group '%s'", groupname);
+            exit(1);
+        }
+        if (setgid(grp->gr_gid) < 0) {
+            rError("web", "Cannot set group to '%s'. See error %d", groupname, errno);
+            exit(1);
+        }
+    }
+    if (username) {
+        pwd = getpwnam(username);
+        if (pwd == NULL) {
+            rError("web", "Cannot find user '%s'", username);
+            exit(1);
+        }
+        if (setuid(pwd->pw_uid) < 0) {
+            rError("web", "Cannot set user to '%s'. See error %d", username, errno);
+            exit(1);
+        }
+    }
+#else
+    rWarn("web", "Cannot drop privileges on this platform");
+#endif
 }
 
 /*

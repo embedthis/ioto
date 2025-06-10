@@ -208,6 +208,7 @@ PUBLIC void dbClose(Db *db)
     }
     rFreeList(db->callbacks);
     rFreeHash(db->models);
+    rFreeHash(db->changes);
     rbFree(db->primary);
     rFree(db->error);
     rFree(db->journalPath);
@@ -585,8 +586,9 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     }
 
     /*
-        If doing find or remove with limit, and the sk value template is unresolved,
-        then strip the variables and use a beginsWith search.
+        If doing find or remove with limit, and the value template is unresolved,
+        strip the variables and use a beginsWith search.
+        Note: Unresolved tokens are preserved in the search key.
      */
     if ((cp = scontains(env->search.key, "${")) != 0) {
         if (smatch(cmd, "find") || (smatch(cmd, "remove") && env->params->limit)) {
@@ -958,6 +960,7 @@ again:
                 jsonFree(allocJson);
             }
         }
+        freeEnv(&env);
     }
     db->servicing = 0;
 
@@ -1366,7 +1369,7 @@ static void setTemplates(Db *db, DbModel *model, Json *props)
     for (ITERATE_NAME_DATA(model->fields, np, field)) {
         if (field->value) {
             if (jsonGet(props, 0, np->name, 0) == 0) {
-                value = jsonTemplate(props, field->value);
+                value = jsonTemplate(props, field->value, 1);
                 jsonSet(props, 0, np->name, value, 0);
                 rFree(value);
             }
@@ -1401,7 +1404,7 @@ again:
         }
         if (smatch(field->type, "date")) {
             if (sfnumber(prop->value)) {
-                jsonSetNodeValue(prop, rGetIsoDate(stoi(prop->value)), JSON_STRING, JSON_PASS_TEXT);
+                jsonSetNodeValue(prop, rGetIsoDate(stoi(prop->value)), JSON_STRING, JSON_PASS_VALUE);
 
             } else if (!sends(prop->value, "Z")) {
                 return dberror(db, R_ERR_BAD_ARGS, "Invalid date in property \"%s\": %s",
@@ -1737,7 +1740,7 @@ PUBLIC Json *dbStringToJson(cchar *fmt, ...)
 
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
-    json = jsonParse(buf, JSON_PASS_TEXT);
+    json = jsonParseKeep(buf, 0);
     if (json) {
         json->flags |= JSON_USER_ALLOC;
     }
@@ -2319,7 +2322,7 @@ PUBLIC char *dbGetULID(Time when)
     int  i, index, length, mod;
 
     length = (int) slen(LETTERS) - 1;
-    if (cryptGetRandomBytes((uchar*) bytes, sizeof(bytes), 0) < 0) {
+    if (cryptGetRandomBytes((uchar*) bytes, sizeof(bytes), 1) < 0) {
         return 0;
     }
     for (i = 0; i < sizeof(bytes) - 1; i++) {

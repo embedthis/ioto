@@ -27,31 +27,45 @@ struct Mqtt;
 struct MqttMsg;
 struct MqttRecv;
 
+#define MQTT_INLINE_BUF_SIZE        128                 /**< Size of inline buffer */
+#define MQTT_BUF_SIZE               4096                /**< Receive buffer size */
+
 #ifndef MQTT_KEEP_ALIVE
 /*
     Note: https://docs.aws.amazon.com/general/latest/gr/iot-core.html#iot-protocol-limits
     AWS keep alive is 1200 seconds. We use a little less, so a ping can be used to keep the
     connection alive indefinitely. This modules supports on-demand connections with timeouts.
  */
-    #define MQTT_KEEP_ALIVE   (20 * 60 * TPS)           /**< Default connection keep alive time */
+    #define MQTT_KEEP_ALIVE         (20 * 60 * TPS)     /**< Default connection keep alive time */
 #endif
 #ifndef MQTT_TIMEOUT
-    #define MQTT_TIMEOUT      (MAXINT)                  /**< Default connection timeout in msec */
+    #define MQTT_TIMEOUT            (MAXINT)            /**< Default connection timeout in msec */
 #endif
 #ifndef MQTT_MSG_TIMEOUT
-    #define MQTT_MSG_TIMEOUT  (30 * TPS)                /**< Default message timeout */
+    #define MQTT_MSG_TIMEOUT        (30 * TPS)          /**< Default message timeout */
+#endif
+#ifndef MQTT_MAX_TOPIC_SIZE
+    #define MQTT_MAX_TOPIC_SIZE     128                 /**< Max topic size */
+#endif
+#ifndef MQTT_MAX_MESSAGE_SIZE
+    #define MQTT_MAX_MESSAGE_SIZE   256 * 1024 * 1024   /**< Max message size */
+#endif
+#ifndef MQTT_MAX_CLIENT_ID_SIZE
+    #define MQTT_MAX_CLIENT_ID_SIZE 23
+#endif
+#ifndef MQTT_MAX_USERNAME_SIZE
+    #define MQTT_MAX_USERNAME_SIZE  128
+#endif
+#ifndef MQTT_MAX_PASSWORD_SIZE
+    #define MQTT_MAX_PASSWORD_SIZE  128
 #endif
 
-#define MQTT_INLINE_BUF_SIZE  128                       /**< Size of inline buffer */
-#define MQTT_BUF_SIZE         4096                      /**< Receive buffer size */
-#define MQTT_TOPIC_SIZE       128                       /**< Max topic size */
-#define MQTT_MAX_MESSAGE_SIZE 256 * 1024 * 1024         /**< Max message size */
 
 /**
     Protocol version 3.1.1
     @stability Internal
  */
-#define MQTT_PROTOCOL_LEVEL   0x04
+#define MQTT_PROTOCOL_LEVEL 0x04
 
 /**
     Message States
@@ -70,7 +84,10 @@ typedef enum MqttMsgState {
 #define MQTT_WAIT_NONE 0x0   /**< No wait */
 #define MQTT_WAIT_SENT 0x1   /**< Wait for sent */
 #define MQTT_WAIT_ACK  0x2   /**< Wait for ack */
-#define MQTT_WAIT_FAST 0x4   /**< Fast callback */
+#define MQTT_WAIT_FAST 0x4   /**< Fast callback.
+                                @warning The MqttRecv* passed to the callback is allocated on the stack and is only
+                                   valid
+                                for the duration of the callback. Do not store this pointer for later use. */
 
 typedef int MqttWaitFlags;
 
@@ -153,7 +170,7 @@ typedef enum MqttConnCode {
     @param resp Message received structure
     @stability Evolving
  */
-typedef void (*MqttCallback)(struct MqttRecv *resp);
+typedef void (*MqttCallback)(const struct MqttRecv *resp);
 
 #define MQTT_EVENT_ATTACH     1           /**< Attach a socket */
 #define MQTT_EVENT_CONNECTED  2           /**< A new connection was established */
@@ -183,7 +200,7 @@ typedef struct MqttTopic {
 typedef struct MqttHdr {
     MqttPacketType type;
     int flags;             /**< Packet control flags */
-    int length;            /**< Size in of the variable portion after fixed header and packet length */
+    uint length;           /**< Size in of the variable portion after fixed header and packet length */
 } MqttHdr;
 
 
@@ -201,6 +218,7 @@ typedef struct MqttRecv {
     int topicSize;         /**< Size of topic */
     char *data;            /**< Published message */
     int dataSize;          /**< Size of data */
+    cuchar *start;         /**< Start of message */
     uchar dup;             /**< Set to 0 on first attempt to send packet */
     uchar qos;             /**< Quality of service */
     uchar retain;          /**< Message is retained */
@@ -251,7 +269,7 @@ typedef struct Mqtt {
     RList *topics;          /**< List of subscribed topics */
     REvent keepAliveEvent;  /**< Keep alive event */
     char *id;               /**< Client ID */
-    MqttEventProc proc;     /**< Notification event callback  */
+    MqttEventProc proc;     /**< Notification event callback */
 
     RList *masterTopics;    /**< List of master subscription topics */
     char *willTopic;        /**< Will and testament topic */
@@ -386,7 +404,7 @@ PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, ssize size, int qos,
         Set to NULL if a password is not required.
     @stability Evolving
  */
-PUBLIC void mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password);
+PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password);
 
 /**
     Set the maximum message size
@@ -405,7 +423,7 @@ PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
     @param length Message size.
     @stability Evolving
  */
-PUBLIC void mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
+PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
 
 /**
     Subscribe to a topic.
@@ -439,6 +457,8 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cc
 
 /**
     Unsubscribe from a topic.
+    @description This call will unsubscribe from a topic. If the topic is a master topic,
+    it will be unsubscribed from locally.
     @param mq The MQTT mq.
     @param topic The name of the topic to unsubscribe from.
     @param wait Wait flags
@@ -446,6 +466,15 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cc
     @stability Evolving
  */
 PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
+
+/**
+    Unsubscribe from a master topic.
+    @param mq The MQTT mq.
+    @param topic The name of the topic to unsubscribe from.
+    @param wait Wait flags
+    @returns Zero if successful.
+ */
+PUBLIC int mqttUnsubscribeMaster(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
 
 /**
     Set the keep-alive timeout

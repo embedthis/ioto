@@ -302,16 +302,28 @@ PUBLIC void rBreakpoint(void);
 #undef assert
 #if DOXYGEN
 /**
-    Asser that a condition is true
+    Assert that a condition is true
+    @description This routine is only active in debug builds. In production builds it is a no-op.
     @param cond Boolean result of a conditional test
     @stability Evolving
  */
 PUBLIC void assert(bool cond);
 #elif ME_R_DEBUG_LOGGING
-    #define assert(C)           if (C); else rAssert(R_LOC, #C)
+    #define assert(C) if (C); else rAssert(R_LOC, #C)
 #else
-    #define assert(C)           if (1); else {}
+    #define assert(C) if (1); else {}
 #endif
+
+#if DOXYGEN
+/**
+    Assert that a condition is true
+    @description This routine is active in both debug and production builds.
+    @param cond Boolean result of a conditional test
+    @stability Evolving
+ */
+PUBLIC void rassert(bool cond);
+#endif
+#define rassert(C)              if (C); else rAssert(R_LOC, #C)
 
 #define R_ALLOC_ALIGN(x, bytes) (((x) + bytes - 1) & ~(bytes - 1))
 
@@ -396,6 +408,18 @@ PUBLIC void *rReallocMem(void *ptr, size_t size);
 PUBLIC void rFreeMem(void *ptr);
 
 /**
+    Copy a block of memory
+    @description Safe version of memcpy. Handles null args and overlapping src and dest.
+    @param dest Destination pointer
+    @param destMax Maximum size of the destination buffer
+    @param src Source pointer
+    @param nbytes Number of bytes to copy
+    @return Returns the number of bytes copied
+    @stability Evolving
+ */
+PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes);
+
+/**
     Duplicate a block of memory.
     @description Copy a block of memory into a newly allocated block.
     @param ptr Pointer to the block to duplicate.
@@ -440,7 +464,8 @@ typedef struct RFiber {
     uint stackId;
 #endif
 #if ME_FIBER_GUARD_STACK
-    char guard[64];
+    //  REVIEW Acceptable - small guard is enough for embedded systems
+    char guard[128];
 #endif
     uchar stack[];
 } RFiber;
@@ -551,7 +576,7 @@ PUBLIC ssize rGetFiberStackSize(void);
 
 /**
     Set the default fiber stack size
-    @param size Size of fiber stack in bytes
+    @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
     @stability Evolving
  */
 PUBLIC void rSetFiberStack(ssize size);
@@ -1123,18 +1148,35 @@ PUBLIC void rWakeup(void);
 
 /**
     Format a string into a buffer.
-    @description This routine will format the arguments into a result. If a buffer is supplied,
-        it will be used. Otherwise if the buf argument is NULL, a buffer will be allocated.
+    @description This routine will format the arguments into a result. The buffer must be supplied
+        and maxsize must be set to its length.
         The arguments will be formatted up to the maximum size supplied by the maxsize argument.
         A trailing NULL will always be appended.
     @param buf Optional buffer to contain the formatted result
-    @param maxsize Maximum size of the result. If set to -1, thee will be no limit.
+    @param maxsize Maximum size of the result.
     @param fmt Printf style format string
     @param args Variable arguments to format
-    @return Returns the original buffer if supplied or else an allocated string
+    @return Returns the count of characters stored in buf or the count of characters that would have been
+        stored if not limited by maxsize. Will be >= maxsize if the result is truncated.
     @stability Prototype
  */
-PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
+PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
+
+/**
+    Format a string into a buffer.
+    @description This routine will format the arguments into a result. A buffer will be allocated and returned
+        in *buf. The maxsize argument may specific the maximum size of the buffer to allocate. If set to -1, the
+        size will as large as needed. The arguments will be formatted up to the maximum size supplied by the maxsize
+           argument.
+        A trailing NULL will always be appended.
+    @param buf Optional buffer to contain the formatted result
+    @param maxsize Maximum size of the result. If set to <= 0, there is no maximum size.
+    @param fmt Printf style format string
+    @param args Variable arguments to format
+    @return Returns the count of characters stored in buf or a negative error code for memory errors.
+    @stability Prototype
+ */
+PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
 
 /**
     Format a string into a buffer.
@@ -1142,13 +1184,14 @@ PUBLIC char *rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
         Otherwise if the buf argument is NULL, a buffer will be allocated. The arguments will be formatted up
         to the maximum size supplied by the maxsize argument.  A trailing NULL will always be appended.
     @param buf Optional buffer to contain the formatted result
-    @param maxsize Maximum size of the result
+    @param maxsize Maximum size of the result.
     @param fmt Printf style format string
     @param ... Variable arguments to format
-    @return Returns the original buffer if supplied or else an allocated string
+    @return Returns the count of characters in buf or the count of characters that would have been written if not
+        limited by maxsize.
     @stability Prototype
  */
-PUBLIC char *rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
+PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
 
 /**
     Formatted print. This is a secure verion of printf that can handle null args.
@@ -1177,7 +1220,7 @@ PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
     R String Module
     @description The RT provides a suite of r ascii string manipulation routines to help prevent buffer overflows
         and other potential security traps.
-    @see RString itos itosradix itosbuf rEprintf rPrintf scaselesscmp schr
+    @see RString itos sitox itosbuf rEprintf rPrintf scaselesscmp schr
         sclone scmp scontains scopy sends sfmt sfmtv sfmtbuf sfmtbufv shash shashlower sjoin sjoinv slen slower
         smatch sncaselesscmp snclone sncmp sncopy stitle spbrk srchr sreplace sspn sstarts ssub stemplate
         stok strim supper sncontains
@@ -1212,7 +1255,7 @@ PUBLIC char *sitos(int64 value);
     @return An allocated string with the converted number.
     @stability Evolving
  */
-PUBLIC char *sitosradix(int64 value, int radix);
+PUBLIC char *sitosx(int64 value, int radix);
 
 /**
     Convert an integer to a string buffer.
@@ -1720,14 +1763,15 @@ PUBLIC double stod(cchar *str);
 PUBLIC int64 stoi(cchar *str);
 
 /**
-    Convert a string to an integer.
+    Parse a string to an integer.
     @description This call convers the supplied string to an integer using the specified radix (base).
     @param str Pointer to the string to parse.
+    @param end Pointer to the end of the parsed string. If not NULL, the end pointer is set to the first character after
+       the number.
     @param radix Base to use when parsing the string
-    @param err Return error code. Set to 0 if successful.
     @return Returns the integer equivalent value of the string.
  */
-PUBLIC int64 stoiradix(cchar *str, int radix, int *err);
+PUBLIC int64 stoix(cchar *str, char **end, int radix);
 
 /**
     Tokenize a string
@@ -1935,6 +1979,8 @@ PUBLIC cchar *rBufToString(RBuf *buf);
 
 /**
     Convert the buffer contents to a string.  The string is allocated and the buffer is freed.
+    @description Transfers ownership of the buffer contents to the caller.
+    The buffer is freed and the user must not reference it again.
     @param buf Buffer created via rAllocBuf
     @returns Allocated string
     @stability Evolving
@@ -3062,7 +3108,7 @@ PUBLIC cchar *rGetFileExt(cchar *path);
 /**
     Get a file path name
     @description Expand any "@directory" prefix in the path that have been defined via
-        the rAddDirectories.
+        the rAddDirectories. Do not use this function with user input. It permits ".." in paths.
     @param path Source file path
     @return The expanded path. Caller must free.
     @stability Evolving
@@ -3263,6 +3309,7 @@ PUBLIC cchar *rBasename(cchar *path);
     Return the directory name portion of a filename.
     @description This trims off the basename portion of the path by modifying the supplied path.
     This takes a char* and returns a char* to the function can be composed as rDirname(sclone(path)).
+    The supplied path is modified.
     @param path Filename to examine and modify
     @return A pointer to the dirname portion of the supplied filename path.
         This call does not allocate a new string and the caller should not free.
@@ -3998,11 +4045,13 @@ PUBLIC RThread rGetMainThread(void);
 #if ME_UNIX_LIKE
 /**
     Run a command using the system shell
+    @description SECURITY: must only call with fully sanitized command input.
     @param command Command string to run using popen()
-    @param status Returns the command exit status
+    @param output Returns the command output. Caller must free.
+    @return The command exit status or a negative error code.
     @stability Evolving.
  */
-PUBLIC char *rRun(cchar *command, int *status);
+PUBLIC int rRun(cchar *command, char **output);
 #endif
 #endif /* R_USE_RUN */
 
