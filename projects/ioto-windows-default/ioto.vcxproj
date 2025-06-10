@@ -14,7 +14,7 @@
       </ItemDefinitionGroup>
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{d69bb2a7-a713-4f00-b1fe-22677a8f8e7b}</ProjectGuid>
+        <ProjectGuid>{ae62afe1-0ebb-4b94-aec2-ad8a2364b8fc}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -112,14 +112,14 @@
         
 
       <Link>
-        <AdditionalDependencies>app;libioto.lib;libcrypto.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
-        <AdditionalLibraryDirectories>$(OutDir);build\$(Cfg)\bin;$(ME_COM_OPENSSL_PATH)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+        <AdditionalDependencies>app;libioto.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
+        <AdditionalLibraryDirectories>$(OutDir);build\$(Cfg)\bin;$(ME_COM_OPENSSL_PATH);$(ME_COM_OPENSSL_PATH)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       </Link>
   </ItemDefinitionGroup>
 
     <ItemGroup>
       <ProjectReference Include="libioto.vcxproj">
-      <Project>a55c5f41-abad-44e3-b01b-325b885beb0e</Project>
+      <Project>95d2ab0c-2a34-434f-b98b-95d7c2da2a94</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       </ProjectReference>
     </ItemGroup>

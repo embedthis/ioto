@@ -941,17 +941,19 @@ LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_MBEDTLS_PATH)/lib
 LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_MBEDTLS_PATH)/library
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_46 = $(LIBS_46) libcrypto.lib
+LIBS_46 = $(LIBS_46) libssl.lib
+LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_46 = $(LIBS_46) libssl.lib
+LIBS_46 = $(LIBS_46) libcrypto.lib
+LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_46 = $(LIBPATHS_46) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 
 build\$(CONFIG)\bin\db.exe: $(DEPS_46)
 	@echo ..... [Link] build\$(CONFIG)\bin\db.exe
-	"$(LD)" -nologo -out:build\$(CONFIG)\bin\db.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)    "build\$(CONFIG)\obj\db.obj" $(LIBPATHS_46) $(LIBS_46) $(LIBS)  $(LOG)
+	"$(LD)" -nologo -out:build\$(CONFIG)\bin\db.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)     "build\$(CONFIG)\obj\db.obj" $(LIBPATHS_46) $(LIBS_46) $(LIBS)  $(LOG)
 !ENDIF
 
 
@@ -1060,17 +1062,19 @@ LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_MBEDTLS_PATH)/lib
 LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_MBEDTLS_PATH)/library
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_52 = $(LIBS_52) libcrypto.lib
+LIBS_52 = $(LIBS_52) libssl.lib
+LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_52 = $(LIBS_52) libssl.lib
+LIBS_52 = $(LIBS_52) libcrypto.lib
+LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_52 = $(LIBPATHS_52) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 
 build\$(CONFIG)\bin\ioto.exe: $(DEPS_52)
 	@echo ..... [Link] build\$(CONFIG)\bin\ioto.exe
-	"$(LD)" -nologo -out:build\$(CONFIG)\bin\ioto.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)    "build\$(CONFIG)\obj\main.obj" app $(LIBPATHS_52) $(LIBS_52) $(LIBS) app  $(LOG)
+	"$(LD)" -nologo -out:build\$(CONFIG)\bin\ioto.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)     "build\$(CONFIG)\obj\main.obj" app $(LIBPATHS_52) $(LIBS_52) $(LIBS) app  $(LOG)
 !ENDIF
 
 !IF "$(ME_COM_JSON)" == "1"
@@ -1099,17 +1103,19 @@ LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_MBEDTLS_PATH)/lib
 LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_MBEDTLS_PATH)/library
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_53 = $(LIBS_53) libcrypto.lib
+LIBS_53 = $(LIBS_53) libssl.lib
+LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_53 = $(LIBS_53) libssl.lib
+LIBS_53 = $(LIBS_53) libcrypto.lib
+LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_53 = $(LIBPATHS_53) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 
 build\$(CONFIG)\bin\json.exe: $(DEPS_53)
 	@echo ..... [Link] build\$(CONFIG)\bin\json.exe
-	"$(LD)" -nologo -out:build\$(CONFIG)\bin\json.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)    "build\$(CONFIG)\obj\json.obj" $(LIBPATHS_53) $(LIBS_53) $(LIBS)  $(LOG)
+	"$(LD)" -nologo -out:build\$(CONFIG)\bin\json.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)     "build\$(CONFIG)\obj\json.obj" $(LIBPATHS_53) $(LIBS_53) $(LIBS)  $(LOG)
 !ENDIF
 
 #
@@ -1137,17 +1143,19 @@ LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_MBEDTLS_PATH)/lib
 LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_MBEDTLS_PATH)/library
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_54 = $(LIBS_54) libcrypto.lib
+LIBS_54 = $(LIBS_54) libssl.lib
+LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_54 = $(LIBS_54) libssl.lib
+LIBS_54 = $(LIBS_54) libcrypto.lib
+LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_54 = $(LIBPATHS_54) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 
 build\$(CONFIG)\bin\password.exe: $(DEPS_54)
 	@echo ..... [Link] build\$(CONFIG)\bin\password.exe
-	"$(LD)" -nologo -out:build\$(CONFIG)\bin\password.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)    "build\$(CONFIG)\obj\password.obj" $(LIBPATHS_54) $(LIBS_54) $(LIBS)  $(LOG)
+	"$(LD)" -nologo -out:build\$(CONFIG)\bin\password.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)     "build\$(CONFIG)\obj\password.obj" $(LIBPATHS_54) $(LIBS_54) $(LIBS)  $(LOG)
 
 #
 #   webserver
@@ -1174,17 +1182,19 @@ LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_MBEDTLS_PATH)/lib
 LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_MBEDTLS_PATH)/library
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_55 = $(LIBS_55) libcrypto.lib
+LIBS_55 = $(LIBS_55) libssl.lib
+LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 !IF "$(ME_COM_OPENSSL)" == "1"
-LIBS_55 = $(LIBS_55) libssl.lib
+LIBS_55 = $(LIBS_55) libcrypto.lib
+LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_OPENSSL_PATH)
 LIBPATHS_55 = $(LIBPATHS_55) -libpath:$(ME_COM_OPENSSL_PATH)/lib
 !ENDIF
 
 build\$(CONFIG)\bin\webserver.exe: $(DEPS_55)
 	@echo ..... [Link] build\$(CONFIG)\bin\webserver.exe
-	"$(LD)" -nologo -out:build\$(CONFIG)\bin\webserver.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)    "build\$(CONFIG)\obj\web.obj" $(LIBPATHS_55) $(LIBS_55) $(LIBS)  $(LOG)
+	"$(LD)" -nologo -out:build\$(CONFIG)\bin\webserver.exe -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS)     "build\$(CONFIG)\obj\web.obj" $(LIBPATHS_55) $(LIBS_55) $(LIBS)  $(LOG)
 
 #
 #   stop
