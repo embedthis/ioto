@@ -66,7 +66,7 @@ static void aiChatCompletionAction(Web *web)
     if ((response = openaiChatCompletion(web->vars)) == NULL) {
         webError(web, 500, "Cannot issue request to OpenAI");
     } else {
-        webWriteJson(web, response, 0, NULL);
+        webWriteJson(web, response);
     }
     webFinalize(web);
     jsonFree(response);
@@ -82,7 +82,7 @@ static void aiResponsesAction(Web *web)
     if ((response = openaiResponses(web->vars, NULL, 0)) == NULL) {
         webError(web, 500, "Cannot issue request to OpenAI");
     } else {
-        webWriteJson(web, response, 0, NULL);
+        webWriteJson(web, response);
     }
     webFinalize(web);
     jsonFree(response);
