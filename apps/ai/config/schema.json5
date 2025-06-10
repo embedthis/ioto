@@ -5,7 +5,8 @@
     version: 'latest',
     description: 'Demo app schema',
     blend: [
-        '../../../schemas/OneTable.json5',
+        '../../../schemas/parts/OneTable.json5',
+        '../../../schemas/parts/LocalSchema.json5',
         'DemoSchema.json5',
     ],
     process: { },
