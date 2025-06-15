@@ -52,6 +52,9 @@ ME_COM_APPS           = 1
 !IF "$(ME_COM_AUTH)" == ""
 ME_COM_AUTH           = 0
 !ENDIF
+!IF "$(ME_COM_BLANK)" == ""
+ME_COM_BLANK          = 0
+!ENDIF
 !IF "$(ME_COM_BLINK)" == ""
 ME_COM_BLINK          = 0
 !ENDIF
@@ -81,9 +84,6 @@ ME_COM_MBEDTLS        = 0
 !ENDIF
 !IF "$(ME_COM_MQTT)" == ""
 ME_COM_MQTT           = 1
-!ENDIF
-!IF "$(ME_COM_NOAPP)" == ""
-ME_COM_NOAPP          = 0
 !ENDIF
 !IF "$(ME_COM_OPENAI)" == ""
 ME_COM_OPENAI         = 1
@@ -137,6 +137,10 @@ ME_COM_APPS           = 1
 ME_COM_APPS           = 1
 !ENDIF
 
+!IF "$(ME_COM_BLANK)" == "1"
+ME_COM_APPS           = 1
+!ENDIF
+
 !IF "$(ME_COM_BLINK)" == "1"
 ME_COM_APPS           = 1
 !ENDIF
@@ -155,10 +159,6 @@ ME_COM_COMPILER       = 1
 
 !IF "$(ME_COM_MBEDTLS)" == "1"
 ME_COM_SSL            = 1
-!ENDIF
-
-!IF "$(ME_COM_NOAPP)" == "1"
-ME_COM_APPS           = 1
 !ENDIF
 
 !IF "$(ME_COM_OPENSSL)" == "1"
@@ -289,7 +289,7 @@ LD                    = link
 AR                    = lib
 RC                    = rc
 CFLAGS                = -nologo -GR- -W3 -Zi -Od -MDd
-DFLAGS                = -DME_DEBUG=1 -D_CRT_SECURE_NO_WARNINGS=1 -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_RC=$(ME_COM_RC) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                = -DME_DEBUG=1 -D_CRT_SECURE_NO_WARNINGS=1 -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLANK=$(ME_COM_BLANK) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_LINK=$(ME_COM_LINK) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_RC=$(ME_COM_RC) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                = -Ibuild\$(CONFIG)\inc
 LDFLAGS               = -nologo -incremental:no -dynamicbase -nxcompat -debug -machine:x64
 LIBPATHS              = "-libpath:build\$(CONFIG)\bin"
@@ -352,6 +352,7 @@ clean:
 	if exist "build\$(CONFIG)\obj\aiApp.obj" del /Q "build\$(CONFIG)\obj\aiApp.obj"
 	if exist "build\$(CONFIG)\obj\authApp.obj" del /Q "build\$(CONFIG)\obj\authApp.obj"
 	if exist "build\$(CONFIG)\obj\authUser.obj" del /Q "build\$(CONFIG)\obj\authUser.obj"
+	if exist "build\$(CONFIG)\obj\blank.obj" del /Q "build\$(CONFIG)\obj\blank.obj"
 	if exist "build\$(CONFIG)\obj\cryptLib.obj" del /Q "build\$(CONFIG)\obj\cryptLib.obj"
 	if exist "build\$(CONFIG)\obj\db.obj" del /Q "build\$(CONFIG)\obj\db.obj"
 	if exist "build\$(CONFIG)\obj\dbLib.obj" del /Q "build\$(CONFIG)\obj\dbLib.obj"
@@ -361,7 +362,6 @@ clean:
 	if exist "build\$(CONFIG)\obj\jsonLib.obj" del /Q "build\$(CONFIG)\obj\jsonLib.obj"
 	if exist "build\$(CONFIG)\obj\main.obj" del /Q "build\$(CONFIG)\obj\main.obj"
 	if exist "build\$(CONFIG)\obj\mqttLib.obj" del /Q "build\$(CONFIG)\obj\mqttLib.obj"
-	if exist "build\$(CONFIG)\obj\noapp.obj" del /Q "build\$(CONFIG)\obj\noapp.obj"
 	if exist "build\$(CONFIG)\obj\openaiLib.obj" del /Q "build\$(CONFIG)\obj\openaiLib.obj"
 	if exist "build\$(CONFIG)\obj\password.obj" del /Q "build\$(CONFIG)\obj\password.obj"
 	if exist "build\$(CONFIG)\obj\rLib.obj" del /Q "build\$(CONFIG)\obj\rLib.obj"
@@ -657,110 +657,110 @@ build\$(CONFIG)\obj\authUser.obj: \
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\authUser.obj -Fdbuild\$(CONFIG)\obj\authUser.pdb $(CFLAGS) $(DFLAGS) $(IFLAGS) apps\auth\src\authUser.c $(LOG)
 
 #
+#   blank.obj
+#
+DEPS_24 = $(DEPS_24) build\$(CONFIG)\inc\ioto.h
+
+build\$(CONFIG)\obj\blank.obj: \
+    apps\blank\src\blank.c $(DEPS_24)
+	@echo .. [Compile] build\$(CONFIG)\obj\blank.obj
+	"$(CC)" -c -Fobuild\$(CONFIG)\obj\blank.obj -Fdbuild\$(CONFIG)\obj\blank.pdb $(CFLAGS) $(DFLAGS) $(IFLAGS) apps\blank\src\blank.c $(LOG)
+
+#
 #   cryptLib.obj
 #
-DEPS_24 = $(DEPS_24) build\$(CONFIG)\inc\crypt.h
+DEPS_25 = $(DEPS_25) build\$(CONFIG)\inc\crypt.h
 
 build\$(CONFIG)\obj\cryptLib.obj: \
-    lib\cryptLib.c $(DEPS_24)
+    lib\cryptLib.c $(DEPS_25)
 	@echo .. [Compile] build\$(CONFIG)\obj\cryptLib.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\cryptLib.obj -Fdbuild\$(CONFIG)\obj\cryptLib.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" lib\cryptLib.c $(LOG)
 
 #
 #   db.obj
 #
-DEPS_25 = $(DEPS_25) build\$(CONFIG)\inc\r.h
-DEPS_25 = $(DEPS_25) build\$(CONFIG)\inc\db.h
+DEPS_26 = $(DEPS_26) build\$(CONFIG)\inc\r.h
+DEPS_26 = $(DEPS_26) build\$(CONFIG)\inc\db.h
 
 build\$(CONFIG)\obj\db.obj: \
-    cmds\db.c $(DEPS_25)
+    cmds\db.c $(DEPS_26)
 	@echo .. [Compile] build\$(CONFIG)\obj\db.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\db.obj -Fdbuild\$(CONFIG)\obj\db.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" cmds\db.c $(LOG)
 
 #
 #   dbLib.obj
 #
-DEPS_26 = $(DEPS_26) build\$(CONFIG)\inc\db.h
-DEPS_26 = $(DEPS_26) build\$(CONFIG)\inc\crypt.h
+DEPS_27 = $(DEPS_27) build\$(CONFIG)\inc\db.h
+DEPS_27 = $(DEPS_27) build\$(CONFIG)\inc\crypt.h
 
 build\$(CONFIG)\obj\dbLib.obj: \
-    lib\dbLib.c $(DEPS_26)
+    lib\dbLib.c $(DEPS_27)
 	@echo .. [Compile] build\$(CONFIG)\obj\dbLib.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\dbLib.obj -Fdbuild\$(CONFIG)\obj\dbLib.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" lib\dbLib.c $(LOG)
 
 #
 #   demoApp.obj
 #
-DEPS_27 = $(DEPS_27) build\$(CONFIG)\inc\ioto.h
-DEPS_27 = $(DEPS_27) build\$(CONFIG)\inc\driver\gpio.h
-DEPS_27 = $(DEPS_27) build\$(CONFIG)\inc\rom\gpio.h
+DEPS_28 = $(DEPS_28) build\$(CONFIG)\inc\ioto.h
+DEPS_28 = $(DEPS_28) build\$(CONFIG)\inc\driver\gpio.h
+DEPS_28 = $(DEPS_28) build\$(CONFIG)\inc\rom\gpio.h
 
 build\$(CONFIG)\obj\demoApp.obj: \
-    apps\demo\src\demoApp.c $(DEPS_27)
+    apps\demo\src\demoApp.c $(DEPS_28)
 	@echo .. [Compile] build\$(CONFIG)\obj\demoApp.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\demoApp.obj -Fdbuild\$(CONFIG)\obj\demoApp.pdb $(CFLAGS) $(DFLAGS) $(IFLAGS) apps\demo\src\demoApp.c $(LOG)
 
 #
 #   iotoLib.obj
 #
-DEPS_28 = $(DEPS_28) build\$(CONFIG)\inc\ioto.h
+DEPS_29 = $(DEPS_29) build\$(CONFIG)\inc\ioto.h
 
 build\$(CONFIG)\obj\iotoLib.obj: \
-    lib\iotoLib.c $(DEPS_28)
+    lib\iotoLib.c $(DEPS_29)
 	@echo .. [Compile] build\$(CONFIG)\obj\iotoLib.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\iotoLib.obj -Fdbuild\$(CONFIG)\obj\iotoLib.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" lib\iotoLib.c $(LOG)
 
 #
 #   json.obj
 #
-DEPS_29 = $(DEPS_29) build\$(CONFIG)\inc\osdep.h
-DEPS_29 = $(DEPS_29) build\$(CONFIG)\inc\r.h
-DEPS_29 = $(DEPS_29) build\$(CONFIG)\inc\json.h
+DEPS_30 = $(DEPS_30) build\$(CONFIG)\inc\osdep.h
+DEPS_30 = $(DEPS_30) build\$(CONFIG)\inc\r.h
+DEPS_30 = $(DEPS_30) build\$(CONFIG)\inc\json.h
 
 build\$(CONFIG)\obj\json.obj: \
-    cmds\json.c $(DEPS_29)
+    cmds\json.c $(DEPS_30)
 	@echo .. [Compile] build\$(CONFIG)\obj\json.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\json.obj -Fdbuild\$(CONFIG)\obj\json.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" cmds\json.c $(LOG)
 
 #
 #   jsonLib.obj
 #
-DEPS_30 = $(DEPS_30) build\$(CONFIG)\inc\json.h
+DEPS_31 = $(DEPS_31) build\$(CONFIG)\inc\json.h
 
 build\$(CONFIG)\obj\jsonLib.obj: \
-    lib\jsonLib.c $(DEPS_30)
+    lib\jsonLib.c $(DEPS_31)
 	@echo .. [Compile] build\$(CONFIG)\obj\jsonLib.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\jsonLib.obj -Fdbuild\$(CONFIG)\obj\jsonLib.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" lib\jsonLib.c $(LOG)
 
 #
 #   main.obj
 #
-DEPS_31 = $(DEPS_31) build\$(CONFIG)\inc\ioto.h
+DEPS_32 = $(DEPS_32) build\$(CONFIG)\inc\ioto.h
 
 build\$(CONFIG)\obj\main.obj: \
-    cmds\main.c $(DEPS_31)
+    cmds\main.c $(DEPS_32)
 	@echo .. [Compile] build\$(CONFIG)\obj\main.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\main.obj -Fdbuild\$(CONFIG)\obj\main.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" cmds\main.c $(LOG)
 
 #
 #   mqttLib.obj
 #
-DEPS_32 = $(DEPS_32) build\$(CONFIG)\inc\mqtt.h
+DEPS_33 = $(DEPS_33) build\$(CONFIG)\inc\mqtt.h
 
 build\$(CONFIG)\obj\mqttLib.obj: \
-    lib\mqttLib.c $(DEPS_32)
+    lib\mqttLib.c $(DEPS_33)
 	@echo .. [Compile] build\$(CONFIG)\obj\mqttLib.obj
 	"$(CC)" -c -Fobuild\$(CONFIG)\obj\mqttLib.obj -Fdbuild\$(CONFIG)\obj\mqttLib.pdb $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) -DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)\include" "-I$(ME_COM_MBEDTLS_PATH)\include" lib\mqttLib.c $(LOG)
-
-#
-#   noapp.obj
-#
-DEPS_33 = $(DEPS_33) build\$(CONFIG)\inc\ioto.h
-
-build\$(CONFIG)\obj\noapp.obj: \
-    apps\noapp\src\noapp.c $(DEPS_33)
-	@echo .. [Compile] build\$(CONFIG)\obj\noapp.obj
-	"$(CC)" -c -Fobuild\$(CONFIG)\obj\noapp.obj -Fdbuild\$(CONFIG)\obj\noapp.pdb $(CFLAGS) $(DFLAGS) $(IFLAGS) apps\noapp\src\noapp.c $(LOG)
 
 #
 #   openaiLib.obj
@@ -993,15 +993,15 @@ build\$(CONFIG)\bin\libapp.lib: $(DEPS_49)
 	"$(AR)" -nologo -out:build\$(CONFIG)\bin\libapp.lib "build\$(CONFIG)\obj\authApp.obj" "build\$(CONFIG)\obj\authUser.obj" $(LOG)
 !ENDIF
 
-!IF "$(ME_COM_NOAPP)" == "1"
+!IF "$(ME_COM_BLANK)" == "1"
 #
-#   libnoapp
+#   libblank
 #
-DEPS_50 = $(DEPS_50) build\$(CONFIG)\obj\noapp.obj
+DEPS_50 = $(DEPS_50) build\$(CONFIG)\obj\blank.obj
 
 build\$(CONFIG)\bin\libapp.lib: $(DEPS_50)
 	@echo ..... [Link] build\$(CONFIG)\bin\libapp.lib
-	"$(AR)" -nologo -out:build\$(CONFIG)\bin\libapp.lib "build\$(CONFIG)\obj\noapp.obj" $(LOG)
+	"$(AR)" -nologo -out:build\$(CONFIG)\bin\libapp.lib "build\$(CONFIG)\obj\blank.obj" $(LOG)
 !ENDIF
 
 !IF "$(ME_COM_UNIT)" == "1"
@@ -1035,7 +1035,7 @@ DEPS_52 = $(DEPS_52) build\$(CONFIG)\bin\libapp.lib
 !IF "$(ME_COM_AUTH)" == "1"
 DEPS_52 = $(DEPS_52) build\$(CONFIG)\bin\libapp.lib
 !ENDIF
-!IF "$(ME_COM_NOAPP)" == "1"
+!IF "$(ME_COM_BLANK)" == "1"
 DEPS_52 = $(DEPS_52) build\$(CONFIG)\bin\libapp.lib
 !ENDIF
 !IF "$(ME_COM_UNIT)" == "1"

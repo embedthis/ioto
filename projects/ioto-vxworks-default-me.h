@@ -223,6 +223,9 @@
 #ifndef ME_COM_AUTH
     #define ME_COM_AUTH 0
 #endif
+#ifndef ME_COM_BLANK
+    #define ME_COM_BLANK 0
+#endif
 #ifndef ME_COM_BLINK
     #define ME_COM_BLINK 0
 #endif
@@ -252,9 +255,6 @@
 #endif
 #ifndef ME_COM_MQTT
     #define ME_COM_MQTT 1
-#endif
-#ifndef ME_COM_NOAPP
-    #define ME_COM_NOAPP 0
 #endif
 #ifndef ME_COM_OPENAI
     #define ME_COM_OPENAI 1

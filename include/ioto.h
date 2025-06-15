@@ -845,6 +845,11 @@ PUBLIC void ioGetKeys(void);
 PUBLIC int ioLoadConfig(void);
 PUBLIC Ticks cronUntil(cchar *spec, Time when);
 
+#define IOTO_PROD    0          /**< Configure trace for production (minimal) */
+#define IOTO_VERBOSE 1          /**< Configure trace for development with verbose output */
+#define IOTO_DEBUG   2          /**< Configure debug trace for development with very verbose output */
+
+
 /**
     Initialize the Ioto runtime
     @param verbose Set to 1 to enable verbose output. Set to 2 for debug output.
@@ -870,11 +875,6 @@ PUBLIC void ioStopRuntime(void);
 PUBLIC int ioRun(void *fn);
 
 #if ESP32
-#define IOTO_PROD    0          /**< Configure trace for production (minimal) */
-#define IOTO_VERBOSE 1          /**< Configure trace for development with verbose output */
-#define IOTO_DEBUG   2          /**< Configure debug trace for development with very verbose output */
-
-
 /**
     Initialize ESP32 WIFI
     @param ssid WIFI SSID for the network

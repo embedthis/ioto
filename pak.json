@@ -49,8 +49,7 @@
     },
     "override": {
         "manager": {
-            "export": [
-            ]
+            "export": []
         },
         "certs": {
             "export": {

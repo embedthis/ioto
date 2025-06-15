@@ -49,11 +49,11 @@ Name | Description
 -|-|-
 ai | Demonstrate using the OpenAI APIs.
 auth | Simple embedded web server user/group authentication sample.
+blank | Empty slate application. 
 blink | Minimal ESP32 blink app to demonstrate linking with Ioto on ESP32
 microcontrollers.
 demo | Cloud-based management of a device. Demonstrates simple data
 synchronization and metrics.
-noapp | Stubs to build Ioto without an app
 unit | Unit testing app.
 
 Each application has a README.md in the apps/APP directory that describes the

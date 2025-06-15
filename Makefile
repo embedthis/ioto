@@ -63,7 +63,7 @@ prep:
 		exit 255 ; \
 	fi
 	mkdir -p $(CONFIG) $(SITE) $(DB) $(CERTS)
-	@if [ "$(APP)" = "noapp" ] ; then \
+	@if [ "$(APP)" = "blank" ] ; then \
 		echo "      [Info] Building Ioto $(VERSION) optimized for \"$(OPTIMIZE)\"" ; \
 	else \
 		echo "      [Info] Building Ioto $(VERSION) optimized for \"$(OPTIMIZE)\" with the \"$(APP)\" app" ; \
@@ -133,7 +133,7 @@ install installBinary uninstall:
 	@$(MAKE) -f $(PROJECT) TOP=$(TOP) APP=$(APP) $@
 
 info:
-	@if [ "$(APP)" != 'noapp' ] ; then \
+	@if [ "$(APP)" != 'blank' ] ; then \
 		echo "      [Info] Run via: \"make run\". Run manually with \"$(BUILD)/bin\" in your path." ; \
 		echo "" ; \
 	fi
@@ -153,7 +153,7 @@ dump:
 #
 #	Convenience targets for building various apps
 #
-auth eco demo noapp unit: 
+auth eco demo blank unit: 
 	make APP=$@
 	@$(MAKE) TOP=$(TOP) APP=$@
 
@@ -165,9 +165,10 @@ help:
 	@echo '' >&2
 	@echo '' >&2
 	@echo 'Select from the following apps:' >&2
+	@echo '  ai 	Test invoking AI LLMs.' >&2
 	@echo '  auth	Test user login and authentication app.' >&2
+	@echo '  blank	Build without an app.' >&2
 	@echo '  demo   Cloud-based Ioto demo sample app.' >&2
-	@echo '  noapp	Build without an app.' >&2
 	@echo '' >&2
 	@echo 'To select your App, add APP=NAME:' >&2
 	@echo '' >&2

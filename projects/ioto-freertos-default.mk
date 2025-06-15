@@ -21,6 +21,7 @@ PATH                  := $(LBIN):$(PATH)
 ME_COM_AI             ?= 0
 ME_COM_APPS           ?= 1
 ME_COM_AUTH           ?= 0
+ME_COM_BLANK          ?= 0
 ME_COM_BLINK          ?= 0
 ME_COM_COMPILER       ?= 1
 ME_COM_DB             ?= 1
@@ -30,7 +31,6 @@ ME_COM_JSON           ?= 1
 ME_COM_LIB            ?= 1
 ME_COM_MBEDTLS        ?= 1
 ME_COM_MQTT           ?= 1
-ME_COM_NOAPP          ?= 0
 ME_COM_OPENAI         ?= 1
 ME_COM_OPENSSL        ?= 0
 ME_COM_OSDEP          ?= 1
@@ -51,6 +51,9 @@ endif
 ifeq ($(ME_COM_AUTH),1)
     ME_COM_APPS := 1
 endif
+ifeq ($(ME_COM_BLANK),1)
+    ME_COM_APPS := 1
+endif
 ifeq ($(ME_COM_BLINK),1)
     ME_COM_APPS := 1
 endif
@@ -62,9 +65,6 @@ ifeq ($(ME_COM_LIB),1)
 endif
 ifeq ($(ME_COM_MBEDTLS),1)
     ME_COM_SSL := 1
-endif
-ifeq ($(ME_COM_NOAPP),1)
-    ME_COM_APPS := 1
 endif
 ifeq ($(ME_COM_OPENSSL),1)
     ME_COM_SSL := 1
@@ -121,7 +121,7 @@ ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
 CFLAGS                += -fomit-frame-pointer  -w
-DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_NOAPP=$(ME_COM_NOAPP) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
+DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) -DME_COM_AI=$(ME_COM_AI) -DME_COM_APPS=$(ME_COM_APPS) -DME_COM_AUTH=$(ME_COM_AUTH) -DME_COM_BLANK=$(ME_COM_BLANK) -DME_COM_BLINK=$(ME_COM_BLINK) -DME_COM_COMPILER=$(ME_COM_COMPILER) -DME_COM_DB=$(ME_COM_DB) -DME_COM_DEMO=$(ME_COM_DEMO) -DME_COM_IOTO=$(ME_COM_IOTO) -DME_COM_JSON=$(ME_COM_JSON) -DME_COM_LIB=$(ME_COM_LIB) -DME_COM_MBEDTLS=$(ME_COM_MBEDTLS) -DME_COM_MQTT=$(ME_COM_MQTT) -DME_COM_OPENAI=$(ME_COM_OPENAI) -DME_COM_OPENSSL=$(ME_COM_OPENSSL) -DME_COM_OSDEP=$(ME_COM_OSDEP) -DME_COM_R=$(ME_COM_R) -DME_COM_SSL=$(ME_COM_SSL) -DME_COM_UCTX=$(ME_COM_UCTX) -DME_COM_UNIT=$(ME_COM_UNIT) -DME_COM_URL=$(ME_COM_URL) -DME_COM_VXWORKS=$(ME_COM_VXWORKS) -DME_COM_WEB=$(ME_COM_WEB) -DME_COM_WEBSOCKETS=$(ME_COM_WEBSOCKETS) 
 IFLAGS                += "-I$(BUILD)/inc"
 LDFLAGS               += 
 LIBPATHS              += -L$(BUILD)/bin
@@ -204,6 +204,7 @@ clean:
 	rm -f "$(BUILD)/obj/aiApp.o"
 	rm -f "$(BUILD)/obj/authApp.o"
 	rm -f "$(BUILD)/obj/authUser.o"
+	rm -f "$(BUILD)/obj/blank.o"
 	rm -f "$(BUILD)/obj/cryptLib.o"
 	rm -f "$(BUILD)/obj/db.o"
 	rm -f "$(BUILD)/obj/dbLib.o"
@@ -213,7 +214,6 @@ clean:
 	rm -f "$(BUILD)/obj/jsonLib.o"
 	rm -f "$(BUILD)/obj/main.o"
 	rm -f "$(BUILD)/obj/mqttLib.o"
-	rm -f "$(BUILD)/obj/noapp.o"
 	rm -f "$(BUILD)/obj/openaiLib.o"
 	rm -f "$(BUILD)/obj/password.o"
 	rm -f "$(BUILD)/obj/rLib.o"
@@ -497,110 +497,110 @@ $(BUILD)/obj/authUser.o: \
 	$(CC) -c -o $(BUILD)/obj/authUser.o $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/auth/src/authUser.c
 
 #
+#   blank.o
+#
+DEPS_24 += $(BUILD)/inc/ioto.h
+
+$(BUILD)/obj/blank.o: \
+    apps/blank/src/blank.c $(DEPS_24)
+	@echo '   [Compile] $(BUILD)/obj/blank.o'
+	$(CC) -c -o $(BUILD)/obj/blank.o $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/blank/src/blank.c
+
+#
 #   cryptLib.o
 #
-DEPS_24 += $(BUILD)/inc/crypt.h
+DEPS_25 += $(BUILD)/inc/crypt.h
 
 $(BUILD)/obj/cryptLib.o: \
-    lib/cryptLib.c $(DEPS_24)
+    lib/cryptLib.c $(DEPS_25)
 	@echo '   [Compile] $(BUILD)/obj/cryptLib.o'
 	$(CC) -c -o $(BUILD)/obj/cryptLib.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/cryptLib.c
 
 #
 #   db.o
 #
-DEPS_25 += $(BUILD)/inc/r.h
-DEPS_25 += $(BUILD)/inc/db.h
+DEPS_26 += $(BUILD)/inc/r.h
+DEPS_26 += $(BUILD)/inc/db.h
 
 $(BUILD)/obj/db.o: \
-    cmds/db.c $(DEPS_25)
+    cmds/db.c $(DEPS_26)
 	@echo '   [Compile] $(BUILD)/obj/db.o'
 	$(CC) -c -o $(BUILD)/obj/db.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/db.c
 
 #
 #   dbLib.o
 #
-DEPS_26 += $(BUILD)/inc/db.h
-DEPS_26 += $(BUILD)/inc/crypt.h
+DEPS_27 += $(BUILD)/inc/db.h
+DEPS_27 += $(BUILD)/inc/crypt.h
 
 $(BUILD)/obj/dbLib.o: \
-    lib/dbLib.c $(DEPS_26)
+    lib/dbLib.c $(DEPS_27)
 	@echo '   [Compile] $(BUILD)/obj/dbLib.o'
 	$(CC) -c -o $(BUILD)/obj/dbLib.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/dbLib.c
 
 #
 #   demoApp.o
 #
-DEPS_27 += $(BUILD)/inc/ioto.h
-DEPS_27 += $(BUILD)/inc/driver/gpio.h
-DEPS_27 += $(BUILD)/inc/rom/gpio.h
+DEPS_28 += $(BUILD)/inc/ioto.h
+DEPS_28 += $(BUILD)/inc/driver/gpio.h
+DEPS_28 += $(BUILD)/inc/rom/gpio.h
 
 $(BUILD)/obj/demoApp.o: \
-    apps/demo/src/demoApp.c $(DEPS_27)
+    apps/demo/src/demoApp.c $(DEPS_28)
 	@echo '   [Compile] $(BUILD)/obj/demoApp.o'
 	$(CC) -c -o $(BUILD)/obj/demoApp.o $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/demo/src/demoApp.c
 
 #
 #   iotoLib.o
 #
-DEPS_28 += $(BUILD)/inc/ioto.h
+DEPS_29 += $(BUILD)/inc/ioto.h
 
 $(BUILD)/obj/iotoLib.o: \
-    lib/iotoLib.c $(DEPS_28)
+    lib/iotoLib.c $(DEPS_29)
 	@echo '   [Compile] $(BUILD)/obj/iotoLib.o'
 	$(CC) -c -o $(BUILD)/obj/iotoLib.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/iotoLib.c
 
 #
 #   json.o
 #
-DEPS_29 += $(BUILD)/inc/osdep.h
-DEPS_29 += $(BUILD)/inc/r.h
-DEPS_29 += $(BUILD)/inc/json.h
+DEPS_30 += $(BUILD)/inc/osdep.h
+DEPS_30 += $(BUILD)/inc/r.h
+DEPS_30 += $(BUILD)/inc/json.h
 
 $(BUILD)/obj/json.o: \
-    cmds/json.c $(DEPS_29)
+    cmds/json.c $(DEPS_30)
 	@echo '   [Compile] $(BUILD)/obj/json.o'
 	$(CC) -c -o $(BUILD)/obj/json.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/json.c
 
 #
 #   jsonLib.o
 #
-DEPS_30 += $(BUILD)/inc/json.h
+DEPS_31 += $(BUILD)/inc/json.h
 
 $(BUILD)/obj/jsonLib.o: \
-    lib/jsonLib.c $(DEPS_30)
+    lib/jsonLib.c $(DEPS_31)
 	@echo '   [Compile] $(BUILD)/obj/jsonLib.o'
 	$(CC) -c -o $(BUILD)/obj/jsonLib.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/jsonLib.c
 
 #
 #   main.o
 #
-DEPS_31 += $(BUILD)/inc/ioto.h
+DEPS_32 += $(BUILD)/inc/ioto.h
 
 $(BUILD)/obj/main.o: \
-    cmds/main.c $(DEPS_31)
+    cmds/main.c $(DEPS_32)
 	@echo '   [Compile] $(BUILD)/obj/main.o'
 	$(CC) -c -o $(BUILD)/obj/main.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" cmds/main.c
 
 #
 #   mqttLib.o
 #
-DEPS_32 += $(BUILD)/inc/mqtt.h
+DEPS_33 += $(BUILD)/inc/mqtt.h
 
 $(BUILD)/obj/mqttLib.o: \
-    lib/mqttLib.c $(DEPS_32)
+    lib/mqttLib.c $(DEPS_33)
 	@echo '   [Compile] $(BUILD)/obj/mqttLib.o'
 	$(CC) -c -o $(BUILD)/obj/mqttLib.o $(CFLAGS) $(DFLAGS) -DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH) $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" lib/mqttLib.c
-
-#
-#   noapp.o
-#
-DEPS_33 += $(BUILD)/inc/ioto.h
-
-$(BUILD)/obj/noapp.o: \
-    apps/noapp/src/noapp.c $(DEPS_33)
-	@echo '   [Compile] $(BUILD)/obj/noapp.o'
-	$(CC) -c -o $(BUILD)/obj/noapp.o $(CFLAGS) $(DFLAGS) $(IFLAGS) apps/noapp/src/noapp.c
 
 #
 #   openaiLib.o
@@ -818,15 +818,15 @@ $(BUILD)/bin/libapp.a: $(DEPS_49)
 	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/authApp.o" "$(BUILD)/obj/authUser.o"
 endif
 
-ifeq ($(ME_COM_NOAPP),1)
+ifeq ($(ME_COM_BLANK),1)
 #
-#   libnoapp
+#   libblank
 #
-DEPS_50 += $(BUILD)/obj/noapp.o
+DEPS_50 += $(BUILD)/obj/blank.o
 
 $(BUILD)/bin/libapp.a: $(DEPS_50)
 	@echo '      [Link] $(BUILD)/bin/libapp.a'
-	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/noapp.o"
+	$(AR) -cr $(BUILD)/bin/libapp.a "$(BUILD)/obj/blank.o"
 endif
 
 ifeq ($(ME_COM_UNIT),1)
@@ -860,7 +860,7 @@ endif
 ifeq ($(ME_COM_AUTH),1)
     DEPS_52 += $(BUILD)/bin/libapp.a
 endif
-ifeq ($(ME_COM_NOAPP),1)
+ifeq ($(ME_COM_BLANK),1)
     DEPS_52 += $(BUILD)/bin/libapp.a
 endif
 ifeq ($(ME_COM_UNIT),1)
