@@ -1,5 +1,5 @@
 #
-#	Build the NoApp
+#	Build the Blank App
 #
 TOP			:= $(realpath ../..)
 STATE		:= $(TOP)/state
@@ -21,7 +21,6 @@ config:
 	@$(TOP)/bin/export-app-config $(TOP)
 
 build:
-	@echo "      [Info] Built with No App"
 
 clean:
 

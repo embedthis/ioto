@@ -1,14 +1,14 @@
-# NoApp
+# Blank App
 
-The noapp app builds Ioto without an application user interface. 
+The blank app builds Ioto without an application user interface. 
 
-When Ioto builds, it must resolve application start/stop hook functions. The "noapp" provides the required device-side start/stop hooks via a main.c source file.
+When Ioto builds, it must resolve application start/stop hook functions. The "blank" provides the required device-side start/stop hooks via a main.c source file.
 
 ## Building
 
-To select the "noapp" app and build Ioto, type:
+To select the "blank" app and build Ioto, type:
 
-    make APP=noapp
+    make APP=blank
 
 ## Directories
 

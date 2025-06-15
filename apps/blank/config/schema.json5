@@ -1,0 +1,13 @@
+/*
+    schema.json5 -- Schema for the Blank App
+ */
+{
+    version: 'latest',
+    description: 'Blank schema',
+    blend: [
+        '../../../schemas/parts/OneTable.json5',
+        '../../../schemas/parts/CloudSchema.json5',
+    ],
+    process: { },
+    models: { },
+}

@@ -1,20 +1,20 @@
 /*
-    noapp.me -- MakeMe File for the noapp app
+    blank.me -- MakeMe File for the blank app
 
-    The noapp app is a No-op.
+    The blank app is an blank slate application.
 
     MakeMe files are used by EmbedThis to generate Makefiles
  */
 
 Me.load({
     targets: {
-        noapp: {
+        blank: {
             configurable: true,
             ifdef:        [ 'apps' ],
-            depends:      [ 'libnoapp' ],
+            depends:      [ 'libblank' ],
         },
-        libnoapp: {
-            ifdef: [ 'noapp' ],
+        libblank: {
+            ifdef: [ 'blank' ],
             type: 'lib',
             path: '${BIN}/libapp${ARLIB}',
             sources: [ 'src/*.c' ],
