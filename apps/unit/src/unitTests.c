@@ -83,7 +83,7 @@ PUBLIC void unitTest(cchar *suite)
     rInfo("test", "Running %d tests %s", count, parallel ? "in parallel" : "");
 
     jsonPrint(json);
-    
+
     for (i = 0; i < count; i++) {
         rInfo("test", "Iteration %d", i);
         //  Iterate over the "run" list of tests
@@ -149,7 +149,7 @@ PUBLIC void unitTest(cchar *suite)
     if (exit) {
         //  Wait a little to allow any residual cloud messages to be received (retransmits)
         rSleep(5 * TPS);
-        rSignal("test:complete", 0);
+        rSignal("test:complete");
         rStop();
     }
 }
@@ -157,7 +157,7 @@ PUBLIC void unitTest(cchar *suite)
 static void testTimeout(JsonNode *test)
 {
     rError("test", "Test %s failed due to timeout", test->value);
-    rSignal("test:complete", 0);
+    rSignal("test:complete");
     rStop();
 }
 
