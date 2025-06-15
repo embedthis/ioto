@@ -2821,7 +2821,7 @@ PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
            argument.
         A trailing NULL will always be appended.
     @param buf Optional buffer to contain the formatted result
-    @param maxsize Maximum size of the result.
+    @param maxsize Maximum size of the result. If set to <= 0, there is no maximum size.
     @param fmt Printf style format string
     @param args Variable arguments to format
     @return Returns the count of characters stored in buf or a negative error code for memory errors.
@@ -2835,7 +2835,7 @@ PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
         Otherwise if the buf argument is NULL, a buffer will be allocated. The arguments will be formatted up
         to the maximum size supplied by the maxsize argument.  A trailing NULL will always be appended.
     @param buf Optional buffer to contain the formatted result
-    @param maxsize Maximum size of the result
+    @param maxsize Maximum size of the result.
     @param fmt Printf style format string
     @param ... Variable arguments to format
     @return Returns the count of characters in buf or the count of characters that would have been written if not

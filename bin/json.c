@@ -9836,22 +9836,16 @@ static int growBuf(PContext *ctx)
         memcpy(newbuf, ctx->buf, buflen);
         rFree(ctx->buf);
     }
-    buflen = newSize;
     ctx->end = newbuf + (ctx->end - ctx->buf);
     ctx->buf = newbuf;
-    ctx->endbuf = &ctx->buf[buflen];
+    ctx->endbuf = &ctx->buf[newSize];
 
     /*
         Increase growBy to reduce overhead
      */
-    if (ctx->growBy > 0 && buflen > SSIZE_MAX - ctx->growBy) {
-        // Integer overflow - growBy is too large
-        return R_ERR_MEMORY;
+    if (ctx->growBy <= (SSIZE_MAX / 2)) {
+        ctx->growBy *= 2;
     }
-    if (ctx->maxsize > 0 && buflen + (ctx->growBy * 2) > ctx->maxsize) {
-        return R_ERR_MEMORY;
-    }
-    ctx->growBy *= 2;
     return 1;
 }
 
