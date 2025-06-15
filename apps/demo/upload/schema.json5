@@ -113,6 +113,10 @@
                 required: true,
                 readonly: true
             },
+            created: {
+                type: "date",
+                readonly: true
+            },
             args: {
                 type: "object",
                 required: true,
@@ -122,10 +126,6 @@
             command: {
                 type: "string",
                 required: true
-            },
-            created: {
-                type: "date",
-                readonly: true
             },
             deviceId: {
                 type: "string",
@@ -228,6 +228,10 @@
                 readonly: true,
                 notes: "Owning account"
             },
+            created: {
+                type: "date",
+                readonly: true
+            },
             deviceId: {
                 type: "string",
                 required: true,
@@ -269,6 +273,10 @@
             accountId: {
                 type: "string",
                 required: true,
+                readonly: true
+            },
+            created: {
+                type: "date",
                 readonly: true
             },
             deviceId: {
