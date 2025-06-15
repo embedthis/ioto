@@ -986,7 +986,7 @@ PUBLIC int rServiceEvents(void);
     Watch for a named event to happen
     @param name Named event
     @param proc Function to call
-    @param data Data argument to pass to the proc function as the first argument
+    @param data Data argument to pass to the proc function as the first argument.
     @stability Evolving
  */
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data);
@@ -1003,14 +1003,17 @@ PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data);
 
 /**
     Signal watches of a named event
+    @description This call will invoke signaled watchers via a fiber routine.
+        Called watch functions can block and yield.
     @param name Named event
-    @param arg Data argument to pass to the watch function.
     @stability Evolving
  */
-PUBLIC void rSignal(cchar *name, cvoid *arg);
+PUBLIC void rSignal(cchar *name);
 
 /**
     Signal watches of a named event synchronously (blocking).
+    @description This call will block while invoking signaled watchers. Watch functions
+        should be quick and not block.
     @param name Named event
     @param arg Data argument to pass to the watch function.
     @stability Evolving
@@ -1142,8 +1145,7 @@ PUBLIC void rWakeup(void);
 
 /*
     This secure printf replacement uses very little stack and is tolerant of NULLs in arguments
-    It also has a somewhat enhanced set of features, such as comma separated numbers.
-    It does not support %e scientific notation for floats.
+    It also has a somewhat enhanced set of features, such as comma separated numbers and scientific notation.
  */
 
 /**

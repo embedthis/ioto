@@ -1639,7 +1639,6 @@ static void parseEvents(Url *up)
 
     dataBuf = NULL;
     buf = up->responseBuf;
-    start = rGetBufStart(buf);
     rAddNullToBuf(buf);
 
     for (cp = rGetBufStart(buf); cp < rGetBufEnd(buf) &&

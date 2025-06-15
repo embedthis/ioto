@@ -155,8 +155,7 @@ static void demo(void)
 #endif
     }
     rInfo("demo", "Demo complete");
-    rSignal("demo:complete", 0);
-
+    rSignal("demo:complete");
     // rStop();
 }
 
@@ -186,7 +185,7 @@ static void customCommand(void *ctx, DbItem *item)
     /*
         WARNING: no error checking of program or parameters here
         REVIEW Acceptable: This is demo code and is not used in production.
-    */
+     */
     print("Run custom command: %s %s", program, parameters ? parameters : "");
     SFMT(cmd, "%s %s", program, parameters ? parameters : "");
     status = rRun(cmd, &output);

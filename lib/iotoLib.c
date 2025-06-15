@@ -752,7 +752,7 @@ PUBLIC void ioInit(void)
     ioto->ready = 1;
     rSetState(R_READY);
     rInfo("ioto", "Ioto ready");
-    rSignal("app:ready", 0);
+    rSignal("app:ready");
     if (ioStart() < 0) {
         rError("ioto", "Cannot start Ioto, ioStart() failed");
         rStop();
@@ -1323,14 +1323,14 @@ static int attachSocket(int retry)
 
     rInfo("mqtt", "Connected to mqtt://%s:%d", endpoint, port);
     ioOnCloudConnect();
-    rSignal("mqtt:connected", 0);
+    rSignal("mqtt:connected");
     return 0;
 }
 
 static void throttle(const MqttRecv *rp)
 {
     mqttThrottle(ioto->mqtt);
-    rSignal("mqtt:throttle", 0);
+    rSignal("mqtt:throttle");
 }
 
 static void onEvent(Mqtt *mqtt, int event)
@@ -1348,7 +1348,7 @@ static void onEvent(Mqtt *mqtt, int event)
         rFreeSocket(ioto->mqttSocket);
         ioto->mqttSocket = 0;
         ioto->connected = 0;
-        rSignal("mqtt:disconnect", 0);
+        rSignal("mqtt:disconnect");
         lastDisconnect = rGetTime();
         ioScheduleConnect();
         break;
@@ -1361,7 +1361,7 @@ static void onEvent(Mqtt *mqtt, int event)
 
 /*
     Alloc a request/response. This manages the MQTT subscriptions for specific topics.
-    REVIEW Acceptable - Request IDs will wrap around after 2^31. 
+    REVIEW Acceptable - Request IDs will wrap around after 2^31.
  */
 static RR *allocRR(Mqtt *mq, cchar *topic)
 {
@@ -1512,17 +1512,18 @@ PUBLIC void mqttRequestFree(Mqtt *mq, cchar *topicFmt, ...)
 PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, int period)
 {
     char   *result;
-    char   msg[1024];
+    char   *msg;
     double num;
 
     if (dimensions == NULL || *dimensions == '\0') {
         dimensions = "{\"Device\":\"deviceId\"}";
     }
-    SFMT(msg, "{\"metric\":\"%s\",\"dimensions\":%s,\"period\":%d,\"statistic\":\"%s\"}",
-         metric, dimensions, period, statistic);
+    msg = sfmt("{\"metric\":\"%s\",\"dimensions\":%s,\"period\":%d,\"statistic\":\"%s\"}",
+               metric, dimensions, period, statistic);
     result = mqttRequest(ioto->mqtt, msg, 0, "metric/get");
     num = stod(result);
     rFree(result);
+    rFree(msg);
     return num;
 }
 
@@ -1533,57 +1534,62 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
  */
 PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
 {
-    char msg[160];
+    char *msg;
 
     if (dimensions == NULL || *dimensions == '\0') {
         dimensions = "[{\"Device\":\"deviceId\"}]";
     }
-    SFMT(msg,
-         "{\"metric\":\"%s\",\"value\":%lf,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
-         metric, value, dimensions, elapsed);
+    msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
+               metric, value, dimensions, elapsed);
     mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
+    rFree(msg);
 }
 
 PUBLIC void ioSet(cchar *key, cchar *value)
 {
-    char msg[160];
+    char *msg;
 
-    SFMT(msg, "{\"key\":\"%s\",\"value\":\"%s\",\"type\":\"string\"}", key, value);
+    msg = sfmt("{\"key\":\"%s\",\"value\":\"%s\",\"type\":\"string\"}", key, value);
     //  Optimize by using AWS basic ingest topic
     mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
+    rFree(msg);
 }
 
 PUBLIC void ioSetNum(cchar *key, double value)
 {
-    char msg[160];
+    char *msg;
 
-    SFMT(msg, "{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
+    msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
     //  Optimize by using AWS basic ingest topic
     mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
+    rFree(msg);
 }
 
 //  Caller must free
 PUBLIC char *ioGet(cchar *key)
 {
-    char msg[160];
+    char *msg, *result;
 
-    SFMT(msg, "{\"key\":\"%s\"}", key);
+    msg = sfmt("{\"key\":\"%s\"}", key);
     //  Must not use basic-ingest for mqttRequest
-    return mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    rFree(msg);
+    return result;
 }
 
 PUBLIC double ioGetNum(cchar *key)
 {
-    char   msg[160], *result;
+    char   *msg, *result;
     double num;
 
-    SFMT(msg, "{\"key\":\"%s\"}", key);
+    msg = sfmt("{\"key\":\"%s\"}", key);
     //  Must not use basic-ingest for mqttRequest
     result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
     num = stod(result);
+    rFree(msg);
     rFree(result);
     return num;
 }
@@ -1786,7 +1792,7 @@ static int parseRegisterResponse(Json *json)
 #endif
 
     ioto->registered = jsonGetBool(ioto->config, 0, "provision.registered", 0);
-    rSignal("device:registered", 0);
+    rSignal("device:registered");
     return 0;
 }
 
@@ -1908,7 +1914,7 @@ static bool getSerial(void)
                     return 0;
                 }
             }
-            /*  
+            /*
                 Review Acceptable: This program is a tool not used in production devices.
                 This is an acceptable security risk.
              */
@@ -2063,7 +2069,7 @@ PUBLIC int ioInitConfig(void)
     ioto->id = jsonGetClone(json, 0, "device.id", ioto->id);
     ioto->logDir = jsonGetClone(json, 0, "directories.log", ".");
     ioto->profile = jsonGetClone(json, 0, "profile", "dev");
-    ioto->app = jsonGetClone(json, 0, "app", "empty");
+    ioto->app = jsonGetClone(json, 0, "app", "blank");
     ioto->product = jsonGetClone(json, 0, "device.product", 0);
     ioto->registered = jsonGetBool(json, 0, "provision.registered", 0);
     ioto->version = jsonGetClone(json, 0, "version", "1.0.0");
@@ -2487,7 +2493,7 @@ static void reset(void)
     removeFile("@db/device.db.jnl");
     removeFile("@db/device.db.sync");
     /*
-        Review Acceptable: TOCTOU race risk is accepted. Expect file system to be secured. 
+        Review Acceptable: TOCTOU race risk is accepted. Expect file system to be secured.
      */
     path = rGetFilePath("@db/device.db.reset");
     if (rAccessFile(path, R_OK) == 0) {
@@ -2760,7 +2766,7 @@ PUBLIC ssize webWriteItemsResponse(Web *web, RList *items)
 PUBLIC void webLoginUser(Web *web)
 {
     /*
-        Security: This function does not have provide legacy CSRF protection 
+        Security: This function does not have provide legacy CSRF protection
         other than the SameSite cookie protections.
         For extra security, users can implement anti-CSRF tokens themselves.
      */
@@ -2841,7 +2847,7 @@ PUBLIC int ioInitCloud(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
-    rSignal("cloud:ready", 0);
+    rSignal("cloud:ready");
     return 0;
 }
 
@@ -4668,7 +4674,7 @@ static void extractKeys(void)
     if (!prior) {
         ioUpdateLog(0);
     }
-    rSignal("device:keys", 0);
+    rSignal("device:keys");
 }
 
 #else
@@ -5222,8 +5228,6 @@ static void dbCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams
 
 /*
     Synchronize state to the cloud and local disk.
-    Don't prep a change record to sync to the cloud if the model does not want it, or
-    if this update came from a cloud update (i.e. stop infinite looping updates).
     If guarantee is true, then reliably save the change record until the cloud acknowledges receipt.
  */
 static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd, bool guarantee)
@@ -5234,6 +5238,10 @@ static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd
     Ticks  now;
 
     if (!model || !model->sync || (params && params->bypass)) {
+        /*
+            Don't prep a change record to sync to the cloud if the model does not want it, or
+            if this update came from a cloud update (i.e. stop infinite looping updates).
+         */
         return;
     }
     /*
@@ -5260,7 +5268,7 @@ static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd
     if (ioto->mqtt) {
         scheduleSync(change);
     }
-    rSignal("db:change", change);
+    rSignalSync("db:change", change);
 }
 
 /*
@@ -5463,7 +5471,7 @@ static void cleanSyncChanges(Json *json)
         //  OPTIMIZE
         recreateSyncLog();
     }
-    rSignal("db:sync:done", 0);
+    rSignal("db:sync:done");
 }
 
 static void recreateSyncLog(void)
@@ -5559,7 +5567,7 @@ static void receiveSync(const MqttRecv *rp)
             rFree(ioto->lastSync);
             ioto->lastSync = sclone(updated);
             dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
-            rSignal("db:syncdown:done", 0);
+            rSignal("db:syncdown:done");
         }
 
     } else {
@@ -5598,7 +5606,7 @@ static void receiveSync(const MqttRecv *rp)
                 rError("db", "Bad sync topic %s", rp->topic);
             }
         }
-        rSignal("db:sync", json);
+        rSignalSync("db:sync", json);
     }
     jsonFree(json);
 }
@@ -5644,7 +5652,6 @@ static void processDeviceCommand(DbItem *item)
         ioUpdate();
 #endif
     } else {
-        //  Signal other command watchers
         name = sfmt("device:command:%s", cmd);
         rSignalSync(name, item);
         rFree(name);
@@ -5812,7 +5819,7 @@ static void applyUpdate(char *path)
     int   status;
 
     //  Need hook/way for apps to prevent update
-    rSignal("device:update", path);
+    rSignalSync("device:update", path);
 
     script = jsonGet(ioto->config, 0, "scripts.update", 0);
     if (script) {

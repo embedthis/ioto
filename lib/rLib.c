@@ -1286,8 +1286,9 @@ static void signalFiber(Watch *watch)
 
 /*
     Signal watchers of an event
+    This spawns a fiber for each watcher and so cannot take an argument.
  */
-PUBLIC void rSignal(cchar *name, cvoid *arg)
+PUBLIC void rSignal(cchar *name)
 {
     RList *list;
     Watch *watch;
@@ -1295,7 +1296,7 @@ PUBLIC void rSignal(cchar *name, cvoid *arg)
 
     if ((list = rLookupName(watches, name)) != 0) {
         for (ITERATE_ITEMS(list, watch, next)) {
-            watch->arg = arg;
+            // watch->arg = arg;
             rSpawnFiber(name, (RFiberProc) signalFiber, watch);
         }
     }
@@ -6493,7 +6494,7 @@ PUBLIC char classMap[] = {
     /*  17   8     9     :     ;     <     =     >     ? */
     5,    5,    0,    0,    0,    0,    0,    0,
     /*  20   @     A     B     C     D     E     F     G */
-    8,    0,    0,    0,    0,    0,    0,    0,
+    8,    0,    0,    0,    0,    8,    0,    8,
     /*  27   H     I     J     K     L     M     N     O */
     0,    0,    0,    0,    7,    0,    8,    0,
     /*  30   P     Q     R     S     T     U     V     W */
@@ -6531,6 +6532,7 @@ typedef struct PContext {
     uchar *end;
     ssize growBy;
     ssize maxsize;
+    char format;
     int flags;
     int len;
     int precision;
@@ -6570,6 +6572,7 @@ static int  getNextState(char c, int state);
 static int  growBuf(PContext *ctx);
 static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args);
 static void outFloat(PContext *ctx, char specChar, double value);
+static void outFloatE(PContext *ctx, char specChar, double value);
 static void outNum(PContext *ctx, int radix, int64 value);
 static void outString(PContext *ctx, char *str, ssize len);
 
@@ -6683,6 +6686,7 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
     }
     ctx.maxsize = maxsize;
     ctx.precision = 0;
+    ctx.format = 0;
     ctx.floating = 0;
     ctx.width = 0;
     ctx.upper = 0;
@@ -6799,12 +6803,19 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
             break;
 
         case STATE_TYPE:
+            ctx.format = c;
             switch (c) {
-            case 'e':
+            case 'G':
             case 'g':
             case 'f':
                 ctx.floating = 1;
                 outFloat(&ctx, c, (double) va_arg(args, double));
+                break;
+
+            case 'e':
+            case 'E':
+                ctx.floating = 1;
+                outFloatE(&ctx, c, (double) va_arg(args, double));
                 break;
 
             case 'c':
@@ -6988,7 +6999,7 @@ static void outNum(PContext *ctx, int radix, int64 value)
         Convert to ascii
      */
     if (value < 0) {
-        uval = (value == INT64_MIN) ? (uint64) INT64_MAX + 1 : (uint64) -value;
+        uval = (value == INT64_MIN) ? (uint64) INT64_MAX + 1 : (uint64) - value;
     } else {
         uval = value;
     }
@@ -7083,42 +7094,143 @@ static void outNum(PContext *ctx, int radix, int64 value)
     }
 }
 
-/*
-    Does not handle %e, %g
-    REVIEW Acceptable - This uses recursion to handle the fractional part, but it is limited and acceptable.
- */
 static void outFloat(PContext *ctx, char specchar, double value)
 {
-    double fpart, round;
-    char   digit;
-    uint64 ipart;
-    uchar  *mark;
+    double fpart, round, v;
+    uchar  *last;
+    int    digit, precision;
+    int64  ipart;
 
-    mark = ctx->end;
-    ipart = (uint64) value;
+    if (ctx->format == 'g' || ctx->format == 'G') {
+        v = fabs(value);
+        if (v < 0.0001 || v > 1000000) {
+            outFloatE(ctx, specchar, value);
+            return;
+        }
+    }
+    precision = ctx->precision < 0 ? 6 : ctx->precision;
+
+    /*
+        Round the value before splitting into integer and fractional parts.
+        This handles cases like 0.99 rounded to 1.0.
+     */
+    round = 0.5;
+    for (int i = 0; i < precision; i++) {
+        round /= 10.0;
+    }
+    value += value < 0 ? -round : round;
+
+    ipart = (int64) value;
     outNum(ctx, 10, ipart);
 
-    if (ctx->precision > 0) {
+    if (precision > 0) {
         BPUT(ctx, '.');
     }
     fpart = value - (double) ipart;
     if (fpart < 0) {
         fpart = -fpart;
     }
-    for (int i = 0; i < ctx->precision; i++) {
+    for (int i = 0; i < precision; i++) {
         fpart *= 10;
         digit = (int) fpart;
-        if (i == ctx->precision - 1 && fpart * 10 >= 5) {
-            if ((fpart - digit + 0.5) >= 1) {
-                ctx->end = mark;
-                round = 0.5 / pow(10, ctx->precision);
-                value += round;
-                outFloat(ctx, specchar, value);
-                break;
-            }
-        }
         BPUT(ctx, digit + '0');
         fpart -= digit;
+    }
+    if (ctx->format == 'g') {
+        //  Remove trailing zeros and decimal point if precision is 0
+        if (ctx->precision < 0) {
+            for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--, ctx->len--) {
+                if (*last == '0' || *last == '.') {
+                    *last = '\0';
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static double normalizeScientific(double x, int *exponent) 
+{
+    if (x == 0.0) {
+        *exponent = 0;
+        return 0.0;
+    }
+    int exp = (int)floor(log10(fabs(x)));
+    double mantissa = x / pow(10.0, exp);
+
+    // Adjust if mantissa is not in the range [1.0, 10.0)
+    if (fabs(mantissa) < 1.0) {
+        mantissa *= 10.0;
+        exp -= 1;
+    }
+    *exponent = exp;
+    return mantissa;
+}
+
+static void outFloatE(PContext *ctx, char specchar, double value)
+{
+    double fpart, mantissa, round;
+    uchar  *last;
+    int64  ipart;
+    int    digit, exponent, fexp, precision;
+
+    precision = ctx->precision < 0 ? 6 : ctx->precision;
+    mantissa = normalizeScientific(value, &exponent);
+
+    /*
+        Round the mantissa.
+     */
+    round = 0.5;
+    for (int i = 0; i < precision; i++) {
+        round /= 10.0;
+    }
+    mantissa += (mantissa < 0) ? -round : round;
+
+    if (fabs(mantissa) >= 10.0) {
+        mantissa /= 10.0;
+        exponent++;
+    }
+
+    ipart = (int64) mantissa;
+    outNum(ctx, 10, ipart);
+ 
+    if (precision > 0) {
+        BPUT(ctx, '.');
+    }
+    fpart = mantissa - (double) ipart;
+    if (fpart < 0) {
+        fpart = -fpart;
+    }
+    for (int i = 0; i < precision; i++) {
+        fpart *= 10;
+        //  Round out IEEE imprecision
+        digit = (int) (fpart + 1.0e-15);
+        BPUT(ctx, digit + '0');
+        fpart -= digit;
+    }
+    if (ctx->format == 'g') {
+        //  Remove trailing zeros and decimal point if precision is 0
+         if (ctx->precision < 0) {
+            for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--) {
+                if (*last == '0' || *last == '.') {
+                    *last = '\0';
+                } else {
+                    break;
+                }
+            }
+         }
+    }
+    fexp = abs(exponent);
+    BPUT(ctx, (ctx->format == 'E' || ctx->format == 'G') ? 'E' : 'e');
+    BPUT(ctx, exponent < 0 ? '-' : '+');
+    if (fexp >= 100) {
+        BPUT(ctx, '0' + fexp / 100);
+        BPUT(ctx, '0' + (fexp / 10) % 10);
+        BPUT(ctx, '0' + fexp % 10);
+    } else {
+        BPUT(ctx, '0' + fexp / 10);
+        BPUT(ctx, '0' + fexp % 10);
     }
 }
 
@@ -7909,7 +8021,7 @@ PUBLIC int rRun(cchar *command, char **output)
     if (output) {
         *output = NULL;
     }
-    if (makeArgs(command, &argv, 0) < 0) {
+    if (makeArgs(command, &argv, 0) <= 0) {
         rError("run", "Failed to parse command: %s", command);
         return R_ERR_BAD_ARGS;
     }
@@ -8082,6 +8194,10 @@ static int makeArgs(cchar *command, char ***argvp, bool argsOnly)
         argv[0] = "";
     } else {
         parseArgs(args, argv, argc);
+    }
+    if (argc == 0) {
+        rFree(vector);
+        return R_ERR_BAD_ARGS;
     }
     argv[argc] = 0;
     *argvp = (char**) argv;
