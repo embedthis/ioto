@@ -201,6 +201,7 @@ PUBLIC int main(int argc, char *argv[])
 
 static void emit(const DbItem *item)
 {
+    Json  *json;
     cchar *field;
     int   index;
 
@@ -209,7 +210,9 @@ static void emit(const DbItem *item)
             rPrintf("%s\n", dbField(item, field));
         }
     } else {
-        rPrintf("%s\n", dbString((DbItem*) item, JSON_PRETTY));
+        json = jsonParse(item->value, 0);
+        jsonPrint(json);
+        jsonFree(json);
     }
 }
 
