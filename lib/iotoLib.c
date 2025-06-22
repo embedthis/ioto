@@ -512,7 +512,7 @@ PUBLIC int ioInitDb(void)
 #endif
 #if SERVICES_CLOUD
     if (!ioto->account) {
-        rWatch("UpdateDevice", (RWatchProc) ioUpdateDevice, "device:provisioned");
+        rWatch("device:provisioned", (RWatchProc) ioUpdateDevice, 0);
     } else
 #endif
     if (!dbGet(ioto->db, "Device", DB_PROPS("id", ioto->id), NULL)) {
@@ -5248,6 +5248,7 @@ static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd
         Overwrite prior buffered change records if the item has changed.
         If change->seq is set, the change has been sent, but not acknowledged, so cannot overwrite.
         The prior ack will just be ignored and this change will have a new seq.
+        FUTURE: could compare the item and only sync if changed (excluding the updated timestamp)
      */
     if ((change = rLookupName(ioto->syncHash, item->key)) == 0 || change->seq) {
         //  Item.json takes precedence over item.value
