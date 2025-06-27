@@ -793,6 +793,14 @@ PUBLIC void dbRemoveCallback(Db *db, DbCallbackProc proc, cchar *model, void *ar
 #define dbSetCallback dbAddCallback
 
 /**
+    Get the type field of database items
+    @param db Database instance returned via #dbOpen
+    @return The type field used by database items. Caller must not free.
+    @stability Evolving
+ */
+PUBLIC cchar *dbType(Db *db);
+
+/**
     Update an item.
     @param db Database instance returned via #dbOpen
     @param model Name of the schema model for the item. Set to NULL if no model is required.

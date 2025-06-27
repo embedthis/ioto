@@ -2396,6 +2396,11 @@ PUBLIC void dbReset(cchar *path)
     unlink(sfmtbuf(pbuf, sizeof(pbuf), "%s.jnl", path));
 }
 
+PUBLIC cchar *dbType(Db *db)
+{
+    return db->type;
+}
+
 PUBLIC cchar *dbNext(Db *db, RList *list)
 {
     if (list->length == 0) {
