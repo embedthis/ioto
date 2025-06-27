@@ -5541,7 +5541,8 @@ static void receiveSync(const MqttRecv *rp)
 {
     Db      *db;
     CDbItem *prior;
-    cchar   *msg, *priorUpdated, *sk, *updated;
+    cchar   *modelName, *msg, *priorUpdated, *sk, *updated;
+    char    sigbuf[80];
     DbModel *model;
     Json    *json;
     bool    stale;
@@ -5607,7 +5608,8 @@ static void receiveSync(const MqttRecv *rp)
                 rError("db", "Bad sync topic %s", rp->topic);
             }
         }
-        rSignalSync("db:sync", json);
+        modelName = jsonGet(json, 0, dbType(ioto->db), 0);
+        rSignalSync(SFMT(sigbuf, "db:sync:%s", modelName), json);
     }
     jsonFree(json);
 }
