@@ -78,7 +78,7 @@ static DbField *allocField(Db *db, cchar *name, Json *json, int fid);
 static DbItem *allocItem(cchar *name, Json *json, char *value);
 static DbModel *allocModel(Db *db, cchar *name, cchar *sync, Time delay);
 static int applyChange(Db *db, cchar *cmd, cchar *model, cchar *value);
-static void applyJournal(Db *db);
+static int applyJournal(Db *db);
 static bool checkEnum(DbField *field, cchar *value);
 static void clearItem(DbItem *item);
 static void commitChange(Db *db);
@@ -124,7 +124,8 @@ static int writeSize(Db *db, int len);
  */
 PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
 {
-    Db *db;
+    Db  *db;
+    int count;
 
     assert(path && *path);
     assert(schema && *schema);
@@ -158,9 +159,15 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
             return 0;
         }
         //  Recover journal data incase sudden shutdown
-        applyJournal(db);
-
-        if (!(db->flags & DB_READ_ONLY)) {
+        if ((count = applyJournal(db)) < 0) {
+            rError("db", "%s", db->error);
+            dbClose(db);
+            return 0;
+        } 
+        if (count > 0) {
+            dbSave(db, NULL);
+        }
+        if (count >= 0 && !(db->flags & DB_READ_ONLY)) {
             if (recreateJournal(db) < 0) {
                 rError("db", "%s", db->error);
                 dbClose(db);
@@ -2055,36 +2062,33 @@ static int recreateJournal(Db *db)
 
 /*
     Apply the journal of changes to the database state
+    Return 1 if journal data was applied, 0 if not, negative for errors.
  */
-static void applyJournal(Db *db)
+static int applyJournal(Db *db)
 {
     struct stat sbuf;
     FILE        *fp;
     RBuf        *buf;
     cchar       *cmd, *model, *value;
     uint16      version;
-    int         bufsize;
+    int         bufsize, rc;
 
     if (stat(db->journalPath, &sbuf) < 0 || sbuf.st_size == 0) {
-        return;
+        return 0;
     }
     if ((fp = fopen(db->journalPath, "r")) == NULL) {
-        dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d", db->journalPath,
-                errno);
-        return;
+        return dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d", db->journalPath, errno);
     }
     if (fread(&version, sizeof(version), 1, fp) != 1) {
         fclose(fp);
-        dberror(db, R_ERR_CANT_OPEN, "Cannot read database journal %s, errno %d", db->journalPath,
-                errno);
-        return;
+        return dberror(db, R_ERR_CANT_OPEN, "Cannot read database journal %s, errno %d", db->journalPath, errno);
     }
     if (version != DB_VERSION) {
         fclose(fp);
-        dberror(db, R_ERR_CANT_OPEN, "Incorrect database journal version %d", version);
-        return;
+        return dberror(db, R_ERR_CANT_OPEN, "Incorrect database journal version %d", version);
     }
     buf = rAllocBuf(ME_BUFSIZE);
+    rc = 0;
     while ((bufsize = readSize(fp)) != 0) {
         if (rGrowBuf(buf, bufsize) < 0) {
             break;
@@ -2096,12 +2100,15 @@ static void applyJournal(Db *db)
             break;
         }
         if (applyChange(db, cmd, model, value) < 0) {
+            rc = R_ERR_CANT_READ;
             break;
         }
+        rc++;
         rFlushBuf(buf);
     }
     rFreeBuf(buf);
     fclose(fp);
+    return rc;
 }
 
 static int readSize(FILE *fp)
@@ -2144,13 +2151,11 @@ static int applyChange(Db *db, cchar *cmd, cchar *model, cchar *value)
     Json *json;
 
     if ((json = jsonParse(value, 0)) == 0) {
-        rError("db", "Cannot parse json from journal file");
-        return R_ERR_CANT_READ;
+        return dberror(db, R_ERR_CANT_READ, "Cannot parse json from journal file");
     }
     if (json->count == 0) {
-        rError("db", "Empty json from journal file");
         jsonFree(json);
-        return R_ERR_CANT_READ;
+        return dberror(db, R_ERR_CANT_READ, "Empty json from journal file");
     }
     if (sends(cmd, "create")) {
         dbCreate(db, model, json, DB_PARAMS(.bypass = 1));
