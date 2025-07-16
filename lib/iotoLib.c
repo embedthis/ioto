@@ -1546,26 +1546,38 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
     rFree(msg);
 }
 
+/*
+    Set a value in the Store key/value database.
+    Uses db sync if available, otherwise uses MQTT.
+ */
 PUBLIC void ioSet(cchar *key, cchar *value)
 {
-    char *msg;
-
-    msg = sfmt("{\"key\":\"%s\",\"value\":\"%s\",\"type\":\"string\"}", key, value);
+#if SERVICES_SYNC
+    dbSetField(ioto->db, "Store", "value", value, DB_PROPS("key", key), NULL);
+#else
     //  Optimize by using AWS basic ingest topic
+    char *msg = sfmt("{\"key\":\"%s\",\"value\":\"%s\",\"type\":\"string\"}", key, value);
     mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
     rFree(msg);
+#endif
 }
 
+/*
+    Set a number in the Store key/value database.
+    Uses db sync if available, otherwise uses MQTT.
+ */
 PUBLIC void ioSetNum(cchar *key, double value)
 {
-    char *msg;
-
-    msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
+#if SERVICES_SYNC
+    dbSetNum(ioto->db, "Store", "value", value, DB_PROPS("key", key), NULL);
+#else
     //  Optimize by using AWS basic ingest topic
+    char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
     mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
     rFree(msg);
+#endif
 }
 
 //  Caller must free
