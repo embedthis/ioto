@@ -187,7 +187,7 @@ typedef struct Ioto {
     bool ready : 1;            /** Ioto initialized and ready (may not be connected to the cloud) */
     bool registerService : 1;  /** Device registration service */
     bool shadowService : 1;    /** AWS IoT core shadows */
-    bool synced : 1;           /** Synced to and from the cloud */   
+    bool synced : 1;           /** Synced to and from the cloud */
     bool syncService : 1;      /** Sync device state to AWS */
     bool testService : 1;      /** Test service */
     bool updateService : 1;    /** Update service */
