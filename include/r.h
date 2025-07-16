@@ -971,6 +971,12 @@ PUBLIC bool rLookupEvent(REvent id);
     @stability Evolving
  */
 PUBLIC Ticks rRunEvents(void);
+
+/**
+    Check if there are due events
+    @return True if there are due events.
+    @stability Evolving
+ */
 PUBLIC bool rHasDueEvents(void);
 
 /**

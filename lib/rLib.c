@@ -944,7 +944,7 @@ typedef struct Event {
     REventProc proc;
     void *arg;
     struct Event *next;
-    Time when;
+    Ticks when;
     REvent id;
     int fast;
 } Event;
@@ -1038,7 +1038,12 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *arg, Ticks delay
         fiber = rGetFiber();
     }
     ep->arg = arg;
-    ep->when = delay >= MAXINT ? MAXINT : (rGetTicks() + delay);
+    Ticks now = rGetTicks();
+    if (delay > 0 && now > MAXINT64 - delay) {
+        ep->when = MAXINT64;
+    } else {
+        ep->when = now + delay;
+    }
     ep->id = getNextID();
     ep->fiber = fiber;
     ep->fast = (!fiber && flags & R_EVENT_FAST) ? 1 : 0;
@@ -1119,7 +1124,7 @@ PUBLIC Ticks rRunEvents(void)
     assert(rIsMain());
 rescan:
     now = rGetTicks();
-    deadline = MAXINT;
+    deadline = MAXINT64;
     eventsChanged = 0;
 
     for (prior = 0, ep = events; ep && rState < R_STOPPING; ep = next) {
@@ -1170,21 +1175,19 @@ PUBLIC bool rHasDueEvents(void)
 }
 
 /*
-    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase.
+    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase. In that case, events with IDs starting from 1 should have long since run.
+    Regardless, we check for collisions with existing events.
     Event ID == 0 is invalid.
  */
 static REvent getNextID(void)
 {
     static REvent nextID = 1;
 
-    if (!eventsWrapped) {
-        return nextID++;
-    }
     // Will not happen in our lifetime
     if (nextID >= MAXINT64) {
         nextID = 1;
-        eventsWrapped = 1;
     }
+    // Will always find an ID on an embedded system
     while (rLookupEvent(nextID)) {
         nextID++;
     }
@@ -7140,7 +7143,11 @@ static void outFloat(PContext *ctx, char specchar, double value)
         //  Remove trailing zeros and decimal point if precision is 0
         if (ctx->precision < 0) {
             for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--, ctx->len--) {
-                if (*last == '0' || *last == '.') {
+                if (*last == '.') {
+                    *last = '\0';
+                    ctx->end = last;
+                    break;
+                } else if (*last == '0') {
                     *last = '\0';
                 } else {
                     break;
