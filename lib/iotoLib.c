@@ -1163,7 +1163,7 @@ PUBLIC void ioScheduleConnect(void)
         if (ioto->scheduledConnect) {
             rStopEvent(ioto->scheduledConnect);
         }
-        rInfo("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
+        rTrace("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
         ioto->scheduledConnect = rStartEvent((REventProc) ioConnect, 0, wait);
     }
 }
