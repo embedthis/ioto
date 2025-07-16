@@ -174,8 +174,8 @@ typedef struct Ioto {
     bool cmdReset : 1;         /** Command line reset */
     int cmdCount;              /** Test iterations */
 
+    bool aiService : 1;        /** AI service */
     bool connected : 1;        /** Connected to the cloud over MQTT */
-    bool ready : 1;            /** Ioto initialized and ready (may not be connected to the cloud) */
     bool dbService : 1;        /** Embedded database service */
     bool keyService : 1;       /** AWS IAM key generation */
     bool logService : 1;       /** Log file ingest to CloudWatch logs */
@@ -183,11 +183,11 @@ typedef struct Ioto {
     bool nosave : 1;           /** Do not save. i.e. run in-memory */
     bool registered : 1;       /** Device has been registered */
     bool provisioned : 1;      /** Provisioned with the cloud */
-
-    bool aiService : 1;        /** AI service */
     bool provisionService : 1; /** Cloud provisioning service */
+    bool ready : 1;            /** Ioto initialized and ready (may not be connected to the cloud) */
     bool registerService : 1;  /** Device registration service */
     bool shadowService : 1;    /** AWS IoT core shadows */
+    bool synced : 1;           /** Synced to and from the cloud */   
     bool syncService : 1;      /** Sync device state to AWS */
     bool testService : 1;      /** Test service */
     bool updateService : 1;    /** Update service */
@@ -367,6 +367,7 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
 /**
     Set a string value in the Ioto cloud key/value Store
     @description This call defines a value in the Ioto cloud key/value store for this device.
+    Uses db sync if available, otherwise uses MQTT.
     @param key String key value to assign a value in the store.
     @param value Value to assign to the key
     @stability Evolving
@@ -376,6 +377,7 @@ PUBLIC void ioSet(cchar *key, cchar *value);
 /**
     Set a numeric value in the Ioto cloud key/value Store
     @description This call defines a numeric value in the Ioto cloud key/value store for this device.
+    Uses db sync if available, otherwise uses MQTT.
     @param key String key value to assign a value in the store.
     @param value Double value to assign to the key
     @stability Evolving

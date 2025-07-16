@@ -1609,15 +1609,19 @@ PUBLIC double ioGetNum(cchar *key)
 PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct)
 {
     //  Watch for future connections
-    rWatch("mqtt:connected", fn, arg);
-
+#if SERVICES_SYNC
+    rWatch("db:syncdown:done", fn, arg);
     //  Invoke if already connected
-    if (ioto->connected) {
-        if (direct) {
-            fn(NULL, arg);
-        } else {
-            rSpawnFiber("onconnect", (RFiberProc) fn, arg);
-        }
+    if (!ioto->synced) return;
+#else
+    rWatch("mqtt:connected", fn, arg);
+    //  Invoke if already connected
+    if (!ioto->connected) return;
+#endif
+    if (direct) {
+        fn(NULL, arg);
+    } else {
+        rSpawnFiber("onconnect", (RFiberProc) fn, arg);
     }
 }
 
@@ -5085,10 +5089,10 @@ PUBLIC void ioSync(Time when, bool guarantee)
 }
 
 /*
-    Process the sync log and re-create the change hash.
-    Immediately send changes to the cloud.
+    Send sync changes to the cloud.
     The sync log contains a fail-safe record of local database changes that must be replicated to
     the cloud. It is applied on Ioto restart after an unexpected exit. It is erased after processing.
+    Process the sync log and re-create the change hash.
  */
 static void applySyncLog(void)
 {
@@ -5525,7 +5529,7 @@ PUBLIC void ioConnectSync(void)
     mqttSubscribe(ioto->mqtt, receiveSync, 1, MQTT_WAIT_NONE, "ioto/account/%s/#", ioto->account);
 
     /*
-        Apply prior changes that have been made locally but not yet applied to the cloud
+        Sync up. Apply prior changes that have been made locally but not yet applied to the cloud
      */
     applySyncLog();
 
@@ -5581,6 +5585,10 @@ static void receiveSync(const MqttRecv *rp)
             rFree(ioto->lastSync);
             ioto->lastSync = sclone(updated);
             dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
+        }
+        // If transiently online/offline, may get multiple syncdown responses
+        if (!ioto->synced) {
+            ioto->synced = 1;
             rSignal("db:syncdown:done");
         }
 
