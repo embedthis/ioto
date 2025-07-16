@@ -245,7 +245,7 @@ static int loadSchema(Db *db, cchar *schema)
         return R_ERR_CANT_READ;
     }
     /*
-        Keep (locked) schema to preserve memory that is used in DbModels and DbFields. 
+        Keep (locked) schema to preserve memory that is used in DbModels and DbFields.
         Simplifies memory allocation / freeing.
      */
     db->schema = json;
@@ -763,7 +763,8 @@ PUBLIC Time dbGetDate(Db *db, cchar *modelName, cchar *fieldName, Json *props, D
     return defaultValue;
 }
 
-PUBLIC double dbGetDouble(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, double defaultValue)
+PUBLIC double dbGetDouble(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params,
+                          double defaultValue)
 {
     cchar *value;
 
@@ -785,10 +786,11 @@ PUBLIC int64 dbGetNum(Db *db, cchar *modelName, cchar *fieldName, Json *props, D
     return defaultValue;
 }
 
-PUBLIC cchar *dbGetString(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, cchar *defaultValue)
+PUBLIC cchar *dbGetString(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params,
+                          cchar *defaultValue)
 {
     return dbGetField(db, modelName, fieldName, props, params);
-} 
+}
 
 /*
     Find matching items of the given model type.
@@ -1048,7 +1050,8 @@ PUBLIC const DbItem *dbSetBool(Db *db, cchar *modelName, cchar *fieldName, bool 
     return dbSetField(db, modelName, fieldName, value ? "true" : "false", props, params);
 }
 
-PUBLIC const DbItem *dbSetDouble(Db *db, cchar *modelName, cchar *fieldName, double value, Json *props, DbParams *params)
+PUBLIC const DbItem *dbSetDouble(Db *db, cchar *modelName, cchar *fieldName, double value, Json *props,
+                                 DbParams *params)
 {
     char buf[32];
 
@@ -1073,7 +1076,8 @@ PUBLIC const DbItem *dbSetNum(Db *db, cchar *modelName, cchar *fieldName, int64 
     return dbSetField(db, modelName, fieldName, sitosbuf(buf, sizeof(buf), value, 10), props, params);
 }
 
-PUBLIC const DbItem *dbSetString(Db *db, cchar *modelName, cchar *fieldName, cchar *value, Json *props, DbParams *params)
+PUBLIC const DbItem *dbSetString(Db *db, cchar *modelName, cchar *fieldName, cchar *value, Json *props,
+                                 DbParams *params)
 {
     return dbSetField(db, modelName, fieldName, value, props, params);
 }
@@ -1260,7 +1264,7 @@ static Json *toJson(DbItem *item)
 }
 
 /*
-    Public function to get the JSON object for an item. Because this returns a reference to 
+    Public function to get the JSON object for an item. Because this returns a reference to
     the internal data, we return a const pointer.
     Force a const DbItem so callers don't need to cast returns from dbGet etc.
     Caller must not modify or free the return result.
@@ -2264,30 +2268,6 @@ static int compareItems(cvoid *n1, cvoid *n2, Env *env)
     return strcmp(d1->key, d2->key);
 }
 
-/*
-    Set and log an error
- */
-static int dberror(Db *db, int code, cchar *fmt, ...)
-{
-    va_list ap;
-    char    *msg;
-
-    assert(db);
-    assert(code);
-    assert(fmt);
-
-    va_start(ap, fmt);
-    msg = sfmtv(fmt, ap);
-    db->code = code;
-
-    rFree(db->error);
-    db->error = msg;
-
-    rTrace("db", "%s", msg);
-    va_end(ap);
-    return code;
-}
-
 PUBLIC cchar *dbGetError(Db *db)
 {
     if (!db) {
@@ -2439,6 +2419,29 @@ static void freeChange(Db *db, DbChange *change)
     rFree(change);
 }
 
+/*
+    Set and log an error. Emits a message at the "trace" level.
+ */
+static int dberror(Db *db, int code, cchar *fmt, ...)
+{
+    va_list ap;
+    char    *msg;
+
+    assert(db);
+    assert(code);
+    assert(fmt);
+
+    va_start(ap, fmt);
+    msg = sfmtv(fmt, ap);
+    db->code = code;
+
+    rFree(db->error);
+    db->error = msg;
+
+    rTrace("db", "%s", msg);
+    va_end(ap);
+    return code;
+}
 #endif /* ME_COM_DB */
 
 #else

@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 2.7.0
+VERSION               = 2.7.1
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -275,7 +275,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IF "$(ME_VERSION)" == ""
-ME_VERSION            = \"2.7.0\"
+ME_VERSION            = \"2.7.1\"
 !ENDIF
 !IF "$(ME_WEB_GROUP)" == ""
 ME_WEB_GROUP          = \"$(WEB_GROUP)\"
