@@ -1422,6 +1422,9 @@ static RR *allocRR(Mqtt *mq, cchar *topic)
     RR   *rr, *rp;
     int  index;
 
+    if (!mq || !topic) {
+        return NULL;
+    }
     rr = rAllocType(RR);
     rr->fiber = rGetFiber();
     if (++nextRr >= MAXINT) {
@@ -1436,7 +1439,11 @@ static RR *allocRR(Mqtt *mq, cchar *topic)
     if (!rp) {
         //  Subscribe to all sequence numbers on this topic, this will use the master subscription.
         SFMT(subscription, "%s/+", topic);
-        mqttSubscribe(mq, rrResponse, 1, MQTT_WAIT_NONE, subscription);
+        if (mqttSubscribe(mq, rrResponse, 1, MQTT_WAIT_NONE, subscription) < 0) {
+            rError("mqtt", "Cannot subscribe to %s", subscription);
+            freeRR(rr);
+            return NULL;
+        }
         rr->topic = sclone(topic);
     }
     rPushItem(ioto->rr, rr);
@@ -1582,8 +1589,8 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
 
 /*
     Define a metric in the Embedthis/Device namespace.
-    Dimensions is a JSON array of objects. Each object can contain multiple properties.
-    that define the dimension. The {} object, means all dimensions,
+    Dimensions is a JSON array of objects. Each object contains the properties of that dimension.
+    The {} object, means no dimensions.
  */
 PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
 {
