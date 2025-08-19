@@ -14,8 +14,9 @@
     json .              # convert formats
 
     Options:
-    --blend | --check | --compress | --default | --env | --export | --header |
-    --js | --json | --json5 | --profile name | --remove | --stdin
+    --blend | --bump | --check | --default | --double | --encode | --env | --expand | --export |
+    --header | --indent | --js | --json | --json5 | --length | --one | --profile name |
+    --overwrite |--remove | --stdin | --strict | --trace | --verbose | --version
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -49,37 +50,44 @@
 #define JSON_CMD_CONVERT     2
 #define JSON_CMD_QUERY       3
 #define JSON_CMD_REMOVE      4
+#define JSON_CMD_BUMP        5
 
 static cchar *defaultValue;
+static char  *bump;
 static Json  *json;
 static char  *path;
 static cchar *profile;
 static char  *property;
-static cchar *trace;                   /* Trace spec */
+static cchar *trace;                   // Trace spec
 
-static int blend;
-static int check;
-static int cmd;
-static int compress;
-static int export;
-static int format;
-static int newline;
-static int overwrite;
-static int noerror;
-static int quiet;
-static int stdinput;
-static int strict;
+static int blend = 0;
+static int check = 0;
+static int cmd = 0;
+static int compact = 0;     // Compact output format
+static int encode = 0;
+static int expand = 0;
+static int export = 0;
+static int format = JSON_MAX_LINE_LENGTH;
+static int multiline = 1;
+static int newline = 1;     // Add a trailing newline to the output
+static int noerror = 0;
+static int overwrite = 0;
+static int quiet = 0;
+static int quotes = 0;      // 1 = single quotes, 2 = double quotes, 0 = use default
+static int stdinput = 0;
+static int strict = 0;      // Strict JSON parsing
 
 /***************************** Forward Declarations ***************************/
 
 static int blendFiles(Json *json);
+static int bumpVersion(Json *json, cchar *property);
 static int mergeConditionals(Json *json, cchar *property);
 static void cleanup(void);
 static int error(cchar *fmt, ...);
 static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
-static void outputAll(Json *json);
+static void outputAll(Json *json, int flags);
 static void outputNameValue(Json *json, JsonNode *parent, char *base);
 static char *readInput();
 static int run();
@@ -91,22 +99,30 @@ static int usage(void)
     rFprintf(stderr, "usage: json [options] [cmd] [file | <file]\n"
              "  Options:\n"
              "  --blend          # Blend included files from blend[].\n"
+             "  --bump property  # Bump version property.\n"
              "  --check          # Check syntax with no output.\n"
-             "  --compress       # Emit without redundant white space.\n"
+             "  --compact        # Emit with minimal whitespace.\n"
              "  --default value  # Default value to use if query not found.\n"
+             "  --double         # Use double quotes (default with JSON and JS).\n"
+             "  --encode         # Encode control characters.\n"
              "  --env            # Emit query result as shell env vars.\n"
+             "  --expand         # Expand ${var} references in output.\n"
              "  --export         # Add 'export' prefix to shell env vars.\n"
              "  --header         # Emit query result as C header defines.\n"
+             "  --indent num     # Set indent level for compacted output.\n"
              "  --js             # Emit output in JS form (export {}).\n"
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
+             "  --length num     # Set line length limit for compacted output.\n"
              "  --noerror        # Ignore errors.\n"
+             "  --one            # Emit on one line.\n"
+             "  --overwrite      # Overwrite file when converting instead of stdout.\n"
              "  --profile name   # Merge the properties from the named profile.\n"
              "  --quiet          # Quiet mode with no error messages.\n"
+             "  --remove         # Remove queried property.\n"
+             "  --single         # Use single quotes (default with JSON5).\n"
              "  --stdin          # Read from stdin.\n"
              "  --strict         # Enforce strict JSON format.\n"
-             "  --remove         # Remove queried property.\n"
-             "  --overwrite      # Overwrite file when converting instead of stdout.\n"
              "\n"
              "  Commands:\n"
              "  property=value   # Set queried property.\n"
@@ -163,12 +179,19 @@ static int parseArgs(int argc, char **argv)
         if (smatch(argp, "--blend")) {
             blend = 1;
 
+        } else if (smatch(argp, "--bump")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                bump = argv[++nextArg];
+            }
+
         } else if (smatch(argp, "--check")) {
             check = 1;
             cmd = JSON_CMD_QUERY;
 
-        } else if (smatch(argp, "--compress")) {
-            compress = 1;
+        } else if (smatch(argp, "--compact") || smatch(argp, "-c")) {
+            compact = 1;
 
         } else if (smatch(argp, "--debug") || smatch(argp, "-d")) {
             trace = TRACE_DEBUG_FILTER;
@@ -180,6 +203,15 @@ static int parseArgs(int argc, char **argv)
                 defaultValue = argv[++nextArg];
             }
 
+        } else if (smatch(argp, "--double")) {
+            quotes = 2;
+
+        } else if (smatch(argp, "--expand")) {
+            expand = 1;
+
+        } else if (smatch(argp, "--encode")) {
+            encode = 1;
+
         } else if (smatch(argp, "--env")) {
             format = JSON_FORMAT_ENV;
 
@@ -188,6 +220,13 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--header")) {
             format = JSON_FORMAT_HEADER;
+
+        } else if (smatch(argp, "--indent")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                jsonSetIndent(atoi(argv[++nextArg]));
+            }
 
         } else if (smatch(argp, "--js")) {
             format = JSON_FORMAT_JS;
@@ -201,7 +240,17 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "--noerror") || smatch(argp, "-n")) {
             noerror = 1;
 
-        } else if (smatch(argp, "--overwrite")) {
+        } else if (smatch(argp, "--length")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                jsonSetMaxLength(atoi(argv[++nextArg]));
+            }
+
+        } else if (smatch(argp, "--one")) {
+            multiline = 0;
+
+        } else if (smatch(argp, "--overwrite") || smatch(argp, "-o")) {
             overwrite = 1;
 
         } else if (smatch(argp, "--profile")) {
@@ -216,6 +265,9 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--remove")) {
             cmd = JSON_CMD_REMOVE;
+
+        } else if (smatch(argp, "--single")) {
+            quotes = 1;
 
         } else if (smatch(argp, "--stdin")) {
             stdinput = 1;
@@ -245,7 +297,9 @@ static int parseArgs(int argc, char **argv)
             return usage();
         }
     }
-    if (argc == nextArg) {
+    if (bump) {
+        cmd = JSON_CMD_BUMP;
+    } else if (argc == nextArg) {
         //  No args
         cmd = JSON_CMD_CONVERT;
         stdinput = 1;
@@ -313,7 +367,10 @@ static int run()
     }
     flags = 0;
     if (strict) {
-        flags |= JSON_STRICT;
+        if (!multiline) {
+            error("Cannot use --one with --strict mode");
+        }
+        flags |= JSON_STRICT_PARSE | JSON_JSON;
     }
     json = jsonParseKeep(data, flags);
     if (json == 0) {
@@ -330,15 +387,36 @@ static int run()
             return R_ERR_CANT_READ;
         }
     }
-    flags = 0;
-    if (compress) {
-        flags |= JSON_SINGLE;
-    } else {
-        flags |= JSON_PRETTY;
-        if (format == JSON_FORMAT_JSON) {
-            flags |= JSON_QUOTES;
-        }
+    /*
+        Set the output flags
+     */
+    if (format == JSON_FORMAT_JSON || strict) {
+        flags |= JSON_JSON;
+    } else if (format == JSON_FORMAT_JSON5) {
+        flags |= JSON_JSON5;
+    } else if (format == JSON_FORMAT_JS) {
+        flags |= JSON_JS;
     }
+    if (compact) {
+        flags |= JSON_COMPACT;
+    }
+    if (encode) {
+        flags |= JSON_ENCODE;
+    }
+    if (expand) {
+        flags |= JSON_EXPAND;
+    }
+    if (multiline) {
+        flags |= JSON_MULTILINE;
+    }
+    if (quotes == 1) {
+        flags &= ~JSON_DOUBLE_QUOTES;
+        flags |= JSON_SINGLE_QUOTES;
+    } else if (quotes == 2) {
+        flags &= ~JSON_SINGLE_QUOTES;
+        flags |= JSON_DOUBLE_QUOTES;
+    }
+
     if (cmd == JSON_CMD_ASSIGN) {
         stok(property, "=", &value);
         if (jsonSet(json, 0, property, value, 0) < 0) {
@@ -346,6 +424,17 @@ static int run()
         }
         if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
             return error("Cannot save \"%s\"", path);
+        }
+    } else if (cmd == JSON_CMD_BUMP) {
+        if (bumpVersion(json, bump) < 0) {
+            return error("Cannot bump property \"%s\"", bump);
+        }
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
 
     } else if (cmd == JSON_CMD_REMOVE) {
@@ -371,8 +460,33 @@ static int run()
                 return error("Cannot save \"%s\"", path);
             }
         } else if (!check) {
-            outputAll(json);
+            outputAll(json, flags);
         }
+    }
+    return 0;
+}
+
+static int bumpVersion(Json *json, cchar *property)
+{
+    cchar *dot, *version;
+    char  vbuf[80], *vp;
+    int   num;
+
+    version = jsonGet(json, 0, property, 0);
+    if (!version) {
+        return R_ERR_BAD_ARGS;
+    }
+    if ((dot = strrchr(version, '.')) != NULL) {
+        sncopy(vbuf, sizeof(vbuf), version, dot - version);
+        num = (int) stoi(dot + 1) + 1;
+        vp = sfmt("%s.%d", vbuf, num);
+        jsonSet(json, 0, property, vp, 0);
+        rFree(vp);
+
+    } else if (sfnumber(version)) {
+        jsonSetNumber(json, 0, property, stoi(version) + 1);
+    } else {
+        return R_ERR_BAD_ARGS;
     }
     return 0;
 }
@@ -398,7 +512,11 @@ static int blendFiles(Json *json)
     for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
         if (path && *path) {
             dir = (char*) rDirname(sclone(path));
-            file = sjoin(dir, "/", item->value, NULL);
+            if (dir && *dir) {
+                file = sjoin(dir, "/", item->value, NULL);
+            } else {
+                file = sclone(item->value);
+            }
             rFree(dir);
         } else {
             file = sclone(item->value);
@@ -517,23 +635,21 @@ static char *readInput()
     return buf;
 }
 
-static void outputAll(Json *json)
+static void outputAll(Json *json, int flags)
 {
     JsonNode *child, *node;
     char     *name, *output, *property;
-    int      flags;
 
     if (format == JSON_FORMAT_JSON) {
-        flags = compress ? JSON_SINGLE : JSON_QUOTES | JSON_PRETTY;
         output = jsonToString(json, 0, 0, flags);
         rPrintf("%s", output);
         rFree(output);
 
     } else if (format == JSON_FORMAT_JS) {
-        rPrintf("export default %s\n", jsonString(json, JSON_PRETTY));
+        rPrintf("export default %s\n", jsonString(json, flags));
 
     } else if (format == JSON_FORMAT_JSON5) {
-        rPrintf("%s\n", jsonString(json, JSON_PRETTY));
+        rPrintf("%s\n", jsonString(json, flags));
 
     } else if (format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
         name = "";
@@ -544,7 +660,7 @@ static void outputAll(Json *json)
                     outputNameValue(json, child, property);
                     rFree(property);
                 }
-                return;
+                break;
             } else {
                 outputNameValue(json, node, node->name);
             }

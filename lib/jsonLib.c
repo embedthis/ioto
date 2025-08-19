@@ -46,29 +46,35 @@
 
 #define JSON_TMP                     ".tmp.json"
 
+static int maxLength = JSON_MAX_LINE_LENGTH;
+static int indentLevel = JSON_DEFAULT_INDENT;
+
 /********************************** Forwards **********************************/
 
 static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value);
 static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth);
+static void compactProperties(RBuf *buf, char *sol, int indent);
 static char *copyProperty(Json *json, cchar *key);
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags);
 static void freeNode(JsonNode *node);
 static bool isfnumber(cchar *s, ssize len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
+static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf);
 static int parseJson(Json *json, char *text, int flags);
+static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent);
 static int sleuthValueType(cchar *value, ssize len);
 static void spaces(RBuf *buf, int count);
 
 /************************************* Code ***********************************/
 
-PUBLIC Json *jsonAlloc(int flags)
+PUBLIC Json *jsonAlloc(void)
 {
     Json *json;
 
     json = rAllocType(Json);
-    json->flags = flags;
     json->lineNumber = 1;
-    json->strict = (flags & JSON_STRICT) ? 1 : 0;
+    json->lock = 0;
     json->size = ME_JSON_INC;
     json->nodes = rAlloc(sizeof(JsonNode) * json->size);
     return json;
@@ -339,12 +345,22 @@ static int removeNodes(Json *json, int nid, int num)
 
 PUBLIC void jsonLock(Json *json)
 {
-    json->flags |= JSON_LOCK;
+    json->lock = 1;
 }
 
 PUBLIC void jsonUnlock(Json *json)
 {
-    json->flags &= ~JSON_LOCK;
+    json->lock = 0;
+}
+
+PUBLIC void jsonSetUserFlags(Json *json, int flags)
+{
+    json->userFlags = flags;
+}
+
+PUBLIC int jsonGetUserFlags(Json *json)
+{
+    return json->userFlags;
 }
 
 /*
@@ -356,7 +372,7 @@ PUBLIC Json *jsonParse(cchar *ctext, int flags)
     Json *json;
     char *text;
 
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     text = sclone(ctext);
     if (parseJson(json, text, flags) < 0) {
         if (json->errorMsg && !rEmitLog("json", "trace")) {
@@ -371,14 +387,14 @@ PUBLIC Json *jsonParse(cchar *ctext, int flags)
 /**
     Parse a json string into a json object and assume ownership of the supplied text memory.
     The caller must not free the text which will be freed by this function.
-    Use this method if you are sure the supplied JSON text is valid or do not 
+    Use this method if you are sure the supplied JSON text is valid or do not
     need to receive diagnostics of parse failures other than the return value.
  */
 PUBLIC Json *jsonParseKeep(char *text, int flags)
 {
     Json *json;
 
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     if (parseJson(json, text, flags) < 0) {
         if (json->errorMsg && !rEmitLog("json", "trace")) {
             rError("json", "%s", json->errorMsg);
@@ -416,7 +432,7 @@ PUBLIC char *jsonConvert(cchar *fmt, ...)
     buf = sfmtv(fmt, ap);
     json = jsonParseKeep(buf, 0);
     va_end(ap);
-    msg = jsonToString(json, 0, 0, JSON_STRICT);
+    msg = jsonToString(json, 0, 0, JSON_JSON);
     jsonFree(json);
     return msg;
 }
@@ -435,7 +451,7 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
     va_end(ap);
 
     json = jsonParse(buf, 0);
-    msg = jsonToString(json, 0, 0, JSON_STRICT);
+    msg = jsonToString(json, 0, 0, JSON_JSON);
     sncopy(buf, size, msg, slen(msg));
     rFree(msg);
     jsonFree(json);
@@ -453,7 +469,7 @@ PUBLIC Json *jsonParseString(cchar *atext, char **errorMsg, int flags)
     if (errorMsg) {
         *errorMsg = 0;
     }
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     text = sclone(atext);
 
     if (parseJson(json, text, flags) < 0) {
@@ -487,7 +503,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
         }
         return 0;
     }
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     if (path) {
         json->path = sclone(path);
     }
@@ -505,12 +521,11 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
 /*
     Save the JSON tree to a file.
     The tree rooted at the node specified by "nid/key" is saved.
-    Flags can be JSON_PRETTY for a human readable format.
  */
 PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int flags)
 {
-    char *text, *tmp;
-    int  fd;
+    char  *text, *tmp;
+    int   fd;
     ssize len;
 
     assert(json);
@@ -850,8 +865,8 @@ static int parseJson(Json *json, char *text, int flags)
 
         case '\'':
         case '`':
-            if (flags & JSON_STRICT) {
-                return jerror(json, "Single quotes are not allowed in strict mode");
+            if (flags & JSON_STRICT_PARSE) {
+                return jerror(json, "Single quotes are not allowed in JSON strict mode");
             }
             type = JSON_STRING;
             value = json->next + 1;
@@ -866,7 +881,7 @@ static int parseJson(Json *json, char *text, int flags)
             }
             type = sleuthValueType(value, json->next - value + 1);
             if (type != JSON_PRIMITIVE) {
-                if (level == 0 || (flags & JSON_STRICT)) {
+                if (level == 0 || (flags & JSON_STRICT_PARSE)) {
                     return jerror(json, "Invalid primitive token");
                 }
             }
@@ -1127,7 +1142,7 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 static char *copyProperty(Json *json, cchar *key)
 {
     ssize len;
-    void *p;
+    void  *p;
 
     len = slen(key) + 1;
     if (len > json->propertyLength) {
@@ -1150,6 +1165,9 @@ PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key)
 {
     assert(json);
 
+    if (!json || nid < 0) {
+        return NULL;
+    }
     if ((nid = jsonGetId(json, nid, key)) < 0) {
         return 0;
     }
@@ -1176,7 +1194,7 @@ PUBLIC int jsonGetId(const Json *json, int nid, cchar *key)
         return R_ERR_CANT_FIND;
     }
     if (key && *key) {
-        if ((nid = jquery((Json*)json, nid, key, 0, 0)) < 0) {
+        if ((nid = jquery((Json*) json, nid, key, 0, 0)) < 0) {
             return R_ERR_CANT_FIND;
         }
     }
@@ -1312,7 +1330,7 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
     }
     assert((0 <= nid && nid < json->count) || json->count == 0);
 
-    if (json->flags & JSON_LOCK) {
+    if (json->lock) {
         return jerror(json, "Cannot set value in a locked JSON object");
     }
     if (type <= 0 && value) {
@@ -1444,39 +1462,52 @@ PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 /*
     Convert a JSON value to a string and add to the given buffer.
  */
-PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags)
+static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent)
 {
     cchar *cp;
-    int   quotes;
+    char  *end;
+    int   bareFlags, encode, quotes, quoteKeys;
 
     assert(buf);
-
+    if (!buf) {
+        return;
+    }
     if (!value) {
         rPutStringToBuf(buf, "null");
         return;
     }
-    quotes = 0;
-    if (!(flags & JSON_BARE)) {
-        if ((flags & JSON_KEY) && value && *value) {
-            quotes = flags & (JSON_QUOTES | JSON_STRICT);
-            if (!quotes) {
-                for (cp = value; *cp; cp++) {
-                    if (!isalnum((uchar) * cp) && *cp != '_') {
-                        quotes++;
-                        break;
-                    }
+    quotes = flags & JSON_DOUBLE_QUOTES ? 2 : 1;
+    quoteKeys = (flags & JSON_QUOTE_KEYS) ? 1 : 0;
+    if ((flags & JSON_KEY) && value && *value) {
+        if (!quoteKeys) {
+            for (cp = value; *cp; cp++) {
+                if (!isalnum((uchar) * cp) && *cp != '_') {
+                    quoteKeys++;
+                    break;
                 }
             }
-        } else {
-            quotes = 1;
         }
+    } else {
+        quoteKeys = 1;
     }
-    if (quotes) {
-        rPutCharToBuf(buf, '\"');
+    encode = (flags & (JSON_ENCODE)) ? 1 : 0;
+
+    if (flags & JSON_BARE) {
+        quotes = 0;
+        quoteKeys = 0;
+    }
+    if (quoteKeys) {
+        rPutCharToBuf(buf, quotes == 1 ? '\'' : '\"');
     }
     if (value) {
         for (cp = value; *cp; cp++) {
-            if (*cp == '\"' || *cp == '\\') {
+            if (*cp == '\\') {
+                rPutCharToBuf(buf, '\\');
+                rPutCharToBuf(buf, *cp);
+            } else if (*cp == '"' && quotes == 2) {
+                rPutCharToBuf(buf, '\\');
+                rPutCharToBuf(buf, *cp);
+            } else if (*cp == '\'' && quotes == 1) {
                 rPutCharToBuf(buf, '\\');
                 rPutCharToBuf(buf, *cp);
             } else if (*cp == '\b') {
@@ -1484,39 +1515,71 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags)
             } else if (*cp == '\f') {
                 rPutStringToBuf(buf, "\\f");
             } else if (*cp == '\n') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\n");
                 } else {
                     rPutCharToBuf(buf, '\n');
                 }
             } else if (*cp == '\r') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\r");
                 } else {
                     rPutCharToBuf(buf, '\r');
                 }
             } else if (*cp == '\t') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\t");
                 } else {
                     rPutCharToBuf(buf, '\t');
                 }
             } else if (iscntrl((uchar) * cp)) {
                 rPutToBuf(buf, "\\u%04x", *cp);
+            } else if (*cp == '$' && cp[1] == '{' && (flags & JSON_EXPAND) && json) {
+                if ((end = strchr(cp + 2, '}')) != 0) {
+                    *end = '\0';
+                    bareFlags = flags | JSON_BARE;
+                    if (expandValue(json, buf, &cp[2], indent, bareFlags)) {
+                        *end = '}';
+                        cp = end;
+                    } else {
+                        rPutCharToBuf(buf, *cp);
+                    }
+                }
             } else {
                 rPutCharToBuf(buf, *cp);
             }
         }
     }
-    if (quotes) {
-        rPutCharToBuf(buf, '\"');
+    if (quoteKeys) {
+        rPutCharToBuf(buf, quotes == 1 ? '\'' : '\"');
     }
 }
 
-static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int flags)
+// Public version without indent
+PUBLIC void jsonPutValueToBuf(RBuf *buf, cchar *value, int flags)
+{
+    putValueToBuf(NULL, buf, value, flags, 0);
+}
+
+/*
+    Expand a ${path.var} reference described by the key.
+ */
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags)
+{
+    int nid;
+
+    if ((nid = jquery((Json*) json, 0, key, 0, 0)) >= 0) {
+        return nodeToString(json, nid, indent, flags, buf);
+    }
+    return R_ERR_CANT_FIND;
+}
+
+static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf)
 {
     JsonNode *node;
-    bool     pretty;
+    char     *end, *key, *sol, *start;
+    bool     multiline;
+    int      bareFlags, eid;
 
     assert(json);
     assert(buf);
@@ -1534,7 +1597,7 @@ static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int fl
         return nid;
     }
     node = &json->nodes[nid];
-    pretty = (flags & JSON_PRETTY) ? 1 : 0;
+    multiline = (flags & JSON_MULTILINE) ? 1 : 0;
 
     if (flags & JSON_DEBUG) {
         rPutToBuf(buf, "<%d/%d> ", nid, node->last);
@@ -1550,60 +1613,136 @@ static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int fl
         nid++;
 
     } else if (node->type == JSON_STRING) {
-        jsonToBuf(buf, node->value, flags);
+        putValueToBuf(json, buf, node->value, flags, indent);
         nid++;
 
     } else if (node->type == JSON_ARRAY) {
+        start = rGetBufStart(buf);
+        sol = rGetBufEnd(buf);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '[');
         }
-        if (pretty) rPutCharToBuf(buf, '\n');
+        if (multiline) rPutCharToBuf(buf, '\n');
         for (++nid; nid < node->last; ) {
             if (json->nodes[nid].type == 0) {
                 nid++;
                 continue;
             }
-            if (pretty) spaces(buf, indent + 1);
-            nid = nodeToString(json, buf, nid, indent + 1, flags);
+            if (multiline) spaces(buf, indent + 1);
+            nid = nodeToString(json, nid, indent + 1, flags, buf);
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
             }
-            if (pretty) rPutCharToBuf(buf, '\n');
+            if (multiline) rPutCharToBuf(buf, '\n');
         }
-        if (pretty) spaces(buf, indent);
+        if (multiline) spaces(buf, indent);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, ']');
         }
+        if (flags & JSON_COMPACT) {
+            // Incase the buffer was reallocated, update the sol pointer
+            sol = rGetBufStart(buf) + (sol - start);
+            compactProperties(buf, sol, indent);
+        }
 
     } else if (node->type == JSON_OBJECT) {
+        start = rGetBufStart(buf);
+        sol = rGetBufEnd(buf);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '{');
         }
-        if (pretty) rPutCharToBuf(buf, '\n');
+        if (multiline) rPutCharToBuf(buf, '\n');
         for (++nid; nid < node->last; ) {
             if (json->nodes[nid].type == 0) {
                 nid++;
                 continue;
             }
-            if (pretty) spaces(buf, indent + 1);
-            jsonToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
-            rPutCharToBuf(buf, ':');
-            if (pretty) rPutCharToBuf(buf, ' ');
-            nid = nodeToString(json, buf, nid, indent + 1, flags);
+            if (multiline) spaces(buf, indent + 1);
+            /*
+                FUTURE: Expand key name if ${path.value} reference instead of calling jsonPutValueToBuf
+                If expanded at the key level ignore the : and value
+             */
+            key = json->nodes[nid].name;
+            eid = -1;
+            if (flags & JSON_EXPAND && *key == '$' && key[1] == '{') {
+                if ((end = strchr(key + 2, '}')) != 0) {
+                    *end = '\0';
+                    bareFlags = flags; // & ~(JSON_DOUBLE_QUOTES | JSON_SINGLE_QUOTES);
+                    if ((eid = expandValue(json, buf, &key[2], indent + 1, bareFlags)) >= 0) {
+                        nid++;
+                    }
+                    *end = '}';
+                }
+            }
+            if (eid < 0) {
+                jsonPutValueToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
+                rPutCharToBuf(buf, ':');
+                if (multiline) rPutCharToBuf(buf, ' ');
+                nid = nodeToString(json, nid, indent + 1, flags, buf);
+            }
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
             }
-            if (pretty) rPutCharToBuf(buf, '\n');
+            if (multiline) rPutCharToBuf(buf, '\n');
         }
-        if (pretty) spaces(buf, indent);
+        if (multiline) spaces(buf, indent);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '}');
+        }
+        if (flags & JSON_COMPACT && indent > 0) {
+            // Incase the buffer was reallocated, update the sol pointer
+            sol = rGetBufStart(buf) + (sol - start);
+            compactProperties(buf, sol, indent);
         }
     } else {
         rPutStringToBuf(buf, "undefined");
         nid++;
     }
     return nid;
+}
+
+static void compactProperties(RBuf *buf, char *sol, int indent)
+{
+    char *cp, *sp, *dp;
+    int  spaces;
+
+    // Count redundant spaces to see how much the line can be shortened
+    for (spaces = 0, cp = sol; cp < buf->end; cp++) {
+        if (isspace(*cp) && isspace(*(cp + 1))) {
+            spaces++;
+        }
+    }
+    if (buf->end - sol - spaces + indent * 4 < maxLength) {
+        for (sp = dp = sol; sp < buf->end; sp++) {
+            if (isspace(*sp)) {
+                *dp++ = ' ';
+                // Eat all spaces
+                while (++sp < buf->end) {
+                    if (!isspace(*sp)) {
+                        break;
+                    }
+                }
+                sp--;
+            } else {
+                *dp++ = *sp;
+            }
+        }
+        *dp = '\0';
+        buf->end = dp;
+    }
+}
+
+
+PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags)
+{
+    assert(buf);
+    if (!buf) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!json) {
+        return 0;
+    }
+    return nodeToString(json, nid, 0, flags, buf);
 }
 
 /*
@@ -1623,18 +1762,15 @@ PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags)
         rFreeBuf(buf);
         return 0;
     }
-    if (json->strict || (flags & JSON_STRICT)) {
-        flags |= JSON_SINGLE | JSON_QUOTES;
-    }
-    nodeToString(json, buf, nid, 0, flags);
-    if (flags & JSON_PRETTY) {
+    nodeToString(json, nid, 0, flags, buf);
+    if (flags & JSON_MULTILINE) {
         rPutCharToBuf(buf, '\n');
     }
     return rBufToStringAndFree(buf);
 }
 
 /*
-    Serialize a JSON object to a string. The string is saved in json->value so the caller 
+    Serialize a JSON object to a string. The string is saved in json->value so the caller
     does not need to free the result.
  */
 PUBLIC cchar *jsonString(const Json *cjson, int flags)
@@ -1644,28 +1780,28 @@ PUBLIC cchar *jsonString(const Json *cjson, int flags)
     if (!cjson) {
         return 0;
     }
-    /* 
+    /*
         We except modifying the json->value from the const
         The downside of this exception is exceeded by the benefit of using (const Json*) elsewhere
      */
     json = (Json*) cjson;
     rFree(json->value);
     if (flags == 0) {
-        flags = JSON_PRETTY;
+        flags = JSON_HUMAN;
     }
     json->value = jsonToString(json, 0, 0, flags);
     return json->value;
 }
 
 /*
-    Print a JSON tree for debugging
+    Print a JSON tree for debugging. This is in JSON5 compact format.
  */
 PUBLIC void jsonPrint(Json *json)
 {
     char *str;
 
     if (!json) return;
-    str = jsonToString(json, 0, 0, JSON_PRETTY);
+    str = jsonToString(json, 0, 0, JSON_HUMAN);
     rPrintf("%s\n", str);
     rFree(str);
 }
@@ -1708,7 +1844,7 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
 
     //  Cast const away because ITERATE macros make this difficult
     src = (Json*) csrc;
-    if (dest->flags & JSON_LOCK) {
+    if (dest->lock) {
         return jerror(dest, "Cannot blend into a locked JSON object");
     }
     if (dest == 0) {
@@ -1725,7 +1861,7 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
     }
     if (dest == src) {
         srcData = jsonToString(src, sid, 0, 0);
-        src = tmpSrc = jsonAlloc(0);
+        src = tmpSrc = jsonAlloc();
         parseJson(tmpSrc, srcData, flags);
         rFree(srcData);
         sid = 0;
@@ -1898,7 +2034,7 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
 {
     Json *dest;
 
-    dest = jsonAlloc(flags);
+    dest = jsonAlloc();
     if (csrc) {
         jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
     }
@@ -1908,13 +2044,15 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
 
 static void spaces(RBuf *buf, int count)
 {
-    int i;
+    int i, j;
 
     assert(buf);
     assert(0 <= count);
 
     for (i = 0; i < count; i++) {
-        rPutStringToBuf(buf, "    ");
+        for (j = 0; j < indentLevel; j++) {
+            rPutCharToBuf(buf, ' ');
+        }
     }
 }
 
@@ -1925,6 +2063,16 @@ PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg)
     json->triggerArg = arg;
 }
 #endif
+
+PUBLIC void jsonSetMaxLength(int length)
+{
+    maxLength = length;
+}
+
+PUBLIC void jsonSetIndent(int indent)
+{
+    indentLevel = indent;
+}
 
 /*
     Expand ${token} references in a path or string.
@@ -1944,7 +2092,8 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
     buf = rAllocBuf(0);
     for (src = (char*) str; *src; src++) {
         if (src[0] == '$' && src[1] == '{') {
-            for (cp = start = src + 2; *cp && *cp != '}'; cp++) {}
+            for (cp = start = src + 2; *cp && *cp != '}'; cp++) {
+            }
             if (*cp == '\0') {
                 // Unterminated token
                 return NULL;

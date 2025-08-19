@@ -407,12 +407,13 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->webs = rAllocList(0, 0);
 
     if (!config) {
-        if ((config = jsonParseFile(ME_WEB_CONFIG, &errorMsg, JSON_LOCK)) == 0) {
+        if ((config = jsonParseFile(ME_WEB_CONFIG, &errorMsg, 0)) == 0) {
             rError("config", "%s", errorMsg);
             rFree(errorMsg);
             rFree(host);
             return 0;
         }
+        jsonLock(config);
         host->freeConfig = 1;
     }
     host->config = config;
@@ -1081,7 +1082,6 @@ static void freeWebFields(Web *web, bool keepAlive)
     rFreeBuf(web->rxHeaders);
     rFreeHash(web->txHeaders);
     jsonFree(web->qvars);
-    jsonFree(web->validatedJson);
     jsonFree(web->vars);
     webFreeUpload(web);
 
@@ -1666,7 +1666,7 @@ static int processBody(Web *web)
             return webError(web, 400, "JSON body is malformed");
         }
     } else if (web->formBody) {
-        web->vars = jsonAlloc(0);
+        web->vars = jsonAlloc();
         webParseForm(web);
     }
     return 0;
@@ -1674,7 +1674,7 @@ static int processBody(Web *web)
 
 static void processQuery(Web *web)
 {
-    web->qvars = jsonAlloc(0);
+    web->qvars = jsonAlloc();
     webParseQuery(web);
 }
 
@@ -2286,7 +2286,7 @@ PUBLIC ssize webWriteJson(Web *web, const Json *json)
     char  *str;
     ssize rc;
 
-    if ((str = jsonToString(json, 0, NULL, JSON_STRICT)) != 0) {
+    if ((str = jsonToString(json, 0, NULL, JSON_JSON)) != 0) {
         rc = webWrite(web, str, -1);
         rFree(str);
         return rc;
@@ -3060,7 +3060,7 @@ static void showRequest(Web *web)
     bool     isPrintable;
     int      i;
 
-    json = jsonAlloc(0);
+    json = jsonAlloc();
     jsonSetFmt(json, 0, "url", "%s", web->url);
     jsonSetFmt(json, 0, "method", "%s", web->method);
     jsonSetFmt(json, 0, "protocol", "%s", web->protocol);
@@ -3438,7 +3438,7 @@ PUBLIC int webInitUpload(Web *web)
     web->uploads = rAllocHash(0, 0);
     web->numUploads = 0;
     //  Freed in freeWebFields (web.c)
-    web->vars = jsonAlloc(0);
+    web->vars = jsonAlloc();
     return 0;
 }
 

@@ -128,7 +128,7 @@ PUBLIC int main(int argc, char *argv[])
         dbRemoveExpired(db, 0);
 
     } else {
-        props = jsonAlloc(0);
+        props = jsonAlloc();
         if (argind < argc) {
             if ((model = dbGetModel(db, argv[argind++])) == NULL) {
                 rFatal("db", "Cannot find model");
@@ -146,7 +146,7 @@ PUBLIC int main(int argc, char *argv[])
             for (ITERATE_ITEMS(grid, item, index)) {
                 jsonBlend(result, 0, "[$]", dbJson(item), 0, 0, 0);
             }
-            rPrintf("%s\n", jsonString(result, JSON_PRETTY));
+            rPrintf("%s\n", jsonString(result, JSON_HUMAN));
             jsonFree(result);
 
         } else {
@@ -184,7 +184,7 @@ PUBLIC int main(int argc, char *argv[])
                     for (ITERATE_ITEMS(grid, item, index)) {
                         jsonBlend(result, 0, "[$]", dbJson(item), 0, 0, 0);
                     }
-                    rPrintf("%s\n", jsonString(result, JSON_PRETTY));
+                    rPrintf("%s\n", jsonString(result, JSON_HUMAN));
                     rFree(result);
                 }
             }

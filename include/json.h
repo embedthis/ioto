@@ -1,7 +1,7 @@
 /*
     json.h -- Header for the JSON library
 
-    Supports JSON6 which is a strict JSON superset. Allows:
+    Supports JSON5/6 which is a strict JSON superset. Allows:
 
     . Keyword undefined
     . Multiline strings
@@ -35,48 +35,76 @@ struct Json;
 struct JsonNode;
 
 #ifndef JSON_BLEND
-    #define JSON_BLEND  1
+    #define JSON_BLEND           1
 #endif
 
 #ifndef ME_JSON_MAX_NODES
-    #define ME_JSON_MAX_NODES 100000
+    #define ME_JSON_MAX_NODES    100000
+#endif
+
+#ifndef JSON_MAX_LINE_LENGTH
+    #define JSON_MAX_LINE_LENGTH 120
+#endif
+
+#ifndef JSON_DEFAULT_INDENT
+    #define JSON_DEFAULT_INDENT  4
 #endif
 
 /*
     Json types
  */
-#define JSON_OBJECT     0x1
-#define JSON_ARRAY      0x2
-#define JSON_COMMENT    0x4
-#define JSON_STRING     0x8                /**< Strings including dates encoded as ISO strings */
-#define JSON_PRIMITIVE  0x10               /**< True, false, null, undefined, number */
-#define JSON_REGEXP     0x20               /**< Regular expressions */
-
-/*
-    Constructor flags
- */
-#define JSON_LOCK       0x1                /**< Lock JSON object from further object */
-#define JSON_USER_ALLOC 0x2                /**< User flag to indicate who allocated the json obj */
+#define JSON_OBJECT              0x1
+#define JSON_ARRAY               0x2
+#define JSON_COMMENT             0x4
+#define JSON_STRING              0x8                                                  /**< Strings including dates
+                                                                                         encoded as ISO strings */
+#define JSON_PRIMITIVE           0x10                                                 /**< True, false, null, undefined,
+                                                                                         number */
+#define JSON_REGEXP              0x20                                                 /**< Regular expressions */
 
 /*
     Parse flags
  */
-#define JSON_STRICT     0x10               /**< Expect strict JSON format. Otherwise allow relaxed Json6. */
-#define JSON_SINGLE     0x20               /**< Save on a sinle line where possible. Convert chars to \\alternatives */
-#define JSON_PASS_VALUE 0x40               /**< Transfer ownership of the parsed value to json. */
+#define JSON_STRICT_PARSE        0x1                                                  /**< Parse in strict JSON format
+                                                                                      */
+#define JSON_PASS_VALUE          0x2                                                  /**< Transfer ownership of the
+                                                                                         parsed value to json. */
 
 /*
-    ToString flags
-    Use JSON_PRETTY for a human-readable multiline format in json6.
-    Use JSON_QUOTES for a strict JSON format with key double quotes and value double quotes.
-    Use JSON_SINGLE for a single line format.
-    Use JSON_STRICT for (JSON_QUOTES | JSON_SINGLE)
+    Render flags
  */
-#define JSON_PRETTY     0x100              /**< Save in multiline, indented Json6 format without key quotes */
-#define JSON_QUOTES     0x200              /**< Save in strict JSON format with key quotes */
-#define JSON_BARE       0x400              /**< Save on a single line without quotes or [], {} */
-#define JSON_KEY        0x800              /* Internal flag to designate Property key */
-#define JSON_DEBUG      0x1000             /* Internal flag for debug formatting */
+#define JSON_COMPACT             0x10                                                 /**< Compact properties format */
+#define JSON_DOUBLE_QUOTES       0x20                                                 /**< Use double quotes */
+#define JSON_ENCODE              0x40                                                 /**< Encode control characters */
+#define JSON_EXPAND              0x80                                                 /**< Expand ${path.var} references
+                                                                                      */
+#define JSON_MULTILINE           0x100                                                /**< Save on multiple lines */
+#define JSON_ONE_LINE            0x200                                                /**< Save on one line */
+#define JSON_QUOTE_KEYS          0x400                                                /**< Quote property keys */
+#define JSON_SINGLE_QUOTES       0x800                                                /**< Use single quotes */
+
+/*
+    Internal flags used when rendering
+ */
+#define JSON_KEY                 0x1000                                               /**< Internal flag to designate
+                                                                                         Property key */
+#define JSON_DEBUG               0x2000                                               /**< Internal flag for debug
+                                                                                         formatting */
+#define JSON_BARE                0x4000                                               /**< Internal flag for formatting
+                                                                                         without quotes or [] */
+
+/*
+    Composite flags
+ */
+#define JSON_JS                  (JSON_SINGLE_QUOTES)                                 /**< JavaScript format */
+#define JSON_JSON                (JSON_DOUBLE_QUOTES | JSON_QUOTE_KEYS | JSON_ENCODE) /**< Strict JSON format */
+#define JSON_JSON5               (JSON_SINGLE_QUOTES)                                 /**< JSON5 format */
+#define JSON_HUMAN               (JSON_JSON5 | JSON_MULTILINE | JSON_COMPACT)         /**< Human readable format */
+
+// DEPRECATED - this will be removed in the next release
+#define JSON_PRETTY              (JSON_HUMAN)
+#define JSON_QUOTES              (JSON_DOUBLE_QUOTES)
+#define JSON_STRICT              (JSON_STRICT_PARSE | JSON_JSON)
 
 /**
     These macros iterates over the children under the "parent" id. The child->last points to one past the end of the
@@ -143,14 +171,13 @@ struct JsonNode;
 /**
     JSON Object
     @description The JSON library parses JSON strings into an in-memory JSON tree that can be
-        queried and modified and saved. Some APIs such as jsonGetRef return direct references into
+        queried and modified and saved. Some APIs such as jsonGet return direct references into
         the JSON tree for performance as (const char*) references. Others, such as jsonGet will
         return an allocated string that must be freed by the caller.
         \n
-        When a JSON object is allocated or parsed, the JSON tree may be locked via the JSON_LOCK flag.
-        A locked JSON object is useful as it will not permit further updates via (jsonSet or jsonBlend)
-        and the internal node structure will be stable such that references returned via
-        jsonGetRef and jsonGetNode will remain valid.
+        The JSON tree may be locked via the lock flag. A locked JSON object is useful as it will
+        not permit further updates via (jsonSet or jsonBlend) and the internal node structure will
+        be stable such that references returned via jsonGet and jsonGetNode will remain valid.
     @stability Evolving
     @see
  */
@@ -170,8 +197,9 @@ typedef struct Json {
     uint size;                              /**< Size of Json.nodes in elements (includes spare) */
     uint count;                             /**< Number of allocated nodes (count <= size) */
     uint lineNumber : 16;                   /**< Current parse line number */
-    uint flags : 16;                        /**< Use defined bits */
-    uint strict : 1;                        /**< Strict JSON standard mode */
+    uint lock : 1;                          /**< Lock JSON object from further updates */
+    uint flags : 7;                         /**< Flags (reserved for future use) */
+    uint userFlags : 8;                     /**< User flags (reserved for user use) */
 #if JSON_TRIGGER
     JsonTrigger trigger;
     void *triggerArg;
@@ -204,11 +232,10 @@ PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg);
 
 /**
     Allocate a json object
-    @param flags Set to one JSON_STRICT for strict JSON parsing. Otherwise permits JSON/5.
     @return A json object
     @stability Evolving
  */
-PUBLIC Json *jsonAlloc(int flags);
+PUBLIC Json *jsonAlloc(void);
 
 /**
     Free a json object
@@ -233,6 +260,22 @@ PUBLIC void jsonLock(Json *json);
     @stability Evolving
  */
 PUBLIC void jsonUnlock(Json *json);
+
+/**
+    Set user flags
+    @param json A json object
+    @param flags User flags
+    @stability Evolving
+ */
+PUBLIC void jsonSetUserFlags(Json *json, int flags);
+
+/**
+    Get user flags
+    @param json A json object
+    @return User flags
+    @stability Evolving
+ */
+PUBLIC int jsonGetUserFlags(Json *json);
 
 /*
     Flags for jsonBlend
@@ -281,7 +324,7 @@ PUBLIC Json *jsonClone(const Json *src, int flags);
 
 /**
     Get a json node value as an allocated string
-    @description This call returns an allocated string as the result. Use jsonGetRef as a higher
+    @description This call returns an allocated string as the result. Use jsonGet as a higher
     performance API if you do not need to retain the queried value.
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
@@ -374,7 +417,7 @@ PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue);
 
 /**
     Get a json node value as a uint64
-    @description Parse the stored value with unit suffixes and returns a number. 
+    @description Parse the stored value with unit suffixes and returns a number.
     The following suffixes are supported:
         sec, secs, second, seconds,
         min, mins, minute, minutes,
@@ -452,9 +495,9 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key);
     @description Use this method if you are sure the supplied JSON text is valid or do not need to receive
         diagnostics of parse failures other than the return value.
     @param text Json string to parse.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
-    Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
-    This will make returned references via jsonGetRef and jsonGetNode stable.
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
+    Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGet and jsonGetNode stable.
     @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
     @stability Evolving
  */
@@ -463,14 +506,14 @@ PUBLIC Json *jsonParse(cchar *text, int flags);
 /**
     Parse a json string into a json object and assume ownership of the supplied text memory.
     @description This is an optimized version of jsonParse that avoids copying the text to be parsed.
-    The ownership of the supplied text is transferred to the Json object and will be freed when 
+    The ownership of the supplied text is transferred to the Json object and will be freed when
     jsonFree is called. The caller must not free the text which will be freed by this function.
-    Use this method if you are sure the supplied JSON text is valid or do not 
+    Use this method if you are sure the supplied JSON text is valid or do not
     need to receive diagnostics of parse failures other than the return value.
     @param text Json string to parse. Caller must NOT free.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
-    Set to JSON_LOCK to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
-    This will make returned references via jsonGetRef and jsonGetNode stable.
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
+    Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGet and jsonGetNode stable.
     @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
     @stability Evolving
  */
@@ -506,7 +549,7 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
 #define JFMT(buf, ...) jsonConvertBuf(buf, sizeof(buf), __VA_ARGS__)
 
 /*
-    Convenience macro for converting a string into a strict json string in a buffer.
+    Convenience macro for converting a single string into a strict json string in a buffer.
  */
 #define JSON(buf, ...) jsonConvertBuf(buf, sizeof(buf), "%s", __VA_ARGS__)
 
@@ -523,7 +566,7 @@ PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
     Load a JSON object from a filename
     @param path Filename path containing a JSON string to load
     @param errorMsg Error message string set if the parse fails. Caller must not free.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported.
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
     @return JSON object tree. Caller must free errorMsg via rFree on errors.
     @stability Evolving
  */
@@ -535,7 +578,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
         The top level of the JSON string must be an object, array, string, number or boolean value.
     @param text JSON string to deserialize.
     @param errorMsg Error message string set if the parse fails. Caller must not free.
-    @param flags Set to JSON_STRICT to parse json, otherwise a relaxed json6 syntax is supported. 
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
     @return Returns a tree of Json objects. Each object represents a level in the JSON input stream.
         Caller must free errorMsg via rFree on errors.
     @stability Evolving
@@ -559,7 +602,7 @@ PUBLIC int jsonRemove(Json *obj, int nid, cchar *key);
     @param nid Base node ID from which to start searching for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
     @param path Filename path to contain the saved JSON string
-    @param flags Same flags as for #jsonToString: JSON_PRETTY, JSON_QUOTES.
+    @param flags Same flags as for #jsonToString: JSON_JSON5
     @param mode Permissions mode
     @return Zero if successful, otherwise a negative RT error code.
     @stability Evolving
@@ -687,13 +730,23 @@ PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags);
 PUBLIC void jsonSetNodeType(JsonNode *node, int type);
 
 /**
-    Convert a json value to serialized JSON representation and save in the given buffer.
+    Convert a string value primitive to a JSON string and add to the given buffer.
     @param buf Destination buffer
-    @param value Value to convert.
+    @param value String value to convert
+    @param flags Json flags
+    @stability Evolving
+ */
+PUBLIC void jsonPutValueToBuf(RBuf *buf, cchar *value, int flags);
+
+/**
+    Convert a json object to a serialized JSON representation in the given buffer.
+    @param buf Destination buffer
+    @param json Json object
+    @param nid Base node ID from which to convert. Set to zero for the top level.
     @param flags Json flags.
     @stability Evolving
  */
-PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
+PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags);
 
 /**
     Serialize a JSON object into a string
@@ -701,9 +754,8 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags);
     @param json Source json
     @param nid Base node ID from which to convert. Set to zero for the top level.
     @param key Property name to serialize below. This may include ".". For example: "settings.mode".
-    @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
-    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
-    Defaults to JSON_PRETTY if set to zero.
+    @param flags Serialization flags. Supported flags include JSON_JSON5 and JSON_HUMAN.
+    Use JSON_JSON for a strict JSON format. Defaults to JSON_HUMAN if set to zero.
     @return Returns a serialized JSON character string. Caller must free.
     @stability Evolving
  */
@@ -714,9 +766,9 @@ PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags);
     @description Serializes a top level JSON object created via jsonParse into a characters string in JSON format.
         This serialize the result into the json->value so the caller does not need to free the result.
     @param json Source json
-    @param flags Serialization flags. Supported flags include JSON_PRETTY for a human-readable multiline format.
-    Use JSON_STRICT for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
-    Defaults to JSON_PRETTY if set to zero.
+    @param flags Serialization flags. Supported flags include JSON_HUMAN for a human-readable multiline format.
+    Use JSON_JSON for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes.
+    Defaults to JSON_HUMAN if set to zero.
     @return Returns a serialized JSON character string. Caller must NOT free. The string is owned by the json
     object and will be overwritten by subsequent calls to jsonString. It will be freed when jsonFree is called.
     @stability Evolving
@@ -725,7 +777,7 @@ PUBLIC cchar *jsonString(const Json *json, int flags);
 
 /**
     Print a JSON object
-    @description Prints a JSON object in pretty format.
+    @description Prints a JSON object in a compact human readable format.
     @param json Source json
     @stability Evolving
  */
@@ -751,6 +803,21 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep);
     @stability Evolving
  */
 PUBLIC int jsonCheckIteration(Json *json, int count, int nid);
+
+/**
+    Set the maximum length of a line for compacted output.
+    @param length Maximum length of a line for compacted output.
+    @stability Evolving
+ */
+PUBLIC void jsonSetMaxLength(int length);
+
+/**
+    Set the indent level for compacted output.
+    @param indent Indent level for compacted output.
+    @stability Evolving
+ */
+PUBLIC void jsonSetIndent(int indent);
+
 #ifdef __cplusplus
 }
 #endif

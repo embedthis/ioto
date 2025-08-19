@@ -562,7 +562,7 @@ PUBLIC void ioUpdateDevice(void)
 
     assert(ioto->id);
 
-    json = jsonAlloc(0);
+    json = jsonAlloc();
     jsonSet(json, 0, "id", ioto->id, JSON_STRING);
 #if SERVICES_CLOUD
     if (!ioto->account) {
@@ -1018,7 +1018,7 @@ PUBLIC int ioAutomation(cchar *name, cchar *context)
     cchar *args;
     int   rc;
 
-    data = jsonAlloc(0);
+    data = jsonAlloc();
     jsonSet(data, 0, "name", name, JSON_STRING);
 
     if ((jsonContext = jsonParse(context, 0)) == 0) {
@@ -1710,13 +1710,13 @@ PUBLIC int ioRegister(void)
 
         if (!ioto->nosave) {
             path = rGetFilePath(IO_DEVICE_FILE);
-            if (jsonSave(ioto->config, 0, "device", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
+            if (jsonSave(ioto->config, 0, "device", path, 0600, JSON_HUMAN) < 0) {
                 rError("ioto", "Cannot save device registration to %s", path);
                 return R_ERR_CANT_WRITE;
             }
         }
     }
-    params = jsonAlloc(0);
+    params = jsonAlloc();
     jsonBlend(params, 0, 0, ioto->config, 0, "device", 0);
 
 #if SERVICES_CLOUD
@@ -1733,7 +1733,7 @@ PUBLIC int ioRegister(void)
 #endif
     jsonSetDate(params, 0, "created", 0);
 
-    data = jsonToString(params, 0, 0, JSON_QUOTES | JSON_PRETTY);
+    data = jsonToString(params, 0, 0, JSON_JSON);
     jsonFree(params);
 
     if (once++ == 0) {
@@ -1768,7 +1768,7 @@ static int parseRegisterResponse(Json *json)
         return R_ERR_CANT_COMPLETE;
     }
     if (rEmitLog("debug", "ioto")) {
-        rDebug("ioto", "Device register response: %s", jsonString(json, JSON_PRETTY));
+        rDebug("ioto", "Device register response: %s", jsonString(json, JSON_HUMAN));
     }
     /*
         Response will have 2 elements when registered but not claimed
@@ -1791,12 +1791,12 @@ static int parseRegisterResponse(Json *json)
     jsonBlend(ioto->config, 0, "provision", json, 0, 0, 0);
 
     if (rEmitLog("debug", "ioto")) {
-        rDebug("ioto", "Provisioning: %s", jsonString(json, JSON_PRETTY));
+        rDebug("ioto", "Provisioning: %s", jsonString(json, JSON_HUMAN));
     }
 
     if (!ioto->nosave) {
         path = rGetFilePath(IO_PROVISION_FILE);
-        if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
+        if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("ioto", "Cannot save device provisioning to %s", path);
             rFree(path);
             return R_ERR_CANT_WRITE;
@@ -1905,7 +1905,7 @@ static bool getSerial(void)
 
         if (sstarts(serialize, "http")) {
             //  Ask manufacturing controller for device ID
-            def = jsonToString(config, did, 0, JSON_QUOTES);
+            def = jsonToString(config, did, 0, JSON_JSON);
             urlSetTimeout(up, SERIALIZE_TIMEOUT);
             result = urlJson(up, "POST", serialize, def, -1, 0);
             if (result == 0) {
@@ -1964,7 +1964,7 @@ static bool getSerial(void)
     }
     if (saveId) {
         path = rGetFilePath(IO_DEVICE_FILE);
-        if (jsonSave(config, did, 0, path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
+        if (jsonSave(config, did, 0, path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("serialize", "Cannot save serialization to %s", path);
             rFree(path);
             return R_ERR_CANT_WRITE;
@@ -2205,7 +2205,7 @@ PUBLIC int ioLoadConfig(void)
     cchar *dir;
     char  *path;
 
-    json = ioto->config = jsonAlloc(0);
+    json = ioto->config = jsonAlloc();
 
     /*
         Command line --config, --state and --ioto can set the config/state and ioto.json paths.
@@ -2278,7 +2278,7 @@ PUBLIC int ioLoadConfig(void)
         rAddDirectory("site", "@state/site");
     }
     if (rEmitLog("debug", "ioto")) {
-        rDebug("ioto", "%s", jsonString(json, JSON_PRETTY));
+        rDebug("ioto", "%s", jsonString(json, JSON_HUMAN));
     }
     return 0;
 }
@@ -2467,7 +2467,7 @@ static Json *makeTemplate(void)
     Json *json;
     char hostname[ME_MAX_FNAME];
 
-    json = jsonAlloc(0);
+    json = jsonAlloc();
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         scopy(hostname, sizeof(hostname), "localhost");
     }
@@ -2650,7 +2650,7 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item)
     if (!item) {
         return 0;
     }
-    return webWrite(web, dbString(item, JSON_STRICT), -1);
+    return webWrite(web, dbString(item, JSON_JSON), -1);
 }
 
 /*
@@ -2688,7 +2688,7 @@ PUBLIC ssize webWriteItems(Web *web, RList *items)
 /*
     Write a database item. DOES finalize the response.
  */
-PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item)
+PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item, cchar *sigKey)
 {
     ssize rc;
 
@@ -3125,7 +3125,7 @@ static void logMessageLine(IotoLog *log, cchar *value)
     if (!log || !log->buf) {
         return;
     }
-    jsonToBuf(log->buf, value, JSON_STRICT);
+    jsonPutValueToBuf(log->buf, value, JSON_JSON);
 }
 
 static int logMessageEnd(IotoLog *log)
@@ -4531,12 +4531,12 @@ static void parseProvisioningResponse(Json *json)
     jsonBlend(ioto->config, 0, "provision", json, 0, 0, 0);
 
     if (rEmitLog("debug", "provision")) {
-        rDebug("provision", "%s", jsonString(json, JSON_PRETTY));
+        rDebug("provision", "%s", jsonString(json, JSON_HUMAN));
     }
 
     if (!ioto->nosave) {
         path = rGetFilePath(IO_PROVISION_FILE);
-        if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_PRETTY | JSON_QUOTES) < 0) {
+        if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("ioto", "Cannot save provisioning state to %s", path);
             rFree(path);
             return;
@@ -4801,7 +4801,7 @@ static int saveShadow(Json *json)
     ioto->shadowEvent = 0;
 
     path = rGetFilePath(IO_SHADOW_FILE);
-    if (jsonSave(json, 0, 0, path, ioGetFileMode(), JSON_PRETTY) < 0) {
+    if (jsonSave(json, 0, 0, path, ioGetFileMode(), JSON_JSON5 | JSON_MULTILINE) < 0) {
         rError("shadow", "Cannot save to %s, errno %d", json->path, errno);
         rFree(path);
         return R_ERR_CANT_WRITE;
@@ -5273,7 +5273,7 @@ static void syncItem(DbModel *model, CDbItem *item, DbParams *params, cchar *cmd
      */
     if ((change = rLookupName(ioto->syncHash, item->key)) == 0 || change->seq) {
         //  Item.json takes precedence over item.value
-        data = item->json ? jsonToString(item->json, 0, 0, JSON_QUOTES) : sclone(item->value);
+        data = item->json ? jsonToString(item->json, 0, 0, JSON_JSON) : sclone(item->value);
         updated = dbField(item, "updated");
         now = rGetTicks();
 
@@ -5664,7 +5664,7 @@ static void processDeviceCommand(DbItem *item)
 
     cmd = dbField(item, "command");
 
-    rInfo("ioto", "Device command \"%s\"\nData: %s", cmd, dbString(item, JSON_PRETTY));
+    rInfo("ioto", "Device command \"%s\"\nData: %s", cmd, dbString(item, JSON_HUMAN));
 
     if (smatch(cmd, "reboot")) {
         rSetState(R_RESTART);
@@ -5760,11 +5760,11 @@ PUBLIC bool ioUpdate(void)
         rStartEvent((REventProc) ioUpdate, 0, delay);
         return 0;
     }
-    json = jsonAlloc(0);
+    json = jsonAlloc();
     jsonBlend(json, 0, 0, ioto->config, 0, "device", 0);
     jsonSet(json, 0, "version", ioto->version, JSON_STRING);
     jsonSet(json, 0, "iotoVersion", ME_VERSION, JSON_STRING);
-    body = jsonToString(json, 0, 0, JSON_QUOTES);
+    body = jsonToString(json, 0, 0, JSON_JSON);
     jsonFree(json);
 
     SFMT(url, "%s/tok/provision/update", ioto->api);

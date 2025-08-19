@@ -346,7 +346,6 @@ typedef struct Web {
     RBuf *rx;                   /**< Receive data buffer */
     RBuf *trace;                /**< Packet trace buffer */
     RBuf *buffer;               /**< Buffered response */
-    Json *validatedJson;        /**< Used for validated responses that need to mutate the response */
 
     Offset chunkRemaining;      /**< Amount of chunked body to read */
     ssize rxLen;                /**< Receive content length (including chunked requests) */

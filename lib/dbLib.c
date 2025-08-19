@@ -69,6 +69,8 @@ typedef struct DbChange {
 #define SETUP(db, model, props, params, cmd, env) \
         setup(db, model, props, params ? params : &(DbParams) {}, cmd, env)
 
+#define USER_ALLOC 0x1        /* User allocated json */
+
 /************************************ Forwards *********************************/
 
 static void addContext(Db *db, Json *props);
@@ -145,7 +147,7 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
         db->maxJournalAge = DB_MAX_LOG_AGE;
     }
     db->callbacks = rAllocList(0, R_DYNAMIC_VALUE);
-    db->context = jsonAlloc(0);
+    db->context = jsonAlloc();
     db->changes = rAllocHash(0, 0);
     if (loadSchema(db, schema) < 0) {
         rError("db", "%s", db->error);
@@ -255,7 +257,7 @@ static int loadSchema(Db *db, cchar *schema)
         /*
             Can't iterate blend[] while blending below
          */
-        blend = jsonAlloc(0);
+        blend = jsonAlloc();
         jsonBlend(blend, 0, 0, db->schema, blendId, 0, 0);
 
         /*
@@ -293,7 +295,7 @@ static int loadSchema(Db *db, cchar *schema)
 
     //  Trace the resulting schema
     if (rEmitLog("debug", "setup")) {
-        char *str = jsonToString(db->schema, 0, 0, JSON_PRETTY);
+        char *str = jsonToString(db->schema, 0, 0, JSON_HUMAN);
         rDebug("db", "%s", str);
         rFree(str);
     }
@@ -504,12 +506,13 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     }
     memset(env, 0, sizeof(Env));
     if (!props) {
-        props = jsonAlloc(JSON_USER_ALLOC);
+        props = jsonAlloc();
+        jsonSetUserFlags(props, USER_ALLOC);
 
-    } else if (!(props->flags & JSON_USER_ALLOC)) {
+    } else if (!(props->userFlags & USER_ALLOC)) {
         //  User provided json so clone because the props will be modified
         props = jsonClone(props, 0);
-        props->flags |= JSON_USER_ALLOC;
+        jsonSetUserFlags(props, USER_ALLOC);
     }
     if (!modelName) {
         modelName = jsonGet(props, 0, db->type, 0);
@@ -589,7 +592,7 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     } else if (jsonGet(env->props, 0, env->indexSort, 0) == 0) {
         //  Check we have a key for non-find operations
         return dberror(db, R_ERR_BAD_ARGS, "Missing sort key in properties\n%s",
-                       jsonString(env->props, JSON_PRETTY));
+                       jsonString(env->props, JSON_HUMAN));
     }
 
     /*
@@ -603,14 +606,14 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
             env->compare = "begins";
         } else {
             return dberror(db, R_ERR_BAD_ARGS, "Incomplete sort key in properties: %s\n%s",
-                           env->search.key, jsonString(env->props, JSON_PRETTY));
+                           env->search.key, jsonString(env->props, JSON_HUMAN));
         }
     }
     //  Must be after find trims templates
     env->searchLen = slen(env->search.key);
 
     if (env->params->log) {
-        rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props, JSON_PRETTY));
+        rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props, JSON_HUMAN));
     }
     return 0;
 }
@@ -622,14 +625,14 @@ static void freeEnv(Env *env)
 
     assert(env);
 
-    if (env->props && (env->props->flags & JSON_USER_ALLOC)) {
+    if (env->props && (env->props->userFlags & USER_ALLOC)) {
         jsonFree(env->props);
         env->props = 0;
     }
     if (env->expiredItems) {
         for (ITERATE_ITEMS(env->expiredItems, rp, next)) {
             if (env->params->log) {
-                rInfo("db", "Remove expired item:\n%s", jsonString(toJson(rp->data), JSON_PRETTY));
+                rInfo("db", "Remove expired item:\n%s", jsonString(toJson(rp->data), JSON_HUMAN));
             }
             rbRemove(env->index, rp, 0);
         }
@@ -677,7 +680,7 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *p
     change(db, env.model, item, params, env.params->upsert ? "upsert" : "create");
 
     if (env.params->log) {
-        rInfo("db", "Create result:\n%s", jsonString(item->json, JSON_PRETTY));
+        rInfo("db", "Create result:\n%s", jsonString(item->json, JSON_HUMAN));
     }
     freeEnv(&env);
     return item;
@@ -956,7 +959,7 @@ again:
                     change(db, model, item, NULL, "remove");
                 }
                 if (rEmitLog("trace", "db")) {
-                    rTrace("db", "Remove expired item:\n%s", jsonString(json, JSON_PRETTY));
+                    rTrace("db", "Remove expired item:\n%s", jsonString(json, JSON_HUMAN));
                 }
                 rbRemove(db->primary, rp, 0);
                 count++;
@@ -1112,7 +1115,7 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
     }
     if (item) {
         if (env.params->upsert) {
-            env.props->flags &= ~JSON_USER_ALLOC;
+            env.props->userFlags &= ~USER_ALLOC;
             clearItem(item);
             item->json = env.props;
         } else {
@@ -1180,7 +1183,7 @@ PUBLIC char *dbListToString(RList *items)
     buf = rAllocBuf(0);
     rPutCharToBuf(buf, '[');
     for (ITERATE_ITEMS(items, item, index)) {
-        rPutStringToBuf(buf, jsonToString(toJson((DbItem*) item), 0, 0, JSON_QUOTES));
+        rPutStringToBuf(buf, jsonToString(toJson((DbItem*) item), 0, 0, 0));
         rPutCharToBuf(buf, ',');
     }
     rAdjustBufEnd(buf, -1);
@@ -1193,7 +1196,7 @@ static void printItem(DbItem *item)
     char *value;
 
     if (!item) return;
-    value = jsonToString(toJson(item), 0, 0, JSON_PRETTY);
+    value = jsonToString(toJson(item), 0, 0, JSON_HUMAN);
     value[slen(value) - 1] = '\0';
     rPrintf("%s", value);
     rFree(value);
@@ -1209,7 +1212,7 @@ PUBLIC void dbPrintItem(const DbItem *item)
     char *value;
 
     if (item) {
-        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_PRETTY);
+        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_HUMAN);
         rPrintf("%s: %s\n", item->key, value);
         rFree(value);
     } else {
@@ -1224,7 +1227,7 @@ PUBLIC void dbPrintList(RList *list)
     int          index;
 
     for (ITERATE_ITEMS(list, item, index)) {
-        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_PRETTY);
+        value = jsonToString(toJson((DbItem*) item), 0, 0, JSON_HUMAN);
         rPrintf("    %s: %s\n", item->key, value);
         rFree(value);
     }
@@ -1233,7 +1236,7 @@ PUBLIC void dbPrintList(RList *list)
 
 PUBLIC void dbPrintProperties(Json *props)
 {
-    rPrintf("Properties\n%s\n", jsonToString(props, 0, 0, JSON_PRETTY));
+    rPrintf("Properties\n%s\n", jsonToString(props, 0, 0, JSON_HUMAN));
 }
 
 PUBLIC void dbPrint(Db *db)
@@ -1654,9 +1657,9 @@ static DbItem *allocItem(cchar *key, Json *json, char *value)
         return 0;
     }
     if (json) {
-        if (json->flags & JSON_USER_ALLOC) {
+        if (json->userFlags & USER_ALLOC) {
             //  Cleanup before insertion into the RB tree
-            json->flags &= ~JSON_USER_ALLOC;
+            json->userFlags &= ~USER_ALLOC;
         } else {
             /*
                 Not allocated as part of the DB_PROPS() API in dbCreate(), so we must clone
@@ -1710,6 +1713,7 @@ static cchar *getIndexName(Db *db, DbParams *params)
 
 /*
     Get the index to use for this API call. Currently only supports a primary index.
+    Defaults to the primary if params is null.
  */
 static RbTree *getIndex(Db *db, DbParams *params)
 {
@@ -1753,7 +1757,7 @@ PUBLIC Json *dbStringToJson(cchar *fmt, ...)
     buf = sfmtv(fmt, ap);
     json = jsonParseKeep(buf, 0);
     if (json) {
-        json->flags |= JSON_USER_ALLOC;
+        json->userFlags |= USER_ALLOC;
     }
     va_end(ap);
     return json;
@@ -1767,13 +1771,13 @@ PUBLIC Json *dbPropsToJson(cchar *props[])
     Json *json;
     int  i;
 
-    json = jsonAlloc(0);
+    json = jsonAlloc();
     for (i = 0; props[i]; i += 2) {
         if (props[i] && props[i + 1]) {
             jsonSet(json, 0, props[i], (void*) props[i + 1], 0);
         }
     }
-    json->flags |= JSON_USER_ALLOC;
+    json->userFlags |= USER_ALLOC;
     return json;
 }
 
@@ -2289,7 +2293,7 @@ static bool checkEnum(DbField *field, cchar *value)
     if ((cp = scontains(field->enums, value)) == 0) {
         return 0;
     }
-    if (cp[-1] != '"' || cp[slen(value)] != '"') {
+    if ((cp[-1] != '"' && cp[-1] != '\'') || (cp[slen(value)] != '"' && cp[slen(value)] != '\'')) {
         return 0;
     }
     return 1;

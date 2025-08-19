@@ -586,7 +586,7 @@ PUBLIC ssize webSocketSendJson(WebSocket *ws, Json *json, int nid, cchar *key)
     char  *str;
     ssize rc;
 
-    str = jsonToString(json, nid, key, JSON_STRICT);
+    str = jsonToString(json, nid, key, JSON_JSON);
     rc = webSocketSendString(ws, str);
     rFree(str);
     return rc;
