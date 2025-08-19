@@ -1055,6 +1055,49 @@ PUBLIC int ioAutomation(cchar *name, cchar *context)
     }
     return rc;
 }
+
+/*
+    Upload a file to the device cloud.
+ */
+PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len)
+{
+    Url   *up;
+    cchar *response;
+    char  *api, *data, *url;
+    int   rc;
+
+    up = urlAlloc(0);
+    api = sfmt("%s/tok/device/getSignedUrl", ioto->api);
+    data = sfmt(SDEF({
+        "id" : "%s",
+        "command" : "put",
+        "filename" : "%s",
+        "mimeType" : "image/jpeg"
+    }), ioto->id, path);
+
+    rc = R_ERR_CANT_COMPLETE;
+    if (urlFetch(up, "POST", api, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
+                 ioto->apiToken) != URL_CODE_OK) {
+        rError("nature", "Error getting signed URL");
+
+    } else if ((response = urlGetResponse(up)) == NULL) {
+        rError("nature", "Empty signed URL response");
+
+    } else {
+        url = sclone(response);
+        if (urlFetch(up, "PUT", strim(url, "\"", R_TRIM_BOTH), (char*) buf, len,
+                     "Content-Type: image/jpeg\r\n") != URL_CODE_OK) {
+            rError("nature", "Cannot upload to signed URL");
+        } else {
+            rc = 0;
+        }
+        rFree(url);
+    }
+    rFree(data);
+    rFree(api);
+    urlFree(up);
+    return rc;
+}
 #endif /* SERVICES_CLOUD */
 
 /*
