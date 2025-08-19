@@ -177,7 +177,7 @@ typedef const DbItem CDbItem;
     Macro for supplying API parameters
     @stability Evolving
  */
-#define DB_PARAMS(...) & (DbParams) { __VA_ARGS__ }
+#define DB_PARAMS(...) ((DbParams[]){{__VA_ARGS__}})
 
 /**
     Macro for supplying API properties as key/value pairs.
@@ -511,7 +511,7 @@ PUBLIC char *dbListToString(RList *list);
 /*
     Convert an item to a JSON string representation
     @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @param flags JSON_PRETTY, JSON_STRICT
+    @param flags JSON_HUMAN, JSON_JSON, JSON_JSON5 or any jsonToString flags.
     @return A JSON string. Caller must not free.
     @stability Evolving
  */
