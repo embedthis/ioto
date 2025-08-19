@@ -7,20 +7,15 @@ ifndef SHOW
 .SILENT:
 endif
 
-.PHONY: build config upload
+.PHONY: build config
 
 all: config build
 
 config:
 	@$(TOP)/bin/export-app-config $(TOP)
 
-build: upload
+build:
 	@echo "      [Info] Built with the Demo App"
-
-upload:
-	if [ $(TOP)/state/config/schema.json5 -nt upload/schema.json5 ]; then \
-		cp $(TOP)/state/config/schema.json5 upload/schema.json5 ; \
-	fi
 
 clean:
 
