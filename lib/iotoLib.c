@@ -1644,6 +1644,25 @@ PUBLIC void ioSetNum(cchar *key, double value)
 #endif
 }
 
+/*
+    Set a number in the Store key/value database.
+    Uses db sync if available, otherwise uses MQTT.
+ */
+PUBLIC void ioSetBool(cchar *key, bool value)
+{
+ #if SERVICES_SYNC
+    dbUpdate(ioto->db, "Store",
+             DB_JSON("{key: '%s', value: '%g', type: 'boolean'}", key, value),
+             DB_PARAMS(.upsert = 1));
+ #else
+    //  Optimize by using AWS basic ingest topic
+    char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"boolean\"}", key, value);
+    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
+                "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
+    rFree(msg);
+ #endif
+}
+
 //  Caller must free
 PUBLIC char *ioGet(cchar *key)
 {
