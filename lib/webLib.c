@@ -3297,9 +3297,9 @@ static void sigAction(Web *web)
     web->username = "user";
 
     if (web->vars) {
-        webWriteValidatedJson(web, web->vars);
+        webWriteValidatedJson(web, web->vars, NULL);
     } else {
-        webWriteValidatedData(web, rBufToString(web->body));
+        webWriteValidatedData(web, rBufToString(web->body), NULL);
     }
     webFinalize(web);
 }
@@ -4304,9 +4304,9 @@ static bool validateProperty(Web *web, RBuf *buf, Json *json, int jid, int sid, 
  */
 PUBLIC bool webValidateRequest(Web *web, cchar *path)
 {
-    WebHost  *host;
-    JsonNode *signature, *qsig;
-    cchar    *type;
+    WebHost *host;
+    cchar   *type;
+    int     sid;
 
     host = web->host;
     if (!host->signatures) {
@@ -4316,41 +4316,326 @@ PUBLIC bool webValidateRequest(Web *web, cchar *path)
         if (host->strictSignatures) {
             return valError(web, NULL, "Missing request signature for request");
         }
-        rError("web", "Cannot find request signature for %s", web->path);
+        rDebug("web", "Cannot find signature for %s, continuing.", web->path);
         return 1;
     }
     //  Optional query signature
-    if (web->qvars && (qsig = jsonGetNode(host->signatures, web->signature, "request.query")) != 0) {
-        return webValidateJsonSignature(web, "query", web->qvars, 0, qsig, 0);
+    if (web->qvars && (sid = jsonGetId(host->signatures, web->signature, "request.query")) >= 0) {
+        return webValidateSignature(web, NULL, web->qvars, 0, sid, 0, "query");
     }
-    if ((signature = jsonGetNode(host->signatures, web->signature, "request")) == 0) {
+    if ((sid = jsonGetId(host->signatures, web->signature, "request")) < 0) {
         if (host->strictSignatures) {
             return valError(web, NULL, "Missing request API signature");
         }
+        rDebug("web", "Cannot find request signature for %s, continuing.", web->path);
         return 1;
     }
-    type = getType(web, signature);
+    type = getType(web, sid);
     if (smatch(type, "object") || smatch(type, "array")) {
-        return webValidateJsonSignature(web, "request", web->vars, 0, signature, 0);
+        return webValidateSignature(web, NULL, web->vars, 0, sid, 0, "request");
     }
-    return webValidateDataSignature(web, "request", rBufToString(web->body), signature);
+    return validatePrimitive(web, rBufToString(web->body), sid, "request");
+}
+
+/*
+    Check a JSON payload against the API signature. This evaluates the json properties starting at the "jid" node.
+    If buf is provided, it will be used to store the validated JSON. If fields are "dropped" they will not be
+    added to the buf. The routine will recurse as required over arrays and objects.
+    Returns true if the payload is valid. If invalid, we return 0 and a response is written.
+
+    Signature BLOCKS are of the form: {
+        type: 'null', 'string', 'number', 'boolean', 'object', 'array'
+        fields: {},
+        of: BLOCK
+    }
+
+    @param web Web object
+    @param buf Optional buffer to store the validated JSON as a string ready for writing to the client.
+    @param cjson JSON object (May be null)
+    @param jid Base JSON node ID from which to convert. Set to zero for the top level. If NULL, the top level is used.
+    @param sid Signature ID to validate against
+    @param depth Depth of the JSON object
+    @param tag Tag name for the request body. Set to "request", "response" or "query".
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+ */
+PUBLIC bool webValidateSignature(Web *web, RBuf *buf, const Json *cjson, int jid, int sid, int depth, cchar *tag)
+{
+    Json     *json;
+    JsonNode *item;
+    cchar    *type, *value;
+
+    assert(web);
+    assert(tag);
+
+    if (!web || !tag || jid < 0) {
+        rError("web", "Invalid parameters to validateSignature");
+        return 0;
+    }
+    if (!web->host->signatures || sid < 0) {
+        return 1;
+    }
+    if (depth > WEB_MAX_SIG_DEPTH) {
+        webError(web, 400, "Signature validation failed");
+        return 0;
+    }
+    // May be null
+    json = (Json*) cjson;
+    type = getType(web, sid);
+
+    if (smatch(type, "array")) {
+        if (!validateArray(web, buf, json, jid, sid, depth, tag)) {
+            return 0;
+        }
+
+    } else if (smatch(type, "object")) {
+        if (!validateObject(web, buf, json, jid, sid, depth, tag)) {
+            return 0;
+        }
+    } else {
+        //  Primitive value property
+        if (json) {
+            item = jsonGetNode(json, jid, 0);
+            value = item ? item->value : NULL;
+        } else {
+            value = NULL;
+        }
+        if (!validatePrimitive(web, value, sid, tag)) {
+            return 0;
+        }
+        if (buf && value) {
+            jsonPutValueToBuf(buf, value, JSON_JSON);
+        }
+    }
+    return 1;
+}
+
+/*
+    Iterate over the array items
+ */
+static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag)
+{
+    Json     *signatures;
+    JsonNode *array, *item;
+    cchar    *oftype;
+    int      oid;
+
+    signatures = web->host->signatures;
+    if (!json) {
+        // Allow an empty array
+        return 1;
+    }
+    array = jsonGetNode(json, jid, 0);
+
+    if (!array || array->type != JSON_ARRAY) {
+        return valError(web, NULL, "Bad %s, expected an array", tag);
+    }
+    if (buf) {
+        rPutCharToBuf(buf, '[');
+    }
+    for (ITERATE_JSON_ID(json, jid, item, iid)) {
+        oid = jsonGetId(signatures, sid, "of");
+        if (oid >= 0) {
+            oftype = jsonGet(signatures, oid, "type", "object");
+            if (smatch(oftype, "object") || smatch(oftype, "array")) {
+                if (!webValidateSignature(web, buf, json, iid, oid, depth + 1, tag)) {
+                    return 0;
+                }
+            } else {
+                if (!validatePrimitive(web, item->value, oid, tag)) {
+                    return 0;
+                }
+                if (buf) {
+                    jsonPutValueToBuf(buf, item->value, JSON_JSON);
+                }
+            }
+        } else {
+            // Allow untyped array without a signature "of" block
+            if (buf) {
+                jsonPutToBuf(buf, json, iid, JSON_JSON);
+            }
+        }
+        if (buf) {
+            rPutCharToBuf(buf, ',');
+        }
+    }
+    if (buf) {
+        if (rGetBufLength(buf) > 1) {
+            rAdjustBufEnd(buf, -1);
+        }
+        rPutCharToBuf(buf, ']');
+    }
+    return 1;
+}
+
+/*
+    Validate a object properties and write to the optional buffer.
+    The json object may be NULL to indicate no body.
+ */
+static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag)
+{
+    Json     *signatures;
+    JsonNode *drop, *field, *fields, *parent, *var;
+    cchar    *def, *dropRole, *ftype, *methodRole, *required, *role, *value;
+    char     dropBuf[128];
+    bool     hasRequired, hasWild, strict;
+    int      fid, id, fieldsId;
+
+    signatures = web->host->signatures;
+    strict = web->host->strictSignatures;
+
+    fields = jsonGetNode(signatures, sid, "fields");
+    if (!fields) {
+        //  Generic object with no fields defined
+        if (buf && json) {
+            jsonPutToBuf(buf, json, jid, JSON_JSON);
+        }
+        return 1;
+    }
+    hasWild = jsonGetBool(signatures, sid, "hasWild", 0);            // Allow any properties
+    hasRequired = jsonGetBool(signatures, sid, "hasRequired", 0);    // Signature has required fields
+    methodRole = jsonGet(signatures, sid, "role", web->route->role); // Required role for this signature
+
+    if (buf) {
+        rPutCharToBuf(buf, '{');
+    }
+    if (hasRequired) {
+        /*
+            Ensure all required fields are present.
+         */
+        for (ITERATE_JSON(signatures, fields, field, fid)) {
+            required = jsonGet(signatures, fid, "required", 0);
+            if (required) {
+                if (!json) {
+                    return valError(web, NULL, "Missing required %s field '%s'", tag, field->name);
+                }
+                value = jsonGet(json, jid, field->name, 0);
+                if (!value) {
+                    def = jsonGet(signatures, fid, "default", 0);
+                    if (required && !def) {
+                        return valError(web, json, "Missing required %s field '%s'", tag, field->name);
+                    }
+                    if (def) {
+                        if (buf) {
+                            // Add default value
+                            jsonPutValueToBuf(buf, field->name, JSON_JSON);
+                            rPutCharToBuf(buf, ':');
+                            jsonPutValueToBuf(buf, def, JSON_JSON);
+                            rPutCharToBuf(buf, ',');
+                        } else {
+                            // Add default value to the request / query json object
+                            rassert(!smatch(tag, "response"));
+                            jsonSet(json, jid, field->name, def, JSON_STRING);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fieldsId = jsonGetNodeId(signatures, fields);
+
+    if (json) {
+        parent = jsonGetNode(json, jid, 0);
+        for (ITERATE_JSON(json, parent, var, vid)) {
+            if (var->name[0] == '_' || smatch(var->name, "pk") || smatch(var->name, "sk")) {
+                // Always hidden
+                continue;
+            }
+            fid = jsonGetId(signatures, fieldsId, var->name);
+            if (fid < 0 && !hasWild) {
+                if (strict) {
+                    return valError(web, json, "Invalid %s field '%s' in %s", tag, var->name, web->url);
+                }
+                rDebug("web", "Invalid %s field '%s' in %s", tag, var->name, web->url);
+                continue;
+            }
+            role = jsonGet(signatures, fid, "role", methodRole);
+            if (role && !webCan(web, role)) {
+                // Silently drop if role does not permit access
+                continue;
+            }
+            drop = jsonGetNode(signatures, fid, "drop");
+            if (drop != 0) {
+                if (drop->type == JSON_PRIMITIVE && smatch(drop->value, "true")) {
+                    continue;
+                } else if (drop->type == JSON_STRING) {
+                    if (!webCan(web, drop->value)) {
+                        continue;
+                    }
+                } else if (drop->type == JSON_OBJECT) {
+                    dropRole = jsonGet(signatures, fid, SFMT(dropBuf, "drop.%s", tag), 0);
+                    if (dropRole && !webCan(web, dropRole)) {
+                        continue;
+                    }
+                }
+            }
+            if (buf) {
+                jsonPutValueToBuf(buf, var->name, JSON_JSON);
+                rPutCharToBuf(buf, ':');
+            }
+            ftype = jsonGet(signatures, fid, "type", 0);
+            if (smatch(ftype, "object")) {
+                id = jsonGetId(json, jid, var->name);
+                if (!webValidateSignature(web, buf, json, id, fid, depth + 1, tag)) {
+                    return 0;
+                }
+            } else if (smatch(ftype, "array")) {
+                id = jsonGetId(json, jid, var->name);
+                if (!webValidateSignature(web, buf, json, id, fid, depth + 1, tag)) {
+                    return 0;
+                }
+            } else if (!validateProperty(web, buf, json, vid, fid, tag)) {
+                return 0;
+            }
+            if (buf) {
+                rPutCharToBuf(buf, ',');
+            }
+        }
+    }
+    // Remove trailing comma
+    if (buf) {
+        if (rGetBufLength(buf) > 1) {
+            rAdjustBufEnd(buf, -1);
+        }
+        rPutCharToBuf(buf, '}');
+    }
+    return 1;
+}
+
+/*
+    Validate a primitive value property and write to the optional buffer.
+ */
+static bool validateProperty(Web *web, RBuf *buf, Json *json, int jid, int sid, cchar *tag)
+{
+    JsonNode *item;
+
+    item = jsonGetNode(json, jid, 0);
+    if (!validatePrimitive(web, item ? item->value : NULL, sid, tag)) {
+        return 0;
+    }
+    if (buf) {
+        jsonPutValueToBuf(buf, item ? item->value : NULL, JSON_JSON);
+    }
+    return 1;
 }
 
 /*
     Validate data for primitive types against the API signature.
  */
-PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *data, JsonNode *signature)
+static bool validatePrimitive(Web *web, cchar *data, int sid, cchar *tag)
 {
-    cchar *type;
+    JsonNode *signature;
+    cchar    *type;
 
     assert(web);
     assert(tag);
-    assert(signature);
 
-    if (!web->host->signatures || !signature) {
+    if (!web->host->signatures || sid < 0) {
         return 0;
     }
-    type = getType(web, signature);
+    type = getType(web, sid);
+    if ((signature = jsonGetNode(web->host->signatures, sid, 0)) == 0) {
+        return 0;
+    }
     if (smatch(type, "null")) {
         if (data && *data) {
             return valError(web, NULL, "Bad %s, data should be empty", tag);
@@ -4359,7 +4644,10 @@ PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *data, JsonNode
         if (!data) {
             return valError(web, NULL, "Missing %s data, expected %s", tag, type);
         }
-        if (smatch(type, "number")) {
+        if (smatch(type, "string")) {
+            // Most common case first
+
+        } else if (smatch(type, "number")) {
             if (!sfnumber(data)) {
                 return valError(web, NULL, "Bad %s, \"%s\" should be a number", tag, signature->name);
             }
@@ -4374,342 +4662,109 @@ PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *data, JsonNode
                 return valError(web, NULL, "Bad %s, \"%s\" should be a date", tag, signature->name);
             }
 
-        } else if (!smatch(type, "string")) {
-            return valError(web, NULL, "Bad %s data, expected a %s for \"%s\"", tag, type, signature->name);
         } else {
-            /* object | array */
+            return valError(web, NULL, "Bad %s data, expected a %s for \"%s\"", tag, type, signature->name);
         }
+        /* object | array */
     }
     return 1;
 }
 
 /*
-    Check a JSON payload against the API signature. This evaluates the json properties starting at the "jid" node.
-    If buf is provided, it will be used to store the validated JSON. If fields are "dropped" they will not be
-    added to the buf. The routine will recurse as required over arrays and objects.
-    Returns true if the payload is valid. If invalid, we return 0 and a response is written.
-
-    Signature BLOCKS are of the form: {
-        type: 'null', 'string', 'number', 'boolean', 'object', 'array'
-        fields: {},
-        of: BLOCK
-    }
+    Validate a data primitive against the API signature and write to the optional buffer. Return true if valid.
  */
-PUBLIC bool webValidateJsonSignature(Web *web, cchar *tag, const Json *cjson, int jid, JsonNode *signature, int depth)
+PUBLIC bool webValidateData(Web *web, RBuf *buf, cchar *data, cchar *sigKey, cchar *tag)
 {
-    WebHost  *host;
-    Json     *json, *signatures;
-    JsonNode *array, *drop, *field, *fields, *item, *parent, *of, *var;
-    cchar    *def, *dropRole, *ftype, *methodRole, *oftype, *required, *role, *type, *value;
-    char     rbuf[128];
-    bool     hasWild, strict;
-    int      id, sid;
+    Json  *json;
+    cchar *type;
+    int   rc, sid;
 
-    assert(web);
-    assert(tag);
-    assert(signature);
-
-    if (!web || !tag || !signature) {
-        rError("web", "Invalid parameters to webValidateJsonSignature");
-        return 0;
+    if (!web->host->signatures) {
+        return 1;
     }
-    host = web->host;
-    if ((signatures = host->signatures) == 0) {
-        return 0;
-    }
-    strict = host->strictSignatures;
-
-    if (depth > WEB_MAX_SIG_DEPTH) {
-        webError(web, 400, "Signature validation failed");
-        return 0;
-    }
-    json = (Json*) cjson;
-    hasWild = 0;
-
-    type = getType(web, signature);
-    sid = jsonGetNodeId(signatures, signature);
-
-    if (smatch(type, "array")) {
-        /*
-            Iterate over the array items
-         */
-        oftype = jsonGet(signatures, sid, "of.type", "object");
-        if (!json) {
-            return valError(web, NULL, "Bad %s, expected an array body", tag);
-        }
-        array = jsonGetNode(json, jid, 0);
-        if (!array || array->type != JSON_ARRAY) {
-            return valError(web, NULL, "Bad %s, expected an array", tag);
-        }
-        for (ITERATE_JSON_ID(json, jid, item, iid)) {
-            of = jsonGetNode(signatures, sid, "of");
-            if (smatch(oftype, "object")) {
-                if (of && !webValidateJsonSignature(web, tag, json, iid, of, depth + 1)) {
-                    return 0;
-                }
-            } else if (smatch(oftype, "array")) {
-                if (of && !webValidateJsonSignature(web, tag, json, iid, of, depth + 1)) {
-                    return 0;
-                }
-            } else {
-                if (of && !webValidateDataSignature(web, tag, item->value, of)) {
-                    return 0;
-                }
-            }
-        }
-    } else if (smatch(type, "object")) {
-        /*
-            Iterate over object fields. If no fields present, then allow any fields (even if strict).
-         */
-        methodRole = jsonGet(signatures, sid, "role", web->route->role);
-        fields = jsonGetNode(signatures, sid, "fields");
-        if (fields) {
-            for (ITERATE_JSON(signatures, fields, field, fid)) {
-                if (field->name[0] == '_') {
-                    continue;
-                }
-                if (smatch(field->name, "*")) {
-                    hasWild = 1;
-                    continue;
-                }
-                role = jsonGet(signatures, fid, "role", methodRole);
-                if (role && !webCan(web, role)) {
-                    continue;
-                }
-                value = jsonGet(json, jid, field->name, 0);
-                if (!value) {
-                    required = jsonGet(signatures, fid, "required", 0);
-                    def = jsonGet(signatures, fid, "default", 0);
-                    if (required && !def) {
-                        return valError(web, json, "Missing required %s field '%s'", tag, field->name);
-                    } else if (def) {
-                        jsonSet(json, jid, field->name, def, 0);
-                    }
-                } else {
-                    if ((drop = jsonGetNode(signatures, fid, "drop")) != 0) {
-                        if (drop->type == JSON_PRIMITIVE && smatch(drop->value, "true")) {
-                            dropField(web, tag, json, jid, field->name);
-                            continue;
-                        } else if (drop->type == JSON_STRING) {
-                            if (!webCan(web, drop->value)) {
-                                dropField(web, tag, json, jid, field->name);
-                                continue;
-                            }
-                        } else if (drop->type == JSON_OBJECT) {
-                            dropRole = jsonGet(signatures, fid, SFMT(rbuf, "drop.%s", tag), 0);
-                            if (dropRole && !webCan(web, dropRole)) {
-                                dropField(web, tag, json, jid, field->name);
-                                continue;
-                            }
-                        }
-                    }
-                    // discard - DEPRECATED
-                    if (jsonGet(signatures, fid, "discard", 0)) {
-                        dropField(web, tag, json, jid, field->name);
-                        continue;
-                    }
-                    ftype = jsonGet(signatures, fid, "type", 0);
-                    if (smatch(ftype, "object")) {
-                        id = jsonGetId(json, jid, field->name);
-                        if (!webValidateJsonSignature(web, tag, json, id, field, depth + 1)) {
-                            return 0;
-                        }
-                    } else if (smatch(ftype, "array")) {
-                        id = jsonGetId(json, jid, field->name);
-                        // of = jsonGetNode(signatures, fid, "of");
-                        if (!webValidateJsonSignature(web, tag, json, id, field, depth + 1)) {
-                            return 0;
-                        }
-                    } else {
-                        if (!webValidateDataSignature(web, tag, value, field)) {
-                            return 0;
-                        }
-                    }
-                }
-            }
-        }
-        /*
-            Check for extra fields in the payload.
-            Use validatedJson if there has been dropped fields above.
-         */
-        json = web->validatedJson ? web->validatedJson : (Json*) json;
-        if (json && !hasWild) {
-            parent = jsonGetNode(json, jid, 0);
-            // When iterating a json object, we need to restart if we remove a field
-again:
-            for (ITERATE_JSON(json, parent, var, vid)) {
-                if (smatch(var->name, "_type") || smatch(var->name, "pk") || smatch(var->name, "sk")) {
-                    continue;
-                }
-                id = jsonGetId(signatures, sid, "fields");
-                if (id < 0) {
-                    //  No fields defined, so allow any fields
-                    continue;
-                }
-                //  Test if variable is in the fields signature
-                id = jsonGetId(signatures, id, var->name);
-                if (id < 0) {
-                    if (strict) {
-                        return valError(web, json, "Invalid extra %s field '%s'", tag, var->name);
-                    }
-                    rDebug("web", "WARNING: removing %s - not in signature for %s", var->name, web->url);
-                    dropField(web, tag, json, jid, var->name);
-                    goto again;
-
-                } else if ((drop = jsonGetNode(signatures, sid, "drop")) != 0) {
-                    if (drop->type == JSON_PRIMITIVE && smatch(drop->value, "true")) {
-                        dropField(web, tag, json, jid, var->name);
-                        goto again;
-                    } else if (drop->type == JSON_STRING) {
-                        if (!webCan(web, drop->value)) {
-                            dropField(web, tag, json, jid, var->name);
-                            goto again;
-                        }
-                    } else if (drop->type == JSON_OBJECT) {
-                        dropRole = jsonGet(signatures, sid, SFMT(rbuf, "drop.%s", tag), 0);
-                        if (dropRole && !webCan(web, dropRole)) {
-                            dropField(web, tag, json, jid, var->name);
-                            goto again;
-                        }
-                    }
-                } else if (jsonGet(signatures, sid, "discard", 0) != 0) {
-                    // Discard - DEPRECATED
-                    dropField(web, tag, json, jid, var->name);
-                    goto again;
-                }
-            }
+    if (sigKey) {
+        sid = jsonGetId(web->host->signatures, 0, sigKey);
+        if (sid < 0) {
+            return valError(web, NULL, "Missing signature for %s", web->url);
         }
     } else {
-        //  Primitive types
-        value = jsonGet(json, jid, 0, 0);
-        if (!webValidateDataSignature(web, tag, value, signature)) {
+        sid = jsonGetId(web->host->signatures, web->signature, "response");
+        if (sid < 0) {
+            // Allow a signature to omit the response field (even with strict mode)
+            return 1;
+        }
+        type = getType(web, sid);
+        if (smatch(type, "object") || smatch(type, "array")) {
+            json = jsonParse(data, 0);
+            rc = webValidateSignature(web, buf, json, 0, sid, 0, tag);
+            jsonFree(json);
+            return rc;
+        }
+    }
+    if (!validatePrimitive(web, data, sid, tag)) {
+        return 0;
+    }
+    if (buf) {
+        jsonPutValueToBuf(buf, data, JSON_JSON);
+    }
+    return 1;
+}
+
+/*
+    Validate json against the API signature and write to the optional buffer. Return true if valid.
+ */
+PUBLIC bool webValidateJson(Web *web, RBuf *buf, const Json *cjson, int jid, cchar *sigKey, cchar *tag)
+{
+    int sid;
+
+    if (!web->host->signatures) {
+        return 1;
+    }
+    if (sigKey) {
+        sid = jsonGetId(web->host->signatures, 0, sigKey);
+        if (sid < 0) {
             return 0;
         }
-    }
-    return 1;
-}
-
-/*
-    Drop a field from the response json. Must not mutate the original json, so we clone it if needed.
- */
-static void dropField(Web *web, cchar *tag, Json *json, int jid, cchar *name)
-{
-    if (!smatch(tag, "response")) {
-        //  For request and query, we remove the field from the original json
-        jsonRemove(json, jid, name);
     } else {
-        /*
-            For responses, we clone the response and remove from the cloned json
-            We do this to optimize the case of writing data directly from the database using dbJson()
-         */
-        if (web->validatedJson) {
-            jsonRemove(web->validatedJson, jid, name);
-        } else {
-            web->validatedJson = jsonClone(json, 0);
-            jsonRemove(web->validatedJson, jid, name);
+        sid = jsonGetId(web->host->signatures, web->signature, "response");
+        if (sid < 0) {
+            // Allow a signature to omit the response field (even with strict mode)
+            if (buf) {
+                jsonPutToBuf(buf, cjson, jid, JSON_JSON);
+            }
+            return 1;
         }
     }
+    return webValidateSignature(web, buf, cjson, jid, sid, 0, tag);
 }
 
 /*
-    This will write an error response to the client and close the connection.
- */
-static bool valError(Web *web, Json *json, cchar *fmt, ...)
-{
-    va_list args;
-    char    *msg;
-
-    va_start(args, fmt);
-    msg = sfmtv(fmt, args);
-    webWriteResponse(web, 0, "%s\n", msg);
-    if (json) {
-        rError("web", "Validation error: for '%s'. %s, body \n%s", web->path, msg, jsonString(json, JSON_PRETTY));
-    } else {
-        rError("web", "Validation error: for '%s'. %s", web->path, msg);
-    }
-    rFree(msg);
-    va_end(args);
-    return 0;
-}
-
-static cchar *getType(Web *web, JsonNode *signature)
-{
-    cchar *type;
-    int   sid;
-
-    if (signature->type == JSON_PRIMITIVE && smatch(signature->value, "null")) {
-        type = "null";
-    } else if (signature->type == JSON_STRING) {
-        type = signature->value;
-    } else {
-        sid = jsonGetNodeId(web->host->signatures, signature);
-        type = jsonGet(web->host->signatures, sid, "type", 0);
-    }
-    if (!type) {
-        type = "object";
-    }
-    return type;
-}
-
-/*
-    Write a validated response and check against the API signature.
+    Validate a data buffer against an API signature. The standard response signature is used if no key is provided.
     We allow a signature to omit the response field (even with strict mode)
  */
-PUBLIC bool webValidateData(Web *web, cchar *buf)
+PUBLIC ssize webWriteValidatedData(Web *web, cchar *data, cchar *sigKey)
 {
-    JsonNode *signature;
-
     assert(web);
 
-    if ((signature = jsonGetNode(web->host->signatures, web->signature, "response")) != 0) {
-        if (!webValidateDataSignature(web, "response", buf, signature)) {
-            return 0;
-        }
+    webBuffer(web, 0);
+    if (!webValidateData(web, web->buffer, data, sigKey, "response")) {
+        return R_ERR_BAD_ARGS;
     }
-    return 1;
+    return rGetBufLength(web->buffer);
 }
 
 /*
-    Validate a JSON object against the API signature.
-    Allow a signature to not have a response even with strict mode
+    Validate a json object against an API signature. The standard response signature is used if no key is provided.
  */
-PUBLIC bool webValidateJson(Web *web, const Json *json)
+PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json, cchar *sigKey)
 {
-    JsonNode *signature;
-    WebHost  *host;
-
     assert(web);
 
-    host = web->host;
-    if (host->signatures && web->signature >= 0) {
-        if ((signature = jsonGetNode(web->host->signatures, web->signature, "response")) != 0) {
-            if (!webValidateJsonSignature(web, "response", json, 0, signature, 0)) {
-                return R_ERR_BAD_REQUEST;
-            }
-        }
-    }
-    return 1;
-}
-
-PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json)
-{
-    if (!webValidateJson(web, json)) {
+    webBuffer(web, 0);
+    if (!webValidateJson(web, web->buffer, json, 0, sigKey, "response")) {
         return R_ERR_BAD_ARGS;
     }
-    json = web->validatedJson ? web->validatedJson : (Json*) json;
-    return webWriteJson(web, json);
-}
-
-/*
-    Validate a data buffer against the API signature.
-    The data is not modified and must be null terminated.
- */
-PUBLIC ssize webWriteValidatedData(Web *web, cchar *data)
-{
-    if (!webValidateData(web, data)) {
-        return R_ERR_BAD_ARGS;
-    }
-    return webWrite(web, data, -1);
+    return rGetBufLength(web->buffer);
 }
 
 /*
@@ -4779,10 +4834,51 @@ static int parseUrl(Web *web)
         Normalize and sanitize the path. This routine will process ".." and "." segments.
         This is safe because callers (webFileHandler) uses simple string concatenation to
         join the result with the document root.
-    */
+     */
     if ((web->path = webNormalizePath(path)) == 0) {
         return webNetError(web, "Illegal URL");
     }
+    return 0;
+}
+
+static cchar *getType(Web *web, int sid)
+{
+    JsonNode *signature;
+    cchar    *type;
+
+    if ((signature = jsonGetNode(web->host->signatures, sid, 0)) == 0) {
+        return "object";
+    }
+    if (signature->type == JSON_PRIMITIVE && smatch(signature->value, "null")) {
+        type = "null";
+    } else if (signature->type == JSON_STRING) {
+        type = signature->value;
+    } else {
+        sid = jsonGetNodeId(web->host->signatures, signature);
+        type = jsonGet(web->host->signatures, sid, "type", 0);
+    }
+    if (!type) {
+        type = "object";
+    }
+    return type;
+}
+
+/*
+    This will write an error response to the client and close the connection.
+ */
+static bool valError(Web *web, Json *json, cchar *fmt, ...)
+{
+    va_list args;
+    char    *msg;
+
+    va_start(args, fmt);
+    msg = sfmtv(fmt, args);
+    webWriteResponse(web, 0, "%s\n", msg);
+    if (json) {
+        rDebug("web", "Validation payload\n%s", jsonString(json, JSON_HUMAN));
+    }
+    rFree(msg);
+    va_end(args);
     return 0;
 }
 

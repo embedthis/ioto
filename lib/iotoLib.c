@@ -2801,8 +2801,8 @@ PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item, cchar *sigKey)
     if (!item) {
         return 0;
     }
-    if (web->host->signatures && web->signature >= 0) {
-        rc = webWriteValidatedJson(web, dbJson(item));
+    if (web->host->signatures) {
+        rc = webWriteValidatedJson(web, dbJson(item), sigKey);
     } else {
         rc = webWriteItem(web, item);
     }
@@ -2811,80 +2811,49 @@ PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item, cchar *sigKey)
 }
 
 /*
-    Write a database grid of items as a response. Finalizes the response.
+    Write a validated database grid as a response. Finalizes the response.
  */
-PUBLIC ssize webWriteValidatedItems(Web *web, RList *items)
+PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey)
 {
-    Json     *json;
-    JsonNode *signature;
-    DbItem   *item;
-    ssize    index, rc, wrote;
-    bool     prior;
+    Json   *signatures;
+    DbItem *item;
+    ssize  index;
+    int    sid;
 
     if (!items) {
         return 0;
     }
-    signature = 0;
-    if (web->host->signatures != 0 && web->signature >= 0) {
-        if ((signature = jsonGetNode(web->host->signatures, web->signature, "response.of")) == 0) {
+    signatures = web->host->signatures;
+    if (signatures) {
+        if (sigKey) {
+            sid = jsonGetId(signatures, 0, sigKey);
+        } else {
+            sid = jsonGetId(signatures, web->signature, "response.of");
+        }
+        if (sid < 0) {
             webWriteResponse(web, 0, "Invalid signature for response");
             return R_ERR_BAD_STATE;
         }
     }
-    rc = 0;
-    prior = 0;
-    webWrite(web, "[", 1);
+    webBuffer(web, 0);
+    rPutCharToBuf(web->buffer, '[');
+
     for (ITERATE_ITEMS(items, item, index)) {
-        if (!item) {
-            continue;
+        if (item) {
+            if (!webValidateSignature(web, web->buffer, dbJson(item), 0, sid, 0, "response")) {
+                return R_ERR_BAD_ARGS;
+            }
+            rPutCharToBuf(web->buffer, ',');
         }
-        json = (Json*) dbJson(item);
-        if (signature && !webValidateJsonSignature(web, "response", json, 0, signature, 0)) {
-            return R_ERR_BAD_ARGS;
-        }
-        if (prior) {
-            rc += webWrite(web, ",", -1);
-        }
-        //  validatedJson may be set by webValidateJsonSignature if fields are dropped
-        json = web->validatedJson ? web->validatedJson : json;
-        if ((wrote = webWriteJson(web, json)) <= 0) {
-            continue;
-        }
-        rc += wrote;
-        prior = 1;
     }
-    rc += webWrite(web, "]", 1);
+    // Trim trailing comma
+    if (rGetBufLength(web->buffer) > 1) {
+        rAdjustBufEnd(web->buffer, -1);
+    }
+    rPutCharToBuf(web->buffer, ']');
     webFinalize(web);
-    return rc;
+    return rGetBufLength(web->buffer);
 }
-
-#if DEPRECATED & 0
-/*
-    Write a database item as a response. The item is validated against the API signature
-    and the request is finalized.
- */
-PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item)
-{
-    ssize rc;
-
-    rc = webWriteValidatedItem(web, item);
-    webFinalize(web);
-    return rc;
-}
-
-/*
-    Write a database grid of items as a response. The items are validated against the API signature
-    and the request is finalized.
- */
-PUBLIC ssize webWriteItemsResponse(Web *web, RList *items)
-{
-    ssize rc;
-
-    rc = webWriteValidatedItems(web, items);
-    webFinalize(web);
-    return rc;
-}
-#endif
 
 /*
     Default login action. This is designed for web page use and redirects as a response (i.e. not for SPAs).
@@ -5669,7 +5638,7 @@ static void receiveSync(const MqttRecv *rp)
     Db      *db;
     CDbItem *prior;
     cchar   *modelName, *msg, *priorUpdated, *sk, *updated;
-    char    sigbuf[80];
+    char    sigbuf[80], *str;
     DbModel *model;
     Json    *json;
     bool    stale;
