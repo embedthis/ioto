@@ -1666,6 +1666,19 @@ PUBLIC void ioSetBool(cchar *key, bool value)
 //  Caller must free
 PUBLIC char *ioGet(cchar *key)
 {
+#if SERVICES_SYNC
+    return sclone(dbGetField(ioto->db, "Store", "value", DB_PROPS("key", key), DB_PARAMS()));
+#else
+    char *msg = sfmt("{\"key\":\"%s\"}", key);
+    //  Must not use basic-ingest for mqttRequest
+    char *result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    rFree(msg);
+    return result;
+#endif
+}
+
+PUBLIC bool ioGetBool(cchar *key)
+{
     char *msg, *result;
 
     msg = sfmt("{\"key\":\"%s\"}", key);
