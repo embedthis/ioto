@@ -1597,7 +1597,7 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
     char *msg;
 
     if (dimensions == NULL || *dimensions == '\0') {
-        dimensions = "[{\"Device\":\"deviceId\"}]";
+        dimensions = "[]";
     }
     msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
                metric, value, dimensions, elapsed);
