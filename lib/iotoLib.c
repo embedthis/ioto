@@ -1884,7 +1884,8 @@ static int parseRegisterResponse(Json *json)
         if (ioto->provisionService) {
             //  Registered but not yet claimed
             if (once++ == 0) {
-                rInfo("ioto", "Device not claimed. Claim device with the product device app.");
+                rInfo("ioto", "Device not claimed. Claim device with the claim ID %s using the product device app.",
+                      ioto->id);
             }
         }
     }
@@ -5680,17 +5681,14 @@ static void receiveSync(const MqttRecv *rp)
         rError("sync", "Cannot parse sync message: %s for %s", msg, rp->topic);
         return;
     }
-    if (rEmitLog("debug", "sync")) {
-        rDebug("sync", "Received sync response %s: %s", rp->topic, msg);
-    } else {
-        rTrace("sync", "Received %s", rp->topic);
-    }
     if (sends(rp->topic, "SYNC")) {
         //  Response for a syncItem to DynamoDB
+        rTrace("sync", "Received sync ack %s", rp->topic);
         cleanSyncChanges(json);
 
     } else if (sends(rp->topic, "SYNCDOWN")) {
         //  Response for syncdown (ioConnectSync)
+        rDebug("sync", "Received syncdown ack");
         if ((updated = jsonGet(json, 0, "updated", 0)) != NULL && scmp(updated, ioto->lastSync) > 0) {
             rFree(ioto->lastSync);
             ioto->lastSync = sclone(updated);
@@ -5719,10 +5717,13 @@ static void receiveSync(const MqttRecv *rp)
             syncItem(model, prior, NULL, "update", 1);
 
         } else {
+            if (rEmitLog("trace", "sync")) {
+                rTrace("sync", "Received sync response %s: %s", rp->topic, msg);
+            }
             if (sends(rp->topic, "REMOVE")) {
                 jsonRemove(json, 0, "updated");
                 if (rEmitLog("debug", "sync")) {
-                    char *str = jsonToString(json, 0, 0, JSON_PRETTY);
+                    str = jsonToString(json, 0, 0, JSON_HUMAN);
                     rDebug("sync", "Remove %s", str);
                     rFree(str);
                 }

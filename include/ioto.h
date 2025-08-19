@@ -281,42 +281,6 @@ PUBLIC Json *ioAPI(cchar *url, cchar *data);
  */
 PUBLIC int ioAutomation(cchar *name, cchar *context);
 
-#if SERVICES_SHADOW
-/**
-    Get a value from the shadow state.
-    @param key Property key value. May contain dots.
-    @param defaultValue Default value to return if the key is not found
-    @return Returns an allocated string. Caller must free.
-    @stability Evolving
- */
-PUBLIC char *ioGetShadow(cchar *key, cchar *defaultValue);
-
-/**
-    Set a key value in the shadow
-    @param key Property key value. May contain dots.
-    @param value Value to set.
-    @param save Set to true to persist immediately.
-    @stability Evolving
- */
-PUBLIC void ioSetShadow(cchar *key, cchar *value, bool save);
-
-/**
-    Save the shadow state immediately.
-    @stability Evolving
- */
-PUBLIC void ioSaveShadow(void);
-#endif
-
-/**
-    User start entry point
-    @description The ioStart function is invoked when Ioto is fully initialized and ready to start.
-        Users can provide their own ioStart and ioStop functions and link with the Ioto library. Ioto will then
-        invoke the user's ioStart for custom initialization.
-    @stability Evolving
-    @see ioStop, ioConfig
- */
-PUBLIC int ioStart(void);
-
 /**
     User config entry point
     @description The ioConfig function is invoked when Ioto has read its configuration into ioto->config
@@ -329,6 +293,16 @@ PUBLIC int ioStart(void);
 PUBLIC int ioConfig(Json *config);
 
 /**
+    User start entry point
+    @description The ioStart function is invoked when Ioto is fully initialized and ready to start.
+        Users can provide their own ioStart and ioStop functions and link with the Ioto library. Ioto will then
+        invoke the user's ioStart for custom initialization.
+    @stability Evolving
+    @see ioStop, ioConfig
+ */
+PUBLIC int ioStart(void);
+
+/**
     User stop entry point
     @description The ioStop function is invoked when Ioto is shutting down.
         Users can provide their own ioStart function and link with the Ioto library. Ioto will then
@@ -339,53 +313,16 @@ PUBLIC int ioConfig(Json *config);
 PUBLIC void ioStop(void);
 
 /**
-    Get a metric value in the Ioto cloud
-    @description This call retrieves a metric in the Ioto cloud for this device.
-    @param metric String Metric name to define in the Embedthis/Device namespace.
-    @param dimensions JSON array of dimensions as a string. Each element is an object that defines
-        the properties of that dimension. The empty object {} denotes All.
-    @param statistic Set to avg, min, max, count or current
-    @param period Number of seconds for the statistic period.
-    @returns The metric value or NAN if it cannot be found.
-    @stability Evolving
- */
-PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, int period);
-
-/**
-    Set a metric value in the Ioto cloud
-    @description This call defines a metric in the Ioto cloud for this device.
-    @param metric String Metric name to define in the Embedthis/Device namespace.
-    @param value Double Metric value.
-    @param dimensions JSON array of dimensions as a string. Each element is an object that defines
-        the properties of that dimension. The empty object {} denotes All.
-    @param elapsed Number of seconds to optimize and buffer metric updates before committing
-        to the database.
-    @stability Evolving
- */
-PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
-
-/**
-    Set a string value in the Ioto cloud key/value Store
-    @description This call defines a value in the Ioto cloud key/value store for this device.
-    Uses db sync if available, otherwise uses MQTT.
-    @param key String key value to assign a value in the store.
-    @param value Value to assign to the key
-    @stability Evolving
- */
-PUBLIC void ioSet(cchar *key, cchar *value);
-
-/**
-    Set a numeric value in the Ioto cloud key/value Store
-    @description This call defines a numeric value in the Ioto cloud key/value store for this device.
-    Uses db sync if available, otherwise uses MQTT.
-    @param key String key value to assign a value in the store.
-    @param value Double value to assign to the key
-    @stability Evolving
- */
-PUBLIC void ioSetNum(cchar *key, double value);
-
-/**
     Get a value from the Ioto cloud key/value Store
+    @description This call retrieves a value from the Ioto cloud key/value store for this device.
+    @param key String key value to assign a value in the store.
+    @return value Key's string value. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *ioGet(cchar *key);
+
+/**
+    Get a boolean value from the Ioto cloud key/value Store
     @description This call retrieves a value from the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
     @return value Key's string value. Caller must free.
