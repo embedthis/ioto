@@ -1710,6 +1710,11 @@ PUBLIC double ioGetNum(cchar *key)
     return num;
 }
 
+PUBLIC bool ioConnected(void)
+{
+    return ioto->connected;
+}
+
 PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct)
 {
     //  Watch for future connections
