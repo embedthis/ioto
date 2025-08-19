@@ -124,9 +124,6 @@ int main(int argc, char **argv)
             trace = argv[++argind];
 
         } else if (smatch(argp, "--verbose") || smatch(argp, "-v")) {
-            if (argind + 1 >= argc) {
-                return usage();
-            }
             trace = TRACE_VERBOSE_FILTER;
             show = WEB_SHOW_REQ_HEADERS | WEB_SHOW_RESP_HEADERS;
 
