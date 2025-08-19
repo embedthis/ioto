@@ -1733,8 +1733,9 @@ PUBLIC void webUpdateDeadline(Web *web)
 PUBLIC void webBuffer(Web *web, ssize size)
 {
     if (size <= 0) {
-        size = web->host->maxBuffer;
+        size = ME_BUFSIZE;
     }
+    size = max(size, web->host->maxBuffer);
     if (web->buffer) {
         if (rGetBufSize(web->buffer) < size) {
             rGrowBuf(web->buffer, size);
