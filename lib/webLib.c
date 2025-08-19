@@ -211,8 +211,8 @@ PUBLIC int webFileHandler(Web *web)
 
 static int getFile(Web *web, cchar *path, FileInfo *info)
 {
-    char  date[32], *lpath;
-    int   fd;
+    char date[32], *lpath;
+    int  fd;
 
     if (!web->exists) {
         webHook(web, WEB_HOOK_NOT_FOUND);
@@ -850,6 +850,7 @@ static void initRoutes(WebHost *host)
             rp->validate = jsonGetBool(json, id, "validate", 0);
 
             if ((methods = jsonToString(json, id, "methods", 0)) != 0) {
+                // Trim leading and trailing brackets
                 methods[slen(methods) - 1] = '\0';
                 rp->methods = createMethodsHash(&methods[1]);
                 rFree(methods);
@@ -1204,7 +1205,7 @@ static int handleRequest(Web *web)
     }
     webUpdateDeadline(web);
 
-    if (route->validate && !validateRequest(web)) {
+    if (!validateRequest(web)) {
         return R_ERR_BAD_REQUEST;
     }
 
@@ -1251,7 +1252,9 @@ static bool validateRequest(Web *web)
     }
     if (host->signatures) {
         web->signature = jsonGetId(host->signatures, 0, path);
-        return webValidateRequest(web, path);
+        if (web->route->validate) {
+            return webValidateRequest(web, path);
+        }
     }
     return 1;
 }
@@ -1303,10 +1306,12 @@ static bool routeRequest(Web *web)
                 webRedirect(web, 302, route->redirect);
 
             } else if (route->role) {
-                if (!webAuthenticate(web) || !webCan(web, route->role)) {
-                    if (!smatch(route->role, "public")) {
-                        webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
-                        return 0;
+                if (!(tolower(web->method[0]) == 'o' && scaselessmatch(web->method, "OPTIONS"))) {
+                    if (!webAuthenticate(web) || !webCan(web, route->role)) {
+                        if (!smatch(route->role, "public")) {
+                            webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
+                            return 0;
+                        }
                     }
                 }
             }
@@ -3932,11 +3937,11 @@ PUBLIC char *webParseUrl(cchar *uri,
 }
 
 /*
-    Normalize a path to remove "./",  "../" and redundant separators. 
+    Normalize a path to remove "./",  "../" and redundant separators.
     This does not map separators nor change case. Returns an allocated path, caller must free.
 
     Security: This routine is safe because callers (webFileHandler) uses simple string
-    concatenation to join the result with the document root. 
+    concatenation to join the result with the document root.
  */
 PUBLIC char *webNormalizePath(cchar *pathArg)
 {
@@ -4239,7 +4244,7 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
                     fields: {       - If object
                         NAME: {
                             description - Field description for doc
-                            discard     - Remove from data (for response)
+                            drop        - Remove from data (for response)
                             fields      - Nested object
                             of          - If type == 'array' then nested block
                             required    - Must be present (for request)
@@ -4275,14 +4280,17 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
 
 /************************************ Locals **********************************/
 
-#define WEB_MAX_SIG_DEPTH 8             /* Maximum depth of signature validation */
+#define WEB_MAX_SIG_DEPTH 8  /* Maximum depth of signature validation */
 
 /************************************ Forwards *********************************/
 
-static void dropField(Web *web, cchar *tag, Json *json, int jid, cchar *name);
-static cchar *getType(Web *web, JsonNode *signature);
+static cchar *getType(Web *web, int sid);
 static int parseUrl(Web *web);
 static bool valError(Web *web, Json *json, cchar *fmt, ...);
+static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag);
+static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag);
+static bool validatePrimitive(Web *web, cchar *data, int sid, cchar *tag);
+static bool validateProperty(Web *web, RBuf *buf, Json *json, int jid, int sid, cchar *tag);
 
 /************************************* Code ***********************************/
 /*
@@ -4377,10 +4385,10 @@ PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *data, JsonNode
 
 /*
     Check a JSON payload against the API signature. This evaluates the json properties starting at the "jid" node.
-    It will recurse as required over arrays and objects. If fields are to be dropped in a "response", the json is
-    cloned into web->validatedJson and the field is removed there. Return true if the request is valid. If invalid,
-    we return 0 and the connection is closed after the error response is written.
-    The signature may be:
+    If buf is provided, it will be used to store the validated JSON. If fields are "dropped" they will not be
+    added to the buf. The routine will recurse as required over arrays and objects.
+    Returns true if the payload is valid. If invalid, we return 0 and a response is written.
+
     Signature BLOCKS are of the form: {
         type: 'null', 'string', 'number', 'boolean', 'object', 'array'
         fields: {},
