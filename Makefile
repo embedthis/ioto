@@ -121,12 +121,13 @@ config-esp32:
 clean clobber:
 	@echo '       [Run] $@'
 	@$(MAKE) -f $(PROJECT) TOP=$(TOP) APP=$(APP) $@
-	@$(MAKE) -C apps/$(APP) SHOW=$(SHOW) BASE=$(BASE) TOP=$(TOP) clean
 	rm -f $(DB)/*.jnl $(DB)/*.db 
 	rm -f $(CONFIG)/db.json5 $(CONFIG)/display.json5 $(CONFIG)/local.json5
 	rm -f $(CONFIG)/signature.json5 $(CONFIG)/web.json5 $(CONFIG)/schema.json5
 	rm -fr ./build ./state
-	@echo '      [Info] $@ complete'
+	if [ -d apps/$(APP) ] ; then \
+		$(MAKE) -C apps/$(APP) SHOW=$(SHOW) BASE=$(BASE) TOP=$(TOP) clean ; \
+	fi
 
 install installBinary uninstall:
 	@echo '       [Run] $@'
@@ -134,7 +135,7 @@ install installBinary uninstall:
 
 info:
 	@if [ "$(APP)" != 'blank' ] ; then \
-		echo "      [Info] Run via: \"make run\". Run manually with \"$(BUILD)/bin\" in your path." ; \
+		echo "      [Info] Run via: \"make run\". Run \"ioto\" manually with \"$(BUILD)/bin\" in your path." ; \
 		echo "" ; \
 	fi
 
