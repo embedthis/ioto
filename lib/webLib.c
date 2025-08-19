@@ -734,7 +734,7 @@ static RHash *createMethodsHash(cchar *list)
     methods = sclone(list);
     hash = rAllocHash(0, R_TEMPORAL_NAME);
     for (method = stok(methods, " \t,", &tok); method; method = stok(NULL, " \t,", &tok)) {
-        method = strim(method, "\"", R_TRIM_BOTH);
+        method = strim(method, "'\"", R_TRIM_BOTH);
         rAddName(hash, method, "true", 0);
     }
     rFree(methods);
