@@ -143,6 +143,9 @@ static Cron *cronAlloc(cchar *spec)
     char *buf, *rest;
     int  mth;
 
+    if (spec == NULL || *spec == '\0') {
+        spec = "* * * * *";
+    }
     cp = rAllocType(Cron);
 
     /*
@@ -196,7 +199,7 @@ static void cronFree(Cron *cs)
 }
 
 /*
-    Return the time to wait till the next valid time to run a cron entry.
+    Return the time in ticks to wait till the next valid time to run a cron entry.
  */
 Ticks cronUntil(cchar *spec, Time when)
 {
@@ -216,6 +219,9 @@ Ticks cronUntil(cchar *spec, Time when)
     }
 
     now = rGetTime() / TPS;
+    if (when == 0) {
+        when = now * TPS;
+    }
     t = (time_t) when / TPS;
     tm = localtime(&t);
 
