@@ -325,10 +325,10 @@ PUBLIC char *ioGet(cchar *key);
     Get a boolean value from the Ioto cloud key/value Store
     @description This call retrieves a value from the Ioto cloud key/value store for this device.
     @param key String key value to assign a value in the store.
-    @return value Key's string value. Caller must free.
+    @return value Key's boolean value.
     @stability Evolving
  */
-PUBLIC char *ioGet(cchar *key);
+PUBLIC bool ioGetBool(cchar *key);
 
 /**
     Get a numeric value from the Ioto cloud key/value Store
@@ -360,6 +360,26 @@ PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue);
  */
 PUBLIC int ioGetConfigInt(cchar *key, int defaultValue);
 
+/**
+    Get a metric value in the Ioto cloud
+    @description This call retrieves a metric in the Ioto cloud for this device.
+    @param metric String Metric name to define in the Embedthis/Device namespace.
+    @param dimensions JSON array of dimensions as a string. Each element is an object that defines
+        the properties of that dimension. The empty object {} denotes All.
+    @param statistic Set to avg, min, max, count or current
+    @param period Number of seconds for the statistic period.
+    @returns The metric value or NAN if it cannot be found.
+    @stability Evolving
+ */
+PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, int period);
+
+/**
+    Check if the device is connected to the cloud
+    @return true if connected, false otherwise
+    @stability Evolving
+ */
+PUBLIC bool ioConnected(void);
+
 /*
     Run function when connected to the cloud
     @description This call the supplied function immediately if already connected. Otherwise,
@@ -380,6 +400,49 @@ PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct);
     @stability Evolving
  */
 PUBLIC void ioOnConnectOff(RWatchProc fn, void *arg);
+
+/**
+    Set a string value in the Ioto cloud key/value Store
+    @description This call defines a value in the Ioto cloud key/value store for this device.
+    Uses db sync if available, otherwise uses MQTT.
+    @param key String key value to assign a value in the store.
+    @param value Value to assign to the key
+    @stability Evolving
+ */
+PUBLIC void ioSet(cchar *key, cchar *value);
+
+/**
+    Set a boolean value in the Ioto cloud key/value Store
+    @description This call defines a boolean value in the Ioto cloud key/value store for this device.
+    Uses db sync if available, otherwise uses MQTT.
+    @param key String key value to assign a value in the store.
+    @param value Value to assign to the key
+    @stability Evolving
+ */
+PUBLIC void ioSetBool(cchar *key, bool value);
+
+/**
+    Set a metric value in the Ioto cloud
+    @description This call defines a metric in the Ioto cloud for this device.
+    @param metric String Metric name to define in the Embedthis/Device namespace.
+    @param value Double Metric value.
+    @param dimensions JSON array of dimensions as a string. Each element is an object that defines
+        the properties of that dimension. The empty object {} denotes no dimensions.
+    @param elapsed Number of seconds to buffer metric updates in the cloud before committing to the database. This is an
+       optimization. Set to zero for no buffering.
+    @stability Evolving
+ */
+PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
+
+/**
+    Set a numeric value in the Ioto cloud key/value Store
+    @description This call defines a numeric value in the Ioto cloud key/value store for this device.
+    Uses db sync if available, otherwise uses MQTT.
+    @param key String key value to assign a value in the store.
+    @param value Double value to assign to the key
+    @stability Evolving
+ */
+PUBLIC void ioSetNum(cchar *key, double value);
 
 /**
     Schedule a cloud connection based on the mqtt.schedule
@@ -448,6 +511,16 @@ PUBLIC void ioSyncDown(Time timestamp);
 PUBLIC void ioSync(Time when, bool guarantee);
 #endif
 
+/**
+    Upload a file to the device cloud.
+    @param path Path to the file to upload.
+    @param buf Buffer containing the file data.
+    @param len Length of the file data.
+    @return 0 on success, -1 on failure
+    @stability Evolving
+ */
+PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len);
+
 #if SERVICES_DATABASE
 /**
     Restart the database
@@ -462,6 +535,31 @@ PUBLIC void ioRestartDb(void);
     @stability Evolving
  */
 PUBLIC void ioRestartWeb(void);
+#endif
+#if SERVICES_SHADOW
+/**
+    Get a value from the shadow state.
+    @param key Property key value. May contain dots.
+    @param defaultValue Default value to return if the key is not found
+    @return Returns an allocated string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *ioGetShadow(cchar *key, cchar *defaultValue);
+
+/**
+    Set a key value in the shadow
+    @param key Property key value. May contain dots.
+    @param value Value to set.
+    @param save Set to true to persist immediately.
+    @stability Evolving
+ */
+PUBLIC void ioSetShadow(cchar *key, cchar *value, bool save);
+
+/**
+    Save the shadow state immediately.
+    @stability Evolving
+ */
+PUBLIC void ioSaveShadow(void);
 #endif
 
 /********************************* MQTT Extensions *****************************/
@@ -528,7 +626,7 @@ PUBLIC ssize webWriteItems(Web *web, RList *items);
     @return The number of bytes written.
     @stability Deprecated
  */
-PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item);
+PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item, cchar *sigKey);
 
 /**
     Write a grid of database items as a response.
@@ -539,31 +637,7 @@ PUBLIC ssize webWriteValidatedItem(Web *web, const DbItem *item);
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC ssize webWriteValidatedItems(Web *web, RList *items);
-
-#if DEPRECATED && 0
-/**
-    Write a database item as the whole response and validate against the web signature.
-    @description This routine serialize a database item into JSON and validates the item fields
-        against the web signature if defined. It will call webFinalize.
-    @param web Web object
-    @param item Database item
-    @return The number of bytes written.
-    @stability Deprecated
- */
-PUBLIC ssize webWriteItemResponse(Web *web, const DbItem *item);
-
-/**
-    Write a grid of database items as the whole response and validate against the web signature.
-    @description This routine serializes a database grid into JSON and write it as a response.
-        This will call webFinalize.
-    @param web Web object
-    @param items Grid of database items
-    @return The number of bytes written.
-    @stability Evolving
- */
-PUBLIC ssize webWriteItemsResponse(Web *web, RList *items);
-#endif
+PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey);
 
 /**
     Login action routine
@@ -596,7 +670,6 @@ PUBLIC void webLogoutUser(Web *web);
 #define IO_LOG_MAX_SIZE   32767                     /**< Max size of log events to buffer */
 #define IO_LOG_LINGER     5000                      /**< Delay before flushing log events to the cloud */
 #define IO_SAVE_DELAY     5000                      /**< Delay before saving updated shadow state */
-
 
 /************************************* AI **************************************/
 /**
@@ -787,7 +860,6 @@ PUBLIC Ticks cronUntil(cchar *spec, Time when);
 #define IOTO_PROD    0          /**< Configure trace for production (minimal) */
 #define IOTO_VERBOSE 1          /**< Configure trace for development with verbose output */
 #define IOTO_DEBUG   2          /**< Configure debug trace for development with very verbose output */
-
 
 /**
     Initialize the Ioto runtime

@@ -405,7 +405,7 @@ typedef struct Web {
     cchar *username;            /**< Username */
     cchar *role;                /**< Authorized role */
     int roleId;                 /**< Index into roles for the authorized role */
-    int signature;              /**< Index into signature definition for this request */
+    int signature;              /**< Index into host->signatures for this request */
     int64 reuse;                /**< Keep-alive reuse counter */
     int64 conn;                 /**< Web connection sequence */
 
@@ -717,54 +717,52 @@ PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
     @param web Web object
     @param path JSON property path into the signatures.json5 file.
     @return True if the request is valid. Otherwise, return false and generate an error response to the client..
-    @stability Evolving
+    @stability Internal
  */
 PUBLIC bool webValidateRequest(Web *web, cchar *path);
-
-/**
-    Validate a JSON object against the API signature.
-    @param web Web object
-    @param json JSON object
-    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
-    @stability Evolving
- */
-PUBLIC bool webValidateJson(Web *web, const Json *json);
-
-/**
-    Validate a data buffer against the API signature.
-    @param web Web object
-    @param buf Data buffer
-    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
-    @stability Evolving
- */
-PUBLIC bool webValidateData(Web *web, cchar *buf);
 
 /**
     Low level routine to validate a string body against a signature
     @description Use this routine to validate request and response bodies if you cannot use the
         integrated validation or webValidateRequestBody.
     @param web Web object
+    @param buf Optional buffer to store the validated data.
+    @param data Request body data
+    @param sigKey Signature key to validate against. Set to NULL for the standard response signature.
     @param tag Tag name for the request body. Set to "request", "response" or "query".
-    @param body Request body data
-    @param signature Signature to validate against
     @return True if the request is valid. Otherwise, return false and generate an error response to the client.
     @stability Evolving
  */
-PUBLIC bool webValidateDataSignature(Web *web, cchar *tag, cchar *body, JsonNode *signature);
+PUBLIC bool webValidateData(Web *web, RBuf *buf, cchar *data, cchar *sigKey, cchar *tag);
 
 /**
-    Low level routine to validate a JSON body against a signature
+    Validate a JSON object against the API signature.
     @description Use this routine to validate request and response bodies if you cannot use the
+        integrated validation or webValidateRequestBody.
     @param web Web object
+    @param buf Optional buffer to store the validated JSON.
+    @param cjson JSON object
+    @param jid Base JSON node ID from which to convert. Set to zero for the top level. If NULL, the top level is used.
+    @param sigKey Signature key to validate against. Set to NULL for the standard response signature.
     @param tag Tag name for the request body. Set to "request", "response" or "query".
-    @param json JSON object
-    @param jid Base JSON node ID from which to convert. Set to zero for the top level.
-    @param signature Signature to validate against
-    @param depth Depth of the JSON object
     @return True if the request is valid. Otherwise, return false and generate an error response to the client.
     @stability Evolving
  */
-PUBLIC bool webValidateJsonSignature(Web *web, cchar *tag, const Json *json, int jid, JsonNode *signature, int depth);
+PUBLIC bool webValidateJson(Web *web, RBuf *buf, const Json *cjson, int jid, cchar *sigKey, cchar *tag);
+
+/**
+    Low level validate a JSON object against a signature using a signature specified by a signature ID.
+    @param web Web object
+    @param buf Optional buffer to store the validated JSON.
+    @param cjson JSON object
+    @param jid Base JSON node ID from which to convert. Set to zero for the top level. If NULL, the top level is used.
+    @param sid Signature ID to validate against.
+    @param depth Depth of the JSON object.
+    @param tag Tag name for the request body. Set to "request", "response" or "query".
+    @return True if the request is valid. Otherwise, return false and generate an error response to the client.
+    @stability Evolving
+ */
+PUBLIC bool webValidateSignature(Web *web, RBuf *buf, const Json *cjson, int jid, int sid, int depth, cchar *tag);
 
 /**
     Write response data
@@ -845,25 +843,26 @@ PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...);
 
 /**
     Write response data from a JSON object and validate against the API signature
-    @description This routine only removes discard fields and does not validate response data types.
     This routine will block the current fiber if necessary. Other fibers continue to run.
     @pre Must only be called from a fiber.
     @param web Web object
     @param json JSON object
+    @param sigKey Signature key to validate against. Set to NULL for the standard response signature.
     @return The number of bytes written, or -1 for errors.
     @stability Evolving
  */
-PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json);
+PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json, cchar *sigKey);
 
 /**
     Write a buffer with a validated signature
     @pre Must only be called from a fiber.
     @param web Web object
     @param buf Buffer of data to write.
+    @param sigKey Signature key to validate against. Set to NULL for the standard response signature.
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC ssize webWriteValidatedData(Web *web, cchar *buf);
+PUBLIC ssize webWriteValidatedData(Web *web, cchar *buf, cchar *sigKey);
 
 /*
     Internal APIs
