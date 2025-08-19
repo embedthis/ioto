@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 2.7.1
+VERSION               := 3.0.0
 PROFILE               ?= default
 ARCH                  ?= $(shell echo $(WIND_HOST_TYPE) | sed 's/-.*$(ME_ROOT_PREFIX)/')
 CPU                   ?= $(subst X86,PENTIUM,$(shell echo $(ARCH) | tr a-z A-Z))
@@ -87,7 +87,7 @@ endif
 ME_APP                ?= \"demo\"
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_COMPANY            ?= \"embedthis\"
-ME_COMPATIBLE         ?= \"2.7\"
+ME_COMPATIBLE         ?= \"3.0\"
 ME_COMPILER_HAS_ATOMIC ?= 0
 ME_COMPILER_HAS_ATOMIC64 ?= 0
 ME_COMPILER_HAS_DOUBLE_BRACES ?= 0
@@ -120,7 +120,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"2.7.1\"
+ME_VERSION            ?= \"3.0.0\"
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 

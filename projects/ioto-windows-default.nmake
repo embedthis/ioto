@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 2.7.1
+VERSION               = 3.0.0
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -191,7 +191,7 @@ ME_AUTHOR             = \"Embedthis Software.\"
 ME_COMPANY            = \"embedthis\"
 !ENDIF
 !IF "$(ME_COMPATIBLE)" == ""
-ME_COMPATIBLE         = \"2.7\"
+ME_COMPATIBLE         = \"3.0\"
 !ENDIF
 !IF "$(ME_COMPILER_HAS_ATOMIC)" == ""
 ME_COMPILER_HAS_ATOMIC = 0
@@ -275,7 +275,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IF "$(ME_VERSION)" == ""
-ME_VERSION            = \"2.7.1\"
+ME_VERSION            = \"3.0.0\"
 !ENDIF
 !IF "$(ME_WEB_GROUP)" == ""
 ME_WEB_GROUP          = \"$(WEB_GROUP)\"

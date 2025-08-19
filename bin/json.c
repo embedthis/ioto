@@ -17,8 +17,9 @@
     json .              # convert formats
 
     Options:
-    --blend | --check | --compress | --default | --env | --export | --header |
-    --js | --json | --json5 | --profile name | --remove | --stdin
+    --blend | --bump | --check | --default | --double | --encode | --env | --expand | --export |
+    --header | --indent | --js | --json | --json5 | --length | --one | --profile name |
+    --overwrite |--remove | --stdin | --strict | --trace | --verbose | --version
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -52,37 +53,44 @@
 #define JSON_CMD_CONVERT     2
 #define JSON_CMD_QUERY       3
 #define JSON_CMD_REMOVE      4
+#define JSON_CMD_BUMP        5
 
 static cchar *defaultValue;
+static char  *bump;
 static Json  *json;
 static char  *path;
 static cchar *profile;
 static char  *property;
-static cchar *trace;                   /* Trace spec */
+static cchar *trace;                   // Trace spec
 
-static int blend;
-static int check;
-static int cmd;
-static int compress;
-static int export;
-static int format;
-static int newline;
-static int overwrite;
-static int noerror;
-static int quiet;
-static int stdinput;
-static int strict;
+static int blend = 0;
+static int check = 0;
+static int cmd = 0;
+static int compact = 0;     // Compact output format
+static int encode = 0;
+static int expand = 0;
+static int export = 0;
+static int format = JSON_MAX_LINE_LENGTH;
+static int multiline = 1;
+static int newline = 1;     // Add a trailing newline to the output
+static int noerror = 0;
+static int overwrite = 0;
+static int quiet = 0;
+static int quotes = 0;      // 1 = single quotes, 2 = double quotes, 0 = use default
+static int stdinput = 0;
+static int strict = 0;      // Strict JSON parsing
 
 /***************************** Forward Declarations ***************************/
 
 static int blendFiles(Json *json);
+static int bumpVersion(Json *json, cchar *property);
 static int mergeConditionals(Json *json, cchar *property);
 static void cleanup(void);
 static int error(cchar *fmt, ...);
 static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
-static void outputAll(Json *json);
+static void outputAll(Json *json, int flags);
 static void outputNameValue(Json *json, JsonNode *parent, char *base);
 static char *readInput();
 static int run();
@@ -94,22 +102,30 @@ static int usage(void)
     rFprintf(stderr, "usage: json [options] [cmd] [file | <file]\n"
              "  Options:\n"
              "  --blend          # Blend included files from blend[].\n"
+             "  --bump property  # Bump version property.\n"
              "  --check          # Check syntax with no output.\n"
-             "  --compress       # Emit without redundant white space.\n"
+             "  --compact        # Emit with minimal whitespace.\n"
              "  --default value  # Default value to use if query not found.\n"
+             "  --double         # Use double quotes (default with JSON and JS).\n"
+             "  --encode         # Encode control characters.\n"
              "  --env            # Emit query result as shell env vars.\n"
+             "  --expand         # Expand ${var} references in output.\n"
              "  --export         # Add 'export' prefix to shell env vars.\n"
              "  --header         # Emit query result as C header defines.\n"
+             "  --indent num     # Set indent level for compacted output.\n"
              "  --js             # Emit output in JS form (export {}).\n"
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
+             "  --length num     # Set line length limit for compacted output.\n"
              "  --noerror        # Ignore errors.\n"
+             "  --one            # Emit on one line.\n"
+             "  --overwrite      # Overwrite file when converting instead of stdout.\n"
              "  --profile name   # Merge the properties from the named profile.\n"
              "  --quiet          # Quiet mode with no error messages.\n"
+             "  --remove         # Remove queried property.\n"
+             "  --single         # Use single quotes (default with JSON5).\n"
              "  --stdin          # Read from stdin.\n"
              "  --strict         # Enforce strict JSON format.\n"
-             "  --remove         # Remove queried property.\n"
-             "  --overwrite      # Overwrite file when converting instead of stdout.\n"
              "\n"
              "  Commands:\n"
              "  property=value   # Set queried property.\n"
@@ -166,12 +182,19 @@ static int parseArgs(int argc, char **argv)
         if (smatch(argp, "--blend")) {
             blend = 1;
 
+        } else if (smatch(argp, "--bump")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                bump = argv[++nextArg];
+            }
+
         } else if (smatch(argp, "--check")) {
             check = 1;
             cmd = JSON_CMD_QUERY;
 
-        } else if (smatch(argp, "--compress")) {
-            compress = 1;
+        } else if (smatch(argp, "--compact") || smatch(argp, "-c")) {
+            compact = 1;
 
         } else if (smatch(argp, "--debug") || smatch(argp, "-d")) {
             trace = TRACE_DEBUG_FILTER;
@@ -183,6 +206,15 @@ static int parseArgs(int argc, char **argv)
                 defaultValue = argv[++nextArg];
             }
 
+        } else if (smatch(argp, "--double")) {
+            quotes = 2;
+
+        } else if (smatch(argp, "--expand")) {
+            expand = 1;
+
+        } else if (smatch(argp, "--encode")) {
+            encode = 1;
+
         } else if (smatch(argp, "--env")) {
             format = JSON_FORMAT_ENV;
 
@@ -191,6 +223,13 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--header")) {
             format = JSON_FORMAT_HEADER;
+
+        } else if (smatch(argp, "--indent")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                jsonSetIndent(atoi(argv[++nextArg]));
+            }
 
         } else if (smatch(argp, "--js")) {
             format = JSON_FORMAT_JS;
@@ -204,7 +243,17 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "--noerror") || smatch(argp, "-n")) {
             noerror = 1;
 
-        } else if (smatch(argp, "--overwrite")) {
+        } else if (smatch(argp, "--length")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                jsonSetMaxLength(atoi(argv[++nextArg]));
+            }
+
+        } else if (smatch(argp, "--one")) {
+            multiline = 0;
+
+        } else if (smatch(argp, "--overwrite") || smatch(argp, "-o")) {
             overwrite = 1;
 
         } else if (smatch(argp, "--profile")) {
@@ -219,6 +268,9 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--remove")) {
             cmd = JSON_CMD_REMOVE;
+
+        } else if (smatch(argp, "--single")) {
+            quotes = 1;
 
         } else if (smatch(argp, "--stdin")) {
             stdinput = 1;
@@ -248,7 +300,9 @@ static int parseArgs(int argc, char **argv)
             return usage();
         }
     }
-    if (argc == nextArg) {
+    if (bump) {
+        cmd = JSON_CMD_BUMP;
+    } else if (argc == nextArg) {
         //  No args
         cmd = JSON_CMD_CONVERT;
         stdinput = 1;
@@ -316,7 +370,10 @@ static int run()
     }
     flags = 0;
     if (strict) {
-        flags |= JSON_STRICT;
+        if (!multiline) {
+            error("Cannot use --one with --strict mode");
+        }
+        flags |= JSON_STRICT_PARSE | JSON_JSON;
     }
     json = jsonParseKeep(data, flags);
     if (json == 0) {
@@ -333,15 +390,36 @@ static int run()
             return R_ERR_CANT_READ;
         }
     }
-    flags = 0;
-    if (compress) {
-        flags |= JSON_SINGLE;
-    } else {
-        flags |= JSON_PRETTY;
-        if (format == JSON_FORMAT_JSON) {
-            flags |= JSON_QUOTES;
-        }
+    /*
+        Set the output flags
+     */
+    if (format == JSON_FORMAT_JSON || strict) {
+        flags |= JSON_JSON;
+    } else if (format == JSON_FORMAT_JSON5) {
+        flags |= JSON_JSON5;
+    } else if (format == JSON_FORMAT_JS) {
+        flags |= JSON_JS;
     }
+    if (compact) {
+        flags |= JSON_COMPACT;
+    }
+    if (encode) {
+        flags |= JSON_ENCODE;
+    }
+    if (expand) {
+        flags |= JSON_EXPAND;
+    }
+    if (multiline) {
+        flags |= JSON_MULTILINE;
+    }
+    if (quotes == 1) {
+        flags &= ~JSON_DOUBLE_QUOTES;
+        flags |= JSON_SINGLE_QUOTES;
+    } else if (quotes == 2) {
+        flags &= ~JSON_SINGLE_QUOTES;
+        flags |= JSON_DOUBLE_QUOTES;
+    }
+
     if (cmd == JSON_CMD_ASSIGN) {
         stok(property, "=", &value);
         if (jsonSet(json, 0, property, value, 0) < 0) {
@@ -349,6 +427,17 @@ static int run()
         }
         if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
             return error("Cannot save \"%s\"", path);
+        }
+    } else if (cmd == JSON_CMD_BUMP) {
+        if (bumpVersion(json, bump) < 0) {
+            return error("Cannot bump property \"%s\"", bump);
+        }
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
 
     } else if (cmd == JSON_CMD_REMOVE) {
@@ -374,8 +463,33 @@ static int run()
                 return error("Cannot save \"%s\"", path);
             }
         } else if (!check) {
-            outputAll(json);
+            outputAll(json, flags);
         }
+    }
+    return 0;
+}
+
+static int bumpVersion(Json *json, cchar *property)
+{
+    cchar *dot, *version;
+    char  vbuf[80], *vp;
+    int   num;
+
+    version = jsonGet(json, 0, property, 0);
+    if (!version) {
+        return R_ERR_BAD_ARGS;
+    }
+    if ((dot = strrchr(version, '.')) != NULL) {
+        sncopy(vbuf, sizeof(vbuf), version, dot - version);
+        num = (int) stoi(dot + 1) + 1;
+        vp = sfmt("%s.%d", vbuf, num);
+        jsonSet(json, 0, property, vp, 0);
+        rFree(vp);
+
+    } else if (sfnumber(version)) {
+        jsonSetNumber(json, 0, property, stoi(version) + 1);
+    } else {
+        return R_ERR_BAD_ARGS;
     }
     return 0;
 }
@@ -401,7 +515,11 @@ static int blendFiles(Json *json)
     for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
         if (path && *path) {
             dir = (char*) rDirname(sclone(path));
-            file = sjoin(dir, "/", item->value, NULL);
+            if (dir && *dir) {
+                file = sjoin(dir, "/", item->value, NULL);
+            } else {
+                file = sclone(item->value);
+            }
             rFree(dir);
         } else {
             file = sclone(item->value);
@@ -520,23 +638,21 @@ static char *readInput()
     return buf;
 }
 
-static void outputAll(Json *json)
+static void outputAll(Json *json, int flags)
 {
     JsonNode *child, *node;
     char     *name, *output, *property;
-    int      flags;
 
     if (format == JSON_FORMAT_JSON) {
-        flags = compress ? JSON_SINGLE : JSON_QUOTES | JSON_PRETTY;
         output = jsonToString(json, 0, 0, flags);
         rPrintf("%s", output);
         rFree(output);
 
     } else if (format == JSON_FORMAT_JS) {
-        rPrintf("export default %s\n", jsonString(json, JSON_PRETTY));
+        rPrintf("export default %s\n", jsonString(json, flags));
 
     } else if (format == JSON_FORMAT_JSON5) {
-        rPrintf("%s\n", jsonString(json, JSON_PRETTY));
+        rPrintf("%s\n", jsonString(json, flags));
 
     } else if (format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
         name = "";
@@ -547,7 +663,7 @@ static void outputAll(Json *json)
                     outputNameValue(json, child, property);
                     rFree(property);
                 }
-                return;
+                break;
             } else {
                 outputNameValue(json, node, node->name);
             }
@@ -707,29 +823,35 @@ static int error(cchar *fmt, ...)
 
 #define JSON_TMP                     ".tmp.json"
 
+static int maxLength = JSON_MAX_LINE_LENGTH;
+static int indentLevel = JSON_DEFAULT_INDENT;
+
 /********************************** Forwards **********************************/
 
 static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value);
 static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth);
+static void compactProperties(RBuf *buf, char *sol, int indent);
 static char *copyProperty(Json *json, cchar *key);
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags);
 static void freeNode(JsonNode *node);
 static bool isfnumber(cchar *s, ssize len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
+static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf);
 static int parseJson(Json *json, char *text, int flags);
+static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent);
 static int sleuthValueType(cchar *value, ssize len);
 static void spaces(RBuf *buf, int count);
 
 /************************************* Code ***********************************/
 
-PUBLIC Json *jsonAlloc(int flags)
+PUBLIC Json *jsonAlloc(void)
 {
     Json *json;
 
     json = rAllocType(Json);
-    json->flags = flags;
     json->lineNumber = 1;
-    json->strict = (flags & JSON_STRICT) ? 1 : 0;
+    json->lock = 0;
     json->size = ME_JSON_INC;
     json->nodes = rAlloc(sizeof(JsonNode) * json->size);
     return json;
@@ -1000,12 +1122,22 @@ static int removeNodes(Json *json, int nid, int num)
 
 PUBLIC void jsonLock(Json *json)
 {
-    json->flags |= JSON_LOCK;
+    json->lock = 1;
 }
 
 PUBLIC void jsonUnlock(Json *json)
 {
-    json->flags &= ~JSON_LOCK;
+    json->lock = 0;
+}
+
+PUBLIC void jsonSetUserFlags(Json *json, int flags)
+{
+    json->userFlags = flags;
+}
+
+PUBLIC int jsonGetUserFlags(Json *json)
+{
+    return json->userFlags;
 }
 
 /*
@@ -1017,7 +1149,7 @@ PUBLIC Json *jsonParse(cchar *ctext, int flags)
     Json *json;
     char *text;
 
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     text = sclone(ctext);
     if (parseJson(json, text, flags) < 0) {
         if (json->errorMsg && !rEmitLog("json", "trace")) {
@@ -1032,14 +1164,14 @@ PUBLIC Json *jsonParse(cchar *ctext, int flags)
 /**
     Parse a json string into a json object and assume ownership of the supplied text memory.
     The caller must not free the text which will be freed by this function.
-    Use this method if you are sure the supplied JSON text is valid or do not 
+    Use this method if you are sure the supplied JSON text is valid or do not
     need to receive diagnostics of parse failures other than the return value.
  */
 PUBLIC Json *jsonParseKeep(char *text, int flags)
 {
     Json *json;
 
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     if (parseJson(json, text, flags) < 0) {
         if (json->errorMsg && !rEmitLog("json", "trace")) {
             rError("json", "%s", json->errorMsg);
@@ -1077,7 +1209,7 @@ PUBLIC char *jsonConvert(cchar *fmt, ...)
     buf = sfmtv(fmt, ap);
     json = jsonParseKeep(buf, 0);
     va_end(ap);
-    msg = jsonToString(json, 0, 0, JSON_STRICT);
+    msg = jsonToString(json, 0, 0, JSON_JSON);
     jsonFree(json);
     return msg;
 }
@@ -1096,7 +1228,7 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
     va_end(ap);
 
     json = jsonParse(buf, 0);
-    msg = jsonToString(json, 0, 0, JSON_STRICT);
+    msg = jsonToString(json, 0, 0, JSON_JSON);
     sncopy(buf, size, msg, slen(msg));
     rFree(msg);
     jsonFree(json);
@@ -1114,7 +1246,7 @@ PUBLIC Json *jsonParseString(cchar *atext, char **errorMsg, int flags)
     if (errorMsg) {
         *errorMsg = 0;
     }
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     text = sclone(atext);
 
     if (parseJson(json, text, flags) < 0) {
@@ -1148,7 +1280,7 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
         }
         return 0;
     }
-    json = jsonAlloc(flags);
+    json = jsonAlloc();
     if (path) {
         json->path = sclone(path);
     }
@@ -1166,12 +1298,11 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
 /*
     Save the JSON tree to a file.
     The tree rooted at the node specified by "nid/key" is saved.
-    Flags can be JSON_PRETTY for a human readable format.
  */
 PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int flags)
 {
-    char *text, *tmp;
-    int  fd;
+    char  *text, *tmp;
+    int   fd;
     ssize len;
 
     assert(json);
@@ -1511,8 +1642,8 @@ static int parseJson(Json *json, char *text, int flags)
 
         case '\'':
         case '`':
-            if (flags & JSON_STRICT) {
-                return jerror(json, "Single quotes are not allowed in strict mode");
+            if (flags & JSON_STRICT_PARSE) {
+                return jerror(json, "Single quotes are not allowed in JSON strict mode");
             }
             type = JSON_STRING;
             value = json->next + 1;
@@ -1527,7 +1658,7 @@ static int parseJson(Json *json, char *text, int flags)
             }
             type = sleuthValueType(value, json->next - value + 1);
             if (type != JSON_PRIMITIVE) {
-                if (level == 0 || (flags & JSON_STRICT)) {
+                if (level == 0 || (flags & JSON_STRICT_PARSE)) {
                     return jerror(json, "Invalid primitive token");
                 }
             }
@@ -1788,7 +1919,7 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 static char *copyProperty(Json *json, cchar *key)
 {
     ssize len;
-    void *p;
+    void  *p;
 
     len = slen(key) + 1;
     if (len > json->propertyLength) {
@@ -1811,6 +1942,9 @@ PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key)
 {
     assert(json);
 
+    if (!json || nid < 0) {
+        return NULL;
+    }
     if ((nid = jsonGetId(json, nid, key)) < 0) {
         return 0;
     }
@@ -1837,7 +1971,7 @@ PUBLIC int jsonGetId(const Json *json, int nid, cchar *key)
         return R_ERR_CANT_FIND;
     }
     if (key && *key) {
-        if ((nid = jquery((Json*)json, nid, key, 0, 0)) < 0) {
+        if ((nid = jquery((Json*) json, nid, key, 0, 0)) < 0) {
             return R_ERR_CANT_FIND;
         }
     }
@@ -1973,7 +2107,7 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
     }
     assert((0 <= nid && nid < json->count) || json->count == 0);
 
-    if (json->flags & JSON_LOCK) {
+    if (json->lock) {
         return jerror(json, "Cannot set value in a locked JSON object");
     }
     if (type <= 0 && value) {
@@ -2105,39 +2239,52 @@ PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 /*
     Convert a JSON value to a string and add to the given buffer.
  */
-PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags)
+static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent)
 {
     cchar *cp;
-    int   quotes;
+    char  *end;
+    int   bareFlags, encode, quotes, quoteKeys;
 
     assert(buf);
-
+    if (!buf) {
+        return;
+    }
     if (!value) {
         rPutStringToBuf(buf, "null");
         return;
     }
-    quotes = 0;
-    if (!(flags & JSON_BARE)) {
-        if ((flags & JSON_KEY) && value && *value) {
-            quotes = flags & (JSON_QUOTES | JSON_STRICT);
-            if (!quotes) {
-                for (cp = value; *cp; cp++) {
-                    if (!isalnum((uchar) * cp) && *cp != '_') {
-                        quotes++;
-                        break;
-                    }
+    quotes = flags & JSON_DOUBLE_QUOTES ? 2 : 1;
+    quoteKeys = (flags & JSON_QUOTE_KEYS) ? 1 : 0;
+    if ((flags & JSON_KEY) && value && *value) {
+        if (!quoteKeys) {
+            for (cp = value; *cp; cp++) {
+                if (!isalnum((uchar) * cp) && *cp != '_') {
+                    quoteKeys++;
+                    break;
                 }
             }
-        } else {
-            quotes = 1;
         }
+    } else {
+        quoteKeys = 1;
     }
-    if (quotes) {
-        rPutCharToBuf(buf, '\"');
+    encode = (flags & (JSON_ENCODE)) ? 1 : 0;
+
+    if (flags & JSON_BARE) {
+        quotes = 0;
+        quoteKeys = 0;
+    }
+    if (quoteKeys) {
+        rPutCharToBuf(buf, quotes == 1 ? '\'' : '\"');
     }
     if (value) {
         for (cp = value; *cp; cp++) {
-            if (*cp == '\"' || *cp == '\\') {
+            if (*cp == '\\') {
+                rPutCharToBuf(buf, '\\');
+                rPutCharToBuf(buf, *cp);
+            } else if (*cp == '"' && quotes == 2) {
+                rPutCharToBuf(buf, '\\');
+                rPutCharToBuf(buf, *cp);
+            } else if (*cp == '\'' && quotes == 1) {
                 rPutCharToBuf(buf, '\\');
                 rPutCharToBuf(buf, *cp);
             } else if (*cp == '\b') {
@@ -2145,39 +2292,71 @@ PUBLIC void jsonToBuf(RBuf *buf, cchar *value, int flags)
             } else if (*cp == '\f') {
                 rPutStringToBuf(buf, "\\f");
             } else if (*cp == '\n') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\n");
                 } else {
                     rPutCharToBuf(buf, '\n');
                 }
             } else if (*cp == '\r') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\r");
                 } else {
                     rPutCharToBuf(buf, '\r');
                 }
             } else if (*cp == '\t') {
-                if (flags & (JSON_SINGLE | JSON_STRICT)) {
+                if (encode) {
                     rPutStringToBuf(buf, "\\t");
                 } else {
                     rPutCharToBuf(buf, '\t');
                 }
             } else if (iscntrl((uchar) * cp)) {
                 rPutToBuf(buf, "\\u%04x", *cp);
+            } else if (*cp == '$' && cp[1] == '{' && (flags & JSON_EXPAND) && json) {
+                if ((end = strchr(cp + 2, '}')) != 0) {
+                    *end = '\0';
+                    bareFlags = flags | JSON_BARE;
+                    if (expandValue(json, buf, &cp[2], indent, bareFlags)) {
+                        *end = '}';
+                        cp = end;
+                    } else {
+                        rPutCharToBuf(buf, *cp);
+                    }
+                }
             } else {
                 rPutCharToBuf(buf, *cp);
             }
         }
     }
-    if (quotes) {
-        rPutCharToBuf(buf, '\"');
+    if (quoteKeys) {
+        rPutCharToBuf(buf, quotes == 1 ? '\'' : '\"');
     }
 }
 
-static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int flags)
+// Public version without indent
+PUBLIC void jsonPutValueToBuf(RBuf *buf, cchar *value, int flags)
+{
+    putValueToBuf(NULL, buf, value, flags, 0);
+}
+
+/*
+    Expand a ${path.var} reference described by the key.
+ */
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags)
+{
+    int nid;
+
+    if ((nid = jquery((Json*) json, 0, key, 0, 0)) >= 0) {
+        return nodeToString(json, nid, indent, flags, buf);
+    }
+    return R_ERR_CANT_FIND;
+}
+
+static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf)
 {
     JsonNode *node;
-    bool     pretty;
+    char     *end, *key, *sol, *start;
+    bool     multiline;
+    int      bareFlags, eid;
 
     assert(json);
     assert(buf);
@@ -2195,7 +2374,7 @@ static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int fl
         return nid;
     }
     node = &json->nodes[nid];
-    pretty = (flags & JSON_PRETTY) ? 1 : 0;
+    multiline = (flags & JSON_MULTILINE) ? 1 : 0;
 
     if (flags & JSON_DEBUG) {
         rPutToBuf(buf, "<%d/%d> ", nid, node->last);
@@ -2211,60 +2390,136 @@ static int nodeToString(const Json *json, RBuf *buf, int nid, int indent, int fl
         nid++;
 
     } else if (node->type == JSON_STRING) {
-        jsonToBuf(buf, node->value, flags);
+        putValueToBuf(json, buf, node->value, flags, indent);
         nid++;
 
     } else if (node->type == JSON_ARRAY) {
+        start = rGetBufStart(buf);
+        sol = rGetBufEnd(buf);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '[');
         }
-        if (pretty) rPutCharToBuf(buf, '\n');
+        if (multiline) rPutCharToBuf(buf, '\n');
         for (++nid; nid < node->last; ) {
             if (json->nodes[nid].type == 0) {
                 nid++;
                 continue;
             }
-            if (pretty) spaces(buf, indent + 1);
-            nid = nodeToString(json, buf, nid, indent + 1, flags);
+            if (multiline) spaces(buf, indent + 1);
+            nid = nodeToString(json, nid, indent + 1, flags, buf);
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
             }
-            if (pretty) rPutCharToBuf(buf, '\n');
+            if (multiline) rPutCharToBuf(buf, '\n');
         }
-        if (pretty) spaces(buf, indent);
+        if (multiline) spaces(buf, indent);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, ']');
         }
+        if (flags & JSON_COMPACT) {
+            // Incase the buffer was reallocated, update the sol pointer
+            sol = rGetBufStart(buf) + (sol - start);
+            compactProperties(buf, sol, indent);
+        }
 
     } else if (node->type == JSON_OBJECT) {
+        start = rGetBufStart(buf);
+        sol = rGetBufEnd(buf);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '{');
         }
-        if (pretty) rPutCharToBuf(buf, '\n');
+        if (multiline) rPutCharToBuf(buf, '\n');
         for (++nid; nid < node->last; ) {
             if (json->nodes[nid].type == 0) {
                 nid++;
                 continue;
             }
-            if (pretty) spaces(buf, indent + 1);
-            jsonToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
-            rPutCharToBuf(buf, ':');
-            if (pretty) rPutCharToBuf(buf, ' ');
-            nid = nodeToString(json, buf, nid, indent + 1, flags);
+            if (multiline) spaces(buf, indent + 1);
+            /*
+                FUTURE: Expand key name if ${path.value} reference instead of calling jsonPutValueToBuf
+                If expanded at the key level ignore the : and value
+             */
+            key = json->nodes[nid].name;
+            eid = -1;
+            if (flags & JSON_EXPAND && *key == '$' && key[1] == '{') {
+                if ((end = strchr(key + 2, '}')) != 0) {
+                    *end = '\0';
+                    bareFlags = flags; // & ~(JSON_DOUBLE_QUOTES | JSON_SINGLE_QUOTES);
+                    if ((eid = expandValue(json, buf, &key[2], indent + 1, bareFlags)) >= 0) {
+                        nid++;
+                    }
+                    *end = '}';
+                }
+            }
+            if (eid < 0) {
+                jsonPutValueToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
+                rPutCharToBuf(buf, ':');
+                if (multiline) rPutCharToBuf(buf, ' ');
+                nid = nodeToString(json, nid, indent + 1, flags, buf);
+            }
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
             }
-            if (pretty) rPutCharToBuf(buf, '\n');
+            if (multiline) rPutCharToBuf(buf, '\n');
         }
-        if (pretty) spaces(buf, indent);
+        if (multiline) spaces(buf, indent);
         if (!(flags & JSON_BARE)) {
             rPutCharToBuf(buf, '}');
+        }
+        if (flags & JSON_COMPACT && indent > 0) {
+            // Incase the buffer was reallocated, update the sol pointer
+            sol = rGetBufStart(buf) + (sol - start);
+            compactProperties(buf, sol, indent);
         }
     } else {
         rPutStringToBuf(buf, "undefined");
         nid++;
     }
     return nid;
+}
+
+static void compactProperties(RBuf *buf, char *sol, int indent)
+{
+    char *cp, *sp, *dp;
+    int  spaces;
+
+    // Count redundant spaces to see how much the line can be shortened
+    for (spaces = 0, cp = sol; cp < buf->end; cp++) {
+        if (isspace(*cp) && isspace(*(cp + 1))) {
+            spaces++;
+        }
+    }
+    if (buf->end - sol - spaces + indent * 4 < maxLength) {
+        for (sp = dp = sol; sp < buf->end; sp++) {
+            if (isspace(*sp)) {
+                *dp++ = ' ';
+                // Eat all spaces
+                while (++sp < buf->end) {
+                    if (!isspace(*sp)) {
+                        break;
+                    }
+                }
+                sp--;
+            } else {
+                *dp++ = *sp;
+            }
+        }
+        *dp = '\0';
+        buf->end = dp;
+    }
+}
+
+
+PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags)
+{
+    assert(buf);
+    if (!buf) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!json) {
+        return 0;
+    }
+    return nodeToString(json, nid, 0, flags, buf);
 }
 
 /*
@@ -2284,18 +2539,15 @@ PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags)
         rFreeBuf(buf);
         return 0;
     }
-    if (json->strict || (flags & JSON_STRICT)) {
-        flags |= JSON_SINGLE | JSON_QUOTES;
-    }
-    nodeToString(json, buf, nid, 0, flags);
-    if (flags & JSON_PRETTY) {
+    nodeToString(json, nid, 0, flags, buf);
+    if (flags & JSON_MULTILINE) {
         rPutCharToBuf(buf, '\n');
     }
     return rBufToStringAndFree(buf);
 }
 
 /*
-    Serialize a JSON object to a string. The string is saved in json->value so the caller 
+    Serialize a JSON object to a string. The string is saved in json->value so the caller
     does not need to free the result.
  */
 PUBLIC cchar *jsonString(const Json *cjson, int flags)
@@ -2305,28 +2557,28 @@ PUBLIC cchar *jsonString(const Json *cjson, int flags)
     if (!cjson) {
         return 0;
     }
-    /* 
+    /*
         We except modifying the json->value from the const
         The downside of this exception is exceeded by the benefit of using (const Json*) elsewhere
      */
     json = (Json*) cjson;
     rFree(json->value);
     if (flags == 0) {
-        flags = JSON_PRETTY;
+        flags = JSON_HUMAN;
     }
     json->value = jsonToString(json, 0, 0, flags);
     return json->value;
 }
 
 /*
-    Print a JSON tree for debugging
+    Print a JSON tree for debugging. This is in JSON5 compact format.
  */
 PUBLIC void jsonPrint(Json *json)
 {
     char *str;
 
     if (!json) return;
-    str = jsonToString(json, 0, 0, JSON_PRETTY);
+    str = jsonToString(json, 0, 0, JSON_HUMAN);
     rPrintf("%s\n", str);
     rFree(str);
 }
@@ -2369,7 +2621,7 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
 
     //  Cast const away because ITERATE macros make this difficult
     src = (Json*) csrc;
-    if (dest->flags & JSON_LOCK) {
+    if (dest->lock) {
         return jerror(dest, "Cannot blend into a locked JSON object");
     }
     if (dest == 0) {
@@ -2386,7 +2638,7 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
     }
     if (dest == src) {
         srcData = jsonToString(src, sid, 0, 0);
-        src = tmpSrc = jsonAlloc(0);
+        src = tmpSrc = jsonAlloc();
         parseJson(tmpSrc, srcData, flags);
         rFree(srcData);
         sid = 0;
@@ -2559,7 +2811,7 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
 {
     Json *dest;
 
-    dest = jsonAlloc(flags);
+    dest = jsonAlloc();
     if (csrc) {
         jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
     }
@@ -2569,13 +2821,15 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
 
 static void spaces(RBuf *buf, int count)
 {
-    int i;
+    int i, j;
 
     assert(buf);
     assert(0 <= count);
 
     for (i = 0; i < count; i++) {
-        rPutStringToBuf(buf, "    ");
+        for (j = 0; j < indentLevel; j++) {
+            rPutCharToBuf(buf, ' ');
+        }
     }
 }
 
@@ -2586,6 +2840,16 @@ PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg)
     json->triggerArg = arg;
 }
 #endif
+
+PUBLIC void jsonSetMaxLength(int length)
+{
+    maxLength = length;
+}
+
+PUBLIC void jsonSetIndent(int indent)
+{
+    indentLevel = indent;
+}
 
 /*
     Expand ${token} references in a path or string.
@@ -2605,7 +2869,8 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
     buf = rAllocBuf(0);
     for (src = (char*) str; *src; src++) {
         if (src[0] == '$' && src[1] == '{') {
-            for (cp = start = src + 2; *cp && *cp != '}'; cp++) {}
+            for (cp = start = src + 2; *cp && *cp != '}'; cp++) {
+            }
             if (*cp == '\0') {
                 // Unterminated token
                 return NULL;
@@ -3968,8 +4233,9 @@ static void signalFiber(Watch *watch)
 
 /*
     Signal watchers of an event
+    This spawns a fiber for each watcher and so cannot take an argument.
  */
-PUBLIC void rSignal(cchar *name, cvoid *arg)
+PUBLIC void rSignal(cchar *name)
 {
     RList *list;
     Watch *watch;
@@ -3977,7 +4243,7 @@ PUBLIC void rSignal(cchar *name, cvoid *arg)
 
     if ((list = rLookupName(watches, name)) != 0) {
         for (ITERATE_ITEMS(list, watch, next)) {
-            watch->arg = arg;
+            // watch->arg = arg;
             rSpawnFiber(name, (RFiberProc) signalFiber, watch);
         }
     }
@@ -9175,7 +9441,7 @@ PUBLIC char classMap[] = {
     /*  17   8     9     :     ;     <     =     >     ? */
     5,    5,    0,    0,    0,    0,    0,    0,
     /*  20   @     A     B     C     D     E     F     G */
-    8,    0,    0,    0,    0,    0,    0,    0,
+    8,    0,    0,    0,    0,    8,    0,    8,
     /*  27   H     I     J     K     L     M     N     O */
     0,    0,    0,    0,    7,    0,    8,    0,
     /*  30   P     Q     R     S     T     U     V     W */
@@ -9213,6 +9479,7 @@ typedef struct PContext {
     uchar *end;
     ssize growBy;
     ssize maxsize;
+    char format;
     int flags;
     int len;
     int precision;
@@ -9252,6 +9519,7 @@ static int  getNextState(char c, int state);
 static int  growBuf(PContext *ctx);
 static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args);
 static void outFloat(PContext *ctx, char specChar, double value);
+static void outFloatE(PContext *ctx, char specChar, double value);
 static void outNum(PContext *ctx, int radix, int64 value);
 static void outString(PContext *ctx, char *str, ssize len);
 
@@ -9365,6 +9633,7 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
     }
     ctx.maxsize = maxsize;
     ctx.precision = 0;
+    ctx.format = 0;
     ctx.floating = 0;
     ctx.width = 0;
     ctx.upper = 0;
@@ -9481,12 +9750,19 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
             break;
 
         case STATE_TYPE:
+            ctx.format = c;
             switch (c) {
-            case 'e':
+            case 'G':
             case 'g':
             case 'f':
                 ctx.floating = 1;
                 outFloat(&ctx, c, (double) va_arg(args, double));
+                break;
+
+            case 'e':
+            case 'E':
+                ctx.floating = 1;
+                outFloatE(&ctx, c, (double) va_arg(args, double));
                 break;
 
             case 'c':
@@ -9647,6 +9923,7 @@ static void outNum(PContext *ctx, int radix, int64 value)
     char        *cp, *endp;
     cchar       *prefix;
     int         letter, len, leadingZeros, i, fill, precision;
+    uint64      uval;
 
     cp = endp = &numBuf[sizeof(numBuf) - 1];
     *endp = '\0';
@@ -9668,12 +9945,14 @@ static void outNum(PContext *ctx, int radix, int64 value)
     /*
         Convert to ascii
      */
+    if (value < 0) {
+        uval = (value == INT64_MIN) ? (uint64) INT64_MAX + 1 : (uint64) - value;
+    } else {
+        uval = value;
+    }
     if (radix == 16) {
         do {
-            letter = (int) (value % radix);
-            if (value < 0) {
-                letter = -letter;
-            }
+            letter = (int) (uval % radix);
             if (letter > 9) {
                 if (ctx->flags & SPRINTF_UPPER_CASE) {
                     letter = 'A' + letter - 10;
@@ -9684,31 +9963,25 @@ static void outNum(PContext *ctx, int radix, int64 value)
                 letter += '0';
             }
             *--cp = letter;
-            value /= radix;
-        } while (value != 0);
+            uval /= radix;
+        } while (uval != 0);
 
     } else if (ctx->flags & SPRINTF_COMMA) {
         i = 1;
         do {
-            int digit = (int) (value % radix);
-            if (value < 0) {
-                digit = -digit;
-            }
+            int digit = (int) (uval % radix);
             *--cp = '0' + digit;
-            value /= radix;
-            if ((i++ % 3) == 0 && value != 0) {
+            uval /= radix;
+            if ((i++ % 3) == 0 && uval != 0) {
                 *--cp = ',';
             }
-        } while (value != 0);
+        } while (uval != 0);
     } else {
         do {
-            int digit = (int) (value % radix);
-            if (value < 0) {
-                digit = -digit;
-            }
+            int digit = (int) (uval % radix);
             *--cp = '0' + digit;
-            value /= radix;
-        } while (value != 0);
+            uval /= radix;
+        } while (uval != 0);
     }
 
     len = (int) (endp - cp);
@@ -9768,42 +10041,143 @@ static void outNum(PContext *ctx, int radix, int64 value)
     }
 }
 
-/*
-    Does not handle %e, %g
-    REVIEW Acceptable - This uses recursion to handle the fractional part, but it is limited and acceptable.
- */
 static void outFloat(PContext *ctx, char specchar, double value)
 {
-    double fpart, round;
-    char   digit;
-    uint64 ipart;
-    uchar  *mark;
+    double fpart, round, v;
+    uchar  *last;
+    int    digit, precision;
+    int64  ipart;
 
-    mark = ctx->end;
-    ipart = (uint64) value;
+    if (ctx->format == 'g' || ctx->format == 'G') {
+        v = fabs(value);
+        if (v < 0.0001 || v > 1000000) {
+            outFloatE(ctx, specchar, value);
+            return;
+        }
+    }
+    precision = ctx->precision < 0 ? 6 : ctx->precision;
+
+    /*
+        Round the value before splitting into integer and fractional parts.
+        This handles cases like 0.99 rounded to 1.0.
+     */
+    round = 0.5;
+    for (int i = 0; i < precision; i++) {
+        round /= 10.0;
+    }
+    value += value < 0 ? -round : round;
+
+    ipart = (int64) value;
     outNum(ctx, 10, ipart);
 
-    if (ctx->precision > 0) {
+    if (precision > 0) {
         BPUT(ctx, '.');
     }
     fpart = value - (double) ipart;
     if (fpart < 0) {
         fpart = -fpart;
     }
-    for (int i = 0; i < ctx->precision; i++) {
+    for (int i = 0; i < precision; i++) {
         fpart *= 10;
         digit = (int) fpart;
-        if (i == ctx->precision - 1 && fpart * 10 >= 5) {
-            if ((fpart - digit + 0.5) >= 1) {
-                ctx->end = mark;
-                round = 0.5 / pow(10, ctx->precision);
-                value += round;
-                outFloat(ctx, specchar, value);
-                break;
-            }
-        }
         BPUT(ctx, digit + '0');
         fpart -= digit;
+    }
+    if (ctx->format == 'g') {
+        //  Remove trailing zeros and decimal point if precision is 0
+        if (ctx->precision < 0) {
+            for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--, ctx->len--) {
+                if (*last == '0' || *last == '.') {
+                    *last = '\0';
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static double normalizeScientific(double x, int *exponent) 
+{
+    if (x == 0.0) {
+        *exponent = 0;
+        return 0.0;
+    }
+    int exp = (int)floor(log10(fabs(x)));
+    double mantissa = x / pow(10.0, exp);
+
+    // Adjust if mantissa is not in the range [1.0, 10.0)
+    if (fabs(mantissa) < 1.0) {
+        mantissa *= 10.0;
+        exp -= 1;
+    }
+    *exponent = exp;
+    return mantissa;
+}
+
+static void outFloatE(PContext *ctx, char specchar, double value)
+{
+    double fpart, mantissa, round;
+    uchar  *last;
+    int64  ipart;
+    int    digit, exponent, fexp, precision;
+
+    precision = ctx->precision < 0 ? 6 : ctx->precision;
+    mantissa = normalizeScientific(value, &exponent);
+
+    /*
+        Round the mantissa.
+     */
+    round = 0.5;
+    for (int i = 0; i < precision; i++) {
+        round /= 10.0;
+    }
+    mantissa += (mantissa < 0) ? -round : round;
+
+    if (fabs(mantissa) >= 10.0) {
+        mantissa /= 10.0;
+        exponent++;
+    }
+
+    ipart = (int64) mantissa;
+    outNum(ctx, 10, ipart);
+ 
+    if (precision > 0) {
+        BPUT(ctx, '.');
+    }
+    fpart = mantissa - (double) ipart;
+    if (fpart < 0) {
+        fpart = -fpart;
+    }
+    for (int i = 0; i < precision; i++) {
+        fpart *= 10;
+        //  Round out IEEE imprecision
+        digit = (int) (fpart + 1.0e-15);
+        BPUT(ctx, digit + '0');
+        fpart -= digit;
+    }
+    if (ctx->format == 'g') {
+        //  Remove trailing zeros and decimal point if precision is 0
+         if (ctx->precision < 0) {
+            for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--) {
+                if (*last == '0' || *last == '.') {
+                    *last = '\0';
+                } else {
+                    break;
+                }
+            }
+         }
+    }
+    fexp = abs(exponent);
+    BPUT(ctx, (ctx->format == 'E' || ctx->format == 'G') ? 'E' : 'e');
+    BPUT(ctx, exponent < 0 ? '-' : '+');
+    if (fexp >= 100) {
+        BPUT(ctx, '0' + fexp / 100);
+        BPUT(ctx, '0' + (fexp / 10) % 10);
+        BPUT(ctx, '0' + fexp % 10);
+    } else {
+        BPUT(ctx, '0' + fexp / 10);
+        BPUT(ctx, '0' + fexp % 10);
     }
 }
 
@@ -10594,7 +10968,7 @@ PUBLIC int rRun(cchar *command, char **output)
     if (output) {
         *output = NULL;
     }
-    if (makeArgs(command, &argv, 0) < 0) {
+    if (makeArgs(command, &argv, 0) <= 0) {
         rError("run", "Failed to parse command: %s", command);
         return R_ERR_BAD_ARGS;
     }
@@ -10767,6 +11141,10 @@ static int makeArgs(cchar *command, char ***argvp, bool argsOnly)
         argv[0] = "";
     } else {
         parseArgs(args, argv, argc);
+    }
+    if (argc == 0) {
+        rFree(vector);
+        return R_ERR_BAD_ARGS;
     }
     argv[argc] = 0;
     *argvp = (char**) argv;

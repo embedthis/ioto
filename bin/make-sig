@@ -22,13 +22,17 @@ function json5(file) {
 }
 
 let args = process.argv.slice(2)
-let i = 0
+let schema = null
 
+let i = 0
 for (i = 0; i < args.length; i++) {
     let arg = args[i]
     if (arg == '--blend') {
         let [key, value] = args[++i].split('=')
         global[key] = include(value)
+    } else if (arg == '--schema') {
+        let value = args[++i]
+        schema = include(value)
     } else {
         break
     }
@@ -38,6 +42,40 @@ let [input, output] = args.slice(i)
 if (!input || !output) {
     console.error(`Usage: api [--blend file] input.js output.json doc/dir`)
     process.exit(2)
+}
+
+async function main() {
+    let path = Path.join(process.cwd(), input)
+    let signatures = include(path)
+    cleanSignatures(signatures)
+    if (schema) {
+        blendSchema(signatures, schema)
+    }
+
+    let data = JSON.stringify(signatures, null, 4) + '\n'
+    data = compressJson5(data, 6, 80)
+    try {
+        let old = Fs.readFileSync(output).toString()
+        if (data == old) {
+            return
+        }
+    } catch (err) { }
+    console.log('  [Exported]', Path.basename(output))
+    Fs.writeFileSync(output, data)
+}
+
+function blendSchema(signatures, schema) {
+    let models = signatures._models_ || (signatures._models_ = {})
+    for (let [name, fields] of Object.entries(schema.models)) {
+        delete fields.pk
+        delete fields.sk
+        for (let [key, field] of Object.entries(fields)) {
+            if (field.hidden) {
+                delete field[key]
+            }
+        }
+        models[name] = { fields }
+    }
 }
 
 /*
@@ -51,42 +89,35 @@ function cleanSignatures(signatures) {
             for (let item of ['request', 'response']) {
                 let block = method[item]
                 if (block) {
-                    cleanBlock(block)
+                    cleanBlock(block, block)
                 }
             }
         }
     }
 }
 
-function cleanBlock(block) {
+function cleanBlock(block, parent) {
     delete block.description
     if (block.fields) {
         for (let [key, field] of Object.entries(block.fields)) {
-            cleanBlock(field)
+            if (field.drop) {
+                block.hasDrop = true
+            }
+            if (field.required || field.default) {
+                block.hasRequired = true
+            }
+            if (key == '*') {
+                block.hasWild = true
+            }
+            cleanBlock(field, parent)
         }
     }
     if (block.of) {
-        cleanBlock(block.of)
+        cleanBlock(block.of, parent)
     }
     if (block.query) {
-        cleanBlock(block.query)
+        cleanBlock(block.query, parent)
     }
-}
-
-async function main() {
-    let path = Path.join(process.cwd(), input)
-    let signatures = include(path)
-    cleanSignatures(signatures)
-
-    let data = JSON.stringify(signatures, null, 4) + '\n'
-    try {
-        let old = Fs.readFileSync(output).toString()
-        if (data == old) {
-            return
-        }
-    } catch (err) { }
-    console.log('  [Exported]', Path.basename(output))
-    Fs.writeFileSync(output, data)
 }
 
 function include(path) {
@@ -219,6 +250,62 @@ function blend(dest, src, combine = '') {
         }
     }
     return dest
+}
+
+function compressJson5(src, maxItems = 6, maxLen = 80) {
+    if (!src) {
+        return ''
+    }
+    // Strip comments
+    src = src.replace(/\s*\/\/.*/g, '')
+
+    let prev
+    // Iteratively compress, working from the inside out.
+    // This loop will repeat until no more changes can be made, up to 8 times.
+    for (let i = 0; i < 8; i++) {
+        prev = src
+
+        // Regex to find a "simple" object or array: one that does not contain other objects or arrays.
+        // It looks for an opening brace/bracket, followed by any characters that are NOT braces/brackets,
+        // and then the corresponding closing brace/bracket. This finds the innermost structures.
+        const re = /([{[])([^[{}]*?)([}\]])/g
+        src = src.replace(re, (match, open, body, close) => {
+            // If the structure isn't multi-line, we don't need to change it.
+            if (!match.includes('\n')) {
+                return match
+            }
+
+            // Don't modify if opening and closing braces don't match
+            if ((open === '{' && close !== '}') || (open === '[' && close !== ']')) {
+                return match
+            }
+
+            const trimmedBody = body.trim()
+            if (trimmedBody === '') {
+                return `${open}${close}`
+            }
+
+            // To check item count, we can split by comma.
+            // This is a simplification and works for many JSON5-like structures.
+            const items = trimmedBody.split(',').filter(s => s.trim())
+            if (items.length > maxItems) {
+                return match
+            }
+            
+            // Re-join items onto a single line
+            const oneline = `${open} ${items.join(', ').replace(/\s+/g, ' ')} ${close}`
+            if (oneline.length > maxLen) {
+                return match
+            }
+
+            return oneline
+        })
+
+        if (src === prev) {
+            break
+        }
+    }
+    return src
 }
 
 main()

@@ -13,7 +13,7 @@
     #define ME_COMPANY "embedthis"
 #endif
 #ifndef ME_COMPATIBLE
-    #define ME_COMPATIBLE "2.7"
+    #define ME_COMPATIBLE "3.0"
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC
     #define ME_COMPILER_HAS_ATOMIC 0
@@ -91,7 +91,7 @@
     #define ME_USER "ioto"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "2.7.1"
+    #define ME_VERSION "3.0.0"
 #endif
 #ifndef ME_WEB_GROUP
     #define ME_WEB_GROUP "Administrator"
@@ -189,16 +189,16 @@
 
 /* Miscellaneous */
 #ifndef ME_MAJOR_VERSION
-    #define ME_MAJOR_VERSION 2
+    #define ME_MAJOR_VERSION 3
 #endif
 #ifndef ME_MINOR_VERSION
-    #define ME_MINOR_VERSION 7
+    #define ME_MINOR_VERSION 0
 #endif
 #ifndef ME_PATCH_VERSION
-    #define ME_PATCH_VERSION 1
+    #define ME_PATCH_VERSION 0
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 200070001
+    #define ME_VNUM 300000000
 #endif
 
 /* Components */
