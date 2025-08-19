@@ -1680,12 +1680,20 @@ PUBLIC char *ioGet(cchar *key)
 PUBLIC bool ioGetBool(cchar *key)
 {
     char *msg, *result;
+    bool value;
 
     msg = sfmt("{\"key\":\"%s\"}", key);
     //  Must not use basic-ingest for mqttRequest
     result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    value = 0;
+    if (smatch(result, "true")) {
+        value = 1;
+    } else if (smatch(result, "false")) {
+        value = 0;
+    }
     rFree(msg);
-    return result;
+    rFree(result);
+    return value;
 }
 
 PUBLIC double ioGetNum(cchar *key)
