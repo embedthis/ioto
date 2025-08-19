@@ -148,14 +148,18 @@ static Cron *cronAlloc(cchar *spec)
     /*
         Convenient aliases
      */
-    if (scmp(spec, "all") == 0) {
+    if (scmp(spec, "anytime") == 0) {
         spec = "* * * * *";
+    } else if (scmp(spec, "day") == 0) {
+        spec = "* 6-17 * * *";
     } else if (scmp(spec, "weekdays") == 0) {
         spec = "* * * * 1-5";
     } else if (scmp(spec, "workhours") == 0) {
         spec = "* 9-17 * * 1-5";
     } else if (scmp(spec, "midnight") == 0) {
         spec = "* 0 * * *";
+    } else if (scmp(spec, "night") == 0) {
+        spec = "* 0-5,18-23 * * *";
     }
     buf = sclone(spec);
 
