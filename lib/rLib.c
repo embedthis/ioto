@@ -9874,7 +9874,9 @@ PUBLIC int64 stoix(cchar *str, char **end, int radix)
 {
     int64 result;
 
-    errno = 0;
+    if (!str || !*str) {
+        return 0;
+    }
     result = strtoll(str, end, radix);
     return result;
 }
@@ -11436,9 +11438,7 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
  */
 PUBLIC void rWakeup(void)
 {
-#if ME_WIN_LIKE
-    //  TODO
-#else
+#if !ME_WIN_LIKE
     if (waiting) {
         kill(getpid(), SIGCONT);
     }
