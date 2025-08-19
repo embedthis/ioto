@@ -133,7 +133,7 @@ static void demo(void)
             if (jsonGetBool(ioto->config, 0, "demo.log", 0)) {
                 rInfo("demo", "Updating Log table");
                 if (dbCreate(ioto->db, "Log", DB_JSON("{message: 'message-%d', expires: '%ld'}", counter, expires),
-                             NULL) == 0) {
+                             DB_PARAMS()) == 0) {
                     rError("demo", "Cannot update log item in database: %s", dbGetError(ioto->db));
                 }
             }

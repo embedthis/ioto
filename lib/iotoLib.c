@@ -503,8 +503,8 @@ PUBLIC int ioInitDb(void)
     }
 #endif
 #if SERVICES_SYNC
-    if (dbGet(ioto->db, "SyncState", NULL, NULL) == 0) {
-        dbCreate(ioto->db, "SyncState", DB_PROPS("lastSync", "0", "lastUpdate", "0"), NULL);
+    if (dbGet(ioto->db, "SyncState", NULL, DB_PARAMS()) == 0) {
+        dbCreate(ioto->db, "SyncState", DB_PROPS("lastSync", "0", "lastUpdate", "0"), DB_PARAMS());
     }
     if (ioto->syncService && (ioInitSync() < 0)) {
         return R_ERR_CANT_READ;
@@ -515,7 +515,7 @@ PUBLIC int ioInitDb(void)
         rWatch("device:provisioned", (RWatchProc) ioUpdateDevice, 0);
     } else
 #endif
-    if (!dbGet(ioto->db, "Device", DB_PROPS("id", ioto->id), NULL)) {
+    if (!dbGet(ioto->db, "Device", DB_PROPS("id", ioto->id), DB_PARAMS())) {
         ioUpdateDevice();
     }
     if (service) {
@@ -1553,7 +1553,9 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
 PUBLIC void ioSet(cchar *key, cchar *value)
 {
 #if SERVICES_SYNC
-    dbSetField(ioto->db, "Store", "value", value, DB_PROPS("key", key), NULL);
+    dbUpdate(ioto->db, "Store",
+             DB_JSON("{key: '%s', value: '%s', type: 'string'}", key, value),
+             DB_PARAMS(.upsert = 1));
 #else
     //  Optimize by using AWS basic ingest topic
     char *msg = sfmt("{\"key\":\"%s\",\"value\":\"%s\",\"type\":\"string\"}", key, value);
@@ -1570,7 +1572,9 @@ PUBLIC void ioSet(cchar *key, cchar *value)
 PUBLIC void ioSetNum(cchar *key, double value)
 {
 #if SERVICES_SYNC
-    dbSetNum(ioto->db, "Store", "value", value, DB_PROPS("key", key), NULL);
+    dbUpdate(ioto->db, "Store",
+             DB_JSON("{key: '%s', value: '%g', type: 'number'}", key, value),
+             DB_PARAMS(.upsert = 1));
 #else
     //  Optimize by using AWS basic ingest topic
     char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
@@ -2791,7 +2795,7 @@ PUBLIC void webLoginUser(Web *web)
 
     username = webGetVar(web, "username", 0);
     password = webGetVar(web, "password", 0);
-    user = dbFindOne(ioto->db, "User", DB_PROPS("username", username), NULL);
+    user = dbFindOne(ioto->db, "User", DB_PROPS("username", username), DB_PARAMS());
 
     if (!user || !cryptCheckPassword(password, dbField(user, "password"))) {
         //  Security: a generic message and fixed delay defeats username enumeration and timing attacks.
@@ -4594,6 +4598,7 @@ PUBLIC void ioRelease(const MqttRecv *rp)
                 rInfo("ioto", "Received provisioning command %s", rp->topic);
                 ioDisconnect();
                 ioDeprovision();
+                dbSetField(ioto->db, "Device", "connection", "offline", NULL, DB_PARAMS());
             }
         }
     } else {
@@ -4994,7 +4999,7 @@ PUBLIC int ioInitSync(void)
     ioto->syncDue = MAXINT64;
     ioto->syncHash = rAllocHash(0, 0);
     ioto->maxSyncSize = (int) svalue(jsonGet(ioto->config, 0, "database.maxSyncSize", "1k"));
-    if ((lastSync = dbGetField(ioto->db, "SyncState", "lastSync", NULL, NULL)) != NULL) {
+    if ((lastSync = dbGetField(ioto->db, "SyncState", "lastSync", NULL, DB_PARAMS())) != NULL) {
         ioto->lastSync = sclone(lastSync);
     } else {
         ioto->lastSync = rGetIsoDate(0);
@@ -5594,7 +5599,7 @@ static void receiveSync(const MqttRecv *rp)
 
     } else {
         sk = jsonGet(json, 0, "sk", "");
-        prior = dbGet(db, NULL, DB_PROPS("sk", sk), NULL);
+        prior = dbGet(db, NULL, DB_PROPS("sk", sk), DB_PARAMS());
         stale = 0;
         if (prior) {
             updated = jsonGet(json, 0, "updated", 0);
@@ -5738,7 +5743,7 @@ PUBLIC bool ioUpdate(void)
     jitter = svalue(jsonGet(ioto->config, 0, "update.jitter", "0")) * TPS;
     period = svalue(jsonGet(ioto->config, 0, "update.period", "24 hrs")) * TPS;
 
-    lastUpdate = (Time) rParseIsoDate(dbGetField(ioto->db, "SyncState", "lastUpdate", NULL, NULL));
+    lastUpdate = (Time) rParseIsoDate(dbGetField(ioto->db, "SyncState", "lastUpdate", NULL, DB_PARAMS()));
     delay = lastUpdate + period - rGetTime();
     if (delay < 0) {
         delay = cronUntil(schedule, rGetTime());
