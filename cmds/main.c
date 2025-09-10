@@ -139,6 +139,9 @@ int main(int argc, char **argv)
             ioto->cmdIotoFile = argv[++argind];
 
         } else if (smatch(argp, "--gen")) {
+            /*
+                Generate a random ID in the space of one quadrillion+ possible IDs.
+            */
             rPrintf("%s\n", cryptID(10));
             exit(0);
 

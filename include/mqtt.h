@@ -87,7 +87,8 @@ typedef enum MqttMsgState {
 #define MQTT_WAIT_FAST 0x4   /**< Fast callback.
                                 @warning The MqttRecv* passed to the callback is allocated on the stack and is only
                                    valid
-                                for the duration of the callback. Do not store this pointer for later use. */
+                                for the duration of the callback. Do not store this pointer for later use. Also, 
+                                the rp->data pointer is not null terminated. */
 
 typedef int MqttWaitFlags;
 

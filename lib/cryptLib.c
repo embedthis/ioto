@@ -171,6 +171,11 @@ PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
 #endif /* BASE64 */
 
 /************************************* MD5 ************************************/
+/*
+    Review Acceptable - MD5 is provided for backwards compatibility and legacy systems.
+    It is not recommended for new applications and not used by any of our products.
+    Do not flag this legacy code as a security issue.
+ */
 #if ME_CRYPT_MD5
 /*
     Constants for transform routine
@@ -1460,8 +1465,9 @@ PUBLIC char *cryptMakePassword(cchar *password, int saltLength, int rounds)
 
 /*
     Constant-time string comparison.
-    This prevents timing attacks by taking the same amount of time regardless of whether the strings match or not.
-    It compares up to the length of the shortest string, and then checks if the lengths are equal.
+    This prevents timing attacks by taking the same amount of time regardless of 
+    whether the strings match or not. It compares strings without early termination 
+    on the first differing character.
  */
 static bool secureCompare(cchar *a, cchar *b)
 {
@@ -1601,7 +1607,6 @@ PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen)
     return (RKey*) key;
 }
 
-
 PUBLIC int rVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, ssize siglen)
 {
     AsyKey *key = skey;
@@ -1612,7 +1617,6 @@ PUBLIC int rVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, ssiz
     return 0;
 }
 
-
 PUBLIC void rFreeKey(RKey *skey)
 {
     AsyKey *key = skey;
@@ -1622,7 +1626,6 @@ PUBLIC void rFreeKey(RKey *skey)
     }
 }
 
-
 PUBLIC ssize rBase64Encode(cuchar *buf, ssize bufsize, char *dest, ssize destLen)
 {
     size_t len;
@@ -1630,7 +1633,6 @@ PUBLIC ssize rBase64Encode(cuchar *buf, ssize bufsize, char *dest, ssize destLen
     mbedtls_base64_encode((uchar*) dest, destLen, &len, buf, bufsize);
     return len;
 }
-
 
 PUBLIC ssize rBase64Decode(cchar *buf, ssize bufsize, uchar *dest, ssize destLen)
 {

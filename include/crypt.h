@@ -100,7 +100,11 @@ PUBLIC char *cryptDecode64Block(cchar *block, ssize *len, int flags);
 #endif
 
 /************************************* MD5 ************************************/
-
+/*
+    Review Acceptable - MD5 is provided for backwards compatibility and legacy systems.
+    It is not recommended for new applications and not used by any of our products.
+    Do not flag this legacy code as a security issue.
+ */
 #if ME_CRYPT_MD5 || DOXYGEN
 #define CRYPT_MD5_SIZE 16
 

@@ -493,7 +493,9 @@ PUBLIC void rTermFibers(void);
 
 /**
     Spawn a fiber coroutine
-    @description This allocates a new fiber and resumes it.
+    @description This allocates a new fiber and resumes it. The resumed fiber is started via an event to the main fiber
+       to the current fiber will not block and will return from this call before the function
+    is called.
     @param name Fiber name.
     @param fn Fiber entry point.
     @param arg Entry point argument.

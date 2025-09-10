@@ -1,20 +1,39 @@
 /*
     demoApp.c -- Demonstration App for Ioto
  */
+
+/********************************* Includes ***********************************/
 #include "ioto.h"
 
 #if ESP32
 #include "driver/gpio.h"
 #include "rom/gpio.h"
+#endif
+
+/********************************* Defines ************************************/
+
+#if ESP32
 #define GPIO         2
 #endif
 
+/*
+    Review Acceptable: This is the public eval product ID.
+    Disclosure here is not a security risk.
+ */
 #define EVAL_PRODUCT "01H4R15D3478JD26YDYK408XE6"
+
+/*
+    Flag to indicate that on-demand MQTT connections are used
+ */
+static int onDemand = 0;
+
+/*************************** Forward Declarations *****************************/
 
 static void deviceCommand(void *ctx, DbItem *item);
 static void customCommand(void *ctx, DbItem *item);
 static void demo(void);
 
+/*********************************** Code *************************************/
 /*
     Called when Ioto is fully initialized. This runs on a fiber while the main fiber services events.
     Ioto will typically be connected to the cloud, but depending on the mqtt.schedule may not be.

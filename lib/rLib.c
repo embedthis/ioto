@@ -1017,7 +1017,7 @@ PUBLIC void rTermEvents(void)
 }
 
 /*
-    Allocate an event.
+    Allocate an event. Events are run and respect the order of scheduling.
     If a fiber is supplied, the proc is run on that fiber. Otherwise a new fiber is allocated
     to run the proc. This routine is THREAD SAFE and is the only safe way to interact with R
     services from foreign threads. Returns an event ID that may be used with rStopEvent to
@@ -1127,6 +1127,9 @@ rescan:
     deadline = MAXINT64;
     eventsChanged = 0;
 
+    /*
+        Run due events in the order of scheduling
+     */
     for (prior = 0, ep = events; ep && rState < R_STOPPING; ep = next) {
         next = ep->next;
         if (ep->when <= now) {
@@ -1145,8 +1148,11 @@ rescan:
                 unlinkEvent(ep, prior);
                 rResumeFiber(fiber, arg);
             }
-            if (eventsChanged) {
-                //  New event created or stopped so rescan
+            if (eventsStopped) {
+                /*
+                    Event stopped and removed when proc/fiber ran, so our "next" may not be valid.
+                    If new due events are added by proc/fiber, they will be serviced up on the next call to rRunEvents.
+                 */
                 goto rescan;
             }
         } else {
@@ -1175,7 +1181,8 @@ PUBLIC bool rHasDueEvents(void)
 }
 
 /*
-    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase. In that case, events with IDs starting from 1 should have long since run.
+    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase. In that case,
+       events with IDs starting from 1 should have long since run.
     Regardless, we check for collisions with existing events.
     Event ID == 0 is invalid.
  */
@@ -1212,8 +1219,7 @@ static Event *lookupEvent(REvent id, Event **priorp)
 
 /*
     THREAD SAFE
-    Note: this appends to the head of the list. If two events with the same "when" are scheduled,
-    the last scheduled will be launched first.
+    Note: do an in-order insertion. This inserts after the last event of the same time.
  */
 static void linkEvent(Event *ep)
 {
@@ -1289,7 +1295,7 @@ static void signalFiber(Watch *watch)
 
 /*
     Signal watchers of an event
-    This spawns a fiber for each watcher and so cannot take an argument.
+    This spawns a fiber for each watcher and is difficult to reliably take an argument that needs freeing.
  */
 PUBLIC void rSignal(cchar *name)
 {
@@ -1524,7 +1530,7 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
 }
 
 /*
-    Yield from a fiber back to the main fiber
+    Yield from a fiber back to the main fiber.
     The caller must have some mechanism to resume. i.e. someone must call rResumeFiber. See rSleep()
  */
 inline void *rYieldFiber(void *value)
