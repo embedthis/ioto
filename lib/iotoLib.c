@@ -1181,18 +1181,19 @@ PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len)
     int   rc;
 
     up = urlAlloc(0);
-    api = sfmt("%s/tok/device/getSignedUrl", ioto->api);
+    api = sfmt("%s/tok/file/getSignedUrl", ioto->api);
     data = sfmt(SDEF({
         "id" : "%s",
         "command" : "put",
         "filename" : "%s",
-        "mimeType" : "image/jpeg"
-    }), ioto->id, path);
+        "mimeType" : "image/jpeg",
+        "size" : "%ld"
+    }), ioto->id, path, len);
 
     rc = R_ERR_CANT_COMPLETE;
     if (urlFetch(up, "POST", api, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
                  ioto->apiToken) != URL_CODE_OK) {
-        rError("nature", "Error getting signed URL");
+        rError("nature", "Error: %s", urlGetResponse(up));
 
     } else if ((response = urlGetResponse(up)) == NULL) {
         rError("nature", "Empty signed URL response");
@@ -1211,6 +1212,42 @@ PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len)
     rFree(api);
     urlFree(up);
     return rc;
+}
+
+/*
+    Exponential backoff. This can be awakened via ioResumeBackoff()
+ */
+PUBLIC Ticks ioBackoff(Ticks delay, REvent *event)
+{
+    assert(event);
+
+    if (delay == 0) {
+        delay = TPS * 10;
+    }
+    delay += TPS / 4;
+    if (delay > 3660 * TPS) {
+        delay = 3660 * TPS;
+    }
+    if (ioto->blockedUntil > rGetTime()) {
+        delay = max(delay, ioto->blockedUntil - rGetTime());
+    }
+    if (*event) {
+        rStopEvent(*event);
+    }
+    *event = rStartEvent(NULL, 0, delay);
+    rYieldFiber(0);
+    *event = 0;
+    return delay;
+}
+
+/*
+    Resume a backoff event
+ */
+PUBLIC void ioResumeBackoff(REvent *event)
+{
+    if (event && *event) {
+        rRunEvent(*event);
+    }
 }
 #endif /* SERVICES_CLOUD */
 
