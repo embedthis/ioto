@@ -1005,6 +1005,11 @@ typedef int64 Ticks;
 #endif
 
 /*
+    Safe time max value to avoid overflows
+ */
+#define MAXTIME         (MAXINT64 - MAXINT)
+
+/*
     Word size and conversions between integer and pointer.
  */
 #if ME_64
