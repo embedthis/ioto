@@ -281,6 +281,7 @@ typedef struct Mqtt {
     int mask;               /**< R library wait event mask */
     int msgTimeout;         /**< Message timeout for retransmit */
     int maxMessage;         /**< Maximum message size */
+    int fiberCount;         /**< Number of fibers waiting for a message */
     Ticks keepAlive;        /**< Server side keep alive duration in seconds */
     Ticks timeout;          /**< Inactivity timeout for on-demand connections */
     Ticks lastActivity;     /**< Time of last I/O activity */
@@ -288,7 +289,6 @@ typedef struct Mqtt {
     uint subscribedApi : 1; /**< Reserved */
     uint connected : 1;     /**< Mqtt is currently connected flag */
     uint processing : 1;    /**< ProcessMqtt is running */
-    uint freed : 1;         /**< Safe free detection */
 
     Ticks throttle;         /**< Throttle delay in msec */
     Ticks throttleLastPub;  /**< Time of last publish or throttle */
