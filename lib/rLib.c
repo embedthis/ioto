@@ -1606,6 +1606,11 @@ PUBLIC bool rIsMain(void)
     return rGetCurrentThread() == rGetMainThread() && currentFiber == mainFiber;
 }
 
+PUBLIC bool rIsForeignThread(void)
+{
+    return rGetCurrentThread() != rGetMainThread();
+}
+
 /*
     Sleep a fiber for a given number of milliseconds.
  */
@@ -8308,6 +8313,13 @@ PUBLIC void rCloseSocket(RSocket *sp)
         rResumeWait(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
     }
     sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
+}
+
+PUBLIC void rDisconnectSocket(RSocket *sp)
+{
+    if (sp->fd != INVALID_SOCKET) {
+        shutdown(sp->fd, SHUT_RDWR);
+    }
 }
 
 PUBLIC void rResetSocket(RSocket *sp)

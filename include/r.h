@@ -517,10 +517,14 @@ PUBLIC void *rSpawnThread(RThreadProc fn, void *arg);
 
 /**
     Resume a fiber
-    @description Resume a fiber. If called from a non-main fiber or foreign-thread
-        the target fiber is resumed via an event to the main fiber. THREAD SAFE
+    @description Resume a fiber. If called from the main fiber, the thread is resumed directly and immediately and
+    the main fiber is suspended until the fiber yields or completes. If called from a non-main fiber or foreign-thread
+    the target fiber is scheduled to be resumed via an event. In this case, the call to rResumeFiber returns
+    without yielding and the resumed fiber will run when the calling fiber next yields. Use rStartFiber if you need
+    a non-blocking way to start or resume a fiber. THREAD SAFE.
     @param fiber Fiber object
     @param result Result to pass to the fiber and will be the value returned from rYieldFiber.
+    @return Value passed by the caller that invokes rResumeFiber to yield back.
     @stability Evolving
  */
 PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
@@ -529,7 +533,7 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
     Yield a fiber back to the main fiber
     @description Pause a fiber until resumed by the main fiber.
         the target fiber is resumed via an event to the main fiber.
-    @param value Value to provide as a result to the main fiber that called rResumeFiber.
+    @param value Value to provide as a result to the fiber that called rResumeFiber.
     @stability Evolving
  */
 PUBLIC void *rYieldFiber(void *value);
@@ -547,6 +551,13 @@ PUBLIC RFiber *rGetFiber(void);
     @stability Evolving
  */
 PUBLIC bool rIsMain(void);
+
+/**
+    Test if a fiber is a foreign thread
+    @return True if the fiber is a foreign thread
+    @stability Evolving
+ */
+PUBLIC bool rIsForeignThread(void);
 
 #if ME_FIBER_GUARD_STACK
 /**
@@ -932,9 +943,11 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *data, Ticks dela
 
 /**
     Start a callback event
-    @description This API is a wrapper for rAllocEvent with the fiber set to the current fiber.
+    @description
     This schedules an event to run once. The event can be rescheduled in the callback by invoking
-    rRestartEvent. This routine is THREAD SAFE.
+    rRestartEvent. Events scheduled with the same delay are run in order of scheduling.
+    This routine is THREAD SAFE.
+    This API is a wrapper for rAllocEvent with the fiber set to the current fiber.
     @param proc Callback procedure function. Signature is: void (*fn)(void *data, int id)
     @param data Data reference to pass to the callback
     @param delay Delay in milliseconds in which to run the callback
@@ -975,11 +988,11 @@ PUBLIC bool rLookupEvent(REvent id);
 PUBLIC Ticks rRunEvents(void);
 
 /**
-    Check if there are due events
-    @return True if there are due events.
+    Return the time of the next due event
+    @return Time in ticks (ms) to the next due event
     @stability Evolving
  */
-PUBLIC bool rHasDueEvents(void);
+PUBLIC Time rGetNextDueEvent(void);
 
 /**
     Service events.
@@ -3600,6 +3613,14 @@ PUBLIC bool rCheckInternet(void);
     @stability Evolving
  */
 PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline);
+
+/**
+    Disconnect a socket
+    @description Disconnect a socket.
+    @param sp Socket object returned from rAllocSocket
+    @stability Evolving
+ */
+PUBLIC void rDisconnectSocket(RSocket *sp);
 
 /**
     Free a socket object
