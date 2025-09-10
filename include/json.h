@@ -405,6 +405,17 @@ PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
 
 /**
+    Get a json node value as a date
+    @param json Source json
+    @param nid Base node ID from which to examine. Set to zero for the top level.
+    @param key Property name to search for. This may include ".". For example: "settings.mode".
+    @param defaultValue If the key is not defined, return the defaultValue.
+    @return The key value as a date or defaultValue if not defined
+    @stability Evolving
+ */
+PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue);
+
+/**
     Get a json node value as a 64-bit integer
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.

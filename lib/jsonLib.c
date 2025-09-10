@@ -1280,6 +1280,19 @@ PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue)
     return defaultValue;
 }
 
+PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
+{
+    cchar *value;
+    char  defbuf[16];
+
+    sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
+    value = jsonGet(json, nid, key, defbuf);
+    if (snumber(value)) {
+        return stoi(value);
+    }
+    return rParseIsoDate(value);
+}
+
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue)
 {
     cchar *value;
