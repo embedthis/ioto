@@ -619,6 +619,21 @@ PUBLIC int ioInitDb(void)
         return R_ERR_CANT_READ;
     }
 #endif
+    /*
+        When testing, can have multiple devices in the database. Remove all but the current device.
+     */
+    devices = dbFind(ioto->db, "Device", NULL, DB_PARAMS());
+    for (ITERATE_ITEMS(devices, device, index)) {
+        id = dbField(device, "id");
+        if (!smatch(id, ioto->id)) {
+            dbRemove(ioto->db, "Device", DB_PROPS("id", id), DB_PARAMS());
+        }
+    }
+    rFreeList(devices);
+
+    /*
+        Update Device entry. Delay if not yet provisioned.
+     */
 #if SERVICES_CLOUD
     if (!ioto->account) {
         rWatch("device:provisioned", (RWatchProc) ioUpdateDevice, 0);
