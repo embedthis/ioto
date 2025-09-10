@@ -46,6 +46,10 @@ build/
 build/
 build/docker/ui
 build/img
+certs/ca.db.attr
+certs/ca.db.old
+certs/ca.srl
+certs/ca.srl.old
 certs/01.pem
 certs/ca.crt
 certs/ca.key
