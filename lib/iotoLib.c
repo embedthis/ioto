@@ -1727,7 +1727,7 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
     double num;
 
     if (dimensions == NULL || *dimensions == '\0') {
-        dimensions = "{\"Device\":\"deviceId\"}";
+        dimensions = "{\"Device\":\"${deviceId}\"}";
     }
     msg = sfmt("{\"metric\":\"%s\",\"dimensions\":%s,\"period\":%d,\"statistic\":\"%s\"}",
                metric, dimensions, period, statistic);
