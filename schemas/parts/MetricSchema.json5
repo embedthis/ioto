@@ -1,5 +1,5 @@
 /*
-    MetricSchema.ts -- CustomMetrics Schema
+    MetricSchema.json5 -- CustomMetrics Schema
  */
 {
     format: 'onetable:1.1.0',

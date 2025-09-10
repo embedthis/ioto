@@ -1,0 +1,8 @@
+{
+    anchor: {type: 'string', enum: ['absolute', 'relative'], default: 'relative'},
+    start: {type: 'date'},
+    period: {type: 'number', default: 28 * 86400},
+    refresh: {type: 'number', default: 60},
+    override: {type: 'boolean', default: false},
+    timezone: {type: 'string', enum: ['local', 'utc'], default: 'local'},
+}

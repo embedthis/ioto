@@ -1,0 +1,98 @@
+/*
+    WidgetSchema.json5 -- Widget Schema 
+
+    This is a partial schema to include in Dashboard models
+ */
+
+{
+    type: 'array',
+    partial: false,
+    default: [],
+    notes: 'Widgets',
+    items: {
+        type: 'object',
+        default: {},
+        partial: false,
+        schema: {
+            //  DEPRECATED
+            action: {private: true, type: 'object', default: {}, schema: {
+                type: {type: 'string', notes: 'Action type'},
+                target: {type: 'string', notes: 'Action target'},
+                conditions: {type: 'array', notes: 'Automation Action Conditions'},
+            }, notes: 'Old widget action configuration'},
+            actions: {type: 'array', partial: false, default: [], items: {
+                type: 'object',
+                partial: false,
+                schema: {
+                    type: {type: 'string', notes: 'Action type'},
+                    target: {type: 'string', notes: 'Action target'},
+                    conditions: {type: 'array', notes: 'Automation Action Conditions'},
+                }
+            }, notes: 'Widget actions'},
+            accept: {type: 'string', notes: 'File input accept type'},
+            anchor: {type: 'object', partial: true, default: {}, notes: 'Anchor side'},
+            axes: {type: 'object', notes: 'Graph axes'},
+            cloudId: {type: 'string', notes: 'Cloud ID'},
+            columns: {type: 'array', notes: 'Table columns to display'},
+            css: {type: 'array', default: [], partial: false, notes: 'CSS styles'},
+            datetime: {type: 'string', notes: 'Date input datetime'},
+            defaultValue: {type: 'string', notes: 'Default value'},
+            dimensions: {type: 'object', default: {}, notes: 'Metric and data dimensions'},
+            field: {type: 'string', notes: 'Database data field'},
+            fields: {type: 'array', notes: 'Database fields to fetch'},
+            fixed: {type: 'boolean', notes: 'Lock down changes'},
+            form: {type: 'string', notes: 'Input form name'},
+            formField: {type: 'string', notes: 'Input form field'},
+            footer: {type: 'string', notes: 'Widget footer'},
+            format: {type: 'string', notes: 'Text and numeric format'},
+            framed: {type: 'boolean', notes: 'Widget has a frame'},
+            header: {type: 'string', notes: 'Widget header text'},
+            height: {type: 'string', notes: 'Widget height in pixels'},
+            id: {type: 'string', notes: 'Unique widget UUID within the dashboard only'},
+            icon: {type: 'string', notes: 'Icon to display'},
+            input: {type: 'string', notes: 'Input type'},
+            items: {type: 'string', notes: 'Input items (JSON)'},
+            label: {type: 'string', notes: 'Input label'},
+            legend: {type: 'object', notes: 'Widget legend'},
+            left: {type: 'string', notes: 'Fraction of viewport (0-1) or "rest"'},
+            limit: {type: 'number', notes: 'Item limit'},
+            max: {type: 'number', notes: 'Maximum data value'},
+            min: {type: 'number', notes: 'Minimum data value'},
+            metric: {type: 'string', notes: 'CloudWatch Metric'},
+            model: {type: 'string', notes: 'Database model'},
+            multiple: {type: 'boolean', notes: 'Multiple selection'},
+            namespace: {type: 'string', notes: 'Metric namespace'},
+            options: {type: 'object', notes: 'Custom options'},
+            pageSize: {type: 'number', notes: 'Table page size'},
+            pivot: {type: 'string', notes: 'Table pivot column'},
+            placeholder: {type: 'string', notes: 'Input placeholder'},
+            prefix: {type: 'string', notes: 'Value prefix'},
+            presentation: {type: 'string', notes: 'Presentation style'},
+            range: {type: 'object', default: {}, partial: false, schema: {
+                anchor: {type: 'string', enum: ['absolute', 'relative'], default: 'relative'},
+                start: {type: 'date'},
+                period: {type: 'number', default: 2419200},
+                refresh: {type: 'number', default: 60},
+                override: {type: 'boolean', default: false},
+                timezone: {type: 'string', enum: ['local', 'utc'], default: 'local'},
+            }, notes: 'Time range'},
+            region: {type: 'string', notes: 'Region for metrics'},
+            rows: {type: 'number', notes: 'Text area rows'},
+            show: {type: 'string', notes: 'Show expression'},
+            statistic: {type: 'string', notes: 'Math stat'},
+            subtitle: {type: 'string', notes: 'Table subtitle'},
+            suffix: {type: 'string', notes: 'Value suffix'},
+            text: {type: 'string', notes: 'Static widget value'},
+            ticks: {type: 'number', notes: 'Number of ticks'},
+            timezone: {type: 'string', notes: 'Date input timezeon'},
+            title: {type: 'string', notes: 'Widget title'},
+            top: {type: 'string', notes: 'Top position'},
+            type: {type: 'string', notes: 'Widget type'},
+            units: {type: 'string', notes: 'Metric units'},
+            url: {type: 'string', notes: 'Resource URL'},
+            validate: {type: 'string', notes: 'RegExp validation'},
+            width: {type: 'string', notes: 'Fraction of viewport (0-1)'},
+            z: {type: 'number', notes: 'Z order'},
+        }
+    }
+}
