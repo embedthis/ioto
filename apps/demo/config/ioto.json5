@@ -61,9 +61,7 @@
     },
     mqtt: {
         authority: '@certs/aws.crt',
-        schedule: '* * * * *',
-        delay: 15,
-        timeout: 0,
+        schedule: 'anytime',
     },
     services: {
         ai: false,
