@@ -4764,8 +4764,9 @@ static bool provisionDevice(void)
         Talk to the device cloud to get certificates
         Review Acceptable: ioto->api is of limited length and is not a security risk.
      */
-    SFMT(url, "%s/tok/provision/getCerts", ioto->api);
+    SFMT(url, "%s/tok/device/provision", ioto->api);
     SFMT(data, "{\"id\":\"%s\"}", ioto->id);
+
     json = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
 
     if (json == 0 || json->count == 0) {
@@ -4975,6 +4976,7 @@ PUBLIC void ioDeprovision(void)
     rSignal("cloud:deprovisioned");
 }
 
+#if SERVICES_KEYS
 /*
     Renew device IAM credentials
  */
@@ -4984,7 +4986,7 @@ PUBLIC void ioGetKeys(void)
     char  url[512];
     Ticks delay;
 
-    SFMT(url, "%s/tok/provision/getCreds", ioto->api);
+    SFMT(url, "%s/tok/device/getCreds", ioto->api);
 
     json = urlPostJson(url, 0, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
     if (json == 0) {
