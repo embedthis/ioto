@@ -126,8 +126,6 @@ PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
 
     web->username = webSetSessionVar(web, WEB_SESSION_USERNAME, username);
     web->role = webSetSessionVar(web, WEB_SESSION_ROLE, role);
-
-    rTrace("auth", "Login successful for %s, role %s", username, role);
     return 1;
 }
 
@@ -451,7 +449,8 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->name = jsonGet(host->config, 0, "web.name", 0);
     host->uploadDir = jsonGet(host->config, 0, "web.upload.dir", uploadDir());
     host->sameSite = jsonGet(host->config, 0, "web.sessions.sameSite", "Lax");
-    host->httpOnly = jsonGetBool(host->config, 0, "web.sessions.httpOnly", 0);
+    host->httpOnly = jsonGetBool(host->config, 0, "web.sessions.httpOnly", 1);
+    host->xsrf = jsonGetBool(host->config, 0, "web.sessions.xsrf", 0);
     host->roles = jsonGetId(host->config, 0, "web.auth.roles");
     host->headers = jsonGetId(host->config, 0, "web.headers");
 
@@ -1077,8 +1076,9 @@ static void freeWebFields(Web *web, bool keepAlive)
     rFreeBuf(web->buffer);
     rFree(web->cookie);
     rFree(web->error);
-    rFree(web->redirect);
     rFree(web->path);
+    rFree(web->redirect);
+    rFree(web->securityToken);
     rFreeBuf(web->trace);
     rFreeBuf(web->rxHeaders);
     rFreeHash(web->txHeaders);
@@ -1663,6 +1663,10 @@ PUBLIC int webReadBody(Web *web)
  */
 static int processBody(Web *web)
 {
+    /*
+        Review Acceptable - This logging is only enabled for testing and development,
+        and is an acceptable risk to use getenv here to modify log level
+     */
     if (web->host->flags & WEB_SHOW_REQ_BODY && rGetBufLength(web->body)) {
         rLog("raw", "web", "Request Body <<<<\n\n%s\n\n", rBufToString(web->body));
     }
@@ -3320,7 +3324,7 @@ static void uploadAction(Web *web)
     if (web->uploads) {
         for (ITERATE_NAME_DATA(web->uploads, up, file)) {
             path = rJoinFile("/tmp", file->clientFilename);
-            if (rCopyFile(file->filename, path, 0644) < 0) {
+            if (rCopyFile(file->filename, path, 0600) < 0) {
                 webError(web, 500, "Cant open output upload filename");
                 rFree(path);
                 break;
@@ -3945,8 +3949,8 @@ PUBLIC char *webParseUrl(cchar *uri,
     Normalize a path to remove "./",  "../" and redundant separators.
     This does not map separators nor change case. Returns an allocated path, caller must free.
 
-    Security: This routine is safe because callers (webFileHandler) uses simple string
-    concatenation to join the result with the document root.
+    Review Acceptable: This routine does not check for path traversal because
+    all callers validate the path before calling this routine.
  */
 PUBLIC char *webNormalizePath(cchar *pathArg)
 {

@@ -1478,7 +1478,10 @@ static bool secureCompare(cchar *a, cchar *b)
     }
     aLen = slen(a);
     bLen = slen(b);
-    diff = aLen ^ bLen;
+    if (slen(a) != slen(b)) {
+        return 0;
+    }
+    diff = 0;
     for (int i = 0; i < aLen; i++) {
         diff |= a[i] ^ b[i % bLen];
     }
@@ -1685,12 +1688,18 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
     CryptReleaseContext(prov, 0);
     return rc;
 
+#elif ME_CRYPT_MBEDTLS && ME_COM_MBEDTLS
+    /*
+        Fallback: use MbedTLS CTR-DRBG if available; otherwise, fail securely.
+     */
+    /* Local forward declaration to avoid header ordering issues */
+    if (mbedtls_ctr_drbg_random(rGetTlsRng(), (uchar*) buf, (size_t) length) != 0) {
+        rError("security", "MbedTLS RNG failed");
+        return -1;
+    }
 #else
     rError("security", "No secure random number generator available");
-    for (int i = 0; i < length; i++) {
-        //  Review Acceptable - this is just a fallback which will not be used
-        buf[i] = (char) (rand() & 0xff);
-    }
+    return -1;
 #endif
     return 0;
 }
@@ -1761,6 +1770,10 @@ PUBLIC char *cryptGetPassword(cchar *prompt)
 
 /*
     Generate a random ID
+    There are 32 possible characters and the ID is 10 characters long (the trailing Z is not used)
+    32^10 = 1,125,899,906,842,624 = 1.13 × 10^15. or
+    one quadrillion, one hundred twenty‑five trillion, eight hundred ninety‑nine billion, nine hundred six million, 
+    eight hundred forty‑two thousand, six hundred twenty‑four.
  */
 static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
 

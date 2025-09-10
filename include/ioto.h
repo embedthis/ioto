@@ -124,6 +124,7 @@ extern "C" {
     #define IO_MAX_URL    256                      /**< Sanity length of a URL */
 #endif
 #define IO_MESSAGE_SIZE   128 * 1024 * 1024        /**< Maximum AWS MQTT message size (reduced) */
+#define IO_REPROVISION    (3600)                   /**< Time to wait before reprovisioning after blocked connection*/
 
 struct IotoLog;
 
