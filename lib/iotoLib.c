@@ -3011,9 +3011,7 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey)
 PUBLIC void webLoginUser(Web *web)
 {
     /*
-        Security: This function does not have provide legacy CSRF protection
-        other than the SameSite cookie protections.
-        For extra security, users can implement anti-CSRF tokens themselves.
+        Review Acceptable: Users should utilize the anti-CSRF token protection provided by the web server.
      */
     const DbItem *user;
     cchar        *password, *role, *username;
@@ -3060,12 +3058,6 @@ void dummyWeb(void)
     cloud.c - Cloud services. Includes cloudwatch logs, log capture, shadow state and database sync.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
-
-    Docs re Sigv4 signing
-        https://docs.aws.amazon.com/general/latest/gr/sigv4-signed-request-examples.html
-        https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/CommonParameters.html
-        https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html
-        https://github.com/fromkeith/awsgo/blob/master/cloudwatch/putLogEvents.go
  */
 
 /********************************** Includes **********************************/
@@ -4831,6 +4823,10 @@ PUBLIC void ioRelease(const MqttRecv *rp)
     }
 }
 
+/*
+    Deprovision the device.
+    This is atomic and will not block. Also idempotent.
+ */
 PUBLIC void ioDeprovision(void)
 {
     char *path;
@@ -5319,10 +5315,9 @@ PUBLIC void ioSync(Time when, bool guarantee)
 }
 
 /*
-    Send sync changes to the cloud.
+    Send sync changes to the cloud. Process the sync log and re-create the change hash.
     The sync log contains a fail-safe record of local database changes that must be replicated to
     the cloud. It is applied on Ioto restart after an unexpected exit. It is erased after processing.
-    Process the sync log and re-create the change hash.
  */
 static void applySyncLog(void)
 {
@@ -6022,6 +6017,8 @@ PUBLIC bool ioUpdate(void)
     if (json) {
         /*
             Got an update response with checksum, version and image url
+            Review Acceptable: The update url is provided by the device cloud and is secure. So an 
+            additional signature is not required.
          */
         image = jsonGet(json, 0, "url", 0);
         if (image) {
@@ -6031,7 +6028,7 @@ PUBLIC bool ioUpdate(void)
             rInfo("ioto", "Device has updated firmware: %s", version);
 
             /*
-                Download the update with throttling
+                Download the update
              */
             if (download(image, path) == 0) {
                 //  Validate
