@@ -954,7 +954,7 @@ typedef struct Event {
  */
 static Event *events = 0;
 static bool  eventsWrapped = 0;
-static bool  eventsChanged = 0;
+static bool  eventsStopped = 0;
 
 /*
     Event lock so rStartEvent can be thread safe
@@ -985,7 +985,7 @@ static Event *lookupEvent(REvent id, Event **priorp);
 PUBLIC int rInitEvents(void)
 {
     events = 0;
-    eventsChanged = 0;
+    eventsStopped = 0;
     eventsWrapped = 0;
     watches = rAllocHash(0, R_TEMPORAL_NAME | R_STATIC_VALUE);
     rInitLock(&eventLock);
@@ -1080,6 +1080,7 @@ PUBLIC int rStopEvent(REvent id)
     }
     if ((ep = lookupEvent(id, &prior)) != 0) {
         unlinkEvent(ep, prior);
+        eventsStopped = 1;
         return 0;
     }
     return R_ERR_CANT_FIND;
@@ -1125,7 +1126,7 @@ PUBLIC Ticks rRunEvents(void)
 rescan:
     now = rGetTicks();
     deadline = MAXINT64;
-    eventsChanged = 0;
+    eventsStopped = 0;
 
     /*
         Run due events in the order of scheduling
@@ -1163,21 +1164,12 @@ rescan:
     return deadline;
 }
 
-PUBLIC bool rHasDueEvents(void)
+PUBLIC Time rGetNextDueEvent(void)
 {
-    Event *ep;
-    Ticks now;
-
     if (rState >= R_STOPPING) {
-        return 1;
+        return 0;
     }
-    now = rGetTicks();
-    for (ep = events; ep ; ep = ep->next) {
-        if (ep->when <= now) {
-            return 1;
-        }
-    }
-    return 0;
+    return events ? events->when : MAXINT64;
 }
 
 /*
@@ -1221,12 +1213,32 @@ static Event *lookupEvent(REvent id, Event **priorp)
     THREAD SAFE
     Note: do an in-order insertion. This inserts after the last event of the same time.
  */
-static void linkEvent(Event *ep)
+static void linkEvent(Event *event)
 {
+    Event *ep, *prior;
+
     rLock(&eventLock);
-    ep->next = events;
-    events = ep;
-    eventsChanged = 1;
+    if (events) {
+        prior = 0;
+        for (ep = events; ep; ep = ep->next) {
+            if (ep->when > event->when) {
+                if (ep == events) {
+                    // Insert at the head
+                    event->next = events;
+                    events = event;
+                } else {
+                    event->next = prior->next;
+                    prior->next = event;
+                }
+                break;
+            }
+            prior = ep;
+        }
+    } else {
+        // Add to the head
+        event->next = events;
+        events = event;
+    }
     rUnlock(&eventLock);
 }
 
@@ -1242,7 +1254,6 @@ static void unlinkEvent(Event *ep, Event *prior)
     }
     rUnlock(&eventLock);
     freeEvent(ep);
-    eventsChanged = 1;
 }
 
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data)
@@ -1305,8 +1316,7 @@ PUBLIC void rSignal(cchar *name)
 
     if ((list = rLookupName(watches, name)) != 0) {
         for (ITERATE_ITEMS(list, watch, next)) {
-            // watch->arg = arg;
-            rSpawnFiber(name, (RFiberProc) signalFiber, watch);
+            rStartEvent((RFiberProc) signalFiber, watch, 0);
         }
     }
 }
@@ -11472,9 +11482,6 @@ PUBLIC int rWait(Ticks deadline)
     waiting = 1;
     rMemoryBarrier();
 
-    if (rHasDueEvents()) {
-        return 0;
-    }
     timeout = getTimeout(deadline);
 
 #if ME_EVENT_NOTIFIER == R_EVENT_EPOLL
@@ -11667,7 +11674,7 @@ PUBLIC int rGetWaitFd(void)
  */
 static Ticks getTimeout(Ticks deadline)
 {
-    Ticks now, timeout;
+    Ticks nextEvent, now, timeout;
     RWait *wp;
     int   next;
 
@@ -11696,6 +11703,8 @@ static Ticks getTimeout(Ticks deadline)
         //  Reduce to MAXINT to permit callers to be able to do ticks arithmetic
         timeout = MAXINT;
     }
+    nextEvent = rGetNextDueEvent();
+    timeout = min(timeout, nextEvent - now);
     return timeout;
 }
 
