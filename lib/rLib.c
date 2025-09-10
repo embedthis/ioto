@@ -162,7 +162,7 @@ PUBLIC int rWritePid(void)
             }
         }
         sfmtbuf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
-        if (rWriteFile(path, pidbuf, slen(pidbuf), 0666) < 0) {
+        if (rWriteFile(path, pidbuf, slen(pidbuf), 0600) < 0) {
             rError("app", "Could not create pid file %s", path);
             return R_ERR_CANT_OPEN;
         }
@@ -2575,8 +2575,8 @@ PUBLIC RList *rGetFiles(cchar *path, cchar *pattern, int flags)
 
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
 {
-    char *path, sep;
-    int  fd;
+    char    path[ME_MAX_PATH], sep;
+    int     fd;
 
     sep = '/';
     if (!dir || *dir == '\0') {
@@ -2592,29 +2592,29 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
     if (!prefix) {
         prefix = "tmp";
     }
-    path = sfmt("%s%c%s-XXXXXX.tmp", dir, sep, prefix);
+    if (sfmtbuf(path, sizeof(path), "%s%c%s-XXXXXX.tmp", dir, sep, prefix) == NULL) {
+        rError("runtime", "Temporary filename too long");
+        return NULL;
+    };
 
 #if ME_WIN_LIKE
-    if (_mktemp(path) == NULL) {
+    if (_mktemp_s(path, sizeof(path)) != 0) {
         rError("runtime", "Cannot create temporary filename");
-        rFree(path);
         return NULL;
     }
     if ((fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_BINARY | O_CLOEXEC, 0600)) < 0) {
         rError("runtime", "Cannot create temporary file %s", path);
-        rFree(path);
         return NULL;
     }
 #else
     if ((fd = mkstemps(path, 4)) < 0) {
         rError("runtime", "Cannot create temporary file %s", path);
-        rFree(path);
         return NULL;
     }
     fchmod(fd, 0600);
 #endif
     close(fd);
-    return path;
+    return sclone(path);
 }
 
 PUBLIC void rAddDirectory(cchar *token, cchar *path)
@@ -4656,8 +4656,8 @@ static char *defaultKeyFile;               /* Default Alternatively, locate the 
 static char *defaultRevokeFile;            /* Default certificate revocation list */
 static char *defaultCiphers;               /* Default Ciphers to use for connection */
 
-static int defaultVerifyPeer = 1;
-static int defaultVerifyIssuer = 1;
+static int defaultVerifyPeer = 1;          /* Verify peer certificates */
+static int defaultVerifyIssuer = 1;        /* Verify issuer of peer certificates */
 
 /********************************** Forwards **********************************/
 
@@ -4819,6 +4819,10 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         rSetSocketError(tp->sock, "Cannot set mbedtls defaults");
         return R_ERR_CANT_INITIALIZE;
     }
+#if defined(MBEDTLS_SSL_MAJOR_VERSION_3) && defined(MBEDTLS_SSL_MINOR_VERSION_3)
+    // Enforce TLS >= 1.2
+    mbedtls_ssl_conf_min_version(&tp->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+#endif
     mbedtls_ssl_conf_rng(&tp->conf, mbedtls_ctr_drbg_random, &ctr);
 
     /*
@@ -5597,8 +5601,8 @@ static char *defaultCertFile;             /* Default certificate filename */
 static char *defaultKeyFile;              /* Default Alternatively, locate the key in a file */
 static char *defaultRevokeFile;           /* Default certificate revocation list */
 static char *defaultCiphers;              /* Default Ciphers to use for connection */
-static int  defaultVerifyPeer = 1;
-static int  defaultVerifyIssuer = 1;
+static int  defaultVerifyPeer = 1;        /* Verify peer certificates */
+static int  defaultVerifyIssuer = 1;      /* Verify issuer of peer certificates */
 
 /***************************** Forward Declarations ***************************/
 
@@ -5726,7 +5730,19 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
     tp->ctx = ctx;
     tp->freeCtx = 1;
     SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
-
+#if defined(TLS1_2_VERSION)
+    // Enforce TLS >= 1.2
+    #if defined(SSL_CTX_set_min_proto_version)
+        SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
+    #else
+        #ifdef SSL_OP_NO_TLSv1
+            SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
+        #endif
+        #ifdef SSL_OP_NO_TLSv1_1
+            SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
+        #endif
+    #endif
+#endif
     if (tp->verifyIssuer < 0) {
         tp->verifyIssuer = defaultVerifyIssuer;
     }
@@ -9297,7 +9313,11 @@ PUBLIC char *sfmtbuf(char *buf, ssize bufsize, cchar *fmt, ...)
         return 0;
     }
     va_start(ap, fmt);
-    rVsnprintf(buf, bufsize, fmt, ap);
+    if (rVsnprintf(buf, bufsize, fmt, ap) >= bufsize) {
+        //  Truncated
+        va_end(ap);
+        return NULL;
+    }
     va_end(ap);
     return buf;
 }
