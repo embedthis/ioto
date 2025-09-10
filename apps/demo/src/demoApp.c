@@ -44,15 +44,18 @@ int ioStart(void)
     rWatch("device:command:power", (RWatchProc) deviceCommand, 0);
     rWatch("device:command:custom", (RWatchProc) customCommand, 0);
 
-    //  Read settings from the ioto.json5 config file
+    if (smatch(jsonGet(ioto->config, 0, "mqtt.schedule", 0), "unscheduled")) {
+        onDemand = 1;
+    }
     if (jsonGetBool(ioto->config, 0, "demo.enable", 0)) {
-        ioOnConnect((RWatchProc) demo, 0, 1);
-        rInfo("demo", "Demo started\n");
-
+        if (onDemand) {
+            demo();
+        } else {
+            //  Run the demo when the cloud MQTT connection is established
+            ioOnConnect((RWatchProc) demo, 0, 1);
+        }
         if (jsonGetBool(ioto->config, 0, "demo.service", 0)) {
-            /*
-                If offline, this update will be queued for sync to the cloud when connected
-             */
+            //  If offline, this update will be queued for sync to the cloud when connected
             dbUpdate(ioto->db, "Service", DB_JSON("{value: '%d'}", 0), DB_PARAMS(.upsert = 1));
         }
     } else {
@@ -81,6 +84,7 @@ static void demo(void)
     static int counter = 0;
 
     if (once++ > 0) return;
+    rInfo("demo", "Demo started\n");
 
     /*
         Get demo control parameters (delay, count)
@@ -102,13 +106,12 @@ static void demo(void)
     dbRemoveExpired(ioto->db, 1);
 
     for (i = 0; i < count; i++) {
-        /*
-            Could reconnect if disconnected via ioConnect()
-         */
-        if (!ioto->connected) {
-            rError("demo", "Cloud connection lost, suspending demo");
+        if (!onDemand && !ioto->connected) {
+            rInfo("demo", "Cloud connection lost, suspending demo");
             break;
         }
+        rInfo("demo", "Demo iteration %d/%d", counter, count);
+        rPrintf("\n");
         if (jsonGetBool(ioto->config, 0, "demo.counter", 0)) {
             rInfo("demo", "Updating Store.counter via MQTT request");
             ioSetNum("counter", counter);
@@ -157,9 +160,6 @@ static void demo(void)
                 }
             }
         }
-        rInfo("demo", "Demo iteration %d/%d", counter, count);
-        rPrintf("\n");
-
         if (++counter < count) {
 #if ESP32
             //  Trace task and memory usage

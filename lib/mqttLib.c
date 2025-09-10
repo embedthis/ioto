@@ -194,14 +194,11 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
     mq->id = sclone(clientId);
     mq->proc = proc;
     mq->head.next = mq->head.prev = &mq->head;
-    mq->error = R_ERR_NOT_CONNECTED;
     mq->msgTimeout = MQTT_MSG_TIMEOUT;
     mq->maxMessage = MQTT_MAX_MESSAGE_SIZE;
     mq->mask = R_READABLE;
-    mq->nextId = 0;
     mq->lastActivity = rGetTicks();
     mq->masterTopics = rAllocList(0, R_DYNAMIC_VALUE);
-
     mq->keepAlive = MQTT_KEEP_ALIVE;
     mq->timeout = MQTT_TIMEOUT;
     return mq;
@@ -323,9 +320,9 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     mq->sock = sock;
 
     id = mq->id ? mq->id : "";
-    if (mq->error == R_ERR_NOT_CONNECTED) {
-        mq->error = 0;
-    }
+    mq->error = 0;
+    rFree(mq->errorMsg);
+    mq->errorMsg = 0;
     hdr.type = MQTT_PACKET_CONNECT;
     hdr.flags = 0x00;
 
