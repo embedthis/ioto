@@ -1930,6 +1930,7 @@ PUBLIC int ioRegister(void)
 {
     Json       *params, *response;
     char       *data, *path, url[160];
+    bool       test;
     int        rc;
     static int once = 0;
 
@@ -1959,10 +1960,7 @@ PUBLIC int ioRegister(void)
     } else if (smatch(ioto->id, "auto")) {
         ioto->id = cryptID(10);
         rInfo("ioto", "Generated device claim ID %s", ioto->id);
-
-        jsonUnlock(ioto->config);
         jsonSet(ioto->config, 0, "device.id", ioto->id, JSON_STRING);
-        jsonLock(ioto->config);
 
         if (!ioto->nosave) {
             path = rGetFilePath(IO_DEVICE_FILE);
@@ -1988,6 +1986,7 @@ PUBLIC int ioRegister(void)
     }
 #endif
     jsonSetDate(params, 0, "created", 0);
+    test = jsonGetBool(params, 0, "test", 0);
 
     data = jsonToString(params, 0, 0, JSON_JSON);
     jsonFree(params);
