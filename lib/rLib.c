@@ -1504,37 +1504,19 @@ void rFreeFiber(RFiber *fiber)
 }
 
 /*
-    Resume a fiber and pass a result. THREAD SAFE.
+    Swap context between two fibers. Pass a result to the target fiber rYieldFiber return value.
  */
-PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
+static void *swapContext(RFiber *from, RFiber *to, void *result)
 {
-    RFiber *prior;
-
-    assert(fiber);
-
-    if (fiber->done) {
-        return fiber->result;
+    to->result = result;
+    currentFiber = to;
+    if (uctx_swapcontext(&from->context, &to->context) < 0) {
+        rError("runtime", "Cannot swap context");
+        return 0;
     }
-    if (rIsMain()) {
-        fiber->result = result;
-        prior = currentFiber;
-
-        //  Switch to a new fiber
-        currentFiber = fiber;
-        if (uctx_swapcontext(&prior->context, &fiber->context) < 0) {
-            rError("runtime", "Cannot swap context");
-            return 0;
-        }
-        //  Back from the fiber, extract the result and terminate fiber if done
-        result = fiber->result;
-        if (fiber->done) {
-            rFreeFiber(fiber);
-        }
-    } else {
-        //  OPTIMIZE - could do direct swapcontext if main thread
-        //  Foreign threads or non-main fibers
-        //  Let main call ResumeFiber for us
-        rStartFiber(fiber, (void*) result);
+    result = from->result;
+    if (to->done) {
+        rFreeFiber(to);
     }
     return result;
 }
@@ -1542,22 +1524,55 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
 /*
     Yield from a fiber back to the main fiber.
     The caller must have some mechanism to resume. i.e. someone must call rResumeFiber. See rSleep()
+    The parameter is passed to the
+    The return result it
  */
-inline void *rYieldFiber(void *value)
+PUBLIC void *rYieldFiber(void *result)
 {
-    RFiber *fiber;
-
     assert(currentFiber);
+    return swapContext(currentFiber, mainFiber, result);
+}
 
-    fiber = currentFiber;
-    fiber->result = value;
-    currentFiber = mainFiber;
-    if (uctx_swapcontext(&fiber->context, &mainFiber->context) < 0) {
-        rError("runtime", "Cannot swap context");
-        return 0;
+/*
+    Resume a fiber and pass a result. The resumed fiber will receive the result value as a return value from
+    rYieldFiber. If called from the main fiber, the thread is resumed directly and immediately and
+    the main fiber is suspended until the fiber yields or completes. If called from a non-main fiber or
+    foreign-thread the target fiber is scheduled to be resumed via an event. In this case, the call to
+    rResumeFiber returns without yielding and the resumed fiber will run when the calling fiber next yields.
+    THREAD SAFE.
+ */
+PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
+{
+    assert(fiber);
+
+    if (fiber->done) {
+        return fiber->result;
     }
-    //  Resumed original fiber so pass back result
-    return fiber->result;
+    if (rIsMain()) {
+        result = swapContext(currentFiber, fiber, result);
+    } else {
+        // Foreign thread or non-main fiber running in an Ioto thread
+        rStartFiber(fiber, (void*) result);
+#if FUTURE
+        /*
+            Direct swap between fibers
+            We don't use this which may be faster, but it means the critical main fiber would not be resumed
+            until the target fiber yields or completes. If the target fiber resumed other fibers, those would
+            further delay the main fiber. The current design ensures the main fiber is resumed between each
+            yielded fiber so it can respond to I/O events and scheduled events.
+         */
+    } else if (rIsForeignThread()) {
+        // A foreign thread cannot swap stacks
+        rStartFiber(fiber, (void*) result);
+    } else {
+        /*
+            Non-main fiber running in an Ioto thread
+            Direct swap context between non-main fiber and target fiber
+         */
+        result = swapContext(currentFiber, fiber, result);
+#endif
+    }
+    return result;
 }
 
 /*
@@ -1572,7 +1587,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *arg)
 }
 
 /*
-    Allocate a new fiber and resume it. The resumption happens via rStartFiber and the main fiber.
+    Allocate a new fiber and resume it
  */
 PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg)
 {
@@ -1581,7 +1596,7 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg)
     if ((fiber = rAllocFiber(name, fn, arg)) == 0) {
         return R_ERR_MEMORY;
     }
-    rResumeFiber(fiber, 0);
+    rStartFiber(fiber, 0);
     return 0;
 }
 
@@ -7194,13 +7209,13 @@ static void outFloat(PContext *ctx, char specchar, double value)
     }
 }
 
-static double normalizeScientific(double x, int *exponent) 
+static double normalizeScientific(double x, int *exponent)
 {
     if (x == 0.0) {
         *exponent = 0;
         return 0.0;
     }
-    int exp = (int)floor(log10(fabs(x)));
+    int    exp = (int) floor(log10(fabs(x)));
     double mantissa = x / pow(10.0, exp);
 
     // Adjust if mantissa is not in the range [1.0, 10.0)
@@ -7238,7 +7253,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
 
     ipart = (int64) mantissa;
     outNum(ctx, 10, ipart);
- 
+
     if (precision > 0) {
         BPUT(ctx, '.');
     }
@@ -7255,7 +7270,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
     }
     if (ctx->format == 'g') {
         //  Remove trailing zeros and decimal point if precision is 0
-         if (ctx->precision < 0) {
+        if (ctx->precision < 0) {
             for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--) {
                 if (*last == '0' || *last == '.') {
                     *last = '\0';
@@ -7263,7 +7278,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
                     break;
                 }
             }
-         }
+        }
     }
     fexp = abs(exponent);
     BPUT(ctx, (ctx->format == 'E' || ctx->format == 'G') ? 'E' : 'e');
