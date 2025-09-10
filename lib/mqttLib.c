@@ -29,8 +29,18 @@
 #if ME_COM_MQTT
 /********************************** Defines ***********************************/
 
-#define MqttThrottleMin   500
-#define MqttThrottleMax   30 * TPS
+#ifndef MQTT_THROTTLE_MIN
+    #define MQTT_THROTTLE_MIN   2 * TPS
+#endif
+#ifndef MQTT_THROTTLE_MAX 
+    #define MQTT_THROTTLE_MAX   30 * TPS
+#endif
+#ifndef MQTT_THROTTLE_DECAY_BASE
+    #define MQTT_THROTTLE_DECAY_BASE 2 /** Decay throttle delay by 2ms per second */
+#endif
+#ifndef MQTT_THROTTLE_DECAY_PERCENT
+    #define MQTT_THROTTLE_DECAY_PERCENT 400 /** Decay throttle delay by 0.25% (1/400) per second */
+#endif
 
 #define MQTT_HTONS(s) htons(s)
 #define MQTT_NTOHS(s) ntohs(s)
@@ -155,12 +165,11 @@ static int pubRel(Mqtt *mq, int id);
 static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags wait, int retain, cchar *topic);
 static void queueMsg(Mqtt *mq, MqttMsg *msg, uchar *end);
 static int recvMsgs(Mqtt *mq);
-static void resetConnection(Mqtt *mq);
+static void resumeFibers(Mqtt *mq);
 static int sendMsgs(Mqtt *mq);
 static int setError(Mqtt *mq, int error, cchar *fmt, ...);
 static void setState(Mqtt *mq, MqttMsg *msg, int state);
 static cchar **splitTopic(cchar *topic, int topicLen, char **segbuf);
-static void stopProcessing(Mqtt *mq);
 static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags wait, cchar *topic);
 static int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *bp);
@@ -207,10 +216,12 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
 PUBLIC void mqttFree(Mqtt *mq)
 {
     if (!mq) return;
-    stopProcessing(mq);
 
-    mq->freed = 1;
-    resetConnection(mq);
+    resumeFibers(mq);
+    if (mq->keepAliveEvent) {
+        rStopEvent(mq->keepAliveEvent);
+    }
+    freeTopics(mq, NULL);
     rFreeBuf(mq->buf);
     rFreeList(mq->topics);
     rFreeList(mq->masterTopics);
@@ -221,51 +232,38 @@ PUBLIC void mqttFree(Mqtt *mq)
     rFree(mq);
 }
 
-static void resetConnection(Mqtt *mq)
-{
-    if (mq->keepAliveEvent) {
-        rStopEvent(mq->keepAliveEvent);
-    }
-    freeTopics(mq, NULL);
-    rFlushBuf(mq->buf);
-    rFree(mq->errorMsg);
-    mq->errorMsg = 0;
-    mq->error = R_ERR_NOT_CONNECTED;
-}
-
-static void stopProcessing(Mqtt *mq)
+/*
+    Resume all waiting fibers and wait for them to complete
+ */
+static void resumeFibers(Mqtt *mq)
 {
     MqttMsg *msg, *next;
-
-    if (mq->freed) return;
+    int     i;
 
     /*
         Disconnected - resume all waiting fibers
      */
-    for (msg = mq->head.next; msg != &mq->head; msg = next) {
+     for (msg = mq->head.next; msg != &mq->head; msg = next) {
         next = msg->next;
         if (msg->fiber) {
-            //  WARNING: this will not switch immediately to the other fiber
+            /*
+                The resume will not switch immediately to the other fiber
+                We wait below till the fiberCount reaches zero
+             */
             rResumeFiber(msg->fiber, (void*) (ssize) R_ERR_NOT_CONNECTED);
         }
         msg->wait = 0;
         dequeueMsg(mq, msg);
     }
-    rDebug("mqtt", "Disconnecting mqtt connection");
-
-    //  Remove recv buffer and subscription topics
-    resetConnection(mq);
-
-    mq->sock = 0;
-    mq->processing = 0;
-    mq->error = 0;
-
-    if (rGetState() <= R_STOPPING) {
-        //  Must do last
-        notify(mq, MQTT_EVENT_DISCONNECT);
+    for (i = 0; i < 100 && mq->fiberCount > 0; i++) {
+        rSleep(0);
     }
 }
 
+/*
+    Process MQTT events. Called by the wait handler on the socket.
+    On errors, notify users and resume all waiting fibers.
+ */
 static void processMqtt(Mqtt *mq)
 {
     ssize mask;
@@ -282,7 +280,11 @@ static void processMqtt(Mqtt *mq)
         }
     }
     if (mq->error) {
-        stopProcessing(mq);
+        resumeFibers(mq);
+        mq->processing = 0;
+        if (rGetState() <= R_STOPPING) {
+            notify(mq, MQTT_EVENT_DISCONNECT);
+        }
     } else {
         mask = R_READABLE | (mqttMsgsToSend(mq) ? R_WRITABLE : 0);
         rSetWaitMask(mq->sock->wait, mask, rGetTicks() + MQTT_WAIT_TIMEOUT);
@@ -447,6 +449,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     }
     if (!mq->processing) {
         rSetWaitHandler(mq->sock->wait, (RWaitProc) processMqtt, mq, R_IO, rGetTicks() + MQTT_WAIT_TIMEOUT);
+        mq->processing = 1;
     }
     queueMsg(mq, msg, bp);
 
@@ -469,7 +472,7 @@ static void idleCheck(Mqtt *mq)
 {
     Ticks delay, elapsed;
 
-    if (!mq->sock) return;
+    if (!mq->sock || mq->error) return;
 
     elapsed = rGetTicks() - mq->lastActivity + 1;
     if (elapsed >= mq->timeout) {
@@ -531,10 +534,13 @@ static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags wait)
         return 0;
     }
     msg->wait = wait;
-    msg->fiber = rGetFiber();
     msg->hold = 1;
+    msg->fiber = rGetFiber();
+    mq->fiberCount++;
 
     result = (ssize) rYieldFiber(0);
+    
+    mq->fiberCount--;
     msg->hold = 0;
     freeMsg(msg);
 
@@ -559,6 +565,9 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFla
     if (topic == 0) {
         rError("mqtt", "Publish with null topic");
         return R_ERR_BAD_ARGS;
+    }
+    if (mq->error) {
+        return mq->error;
     }
     va_start(ap, topic);
     len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
@@ -670,13 +679,15 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
     if (mq->throttle > 0) {
         now = rGetTicks();
         /*
-            Decay by 3% of throttle delay each second, plus 5ms per second
+            Decay by 0.25% of throttle delay each second, plus 2ms per second
+            This will cause a decay of ~15% each minute
          */
         elapsed = (now - mq->throttleLastPub + TPS - 1);
-        decay = (mq->throttle * 3 / 100 * elapsed / 1000) + elapsed * 5 / TPS;
+
+        decay = (mq->throttle * (elapsed / TPS) / MQTT_THROTTLE_DECAY_PERCENT) + (elapsed * MQTT_THROTTLE_DECAY_BASE / TPS);
 
         if (mq->throttle) {
-            rInfo("mqtt", "Delay sending message for %lld ms", mq->throttle);
+            rTrace("mqtt", "Delay sending message for %lld ms", mq->throttle);
             rSleep(mq->throttle);
         } else {
             rInfo("mqtt", "Throttling restrictions lifted");
@@ -704,11 +715,11 @@ PUBLIC void mqttThrottle(Mqtt *mq)
         Throttle rising exponentially
      */
     now = rGetTicks();
-    mq->throttle = max(mq->throttle * 2, mq->throttle + MqttThrottleMin);
+    mq->throttle = max(mq->throttle * 2, mq->throttle + MQTT_THROTTLE_MIN);
     mq->throttleMark = now;
     mq->throttleLastPub = now;
-    if (mq->throttle > MqttThrottleMax) {
-        mq->throttle = MqttThrottleMax;
+    if (mq->throttle > MQTT_THROTTLE_MAX) {
+        mq->throttle = MQTT_THROTTLE_MAX;
     }
     rError("mqtt", "Device sending too much data, sending throttled for %lld ms", mq->throttle);
 }
@@ -758,6 +769,9 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
     if (mq == 0) {
         rError("mqtt", "Subscribe on bad Mqtt object");
         return R_ERR_BAD_ARGS;
+    }
+    if (mq->error) {
+        return mq->error;
     }
     va_start(ap, fmt);
     len = rVsnprintf(topic, sizeof(topic), fmt, ap);
@@ -900,6 +914,9 @@ PUBLIC int mqttPing(Mqtt *mq)
 
     assert(mq);
 
+    if (mq->error) {
+        return mq->error;
+    }
     if (!onDemandAttach(mq)) {
         return R_ERR_CANT_WRITE;
     }
@@ -1051,7 +1068,7 @@ static int sendMsgs(Mqtt *mq)
         written = (int) rWriteSocketSync(mq->sock, msg->start, msg->end - msg->start);
 
         if (written < 0) {
-            rError("mqtt", "Error writing to mqtt: %d", written);
+            rDebug("mqtt", "Error writing to mqtt: %d", written);
             return setError(mq, R_ERR_NETWORK, "Cannot write to socket: errno %d", rGetOsError());
 
         } else if (written > 0) {
@@ -1247,14 +1264,16 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             rp->mq = mq;
             rp->matched = tp;
             if (tp->wait & MQTT_WAIT_FAST) {
+                // NOTE: rp->data is not null terminated
                 (rp->matched->callback)(rp);
             } else {
+                /*
+                    Copy the receive message which is on the stack to an arg block so that it can be passed 
+                    to the fiber/callback. Allocate the topic here as it is not null terminated in the header 
+                    incomingMsg will free it.
+                 */
                 arg = rAllocType(MqttRecv);
                 memcpy(arg, rp, sizeof(MqttRecv));
-                /*
-                    Allocate the topic here as it is not null terminated in the header
-                    incomingMsg will free it
-                 */
                 arg->topic = rAlloc(rp->topicSize + 1);
                 sncopy(arg->topic, rp->topicSize + 1, (char*) rp->topic, rp->topicSize);
                 if (rp->dataSize > 0) {
@@ -1266,6 +1285,7 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
                 } else {
                     arg->data = 0;
                 }
+                mq->fiberCount++;
                 fiber = rAllocFiber("incoming-mqtt", (RFiberProc) incomingMsg, arg);
                 rStartFiber(fiber, 0);
             }
@@ -1387,17 +1407,21 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
  */
 static void incomingMsg(MqttRecv *rp)
 {
+    Mqtt *mq;
     assert(rp && rp->matched && rp->matched->callback);
 
     if (!rp) {
         return;
     }
+    mq = rp->mq;
+
     (rp->matched->callback)(rp);
 
     //  This was allocated in processRecvMsg
     rFree(rp->topic);
     rFree(rp->data);
     rFree(rp);
+    mq->fiberCount--;
 }
 
 static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, MqttWaitFlags wait)
@@ -2107,7 +2131,7 @@ static int setError(Mqtt *mq, int error, cchar *fmt, ...)
     if (error != R_ERR_NETWORK) {
         rError("mqtt", "Mqtt error %d: %s. Closing socket.", mq->error, mq->errorMsg);
     }
-    rCloseSocket(mq->sock);
+    rDisconnectSocket(mq->sock);
     va_end(ap);
     return error;
 }
