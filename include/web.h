@@ -55,6 +55,15 @@ extern "C" {
 #endif
 #define WEB_SESSION_USERNAME   "_:username:_"       /* Session state username variable */
 #define WEB_SESSION_ROLE       "_:role:_"           /* Session state role variable */
+#ifndef WEB_XSRF_COOKIE
+    #define WEB_XSRF_COOKIE    "XSRF-TOKEN"         /**< CSRF token cookie name */
+#endif
+#ifndef WEB_XSRF_HEADER
+    #define WEB_XSRF_HEADER    "X-XSRF-TOKEN"       /**< CSRF token name in Http headers */
+#endif
+#ifndef WEB_XSRF_PARAM
+    #define WEB_XSRF_PARAM     "-xsrf-"             /**< CSRF parameter in form fields */
+#endif
 
 #define WEB_UNLIMITED          MAXINT64
 
@@ -161,6 +170,7 @@ typedef struct WebHost {
     int flags;                  /**< Control flags */
     bool freeConfig : 1;        /**< Config is allocated and must be freed */
     bool httpOnly : 1;          /**< Cookie httpOnly flag */
+    bool xsrf : 1;              /**< Use XSRF tokens */
     bool strictSignatures : 1;  /** Enforce strict signature compliance */
 
     WebHook hook;               /**< Web notification hook */
@@ -398,6 +408,7 @@ typedef struct Web {
     char *query;                /**< Request URL query portion */
     char *redirect;             /**< Response redirect location. Used to set the Location header */
     char *hash;                 /**< Request URL reference portion */
+    char *securityToken;        /**< Request security token */
     time_t since;               /**< Value of the if-modified-since value in seconds since epoch */
 
     //  Auth
@@ -894,6 +905,27 @@ typedef struct WebSession {
 } WebSession;
 
 /**
+    Add the security token to the response.
+    @description To minimize form replay attacks, a security token may be required for POST requests on a route.
+    This call will set a security token in the response as a response header and as a response cookie.
+    Client-side Javascript must then send this token as a request header in subsquent POST requests.
+    To configure the server to require security tokens, set sessions.xsrf to true in the host configuration.
+    @param web Web object
+    @param recreate Set to true to recreate the security token.
+    @stability Prototype
+ */
+PUBLIC int webAddSecurityToken(Web *web, bool recreate);
+
+/**
+    Check a security token.
+    @description Check the request security token against the security token defined in the session state.
+    @param web Web object
+    @return True if the security token matches the session held token.
+    @stability Prototype
+ */
+PUBLIC bool webCheckSecurityToken(Web *web);
+
+/**
     Create a login session
     @param web Web request object
     @return Allocated session object
@@ -908,6 +940,18 @@ PUBLIC WebSession *webCreateSession(Web *web);
     @stability Prototype
  */
 PUBLIC void webDestroySession(Web *web);
+
+/**
+    Get a unique security token.
+    @description This will get an existing security token or create a new token if one does not exist.
+        If recreate is true, the security token will be recreated.
+        Use #webAddSecurityToken to add the token to the response headers.
+    @param web Web object
+    @param recreate Set to true to recreate the security token.
+    @return The security token string
+    @stability Prototype
+ */
+PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate);
 
 /**
     Get the session state object for the current request

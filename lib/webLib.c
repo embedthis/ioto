@@ -2738,6 +2738,9 @@ static WebSession *createSession(Web *web)
     sameSite = host->sameSite ? host->sameSite : "Lax";
     webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE,
                  session->id, host->sessionTimeout / TPS, secure, httpOnly, sameSite);
+    if (host->xsrf && web->securityToken) {
+        webSetSessionVar(web, WEB_XSRF_COOKIE, web->securityToken);
+    }
     return session;
 }
 
@@ -2866,6 +2869,92 @@ static char *makeSessionID(Web *web)
 
     cryptGetRandomBytes(idBuf, sizeof(idBuf), 0);
     return cryptEncode64Block(idBuf, sizeof(idBuf));
+}
+
+/*
+    Create a security token to use to mitiate CSRF threats. 
+    Security tokens are expected to be sent with POST requests to verify the request is not being forged.
+    Note: the Session API prevents session hijacking by pairing with the client IP
+ */
+static cchar *createSecurityToken(Web *web)
+{
+    assert(web);
+
+    if (!web->securityToken) {
+        web->securityToken = cryptID(32);
+    }
+    return web->securityToken;
+}
+
+/*
+    Get the security token from the session. Create one if one does not exist. Store the token in session store.
+ */
+PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
+{
+    if (recreate) {
+        web->securityToken = 0;
+    } else {
+        web->securityToken = (char*) webGetSessionVar(web, WEB_XSRF_COOKIE, 0);
+    }
+    if (web->securityToken == 0) {
+        createSecurityToken(web);
+        webSetSessionVar(web, WEB_XSRF_COOKIE, web->securityToken);
+    }
+    return web->securityToken;
+}
+
+/*
+    Add the security token to an XSRF cookie and an X-XSRF-TOKEN response header
+    Set recreate to true to force a recreation of the token.
+ */
+PUBLIC int webAddSecurityToken(Web *web, bool recreate)
+{
+    WebRoute *route;
+    WebHost  *host;
+    cchar    *securityToken, *url;
+    cchar    *httpOnly, *secure, *sameSite;
+
+    host = web->host;
+    route = web->route;
+    securityToken = webGetSecurityToken(web, recreate);
+    url = (route->match && *route->match) ? route->match : "/";
+    secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
+    httpOnly = host->httpOnly ? "HttpOnly; " : "";
+    sameSite = host->sameSite ? host->sameSite : "Lax";
+    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=%s; %s%sSameSite=%s", WEB_XSRF_COOKIE,
+                 securityToken, host->sessionTimeout / TPS, url, secure, httpOnly, sameSite);
+    webAddHeader(web, WEB_XSRF_HEADER, securityToken);
+    return 0;
+}
+
+/*
+    Check the security token with the request. This must match the last generated token stored in the session state.
+    It is expected the client will set the X-XSRF-TOKEN request header with the token.
+    The user should call this function in the post action handler.
+ */
+PUBLIC bool webCheckSecurityToken(Web *stream)
+{
+    cchar *requestToken, *sessionToken;
+
+    if ((sessionToken = webGetSessionVar(stream, WEB_XSRF_COOKIE, 0)) != 0) {
+        requestToken = webGetHeader(stream, WEB_XSRF_HEADER);
+        if (!requestToken) {
+            requestToken = webGetVar(stream, WEB_XSRF_PARAM, 0);
+            if (!requestToken) {
+                rError("session", "Missing security token in request");
+            }
+        }
+        if (!smatch(sessionToken, requestToken)) {
+            /*
+                Potential CSRF attack. Deny request. Re-create a new security token so legitimate clients can retry.
+             */
+            rError("session", "Security token in request does not match session token, xsrf:%s, sessionXsrf:%s",
+                   requestToken, sessionToken);
+            webAddSecurityToken(stream, 1);
+            return 0;
+        }
+    }
+    return 1;
 }
 #endif /* ME_WEB_SESSION */
 
