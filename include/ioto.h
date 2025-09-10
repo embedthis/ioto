@@ -857,6 +857,7 @@ PUBLIC void ioSetTemplateVar(cchar *key, cchar *value);
 PUBLIC void ioGetKeys(void);
 PUBLIC int ioLoadConfig(void);
 PUBLIC Ticks cronUntil(cchar *spec, Time when);
+PUBLIC Ticks cronUntilEnd(cchar *spec, Time when);
 
 #define IOTO_PROD    0          /**< Configure trace for production (minimal) */
 #define IOTO_VERBOSE 1          /**< Configure trace for development with verbose output */

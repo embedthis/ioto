@@ -131,6 +131,7 @@ static int nextValue(int current, cchar *str);
 static int atoia(cchar **ptr);
 static int64 between(int m1, int d1, int y1, int m2, int d2, int y2);
 static int daysPerMonth(int m, int y);
+static bool cronMatch(Cron *cp, struct tm *tm);
 
 /*********************************** Code *************************************/
 /*
@@ -141,7 +142,6 @@ static Cron *cronAlloc(cchar *spec)
 {
     Cron *cp;
     char *buf, *rest;
-    int  mth;
 
     if (spec == NULL || *spec == '\0') {
         spec = "* * * * *";
@@ -151,17 +151,19 @@ static Cron *cronAlloc(cchar *spec)
     /*
         Convenient aliases
      */
-    if (scmp(spec, "anytime") == 0) {
+    if (smatch(spec, "anytime")) {
         spec = "* * * * *";
-    } else if (scmp(spec, "day") == 0) {
+    } else if (smatch(spec, "never") || smatch(spec, "unscheduled")) {
+        spec = "0 0 0 0 0";
+    } else if (smatch(spec, "day")) {
         spec = "* 6-17 * * *";
-    } else if (scmp(spec, "weekdays") == 0) {
+    } else if (smatch(spec, "weekdays")) {
         spec = "* * * * 1-5";
-    } else if (scmp(spec, "workhours") == 0) {
+    } else if (smatch(spec, "workhours")) {
         spec = "* 9-17 * * 1-5";
-    } else if (scmp(spec, "midnight") == 0) {
+    } else if (smatch(spec, "midnight")) {
         spec = "* 0 * * *";
-    } else if (scmp(spec, "night") == 0) {
+    } else if (smatch(spec, "night")) {
         spec = "* 0-5,18-23 * * *";
     }
     buf = sclone(spec);
@@ -175,10 +177,8 @@ static Cron *cronAlloc(cchar *spec)
     cp->month = stok(rest, " ", &rest);
     cp->dayofweek = stok(rest, " ", &rest);
 
-    mth = (int) stoi(cp->month);
     if (cp->minute == NULL || cp->hour == NULL || cp->day == NULL ||
-        cp->month == NULL || cp->dayofweek == NULL ||
-        ((mth < 1 || mth > 12) && !smatch(cp->month, "*"))) {
+        cp->month == NULL || cp->dayofweek == NULL) {
         rFree(buf);
         rFree(cp);
         return 0;
@@ -217,7 +217,11 @@ Ticks cronUntil(cchar *spec, Time when)
     if ((cp = cronAlloc(spec)) == NULL) {
         return -1;
     }
-
+    if (smatch(cp->month, "0")) {
+        // Never
+        cronFree(cp);
+        return MAXTIME;
+    }
     now = rGetTime() / TPS;
     if (when == 0) {
         when = now * TPS;
@@ -349,6 +353,96 @@ Ticks cronUntil(cchar *spec, Time when)
     return (Ticks) t * TPS;
 }
 
+/**
+    Returns the time remaining until the end of the current window.
+ */
+PUBLIC Ticks cronUntilEnd(cchar *spec, Time when)
+{
+    Cron      *cp;
+    struct tm *tm;              /* Current time broken down */
+    struct tm end_tm;           /* End of cron window broken down */
+    time_t    t;                /* Current time in seconds */
+    time_t    end_t;            /* End of cron window in seconds */
+
+    if ((cp = cronAlloc(spec)) == NULL) {
+        return -1;
+    }
+    if (when == 0) {
+        when = rGetTime();
+    }
+    t = (time_t) when / TPS;
+    tm = localtime(&t);
+
+    /*
+        Return 0 if the cron spec is not currently active.
+     */
+    if (!cronMatch(cp, tm)) {
+        cronFree(cp);
+        return 0;
+    }
+    end_tm = *tm;
+
+    /*
+        Calculate the end of the current window based on the most specific cron field.
+     */
+    if (scmp(cp->minute, "*") != 0) {
+        /* End of the current minute */
+        end_tm.tm_sec = 59;
+
+    } else if (scmp(cp->hour, "*") != 0) {
+        /* End of the current hour */
+        end_tm.tm_min = 59;
+        end_tm.tm_sec = 59;
+
+    } else if (scmp(cp->day, "*") != 0 || scmp(cp->dayofweek, "*") != 0) {
+        /* End of the current day */
+        end_tm.tm_hour = 23;
+        end_tm.tm_min = 59;
+        end_tm.tm_sec = 59;
+
+    } else if (scmp(cp->month, "*") != 0) {
+        /* End of the current month */
+        end_tm.tm_mday = daysPerMonth(tm->tm_mon, tm->tm_year + 1900);
+        end_tm.tm_hour = 23;
+        end_tm.tm_min = 59;
+        end_tm.tm_sec = 59;
+
+    } else {
+        /* All fields are "*", so the window is indefinite */
+        cronFree(cp);
+        return MAXINT64 - MAXINT;
+    }
+    cronFree(cp);
+    end_t = mktime(&end_tm);
+    if (end_t < t) {
+        return 0;
+    }
+    return (Ticks) (end_t - t) * TPS;
+}
+
+/*
+    Return true if the given time matches the cron spec
+ */
+static bool cronMatch(Cron *cp, struct tm *tm)
+{
+    bool dayMatch, dowMatch;
+
+    if (nextValue(tm->tm_min, cp->minute) != tm->tm_min) return 0;
+    if (nextValue(tm->tm_hour, cp->hour) != tm->tm_hour) return 0;
+    if (nextValue(tm->tm_mon + 1, cp->month) != tm->tm_mon + 1) return 0;
+
+    dayMatch = (nextValue(tm->tm_mday, cp->day) == tm->tm_mday);
+    dowMatch = (nextValue(tm->tm_wday, cp->dayofweek) == tm->tm_wday);
+
+    if (smatch(cp->day, "*")) {
+        return dowMatch;
+    }
+    if (smatch(cp->dayofweek, "*")) {
+        return dayMatch;
+    }
+    return dayMatch || dowMatch;
+}
+
 /*
     Return the next valid value for a particular cron field that is greater or equal
     to the current field.  If no valid values exist the smallest of the list is returned.
@@ -430,10 +524,15 @@ static int64 between(int m1, int d1, int y1, int m2, int d2, int y2)
 {
     int days, m;
 
-    if ((m1 == m2) && (d1 == d2) && (y1 == y2))
+    if (m1 < 0 || m2 < 0) {
         return 0;
-    if ((m1 == m2) && (d1 < d2))
+    }
+    if ((m1 == m2) && (d1 == d2) && (y1 == y2)) {
+        return 0;
+    }
+    if ((m1 == m2) && (d1 < d2)) {
         return d2 - d1 - 1;
+    }
     /*
         These are not in the same month
      */
