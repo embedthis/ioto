@@ -63,6 +63,7 @@
             name: {type: 'string'},
             product: {type: 'string', notes: 'Product Token'},
             state: {type: 'string', notes: 'Device state'},
+            test: {type: 'boolean', notes: 'Test device'},
             updated: {type: 'date', readonly: true},
             _source: {type: 'string', hidden: true},
         },
