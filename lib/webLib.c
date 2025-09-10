@@ -2736,7 +2736,7 @@ static WebSession *createSession(Web *web)
     secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
     httpOnly = host->httpOnly ? "HttpOnly; " : "";
     sameSite = host->sameSite ? host->sameSite : "Lax";
-    webAddHeader(web, "Set-Cookie", "%s=%s; MaxAge=%d; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE,
+    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE,
                  session->id, host->sessionTimeout / TPS, secure, httpOnly, sameSite);
     return session;
 }
