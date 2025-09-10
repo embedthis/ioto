@@ -2087,6 +2087,9 @@ PUBLIC ssize webWriteHeaders(Web *web)
     if (web->mime) {
         webAddHeaderStaticString(web, "Content-Type", web->mime);
     }
+    if (smatch(rLookupName(web->txHeaders, "Access-Control-Allow-Origin"), "dynamic") == 0) {
+        webAddAccessControlHeader(web);
+    }
 
     /*
         Emit HTTP response line
@@ -2182,6 +2185,7 @@ PUBLIC void webAddAccessControlHeader(Web *web)
     cchar *origin, *schema;
 
     origin = web->origin;
+    webAddHeaderStaticString(web, "Vary", "Origin");
     if (origin) {
         webAddHeaderStaticString(web, "Access-Control-Allow-Origin", origin);
     } else {
