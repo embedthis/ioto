@@ -7,58 +7,58 @@
         objects = {
 
 /* Begin PBXAggregateTarget section */
-		04CD37C404CD37C400000006 /* appConfig */ = {
+		04EE125604EE125600000006 /* appConfig */ = {
     			isa = PBXAggregateTarget;
-    			buildConfigurationList = 04CD37C404CD37C400000005 /* Build configuration list for PBXAggregateTarget "appConfig" */;
+    			buildConfigurationList = 04EE125604EE125600000005 /* Build configuration list for PBXAggregateTarget "appConfig" */;
     			buildPhases = (
-    				04CD37C404CD37C400000007,
+    				04EE125604EE125600000007,
     			);
     			dependencies = (
-				04CD37C404CD37C400000008 /* PBXTargetDependency Prep */,
+				04EE125604EE125600000008 /* PBXTargetDependency Prep */,
 			);
     			name = appConfig;
     			productName = appConfig;
     		};
-		04CD37C404CD37C40000000A /* config */ = {
+		04EE125604EE12560000000A /* config */ = {
     			isa = PBXAggregateTarget;
-    			buildConfigurationList = 04CD37C404CD37C400000009 /* Build configuration list for PBXAggregateTarget "config" */;
+    			buildConfigurationList = 04EE125604EE125600000009 /* Build configuration list for PBXAggregateTarget "config" */;
     			buildPhases = (
-    				04CD37C404CD37C40000000B,
+    				04EE125604EE12560000000B,
     			);
     			dependencies = (
-				04CD37C404CD37C40000000C /* PBXTargetDependency appConfig */,
-				04CD37C404CD37C40000000D /* PBXTargetDependency Prep */,
+				04EE125604EE12560000000C /* PBXTargetDependency appConfig */,
+				04EE125604EE12560000000D /* PBXTargetDependency Prep */,
 			);
     			name = config;
     			productName = config;
     		};
-		04CD37C404CD37C40000000F /* All */ = {
+		04EE125604EE12560000000F /* All */ = {
     			isa = PBXAggregateTarget;
-    			buildConfigurationList = 04CD37C404CD37C40000000E /* Build configuration list for PBXAggregateTarget "All" */;
+    			buildConfigurationList = 04EE125604EE12560000000E /* Build configuration list for PBXAggregateTarget "All" */;
     			buildPhases = (
     				
     			);
     			dependencies = (
-				04CD37C404CD37C400000010 /* PBXTargetDependency appConfig */,
-				04CD37C404CD37C400000011 /* PBXTargetDependency config */,
-				04CD37C404CD37C400000012 /* PBXTargetDependency db */,
-				04CD37C404CD37C400000013 /* PBXTargetDependency ioto */,
-				04CD37C404CD37C400000014 /* PBXTargetDependency json */,
-				04CD37C404CD37C400000015 /* PBXTargetDependency libdemo */,
-				04CD37C404CD37C400000016 /* PBXTargetDependency libioto */,
-				04CD37C404CD37C400000017 /* PBXTargetDependency password */,
-				04CD37C404CD37C400000018 /* PBXTargetDependency webserver */,
-				04CD37C404CD37C400000019 /* PBXTargetDependency All */,
-				04CD37C404CD37C40000001A /* PBXTargetDependency Prep */,
+				04EE125604EE125600000010 /* PBXTargetDependency appConfig */,
+				04EE125604EE125600000011 /* PBXTargetDependency config */,
+				04EE125604EE125600000012 /* PBXTargetDependency db */,
+				04EE125604EE125600000013 /* PBXTargetDependency ioto */,
+				04EE125604EE125600000014 /* PBXTargetDependency json */,
+				04EE125604EE125600000015 /* PBXTargetDependency libdemo */,
+				04EE125604EE125600000016 /* PBXTargetDependency libioto */,
+				04EE125604EE125600000017 /* PBXTargetDependency password */,
+				04EE125604EE125600000018 /* PBXTargetDependency webserver */,
+				04EE125604EE125600000019 /* PBXTargetDependency All */,
+				04EE125604EE12560000001A /* PBXTargetDependency Prep */,
 			);
     			name = All;
     			productName = All;
     		};
-		04CD37C404CD37C40000001C /* Prep */ = {
+		04EE125604EE12560000001C /* Prep */ = {
     			isa = PBXAggregateTarget;
-    			buildConfigurationList = 04CD37C404CD37C40000001B /* Build configuration list for PBXAggregateTarget "Prep" */;
+    			buildConfigurationList = 04EE125604EE12560000001B /* Build configuration list for PBXAggregateTarget "Prep" */;
     			buildPhases = (
-    				04CD37C404CD37C40000001D,
+    				04EE125604EE12560000001D,
     			);
     			dependencies = (
 			);
@@ -68,286 +68,286 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		04CD37C404CD37C40000001E /* db.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000001F /* db.c */; };
-		04CD37C404CD37C400000020 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000021 /* main.c */; };
-		04CD37C404CD37C400000022 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000023 /* json.c */; };
-		04CD37C404CD37C400000024 /* demoApp.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000025 /* demoApp.c */; };
-		04CD37C404CD37C400000026 /* cryptLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000027 /* cryptLib.c */; };
-		04CD37C404CD37C400000028 /* dbLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000029 /* dbLib.c */; };
-		04CD37C404CD37C40000002A /* iotoLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000002B /* iotoLib.c */; };
-		04CD37C404CD37C40000002C /* jsonLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000002D /* jsonLib.c */; };
-		04CD37C404CD37C40000002E /* mqttLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000002F /* mqttLib.c */; };
-		04CD37C404CD37C400000030 /* openaiLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000031 /* openaiLib.c */; };
-		04CD37C404CD37C400000032 /* rLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000033 /* rLib.c */; };
-		04CD37C404CD37C400000034 /* uctxAssembly.S in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000035 /* uctxAssembly.S */; };
-		04CD37C404CD37C400000036 /* uctxLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000037 /* uctxLib.c */; };
-		04CD37C404CD37C400000038 /* urlLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000039 /* urlLib.c */; };
-		04CD37C404CD37C40000003A /* webLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000003B /* webLib.c */; };
-		04CD37C404CD37C40000003C /* websocketsLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000003D /* websocketsLib.c */; };
-		04CD37C404CD37C40000003E /* password.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C40000003F /* password.c */; };
-		04CD37C404CD37C400000040 /* web.c in Sources */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000041 /* web.c */; };
-		04CD37C404CD37C400000042 /* libioto.a for db */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000043; };
-		04CD37C404CD37C400000044 /* libioto.a for ioto */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000043; };
-		04CD37C404CD37C400000045 /* libioto.a for json */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000043; };
-		04CD37C404CD37C400000046 /* libioto.a for password */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000043; };
-		04CD37C404CD37C400000047 /* libioto.a for webserver */ = {isa = PBXBuildFile; fileRef = 04CD37C404CD37C400000043; };
+		04EE125604EE12560000001E /* db.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000001F /* db.c */; };
+		04EE125604EE125600000020 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000021 /* main.c */; };
+		04EE125604EE125600000022 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000023 /* json.c */; };
+		04EE125604EE125600000024 /* demoApp.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000025 /* demoApp.c */; };
+		04EE125604EE125600000026 /* cryptLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000027 /* cryptLib.c */; };
+		04EE125604EE125600000028 /* dbLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000029 /* dbLib.c */; };
+		04EE125604EE12560000002A /* iotoLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000002B /* iotoLib.c */; };
+		04EE125604EE12560000002C /* jsonLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000002D /* jsonLib.c */; };
+		04EE125604EE12560000002E /* mqttLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000002F /* mqttLib.c */; };
+		04EE125604EE125600000030 /* openaiLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000031 /* openaiLib.c */; };
+		04EE125604EE125600000032 /* rLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000033 /* rLib.c */; };
+		04EE125604EE125600000034 /* uctxAssembly.S in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000035 /* uctxAssembly.S */; };
+		04EE125604EE125600000036 /* uctxLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000037 /* uctxLib.c */; };
+		04EE125604EE125600000038 /* urlLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000039 /* urlLib.c */; };
+		04EE125604EE12560000003A /* webLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000003B /* webLib.c */; };
+		04EE125604EE12560000003C /* websocketsLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000003D /* websocketsLib.c */; };
+		04EE125604EE12560000003E /* password.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE12560000003F /* password.c */; };
+		04EE125604EE125600000040 /* web.c in Sources */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000041 /* web.c */; };
+		04EE125604EE125600000042 /* libioto.a for db */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000043; };
+		04EE125604EE125600000044 /* libioto.a for ioto */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000043; };
+		04EE125604EE125600000045 /* libioto.a for json */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000043; };
+		04EE125604EE125600000046 /* libioto.a for password */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000043; };
+		04EE125604EE125600000047 /* libioto.a for webserver */ = {isa = PBXBuildFile; fileRef = 04EE125604EE125600000043; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		04CD37C404CD37C400000048 /* PBXContainerItemProxy Prep from appConfig */ = {
+		04EE125604EE125600000048 /* PBXContainerItemProxy Prep from appConfig */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000049 /* PBXContainerItemProxy Prep from config */ = {
+		04EE125604EE125600000049 /* PBXContainerItemProxy Prep from config */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C40000004A /* PBXContainerItemProxy appConfig from config */ = {
+		04EE125604EE12560000004A /* PBXContainerItemProxy appConfig from config */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000006;
+    			remoteGlobalIDString = 04EE125604EE125600000006;
     			remoteInfo = appConfig;
     		};
-		04CD37C404CD37C40000004B /* PBXContainerItemProxy Prep from db */ = {
+		04EE125604EE12560000004B /* PBXContainerItemProxy Prep from db */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C40000004C /* PBXContainerItemProxy libioto from db */ = {
+		04EE125604EE12560000004C /* PBXContainerItemProxy libioto from db */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C40000004E /* PBXContainerItemProxy Prep from ioto */ = {
+		04EE125604EE12560000004E /* PBXContainerItemProxy Prep from ioto */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C40000004F /* PBXContainerItemProxy libioto from ioto */ = {
+		04EE125604EE12560000004F /* PBXContainerItemProxy libioto from ioto */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C400000050 /* PBXContainerItemProxy libdemo from ioto */ = {
+		04EE125604EE125600000050 /* PBXContainerItemProxy libdemo from ioto */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000051;
+    			remoteGlobalIDString = 04EE125604EE125600000051;
     			remoteInfo = libdemo;
     		};
-		04CD37C404CD37C400000052 /* PBXContainerItemProxy Prep from json */ = {
+		04EE125604EE125600000052 /* PBXContainerItemProxy Prep from json */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000053 /* PBXContainerItemProxy libioto from json */ = {
+		04EE125604EE125600000053 /* PBXContainerItemProxy libioto from json */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C400000054 /* PBXContainerItemProxy Prep from libdemo */ = {
+		04EE125604EE125600000054 /* PBXContainerItemProxy Prep from libdemo */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000055 /* PBXContainerItemProxy Prep from libioto */ = {
+		04EE125604EE125600000055 /* PBXContainerItemProxy Prep from libioto */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000056 /* PBXContainerItemProxy Prep from password */ = {
+		04EE125604EE125600000056 /* PBXContainerItemProxy Prep from password */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000057 /* PBXContainerItemProxy libioto from password */ = {
+		04EE125604EE125600000057 /* PBXContainerItemProxy libioto from password */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C400000058 /* PBXContainerItemProxy Prep from webserver */ = {
+		04EE125604EE125600000058 /* PBXContainerItemProxy Prep from webserver */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C400000059 /* PBXContainerItemProxy libioto from webserver */ = {
+		04EE125604EE125600000059 /* PBXContainerItemProxy libioto from webserver */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C40000005A /* PBXContainerItemProxy Prep from All */ = {
+		04EE125604EE12560000005A /* PBXContainerItemProxy Prep from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000001C;
+    			remoteGlobalIDString = 04EE125604EE12560000001C;
     			remoteInfo = Prep;
     		};
-		04CD37C404CD37C40000005B /* PBXContainerItemProxy appConfig from All */ = {
+		04EE125604EE12560000005B /* PBXContainerItemProxy appConfig from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000006;
+    			remoteGlobalIDString = 04EE125604EE125600000006;
     			remoteInfo = appConfig;
     		};
-		04CD37C404CD37C40000005C /* PBXContainerItemProxy config from All */ = {
+		04EE125604EE12560000005C /* PBXContainerItemProxy config from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000000A;
+    			remoteGlobalIDString = 04EE125604EE12560000000A;
     			remoteInfo = config;
     		};
-		04CD37C404CD37C40000005D /* PBXContainerItemProxy libioto from All */ = {
+		04EE125604EE12560000005D /* PBXContainerItemProxy libioto from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000004D;
+    			remoteGlobalIDString = 04EE125604EE12560000004D;
     			remoteInfo = libioto;
     		};
-		04CD37C404CD37C40000005E /* PBXContainerItemProxy db from All */ = {
+		04EE125604EE12560000005E /* PBXContainerItemProxy db from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C40000005F;
+    			remoteGlobalIDString = 04EE125604EE12560000005F;
     			remoteInfo = db;
     		};
-		04CD37C404CD37C400000060 /* PBXContainerItemProxy libdemo from All */ = {
+		04EE125604EE125600000060 /* PBXContainerItemProxy libdemo from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000051;
+    			remoteGlobalIDString = 04EE125604EE125600000051;
     			remoteInfo = libdemo;
     		};
-		04CD37C404CD37C400000061 /* PBXContainerItemProxy ioto from All */ = {
+		04EE125604EE125600000061 /* PBXContainerItemProxy ioto from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000062;
+    			remoteGlobalIDString = 04EE125604EE125600000062;
     			remoteInfo = ioto;
     		};
-		04CD37C404CD37C400000063 /* PBXContainerItemProxy json from All */ = {
+		04EE125604EE125600000063 /* PBXContainerItemProxy json from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000064;
+    			remoteGlobalIDString = 04EE125604EE125600000064;
     			remoteInfo = json;
     		};
-		04CD37C404CD37C400000065 /* PBXContainerItemProxy password from All */ = {
+		04EE125604EE125600000065 /* PBXContainerItemProxy password from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000066;
+    			remoteGlobalIDString = 04EE125604EE125600000066;
     			remoteInfo = password;
     		};
-		04CD37C404CD37C400000067 /* PBXContainerItemProxy webserver from All */ = {
+		04EE125604EE125600000067 /* PBXContainerItemProxy webserver from All */ = {
     			isa = PBXContainerItemProxy;
-    			containerPortal = 04CD37C404CD37C400000001 /* Project object */;
+    			containerPortal = 04EE125604EE125600000001 /* Project object */;
     			proxyType = 1;
-    			remoteGlobalIDString = 04CD37C404CD37C400000068;
+    			remoteGlobalIDString = 04EE125604EE125600000068;
     			remoteInfo = webserver;
     		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		04CD37C404CD37C40000001F /* db.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = db.c; path = cmds/db.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000069 /* r.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = r.h; path = build/macosx-arm64-default/inc/r.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006A /* db.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = db.h; path = build/macosx-arm64-default/inc/db.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006B /* db */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = db; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C400000021 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = main.c; path = cmds/main.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006C /* ioto.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ioto.h; path = build/macosx-arm64-default/inc/ioto.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006D /* ioto */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ioto; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C400000023 /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = cmds/json.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006E /* osdep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osdep.h; path = build/macosx-arm64-default/inc/osdep.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000006F /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = build/macosx-arm64-default/inc/json.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000070 /* json */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = json; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C400000025 /* demoApp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = demoApp.c; path = apps/demo/src/demoApp.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000071 /* gpio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gpio.h; path = build/macosx-arm64-default/inc/driver/gpio.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000072 /* gpio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gpio.h; path = build/macosx-arm64-default/inc/rom/gpio.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000073 /* libdemo */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libapp.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C400000027 /* cryptLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cryptLib.c; path = lib/cryptLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000074 /* crypt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crypt.h; path = build/macosx-arm64-default/inc/crypt.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000029 /* dbLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = dbLib.c; path = lib/dbLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000002B /* iotoLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = iotoLib.c; path = lib/iotoLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000002D /* jsonLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jsonLib.c; path = lib/jsonLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000002F /* mqttLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mqttLib.c; path = lib/mqttLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000075 /* mqtt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = mqtt.h; path = build/macosx-arm64-default/inc/mqtt.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000031 /* openaiLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = openaiLib.c; path = lib/openaiLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000076 /* openai.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = openai.h; path = build/macosx-arm64-default/inc/openai.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000033 /* rLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = rLib.c; path = lib/rLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000035 /* uctxAssembly.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.S.S; name = uctxAssembly.S; path = lib/uctxAssembly.S; sourceTree = "<group>"; };
-		04CD37C404CD37C400000077 /* uctx-os.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx-os.h; path = build/macosx-arm64-default/inc/uctx-os.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000078 /* uctx-defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx-defs.h; path = build/macosx-arm64-default/inc/uctx-defs.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000037 /* uctxLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = uctxLib.c; path = lib/uctxLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000079 /* uctx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx.h; path = build/macosx-arm64-default/inc/uctx.h; sourceTree = "<group>"; };
-		04CD37C404CD37C400000039 /* urlLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = urlLib.c; path = lib/urlLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000007A /* url.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = url.h; path = build/macosx-arm64-default/inc/url.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000007B /* websockets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = websockets.h; path = build/macosx-arm64-default/inc/websockets.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000003B /* webLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = webLib.c; path = lib/webLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000007C /* web.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = web.h; path = build/macosx-arm64-default/inc/web.h; sourceTree = "<group>"; };
-		04CD37C404CD37C40000003D /* websocketsLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = websocketsLib.c; path = lib/websocketsLib.c; sourceTree = "<group>"; };
-		04CD37C404CD37C400000043 /* libioto */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libioto.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C40000003F /* password.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = password.c; path = cmds/password.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000007D /* password */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = password; sourceTree = BUILT_PRODUCTS_DIR; };
-		04CD37C404CD37C400000041 /* web.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = web.c; path = cmds/web.c; sourceTree = "<group>"; };
-		04CD37C404CD37C40000007E /* webserver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = webserver; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE12560000001F /* db.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = db.c; path = cmds/db.c; sourceTree = "<group>"; };
+		04EE125604EE125600000069 /* r.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = r.h; path = build/macosx-arm64-default/inc/r.h; sourceTree = "<group>"; };
+		04EE125604EE12560000006A /* db.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = db.h; path = build/macosx-arm64-default/inc/db.h; sourceTree = "<group>"; };
+		04EE125604EE12560000006B /* db */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = db; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE125600000021 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = main.c; path = cmds/main.c; sourceTree = "<group>"; };
+		04EE125604EE12560000006C /* ioto.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ioto.h; path = build/macosx-arm64-default/inc/ioto.h; sourceTree = "<group>"; };
+		04EE125604EE12560000006D /* ioto */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ioto; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE125600000023 /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = cmds/json.c; sourceTree = "<group>"; };
+		04EE125604EE12560000006E /* osdep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osdep.h; path = build/macosx-arm64-default/inc/osdep.h; sourceTree = "<group>"; };
+		04EE125604EE12560000006F /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = build/macosx-arm64-default/inc/json.h; sourceTree = "<group>"; };
+		04EE125604EE125600000070 /* json */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = json; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE125600000025 /* demoApp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = demoApp.c; path = apps/demo/src/demoApp.c; sourceTree = "<group>"; };
+		04EE125604EE125600000071 /* gpio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gpio.h; path = build/macosx-arm64-default/inc/driver/gpio.h; sourceTree = "<group>"; };
+		04EE125604EE125600000072 /* gpio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gpio.h; path = build/macosx-arm64-default/inc/rom/gpio.h; sourceTree = "<group>"; };
+		04EE125604EE125600000073 /* libdemo */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libapp.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE125600000027 /* cryptLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cryptLib.c; path = lib/cryptLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000074 /* crypt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crypt.h; path = build/macosx-arm64-default/inc/crypt.h; sourceTree = "<group>"; };
+		04EE125604EE125600000029 /* dbLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = dbLib.c; path = lib/dbLib.c; sourceTree = "<group>"; };
+		04EE125604EE12560000002B /* iotoLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = iotoLib.c; path = lib/iotoLib.c; sourceTree = "<group>"; };
+		04EE125604EE12560000002D /* jsonLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jsonLib.c; path = lib/jsonLib.c; sourceTree = "<group>"; };
+		04EE125604EE12560000002F /* mqttLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mqttLib.c; path = lib/mqttLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000075 /* mqtt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = mqtt.h; path = build/macosx-arm64-default/inc/mqtt.h; sourceTree = "<group>"; };
+		04EE125604EE125600000031 /* openaiLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = openaiLib.c; path = lib/openaiLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000076 /* openai.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = openai.h; path = build/macosx-arm64-default/inc/openai.h; sourceTree = "<group>"; };
+		04EE125604EE125600000033 /* rLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = rLib.c; path = lib/rLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000035 /* uctxAssembly.S */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.S.S; name = uctxAssembly.S; path = lib/uctxAssembly.S; sourceTree = "<group>"; };
+		04EE125604EE125600000077 /* uctx-os.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx-os.h; path = build/macosx-arm64-default/inc/uctx-os.h; sourceTree = "<group>"; };
+		04EE125604EE125600000078 /* uctx-defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx-defs.h; path = build/macosx-arm64-default/inc/uctx-defs.h; sourceTree = "<group>"; };
+		04EE125604EE125600000037 /* uctxLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = uctxLib.c; path = lib/uctxLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000079 /* uctx.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = uctx.h; path = build/macosx-arm64-default/inc/uctx.h; sourceTree = "<group>"; };
+		04EE125604EE125600000039 /* urlLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = urlLib.c; path = lib/urlLib.c; sourceTree = "<group>"; };
+		04EE125604EE12560000007A /* url.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = url.h; path = build/macosx-arm64-default/inc/url.h; sourceTree = "<group>"; };
+		04EE125604EE12560000007B /* websockets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = websockets.h; path = build/macosx-arm64-default/inc/websockets.h; sourceTree = "<group>"; };
+		04EE125604EE12560000003B /* webLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = webLib.c; path = lib/webLib.c; sourceTree = "<group>"; };
+		04EE125604EE12560000007C /* web.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = web.h; path = build/macosx-arm64-default/inc/web.h; sourceTree = "<group>"; };
+		04EE125604EE12560000003D /* websocketsLib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = websocketsLib.c; path = lib/websocketsLib.c; sourceTree = "<group>"; };
+		04EE125604EE125600000043 /* libioto */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libioto.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE12560000003F /* password.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = password.c; path = cmds/password.c; sourceTree = "<group>"; };
+		04EE125604EE12560000007D /* password */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = password; sourceTree = BUILT_PRODUCTS_DIR; };
+		04EE125604EE125600000041 /* web.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = web.c; path = cmds/web.c; sourceTree = "<group>"; };
+		04EE125604EE12560000007E /* webserver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = webserver; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		04CD37C404CD37C40000007F /* Frameworks and Libraries for db */ = {
+		04EE125604EE12560000007F /* Frameworks and Libraries for db */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
-    				04CD37C404CD37C400000042 /* libioto */,				
+    				04EE125604EE125600000042 /* libioto */,				
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000080 /* Frameworks and Libraries for ioto */ = {
+		04EE125604EE125600000080 /* Frameworks and Libraries for ioto */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
-    				04CD37C404CD37C400000044 /* libioto */,				
+    				04EE125604EE125600000044 /* libioto */,				
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000081 /* Frameworks and Libraries for json */ = {
+		04EE125604EE125600000081 /* Frameworks and Libraries for json */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
-    				04CD37C404CD37C400000045 /* libioto */,				
+    				04EE125604EE125600000045 /* libioto */,				
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000082 /* Frameworks and Libraries for libdemo */ = {
+		04EE125604EE125600000082 /* Frameworks and Libraries for libdemo */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
@@ -355,7 +355,7 @@
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000083 /* Frameworks and Libraries for libioto */ = {
+		04EE125604EE125600000083 /* Frameworks and Libraries for libioto */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
@@ -363,138 +363,138 @@
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000084 /* Frameworks and Libraries for password */ = {
+		04EE125604EE125600000084 /* Frameworks and Libraries for password */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
-    				04CD37C404CD37C400000046 /* libioto */,				
+    				04EE125604EE125600000046 /* libioto */,				
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		04CD37C404CD37C400000085 /* Frameworks and Libraries for webserver */ = {
+		04EE125604EE125600000085 /* Frameworks and Libraries for webserver */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
-    				04CD37C404CD37C400000047 /* libioto */,				
+    				04EE125604EE125600000047 /* libioto */,				
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		04CD37C404CD37C400000086 /* Top Group */ = {
+		04EE125604EE125600000086 /* Top Group */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000087 /* libdemo */,
-				04CD37C404CD37C400000088 /* libioto */,
-				04CD37C404CD37C400000089 /* db */,
-				04CD37C404CD37C40000008A /* ioto */,
-				04CD37C404CD37C40000008B /* json */,
-				04CD37C404CD37C40000008C /* password */,
-				04CD37C404CD37C40000008D /* webserver */,
-				04CD37C404CD37C40000008E /* Products */,
+				04EE125604EE125600000087 /* libdemo */,
+				04EE125604EE125600000088 /* libioto */,
+				04EE125604EE125600000089 /* db */,
+				04EE125604EE12560000008A /* ioto */,
+				04EE125604EE12560000008B /* json */,
+				04EE125604EE12560000008C /* password */,
+				04EE125604EE12560000008D /* webserver */,
+				04EE125604EE12560000008E /* Products */,
 			);
                 sourceTree = "<group>";
             };
-		04CD37C404CD37C400000089 /* db */ = {
+		04EE125604EE125600000089 /* db */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C40000001F /* db.c */,
+				04EE125604EE12560000001F /* db.c */,
 			);
                 name = "db";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C40000008A /* ioto */ = {
+		04EE125604EE12560000008A /* ioto */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000021 /* main.c */,
+				04EE125604EE125600000021 /* main.c */,
 			);
                 name = "ioto";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C40000008B /* json */ = {
+		04EE125604EE12560000008B /* json */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000023 /* json.c */,
+				04EE125604EE125600000023 /* json.c */,
 			);
                 name = "json";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C400000087 /* libdemo */ = {
+		04EE125604EE125600000087 /* libdemo */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000071 /* gpio.h */,
-				04CD37C404CD37C400000072 /* gpio.h */,
-				04CD37C404CD37C400000025 /* demoApp.c */,
+				04EE125604EE125600000071 /* gpio.h */,
+				04EE125604EE125600000072 /* gpio.h */,
+				04EE125604EE125600000025 /* demoApp.c */,
 			);
                 name = "libdemo";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C400000088 /* libioto */ = {
+		04EE125604EE125600000088 /* libioto */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000074 /* crypt.h */,
-				04CD37C404CD37C40000006A /* db.h */,
-				04CD37C404CD37C40000006C /* ioto.h */,
-				04CD37C404CD37C40000006F /* json.h */,
-				04CD37C404CD37C400000075 /* mqtt.h */,
-				04CD37C404CD37C400000076 /* openai.h */,
-				04CD37C404CD37C400000069 /* r.h */,
-				04CD37C404CD37C400000077 /* uctx-os.h */,
-				04CD37C404CD37C400000078 /* uctx-defs.h */,
-				04CD37C404CD37C400000079 /* uctx.h */,
-				04CD37C404CD37C40000007A /* url.h */,
-				04CD37C404CD37C40000007B /* websockets.h */,
-				04CD37C404CD37C40000007C /* web.h */,
-				04CD37C404CD37C400000027 /* cryptLib.c */,
-				04CD37C404CD37C400000029 /* dbLib.c */,
-				04CD37C404CD37C40000002B /* iotoLib.c */,
-				04CD37C404CD37C40000002D /* jsonLib.c */,
-				04CD37C404CD37C40000002F /* mqttLib.c */,
-				04CD37C404CD37C400000031 /* openaiLib.c */,
-				04CD37C404CD37C400000033 /* rLib.c */,
-				04CD37C404CD37C400000035 /* uctxAssembly.S */,
-				04CD37C404CD37C400000037 /* uctxLib.c */,
-				04CD37C404CD37C400000039 /* urlLib.c */,
-				04CD37C404CD37C40000003B /* webLib.c */,
-				04CD37C404CD37C40000003D /* websocketsLib.c */,
+				04EE125604EE125600000074 /* crypt.h */,
+				04EE125604EE12560000006A /* db.h */,
+				04EE125604EE12560000006C /* ioto.h */,
+				04EE125604EE12560000006F /* json.h */,
+				04EE125604EE125600000075 /* mqtt.h */,
+				04EE125604EE125600000076 /* openai.h */,
+				04EE125604EE125600000069 /* r.h */,
+				04EE125604EE125600000077 /* uctx-os.h */,
+				04EE125604EE125600000078 /* uctx-defs.h */,
+				04EE125604EE125600000079 /* uctx.h */,
+				04EE125604EE12560000007A /* url.h */,
+				04EE125604EE12560000007B /* websockets.h */,
+				04EE125604EE12560000007C /* web.h */,
+				04EE125604EE125600000027 /* cryptLib.c */,
+				04EE125604EE125600000029 /* dbLib.c */,
+				04EE125604EE12560000002B /* iotoLib.c */,
+				04EE125604EE12560000002D /* jsonLib.c */,
+				04EE125604EE12560000002F /* mqttLib.c */,
+				04EE125604EE125600000031 /* openaiLib.c */,
+				04EE125604EE125600000033 /* rLib.c */,
+				04EE125604EE125600000035 /* uctxAssembly.S */,
+				04EE125604EE125600000037 /* uctxLib.c */,
+				04EE125604EE125600000039 /* urlLib.c */,
+				04EE125604EE12560000003B /* webLib.c */,
+				04EE125604EE12560000003D /* websocketsLib.c */,
 			);
                 name = "libioto";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C40000008C /* password */ = {
+		04EE125604EE12560000008C /* password */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C40000003F /* password.c */,
+				04EE125604EE12560000003F /* password.c */,
 			);
                 name = "password";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C40000008D /* webserver */ = {
+		04EE125604EE12560000008D /* webserver */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C400000041 /* web.c */,
+				04EE125604EE125600000041 /* web.c */,
 			);
                 name = "webserver";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		04CD37C404CD37C40000008E /* Products */ = {
+		04EE125604EE12560000008E /* Products */ = {
                 isa = PBXGroup;
                 children = (
-				04CD37C404CD37C40000006B /* db */,
-				04CD37C404CD37C40000006D /* ioto */,
-				04CD37C404CD37C400000070 /* json */,
-				04CD37C404CD37C400000073 /* libdemo */,
-				04CD37C404CD37C400000043 /* libioto */,
-				04CD37C404CD37C40000007D /* password */,
-				04CD37C404CD37C40000007E /* webserver */,
+				04EE125604EE12560000006B /* db */,
+				04EE125604EE12560000006D /* ioto */,
+				04EE125604EE125600000070 /* json */,
+				04EE125604EE125600000073 /* libdemo */,
+				04EE125604EE125600000043 /* libioto */,
+				04EE125604EE12560000007D /* password */,
+				04EE125604EE12560000007E /* webserver */,
 			);
                 name = "Products";
                 path = ..;
@@ -503,135 +503,135 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		04CD37C404CD37C40000005F /* db */ = {
+		04EE125604EE12560000005F /* db */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C400000090 /* Build configuration list for PBXNativeTarget "db" */;
+    			buildConfigurationList = 04EE125604EE125600000090 /* Build configuration list for PBXNativeTarget "db" */;
     			buildPhases = (
-    				04CD37C404CD37C40000008F /* Sources */,
-    				04CD37C404CD37C40000007F /* Frameworks */,
+    				04EE125604EE12560000008F /* Sources */,
+    				04EE125604EE12560000007F /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C400000091 /* Prep */,
-				04CD37C404CD37C400000092 /* libioto */,				
+    				04EE125604EE125600000091 /* Prep */,
+				04EE125604EE125600000092 /* libioto */,				
     			);
     			name = db;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C40000006B /* db */;
+    			productReference = 04EE125604EE12560000006B /* db */;
     			productType = "com.apple.product-type.tool";
     		};
-		04CD37C404CD37C400000062 /* ioto */ = {
+		04EE125604EE125600000062 /* ioto */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C400000094 /* Build configuration list for PBXNativeTarget "ioto" */;
+    			buildConfigurationList = 04EE125604EE125600000094 /* Build configuration list for PBXNativeTarget "ioto" */;
     			buildPhases = (
-    				04CD37C404CD37C400000093 /* Sources */,
-    				04CD37C404CD37C400000080 /* Frameworks */,
+    				04EE125604EE125600000093 /* Sources */,
+    				04EE125604EE125600000080 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C400000095 /* Prep */,
-				04CD37C404CD37C400000096 /* libioto */,
-				04CD37C404CD37C400000097 /* libdemo */,				
+    				04EE125604EE125600000095 /* Prep */,
+				04EE125604EE125600000096 /* libioto */,
+				04EE125604EE125600000097 /* libdemo */,				
     			);
     			name = ioto;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C40000006D /* ioto */;
+    			productReference = 04EE125604EE12560000006D /* ioto */;
     			productType = "com.apple.product-type.tool";
     		};
-		04CD37C404CD37C400000064 /* json */ = {
+		04EE125604EE125600000064 /* json */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C400000099 /* Build configuration list for PBXNativeTarget "json" */;
+    			buildConfigurationList = 04EE125604EE125600000099 /* Build configuration list for PBXNativeTarget "json" */;
     			buildPhases = (
-    				04CD37C404CD37C400000098 /* Sources */,
-    				04CD37C404CD37C400000081 /* Frameworks */,
+    				04EE125604EE125600000098 /* Sources */,
+    				04EE125604EE125600000081 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C40000009A /* Prep */,
-				04CD37C404CD37C40000009B /* libioto */,				
+    				04EE125604EE12560000009A /* Prep */,
+				04EE125604EE12560000009B /* libioto */,				
     			);
     			name = json;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C400000070 /* json */;
+    			productReference = 04EE125604EE125600000070 /* json */;
     			productType = "com.apple.product-type.tool";
     		};
-		04CD37C404CD37C400000051 /* libdemo */ = {
+		04EE125604EE125600000051 /* libdemo */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C40000009D /* Build configuration list for PBXNativeTarget "libdemo" */;
+    			buildConfigurationList = 04EE125604EE12560000009D /* Build configuration list for PBXNativeTarget "libdemo" */;
     			buildPhases = (
-    				04CD37C404CD37C40000009C /* Sources */,
-    				04CD37C404CD37C400000082 /* Frameworks */,
+    				04EE125604EE12560000009C /* Sources */,
+    				04EE125604EE125600000082 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C40000009E /* Prep */,				
+    				04EE125604EE12560000009E /* Prep */,				
     			);
     			name = libdemo;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C400000073 /* libdemo */;
+    			productReference = 04EE125604EE125600000073 /* libdemo */;
     			productType = "com.apple.product-type.library.dynamic";
     		};
-		04CD37C404CD37C40000004D /* libioto */ = {
+		04EE125604EE12560000004D /* libioto */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C4000000A0 /* Build configuration list for PBXNativeTarget "libioto" */;
+    			buildConfigurationList = 04EE125604EE1256000000A0 /* Build configuration list for PBXNativeTarget "libioto" */;
     			buildPhases = (
-    				04CD37C404CD37C40000009F /* Sources */,
-    				04CD37C404CD37C400000083 /* Frameworks */,
+    				04EE125604EE12560000009F /* Sources */,
+    				04EE125604EE125600000083 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C4000000A1 /* Prep */,				
+    				04EE125604EE1256000000A1 /* Prep */,				
     			);
     			name = libioto;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C400000043 /* libioto */;
+    			productReference = 04EE125604EE125600000043 /* libioto */;
     			productType = "com.apple.product-type.library.dynamic";
     		};
-		04CD37C404CD37C400000066 /* password */ = {
+		04EE125604EE125600000066 /* password */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C4000000A3 /* Build configuration list for PBXNativeTarget "password" */;
+    			buildConfigurationList = 04EE125604EE1256000000A3 /* Build configuration list for PBXNativeTarget "password" */;
     			buildPhases = (
-    				04CD37C404CD37C4000000A2 /* Sources */,
-    				04CD37C404CD37C400000084 /* Frameworks */,
+    				04EE125604EE1256000000A2 /* Sources */,
+    				04EE125604EE125600000084 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C4000000A4 /* Prep */,
-				04CD37C404CD37C4000000A5 /* libioto */,				
+    				04EE125604EE1256000000A4 /* Prep */,
+				04EE125604EE1256000000A5 /* libioto */,				
     			);
     			name = password;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C40000007D /* password */;
+    			productReference = 04EE125604EE12560000007D /* password */;
     			productType = "com.apple.product-type.tool";
     		};
-		04CD37C404CD37C400000068 /* webserver */ = {
+		04EE125604EE125600000068 /* webserver */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 04CD37C404CD37C4000000A7 /* Build configuration list for PBXNativeTarget "webserver" */;
+    			buildConfigurationList = 04EE125604EE1256000000A7 /* Build configuration list for PBXNativeTarget "webserver" */;
     			buildPhases = (
-    				04CD37C404CD37C4000000A6 /* Sources */,
-    				04CD37C404CD37C400000085 /* Frameworks */,
+    				04EE125604EE1256000000A6 /* Sources */,
+    				04EE125604EE125600000085 /* Frameworks */,
     			);
     			buildRules = (
     			);
     			dependencies = (
-    				04CD37C404CD37C4000000A8 /* Prep */,
-				04CD37C404CD37C4000000A9 /* libioto */,				
+    				04EE125604EE1256000000A8 /* Prep */,
+				04EE125604EE1256000000A9 /* libioto */,				
     			);
     			name = webserver;
     			productName = ioto;
-    			productReference = 04CD37C404CD37C40000007E /* webserver */;
+    			productReference = 04EE125604EE12560000007E /* webserver */;
     			productType = "com.apple.product-type.tool";
     		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		04CD37C404CD37C400000007 /* ShellScript for appConfig */ = {
+		04EE125604EE125600000007 /* ShellScript for appConfig */ = {
     			isa = PBXShellScriptBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
@@ -648,7 +648,7 @@
 cd ..
 ";
     		};
-		04CD37C404CD37C40000000B /* ShellScript for config */ = {
+		04EE125604EE12560000000B /* ShellScript for config */ = {
     			isa = PBXShellScriptBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
@@ -665,7 +665,7 @@ cd ..
 cd ..
 ";
     		};
-		04CD37C404CD37C40000001D /* ShellScript for Prep */ = {
+		04EE125604EE12560000001D /* ShellScript for Prep */ = {
     			isa = PBXShellScriptBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
@@ -787,244 +787,244 @@ fi
 /* End PBXShellScriptBuildPhase section */
 
     /* Begin PBXProject section */
-    		04CD37C404CD37C400000001 /* Project object */ = {
+    		04EE125604EE125600000001 /* Project object */ = {
     			isa = PBXProject;
     			attributes = {
     				LastUpgradeCheck = 0430;
     				ORGANIZATIONNAME = "embedthis";
     			};
-    			buildConfigurationList = 04CD37C404CD37C400000002 /* Build configuration list for PBXProject "ioto" */;
+    			buildConfigurationList = 04EE125604EE125600000002 /* Build configuration list for PBXProject "ioto" */;
     			compatibilityVersion = "Xcode 3.2";
     			developmentRegion = English;
     			hasScannedForEncodings = 0;
     			knownRegions = (
     				en,
     			);
-    			mainGroup = 04CD37C404CD37C400000086;
-    			productRefGroup = 04CD37C404CD37C40000008E /* Products */;
+    			mainGroup = 04EE125604EE125600000086;
+    			productRefGroup = 04EE125604EE12560000008E /* Products */;
     			projectDirPath = "";
     			projectRoot = "";
     			targets = (
-				04CD37C404CD37C40000000F /* All */,
-				04CD37C404CD37C40000001C /* Prep */,
-				04CD37C404CD37C400000051 /* libdemo */,
-				04CD37C404CD37C40000004D /* libioto */,
-				04CD37C404CD37C40000005F /* db */,
-				04CD37C404CD37C400000062 /* ioto */,
-				04CD37C404CD37C400000064 /* json */,
-				04CD37C404CD37C400000066 /* password */,
-				04CD37C404CD37C400000068 /* webserver */,
-				04CD37C404CD37C400000006 /* appConfig */,
-				04CD37C404CD37C40000000A /* config */,
+				04EE125604EE12560000000F /* All */,
+				04EE125604EE12560000001C /* Prep */,
+				04EE125604EE125600000051 /* libdemo */,
+				04EE125604EE12560000004D /* libioto */,
+				04EE125604EE12560000005F /* db */,
+				04EE125604EE125600000062 /* ioto */,
+				04EE125604EE125600000064 /* json */,
+				04EE125604EE125600000066 /* password */,
+				04EE125604EE125600000068 /* webserver */,
+				04EE125604EE125600000006 /* appConfig */,
+				04EE125604EE12560000000A /* config */,
 			);
     		};
     /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		04CD37C404CD37C40000008F /* db Sources */ = {
+		04EE125604EE12560000008F /* db Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C40000001E /* db.c in Sources */,
+    				04EE125604EE12560000001E /* db.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C400000093 /* ioto Sources */ = {
+		04EE125604EE125600000093 /* ioto Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C400000020 /* main.c in Sources */,
+    				04EE125604EE125600000020 /* main.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C400000098 /* json Sources */ = {
+		04EE125604EE125600000098 /* json Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C400000022 /* json.c in Sources */,
+    				04EE125604EE125600000022 /* json.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C40000009C /* libdemo Sources */ = {
+		04EE125604EE12560000009C /* libdemo Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C400000024 /* demoApp.c in Sources */,
+    				04EE125604EE125600000024 /* demoApp.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C40000009F /* libioto Sources */ = {
+		04EE125604EE12560000009F /* libioto Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C400000026 /* cryptLib.c in Sources */,
-				04CD37C404CD37C400000028 /* dbLib.c in Sources */,
-				04CD37C404CD37C40000002A /* iotoLib.c in Sources */,
-				04CD37C404CD37C40000002C /* jsonLib.c in Sources */,
-				04CD37C404CD37C40000002E /* mqttLib.c in Sources */,
-				04CD37C404CD37C400000030 /* openaiLib.c in Sources */,
-				04CD37C404CD37C400000032 /* rLib.c in Sources */,
-				04CD37C404CD37C400000034 /* uctxAssembly.S in Sources */,
-				04CD37C404CD37C400000036 /* uctxLib.c in Sources */,
-				04CD37C404CD37C400000038 /* urlLib.c in Sources */,
-				04CD37C404CD37C40000003A /* webLib.c in Sources */,
-				04CD37C404CD37C40000003C /* websocketsLib.c in Sources */,
+    				04EE125604EE125600000026 /* cryptLib.c in Sources */,
+				04EE125604EE125600000028 /* dbLib.c in Sources */,
+				04EE125604EE12560000002A /* iotoLib.c in Sources */,
+				04EE125604EE12560000002C /* jsonLib.c in Sources */,
+				04EE125604EE12560000002E /* mqttLib.c in Sources */,
+				04EE125604EE125600000030 /* openaiLib.c in Sources */,
+				04EE125604EE125600000032 /* rLib.c in Sources */,
+				04EE125604EE125600000034 /* uctxAssembly.S in Sources */,
+				04EE125604EE125600000036 /* uctxLib.c in Sources */,
+				04EE125604EE125600000038 /* urlLib.c in Sources */,
+				04EE125604EE12560000003A /* webLib.c in Sources */,
+				04EE125604EE12560000003C /* websocketsLib.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C4000000A2 /* password Sources */ = {
+		04EE125604EE1256000000A2 /* password Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C40000003E /* password.c in Sources */,
+    				04EE125604EE12560000003E /* password.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		04CD37C404CD37C4000000A6 /* webserver Sources */ = {
+		04EE125604EE1256000000A6 /* webserver Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
-    				04CD37C404CD37C400000040 /* web.c in Sources */,
+    				04EE125604EE125600000040 /* web.c in Sources */,
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		04CD37C404CD37C400000008 /* PBXTargetDependency appConfig depends on Prep */ = {
+		04EE125604EE125600000008 /* PBXTargetDependency appConfig depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000048 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000048 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000000D /* PBXTargetDependency config depends on Prep */ = {
+		04EE125604EE12560000000D /* PBXTargetDependency config depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000049 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000049 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000000C /* PBXTargetDependency config depends on appConfig */ = {
+		04EE125604EE12560000000C /* PBXTargetDependency config depends on appConfig */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000006 /* appConfig */;
-    			targetProxy = 04CD37C404CD37C40000004A /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000006 /* appConfig */;
+    			targetProxy = 04EE125604EE12560000004A /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000091 /* PBXTargetDependency db depends on Prep */ = {
+		04EE125604EE125600000091 /* PBXTargetDependency db depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C40000004B /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE12560000004B /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000092 /* PBXTargetDependency db depends on libioto */ = {
+		04EE125604EE125600000092 /* PBXTargetDependency db depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C40000004C /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE12560000004C /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000095 /* PBXTargetDependency ioto depends on Prep */ = {
+		04EE125604EE125600000095 /* PBXTargetDependency ioto depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C40000004E /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE12560000004E /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000096 /* PBXTargetDependency ioto depends on libioto */ = {
+		04EE125604EE125600000096 /* PBXTargetDependency ioto depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C40000004F /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE12560000004F /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000097 /* PBXTargetDependency ioto depends on libdemo */ = {
+		04EE125604EE125600000097 /* PBXTargetDependency ioto depends on libdemo */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000051 /* libdemo */;
-    			targetProxy = 04CD37C404CD37C400000050 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000051 /* libdemo */;
+    			targetProxy = 04EE125604EE125600000050 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000009A /* PBXTargetDependency json depends on Prep */ = {
+		04EE125604EE12560000009A /* PBXTargetDependency json depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000052 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000052 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000009B /* PBXTargetDependency json depends on libioto */ = {
+		04EE125604EE12560000009B /* PBXTargetDependency json depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C400000053 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE125600000053 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000009E /* PBXTargetDependency libdemo depends on Prep */ = {
+		04EE125604EE12560000009E /* PBXTargetDependency libdemo depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000054 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000054 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C4000000A1 /* PBXTargetDependency libioto depends on Prep */ = {
+		04EE125604EE1256000000A1 /* PBXTargetDependency libioto depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000055 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000055 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C4000000A4 /* PBXTargetDependency password depends on Prep */ = {
+		04EE125604EE1256000000A4 /* PBXTargetDependency password depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000056 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000056 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C4000000A5 /* PBXTargetDependency password depends on libioto */ = {
+		04EE125604EE1256000000A5 /* PBXTargetDependency password depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C400000057 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE125600000057 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C4000000A8 /* PBXTargetDependency webserver depends on Prep */ = {
+		04EE125604EE1256000000A8 /* PBXTargetDependency webserver depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C400000058 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE125600000058 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C4000000A9 /* PBXTargetDependency webserver depends on libioto */ = {
+		04EE125604EE1256000000A9 /* PBXTargetDependency webserver depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C400000059 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE125600000059 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C40000001A /* PBXTargetDependency All depends on Prep */ = {
+		04EE125604EE12560000001A /* PBXTargetDependency All depends on Prep */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000001C /* Prep */;
-    			targetProxy = 04CD37C404CD37C40000005A /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000001C /* Prep */;
+    			targetProxy = 04EE125604EE12560000005A /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000010 /* PBXTargetDependency All depends on appConfig */ = {
+		04EE125604EE125600000010 /* PBXTargetDependency All depends on appConfig */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000006 /* appConfig */;
-    			targetProxy = 04CD37C404CD37C40000005B /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000006 /* appConfig */;
+    			targetProxy = 04EE125604EE12560000005B /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000011 /* PBXTargetDependency All depends on config */ = {
+		04EE125604EE125600000011 /* PBXTargetDependency All depends on config */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000000A /* config */;
-    			targetProxy = 04CD37C404CD37C40000005C /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000000A /* config */;
+    			targetProxy = 04EE125604EE12560000005C /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000016 /* PBXTargetDependency All depends on libioto */ = {
+		04EE125604EE125600000016 /* PBXTargetDependency All depends on libioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000004D /* libioto */;
-    			targetProxy = 04CD37C404CD37C40000005D /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000004D /* libioto */;
+    			targetProxy = 04EE125604EE12560000005D /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000012 /* PBXTargetDependency All depends on db */ = {
+		04EE125604EE125600000012 /* PBXTargetDependency All depends on db */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C40000005F /* db */;
-    			targetProxy = 04CD37C404CD37C40000005E /* PBXContainerItemProxy */;
+    			target = 04EE125604EE12560000005F /* db */;
+    			targetProxy = 04EE125604EE12560000005E /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000015 /* PBXTargetDependency All depends on libdemo */ = {
+		04EE125604EE125600000015 /* PBXTargetDependency All depends on libdemo */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000051 /* libdemo */;
-    			targetProxy = 04CD37C404CD37C400000060 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000051 /* libdemo */;
+    			targetProxy = 04EE125604EE125600000060 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000013 /* PBXTargetDependency All depends on ioto */ = {
+		04EE125604EE125600000013 /* PBXTargetDependency All depends on ioto */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000062 /* ioto */;
-    			targetProxy = 04CD37C404CD37C400000061 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000062 /* ioto */;
+    			targetProxy = 04EE125604EE125600000061 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000014 /* PBXTargetDependency All depends on json */ = {
+		04EE125604EE125600000014 /* PBXTargetDependency All depends on json */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000064 /* json */;
-    			targetProxy = 04CD37C404CD37C400000063 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000064 /* json */;
+    			targetProxy = 04EE125604EE125600000063 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000017 /* PBXTargetDependency All depends on password */ = {
+		04EE125604EE125600000017 /* PBXTargetDependency All depends on password */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000066 /* password */;
-    			targetProxy = 04CD37C404CD37C400000065 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000066 /* password */;
+    			targetProxy = 04EE125604EE125600000065 /* PBXContainerItemProxy */;
     		};
-		04CD37C404CD37C400000018 /* PBXTargetDependency All depends on webserver */ = {
+		04EE125604EE125600000018 /* PBXTargetDependency All depends on webserver */ = {
     			isa = PBXTargetDependency;
-    			target = 04CD37C404CD37C400000068 /* webserver */;
-    			targetProxy = 04CD37C404CD37C400000067 /* PBXContainerItemProxy */;
+    			target = 04EE125604EE125600000068 /* webserver */;
+    			targetProxy = 04EE125604EE125600000067 /* PBXContainerItemProxy */;
     		};
 /* End PBXTargetDependency section */
 
     /* Begin XCBuildConfiguration section */
-    		04CD37C404CD37C400000003 /* Debug */ = {
+    		04EE125604EE125600000003 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     ME_DEBUG = "1";
@@ -1112,7 +1112,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C400000004 /* Release */ = {
+    		04EE125604EE125600000004 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     ME_DEBUG = "1";
@@ -1201,7 +1201,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000AA /* Debug */ = {
+		04EE125604EE1256000000AA /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = appConfig;
@@ -1217,7 +1217,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000AB /* Release */ = {
+    		04EE125604EE1256000000AB /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = appConfig;
@@ -1233,7 +1233,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000AC /* Debug */ = {
+		04EE125604EE1256000000AC /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = ioto-config;
@@ -1249,7 +1249,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000AD /* Release */ = {
+    		04EE125604EE1256000000AD /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = ioto-config;
@@ -1265,7 +1265,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000AE /* Debug */ = {
+		04EE125604EE1256000000AE /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = db;
@@ -1294,7 +1294,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000AF /* Release */ = {
+    		04EE125604EE1256000000AF /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = db;
@@ -1323,7 +1323,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000B0 /* Debug */ = {
+		04EE125604EE1256000000B0 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = ioto;
@@ -1354,7 +1354,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000B1 /* Release */ = {
+    		04EE125604EE1256000000B1 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = ioto;
@@ -1385,7 +1385,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000B2 /* Debug */ = {
+		04EE125604EE1256000000B2 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = json;
@@ -1414,7 +1414,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000B3 /* Release */ = {
+    		04EE125604EE1256000000B3 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = json;
@@ -1443,7 +1443,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000B4 /* Debug */ = {
+		04EE125604EE1256000000B4 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = libapp;
@@ -1460,7 +1460,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000B5 /* Release */ = {
+    		04EE125604EE1256000000B5 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = libapp;
@@ -1477,7 +1477,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000B6 /* Debug */ = {
+		04EE125604EE1256000000B6 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = libioto;
@@ -1507,7 +1507,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000B7 /* Release */ = {
+    		04EE125604EE1256000000B7 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = libioto;
@@ -1537,7 +1537,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000B8 /* Debug */ = {
+		04EE125604EE1256000000B8 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = password;
@@ -1566,7 +1566,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000B9 /* Release */ = {
+    		04EE125604EE1256000000B9 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = password;
@@ -1595,7 +1595,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000BA /* Debug */ = {
+		04EE125604EE1256000000BA /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = webserver;
@@ -1624,7 +1624,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000BB /* Release */ = {
+    		04EE125604EE1256000000BB /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = webserver;
@@ -1653,7 +1653,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000BC /* Debug */ = {
+		04EE125604EE1256000000BC /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = All;
@@ -1669,7 +1669,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000BD /* Release */ = {
+    		04EE125604EE1256000000BD /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = All;
@@ -1685,7 +1685,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Release;
     		};
-		04CD37C404CD37C4000000BE /* Debug */ = {
+		04EE125604EE1256000000BE /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = Prep;
@@ -1701,7 +1701,7 @@ ENABLE_TESTABILITY = YES;
     			};
     			name = Debug;
     		};
-    		04CD37C404CD37C4000000BF /* Release */ = {
+    		04EE125604EE1256000000BF /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
     				PRODUCT_NAME = Prep;
@@ -1720,115 +1720,115 @@ ENABLE_TESTABILITY = YES;
 /* End XCBuildConfiguration section */
 
     /* Begin XCConfigurationList section */
-    		04CD37C404CD37C400000002 /* Build configuration list for PBXProject "ioto" */ = {
+    		04EE125604EE125600000002 /* Build configuration list for PBXProject "ioto" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C400000003 /* Debug */,
-    				04CD37C404CD37C400000004 /* Release */,
+    				04EE125604EE125600000003 /* Debug */,
+    				04EE125604EE125600000004 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C400000005 /* Build configuration list for PBXNativeTarget "appConfig" */ = {
+		04EE125604EE125600000005 /* Build configuration list for PBXNativeTarget "appConfig" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000AA /* Debug */,
-    				04CD37C404CD37C4000000AB /* Release */,
+    				04EE125604EE1256000000AA /* Debug */,
+    				04EE125604EE1256000000AB /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C400000009 /* Build configuration list for PBXNativeTarget "config" */ = {
+		04EE125604EE125600000009 /* Build configuration list for PBXNativeTarget "config" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000AC /* Debug */,
-    				04CD37C404CD37C4000000AD /* Release */,
+    				04EE125604EE1256000000AC /* Debug */,
+    				04EE125604EE1256000000AD /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C400000090 /* Build configuration list for PBXNativeTarget "db" */ = {
+		04EE125604EE125600000090 /* Build configuration list for PBXNativeTarget "db" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000AE /* Debug */,
-    				04CD37C404CD37C4000000AF /* Release */,
+    				04EE125604EE1256000000AE /* Debug */,
+    				04EE125604EE1256000000AF /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C400000094 /* Build configuration list for PBXNativeTarget "ioto" */ = {
+		04EE125604EE125600000094 /* Build configuration list for PBXNativeTarget "ioto" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000B0 /* Debug */,
-    				04CD37C404CD37C4000000B1 /* Release */,
+    				04EE125604EE1256000000B0 /* Debug */,
+    				04EE125604EE1256000000B1 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C400000099 /* Build configuration list for PBXNativeTarget "json" */ = {
+		04EE125604EE125600000099 /* Build configuration list for PBXNativeTarget "json" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000B2 /* Debug */,
-    				04CD37C404CD37C4000000B3 /* Release */,
+    				04EE125604EE1256000000B2 /* Debug */,
+    				04EE125604EE1256000000B3 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C40000009D /* Build configuration list for PBXNativeTarget "libdemo" */ = {
+		04EE125604EE12560000009D /* Build configuration list for PBXNativeTarget "libdemo" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000B4 /* Debug */,
-    				04CD37C404CD37C4000000B5 /* Release */,
+    				04EE125604EE1256000000B4 /* Debug */,
+    				04EE125604EE1256000000B5 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C4000000A0 /* Build configuration list for PBXNativeTarget "libioto" */ = {
+		04EE125604EE1256000000A0 /* Build configuration list for PBXNativeTarget "libioto" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000B6 /* Debug */,
-    				04CD37C404CD37C4000000B7 /* Release */,
+    				04EE125604EE1256000000B6 /* Debug */,
+    				04EE125604EE1256000000B7 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C4000000A3 /* Build configuration list for PBXNativeTarget "password" */ = {
+		04EE125604EE1256000000A3 /* Build configuration list for PBXNativeTarget "password" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000B8 /* Debug */,
-    				04CD37C404CD37C4000000B9 /* Release */,
+    				04EE125604EE1256000000B8 /* Debug */,
+    				04EE125604EE1256000000B9 /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C4000000A7 /* Build configuration list for PBXNativeTarget "webserver" */ = {
+		04EE125604EE1256000000A7 /* Build configuration list for PBXNativeTarget "webserver" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000BA /* Debug */,
-    				04CD37C404CD37C4000000BB /* Release */,
+    				04EE125604EE1256000000BA /* Debug */,
+    				04EE125604EE1256000000BB /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C40000000E /* Build configuration list for PBXNativeTarget "All" */ = {
+		04EE125604EE12560000000E /* Build configuration list for PBXNativeTarget "All" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000BC /* Debug */,
-    				04CD37C404CD37C4000000BD /* Release */,
+    				04EE125604EE1256000000BC /* Debug */,
+    				04EE125604EE1256000000BD /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		04CD37C404CD37C40000001B /* Build configuration list for PBXNativeTarget "Prep" */ = {
+		04EE125604EE12560000001B /* Build configuration list for PBXNativeTarget "Prep" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
-    				04CD37C404CD37C4000000BE /* Debug */,
-    				04CD37C404CD37C4000000BF /* Release */,
+    				04EE125604EE1256000000BE /* Debug */,
+    				04EE125604EE1256000000BF /* Release */,
     			);
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 04CD37C404CD37C400000001 /* Project object */;
+	rootObject = 04EE125604EE125600000001 /* Project object */;
 }

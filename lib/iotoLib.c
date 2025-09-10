@@ -2067,7 +2067,7 @@ PUBLIC int ioRegister(void)
     jsonFree(params);
 
     if (once++ == 0) {
-        rInfo("ioto", "Device registering with %s\n%s", ioto->builder, data);
+        rInfo("ioto", "Registering %sdevice with %s", test ? "test " : "", ioto->builder);
     }
 
     // Review Acceptable - the ioto-api is provided by the developer configuration and is secure
