@@ -582,10 +582,13 @@ static void dbService(void);
 
 PUBLIC int ioInitDb(void)
 {
-    Ticks maxAge, service;
-    char  *path, *schema;
-    ssize maxSize;
-    int   flags;
+    RList  *devices;
+    DbItem *device;
+    Ticks  maxAge, service;
+    cchar  *id;
+    char   *path, *schema;
+    ssize  maxSize;
+    int    flags, index;
 
     schema = rGetFilePath(jsonGet(ioto->config, 0, "database.schema", "@config/schema.json5"));
     path = rGetFilePath(jsonGet(ioto->config, 0, "database.path", "@db/device.db"));
@@ -670,11 +673,11 @@ PUBLIC void ioRestartDb(void)
  */
 static void dbService(void)
 {
-    Ticks service;
+    Ticks frequency;
 
     dbRemoveExpired(ioto->db, 1);
-    service = svalue(jsonGet(ioto->config, 0, "database.service", "1day")) * TPS;
-    rStartEvent((RFiberProc) dbService, 0, service);
+    frequency = svalue(jsonGet(ioto->config, 0, "database.service", "1day")) * TPS;
+    rStartEvent((RFiberProc) dbService, 0, frequency);
 }
 
 /*
@@ -1012,7 +1015,7 @@ static int initServices(void)
         enter and update accurate device volumes using the Embedthis Builder at https://admin.embedthis.com.
      */
     if (ioto->registerService) {
-        if (ioRegister() == R_ERR_BAD_ARGS) {
+        if (!ioto->registered && ioRegister() < 0) {
             return R_ERR_BAD_ARGS;
         }
     } else
@@ -1029,19 +1032,14 @@ static int initServices(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
-#if SERVICES_MQTT
-    if (ioto->mqttService && (ioInitMqtt() < 0)) {
+#if SERVICES_CLOUD
+    if (ioto->cloudService && ioInitCloud() < 0) {
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
 #if SERVICES_AI
     ioto->aiService = 1;
     if (ioto->aiService && ioInitAI() < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-#endif
-#if SERVICES_CLOUD
-    if (ioto->provisionService && ioInitCloud() < 0) {
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
@@ -1274,7 +1272,7 @@ PUBLIC void ioResumeBackoff(REvent *event)
 /*********************************** Locals **********************************/
 
 #define RR_DEFAULT_TIMEOUT  (30 * TPS);
-#define CONNECT_MAX_RETRIES 5
+#define CONNECT_MAX_RETRIES 3
 
 /*
     Mqtt request/response support
@@ -1286,15 +1284,18 @@ typedef struct RR {
     int seq;            /* Unique request sequence number (can wrap) */
 } RR;
 
-static ssize nextRr = 99;
-static Time  lastDisconnect = 0;
+static ssize  nextRr = 99;
+static REvent mqttBackoff;
+static REvent mqttWindow;
 
 /************************************ Forwards ********************************/
 
 static int attachSocket(int retry);
+static int connectMqtt(void);
 static void freeRR(RR *rr);
 static void onEvent(Mqtt *mq, int event);
 static void rrResponse(const MqttRecv *rp);
+static void startMqtt(Time lastConnect);
 static void throttle(const MqttRecv *rp);
 
 /************************************* Code ***********************************/
@@ -1312,7 +1313,11 @@ PUBLIC int ioInitMqtt(void)
 
     timeout = svalue(jsonGet(ioto->config, 0, "mqtt.timeout", "1 min")) * TPS;
     mqttSetTimeout(ioto->mqtt, timeout);
-    ioScheduleConnect();
+
+    rWatch("cloud:provisioned", (RWatchProc) startMqtt, 0);
+    if (ioto->endpoint) {
+        startMqtt(0);
+    }
     return 0;
 }
 
@@ -1334,96 +1339,147 @@ PUBLIC void ioTermMqtt(void)
         rFree(rp->topic);
     }
     rFreeList(ioto->rr);
+    rWatchOff("cloud:provisioned", (RWatchProc) startMqtt, 0);
+    rStopEvent(ioto->scheduledConnect);
 }
 
 /*
-    Schedule a cloud connection according to the mqtt schedule
+    Schedule an mqtt cloud connection according to the mqtt schedule
+    This is idempotent. Will cancel existing schedule and reestablish.
  */
-PUBLIC void ioScheduleConnect(void)
+static void startMqtt(Time lastConnect)
 {
     Time  delay, jitter, now, when, wait;
     cchar *schedule;
 
     schedule = jsonGet(ioto->config, 0, "mqtt.schedule", 0);
-    if (!ioto->scheduledConnect) {
-        delay = svalue(jsonGet(ioto->config, 0, "mqtt.delay", "0")) * TPS;
-        now = rGetTime();
-        when = lastDisconnect + delay;
-        if (when < now) {
-            when = now;
-        }
-        if (schedule) {
-            wait = cronUntil(schedule, when);
-        } else {
-            wait = 0;
-        }
-        if (wait > 0) {
-            jitter = svalue(jsonGet(ioto->config, 0, "mqtt.jitter", "0")) * TPS;
-            if (jitter) {
-                jitter = rand() % jitter;
+    delay = svalue(jsonGet(ioto->config, 0, "mqtt.delay", "0")) * TPS;
+    now = rGetTime();
+    when = lastConnect + delay;
+    if (when < now) {
+        when = now;
+    }
+    wait = schedule ? cronUntil(schedule, when) : 0;
+    if (wait > 0) {
+        jitter = svalue(jsonGet(ioto->config, 0, "mqtt.jitter", "0")) * TPS;
+        if (jitter) {
+            /*
+                Review Acceptable - the use of rand here is acceptable as it is only used for the 
+                mqtt schedule jitter and is not a security risk.
+             */
+            jitter = rand() % jitter;
+            if (wait < MAXTIME - jitter) {
                 wait += jitter;
             }
         }
-        if (ioto->scheduledConnect) {
-            rStopEvent(ioto->scheduledConnect);
-        }
-        rTrace("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
-        ioto->scheduledConnect = rStartEvent((REventProc) ioConnect, 0, wait);
+    }
+    if (ioto->scheduledConnect) {
+        rStopEvent(ioto->scheduledConnect);
+    }
+    if (ioto->blockedUntil - rGetTime() > wait) {
+        wait = ioto->blockedUntil - rGetTime();
+    }
+    if (wait >= MAXTIME) {
+        rInfo("mqtt", "Using on-demand MQTT connections");
+    } else {
+        wait = max(0, wait);
+        rInfo("mqtt", "Schedule MQTT connect in %d secs", (int) wait / TPS);
+        ioto->scheduledConnect = rStartEvent((REventProc) connectMqtt, 0, wait);
     }
 }
 
 /*
     Connect to the cloud. This will provision if required and may block a long time.
+    Called from scheduleConnect, processDeviceCommand and from ioProvision.
     NOTE: there may be multiple callers and so as fiber code, it used rEnter/rLeave.
  */
-PUBLIC int ioConnect(void)
+static int connectMqtt(void)
 {
     static int  reprovisions = 0;
     static bool connecting = 0;
-    int         i, maxReprovision, maxRetries;
+    cchar       *schedule;
+    Ticks       delay, window;
+    int         i, maxReprovision, rc;
 
     if (ioto->connected) {
         return 0;
     }
-    ioWakeProvisioner();
+    if (!ioto->endpoint) {
+        // Wait for provisioning to complete and we'll be recalled.
+        return R_ERR_CANT_CONNECT;
+    }
+    // Wakeup an existing caller alseep in backoff
+    ioResumeBackoff(&mqttBackoff);
     rEnter(&connecting, 0);
-
-    maxRetries = CONNECT_MAX_RETRIES;
 
     /*
         Retry connection attempts
      */
-    for (i = 0; i < maxRetries && !ioto->connected; i++) {
-        if (!ioto->endpoint) {
-            //  This may block a long time waiting for the device to be claimed
-            ioProvision();
-        }
-        if (ioto->endpoint && attachSocket(i) == 0) {
+    for (delay = TPS, i = 0; i < CONNECT_MAX_RETRIES && !ioto->connected; i++) {
+        if ((rc = attachSocket(i)) == 0) {
+            // Successful connection
             break;
         }
-        /*
-            If the connection failed and we have a valid internet connection, the device may have
-            been released, so reprovision.
-         */
-        if (rCheckInternet()) {
-            maxReprovision = jsonGetInt(ioto->config, 0, "limits.reprovision", 5);
-            if (reprovisions++ >= maxReprovision) {
-                rError("mqtt", "Too many reprovision requests");
-                i = maxRetries;
-                break;
-            }
-            if (i >= 2) {
-                rInfo("mqtt", "Device cloud connection failed despite good internet connection");
-                ioDeprovision();
-            }
+        if (rc == R_ERR_CANT_COMPLETE) {
+            // Connection worked, but mqtt communications failed. So don't retry.
+            break;
         }
-        rSleep(TPS * i);
+        delay = ioBackoff(delay, &mqttBackoff);
     }
     rLeave(&connecting);
-    if (i >= maxRetries) {
-        lastDisconnect = rGetTime();
-        ioScheduleConnect();
+
+    if (ioto->connected) {
+        schedule = jsonGet(ioto->config, 0, "mqtt.schedule", 0);
+        window = schedule ? cronUntilEnd(schedule, rGetTime()) : 0;
+        if (window > (MAXINT64 - MAXINT)) {
+            if (mqttWindow) {
+                rStopEvent(mqttWindow);
+            }
+            mqttWindow = rStartEvent((REventProc) ioDisconnect, 0, window);
+            rInfo("mqtt", "MQTT connection window closes in %d secs", (int) (window / TPS));
+        }
+    } else {
+        if (rCheckInternet()) {
+            rError("mqtt", "Failed to establish cloud messaging connection");
+            // Test vs the boot session maximum reprovision limit
+            maxReprovision = jsonGetInt(ioto->config, 0, "limits.reprovision", 5);
+            if (reprovisions++ < maxReprovision) {
+                ioDeprovision();
+                // Wait for cloud:provisioned event
+            }
+        } else {
+            // Connection failed. Schedule a retry
+            rError("mqtt", "Device cloud connection failed");
+            startMqtt(rGetTime());
+        }
         return R_ERR_CANT_CONNECT;
+    }
+    return 0;
+}
+
+static void disconnectMqtt(void)
+{
+    ioto->cloudReady = 0;
+
+    if (ioto->mqttSocket) {
+        rInfo("mqtt", "Cloud connection closed");
+        rFreeSocket(ioto->mqttSocket);
+        ioto->mqttSocket = 0;
+    }
+    if (ioto->connected) {
+        ioto->connected = 0;
+        rSignal("mqtt:disconnected");
+        startMqtt(rGetTime());
+    }
+}
+
+/*
+    Forcibly connect to the cloud despite the schedule window
+ */
+PUBLIC int ioConnect(void)
+{
+    if (!ioto->connected && ioto->endpoint) {
+        return connectMqtt();
     }
     return 0;
 }
@@ -1433,14 +1489,11 @@ PUBLIC int ioConnect(void)
  */
 PUBLIC void ioDisconnect()
 {
-    if (ioto->mqttSocket) {
-        rCloseSocket(ioto->mqttSocket);
-    }
-    ioto->connected = 0;
+    rDisconnectSocket(ioto->mqttSocket);
 }
 
 /*
-    Attach a socket to the MQTT object. Called only from ioConnect().
+    Attach a socket to the MQTT object. Called only from connectMqtt().
  */
 static int attachSocket(int retry)
 {
@@ -1494,10 +1547,12 @@ static int attachSocket(int retry)
             rSetTlsAlpn(sock->tls, alpn);
         }
     }
+    /*
+        The connect may work even if the certificate is inactive. The mqttConnect will then fail
+     */
     if (rConnectSocket(sock, endpoint, port, 0) < 0) {
         if (retry == 0) {
-            rError("mqtt", "Cannot connect to socket at %s:%d %s", endpoint, port,
-                   sock->error ? sock->error : "");
+            rError("mqtt", "Cannot connect to socket at %s:%d %s", endpoint, port, sock->error ? sock->error : "");
         }
         rFreeSocket(sock);
         return R_ERR_CANT_CONNECT;
@@ -1505,7 +1560,7 @@ static int attachSocket(int retry)
     if (mqttConnect(ioto->mqtt, sock, 0, MQTT_WAIT_ACK) < 0) {
         rDebug("mqtt", "Cannot connect with MQTT");
         rFreeSocket(sock);
-        return R_ERR_CANT_CONNECT;
+        return R_ERR_CANT_COMPLETE;
     }
     ioto->mqttSocket = sock;
     ioto->connected = 1;
@@ -1522,21 +1577,51 @@ static int attachSocket(int retry)
     /*
         Setup the device cloud throttle indicator. This is important to optimize device fleets.
      */
-    mqttSubscribe(ioto->mqtt, throttle, 1, MQTT_WAIT_NONE | MQTT_WAIT_FAST,
+    mqttSubscribe(ioto->mqtt, throttle, 1, MQTT_WAIT_NONE,
                   SFMT(topic, "ioto/device/%s/mqtt/throttle", ioto->id));
 
     rInfo("mqtt", "Connected to mqtt://%s:%d", endpoint, port);
-    ioOnCloudConnect();
+    /*
+        The cloud is now connected, but not yet ready if using sync service.
+     */
     rSignal("mqtt:connected");
+#if !SERVICES_SYNC
+    // If sync service enabled, then cloud:ready is signaled by sync.c after a syncdown completion.
+    rSignal("cloud:ready");
+#endif
     return 0;
 }
 
 static void throttle(const MqttRecv *rp)
 {
-    mqttThrottle(ioto->mqtt);
+    Json *json;
+    Time timestamp;
+
+    json = jsonParse(rp->data, 0);
+    if (!json) {
+        rError("mqtt", "Received bad throttle data: %s", rp->data);
+        return;
+    }
+    timestamp = jsonGetNum(json, 0, "timestamp", 0);
+    if (!timestamp || timestamp < (rGetTime() - 30 * TPS)) {
+        rTrace("mqtt", "Reject stale throttle data: %lld secs ago", (rGetTime() - timestamp) / TPS);
+        jsonFree(json);
+        return;
+    }
+    if (jsonGetBool(json, 0, "close", 0)) {
+        rInfo("mqtt", "Cloud connection blocked due to persistent excessive I/O. Delay reprovision for 1 hour.");
+        rDisconnectSocket(ioto->mqttSocket);
+        ioto->blockedUntil = rGetTime() + IO_REPROVISION * TPS;
+    } else {
+        mqttThrottle(ioto->mqtt);
+    }
+    jsonFree(json);
     rSignal("mqtt:throttle");
 }
 
+/*
+    Respond to MQTT events
+ */
 static void onEvent(Mqtt *mqtt, int event)
 {
     if (rGetState() != R_READY) {
@@ -1544,22 +1629,19 @@ static void onEvent(Mqtt *mqtt, int event)
     }
     switch (event) {
     case MQTT_EVENT_ATTACH:
-        ioConnect();
+        /*
+            On-demand connection required. Ignore the schedule window.
+         */
+        connectMqtt();
         break;
 
     case MQTT_EVENT_DISCONNECT:
-        rInfo("mqtt", "Cloud connection closed");
-        rFreeSocket(ioto->mqttSocket);
-        ioto->mqttSocket = 0;
-        ioto->connected = 0;
-        rSignal("mqtt:disconnect");
-        lastDisconnect = rGetTime();
-        ioScheduleConnect();
+        disconnectMqtt();
         break;
 
     case MQTT_EVENT_TIMEOUT:
         //  Respond to timeout and force a disconnection
-        rCloseSocket(ioto->mqttSocket);
+        rDisconnectSocket(ioto->mqttSocket);
     }
 }
 
@@ -1605,13 +1687,12 @@ static void freeRR(RR *rr)
 {
     if (rr) {
         // Optimization: no benefit from local unsubscription when using master subscriptions.
-        // mqttUnsubscribe(mq, topic, MQTT_WAIT_NONE);
         rFree(rr->topic);
         rFree(rr);
     }
 }
 
-#if UNUSED
+#if KEEP
 static void freeRR(Mqtt *mq, cchar *topic)
 {
     RR  *rp;
@@ -1644,8 +1725,8 @@ static void rrResponse(const MqttRecv *rp)
             if (rr->timeout) {
                 rStopEvent(rr->timeout);
             }
-            rResumeFiber(rr->fiber, (void*) sclone(rp->data));
             rRemoveItem(ioto->rr, rr);
+            rResumeFiber(rr->fiber, (void*) sclone(rp->data));
             freeRR(rr);
             return;
         }
@@ -1658,12 +1739,9 @@ static void rrResponse(const MqttRecv *rp)
  */
 static void rrTimeout(RR *rr)
 {
-    RFiber *fiber;
-
     rInfo("mqtt", "MQTT request timed out");
     rRemoveItem(ioto->rr, rr);
-    fiber = rr->fiber;
-    rResumeFiber(fiber, 0);
+    rResumeFiber(rr->fiber, 0);
 }
 
 /*
@@ -1698,7 +1776,7 @@ PUBLIC char *mqttRequest(Mqtt *mq, cchar *body, Ticks timeout, cchar *topicFmt, 
     return rYieldFiber(0);
 }
 
-#if UNUSED
+#if KEEP
 /*
     Release a request/response subscription
  */
@@ -1866,19 +1944,16 @@ PUBLIC bool ioConnected(void)
     return ioto->connected;
 }
 
-PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct)
+/*
+    Run a function when the cloud connection is established and ready for use.
+ */
+PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool sync)
 {
-    //  Watch for future connections
-#if SERVICES_SYNC
-    rWatch("db:syncdown:done", fn, arg);
-    //  Invoke if already connected
-    if (!ioto->synced) return;
-#else
-    rWatch("mqtt:connected", fn, arg);
-    //  Invoke if already connected
-    if (!ioto->connected) return;
-#endif
-    if (direct) {
+    if (!ioto->cloudReady) {
+        rWatch("cloud:ready", fn, arg);
+        return;
+    }
+    if (sync) {
         fn(NULL, arg);
     } else {
         rSpawnFiber("onconnect", (RFiberProc) fn, arg);
@@ -1887,7 +1962,7 @@ PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct)
 
 PUBLIC void ioOnConnectOff(RWatchProc fn, void *arg)
 {
-    rWatchOff("mqtt:connected", fn, arg);
+    rWatchOff("cloud:ready", fn, arg);
 }
 
 #else
@@ -2034,8 +2109,7 @@ static int parseRegisterResponse(Json *json)
         if (ioto->provisionService) {
             //  Registered but not yet claimed
             if (once++ == 0) {
-                rInfo("ioto", "Device not claimed. Claim device with the claim ID %s using the product device app.",
-                      ioto->id);
+                rInfo("ioto", "Device not claimed. Claim %s with the product device app.", ioto->id);
             }
         }
     }
@@ -2584,8 +2658,10 @@ static void enableServices(void)
             rError("ioto", "Need provisioning service if key or mqtt service is required");
             ioto->provisionService = 1;
         }
-        if ((ioto->provisionService || ioto->keyService || ioto->syncService) && !ioto->mqttService) {
-            rError("ioto", "Need MQTT service if provision, key or sync services are required");
+        ioto->cloudService = ioto->provisionService || ioto->logService || ioto->shadowService || ioto->syncService;
+
+        if (ioto->cloudService && !ioto->mqttService) {
+            rError("ioto", "Need MQTT service if any cloud services are required");
             ioto->mqttService = 1;
         }
 #endif
@@ -3069,11 +3145,18 @@ void dummyWeb(void)
 
 PUBLIC int ioInitCloud(void)
 {
-#if SERVICES_KEYS
-    if (ioto->keyService && smatch(ioto->cloudType, "dedicated")) {
-        ioGetKeys();
+#if SERVICES_PROVISION
+    if (ioto->provisionService) {
+        if (ioInitProvisioner() < 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
     }
-#endif /* SERVICE_KEYS */
+#endif
+#if SERVICES_MQTT
+    if (ioto->mqttService && (ioInitMqtt() < 0)) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
 #if SERVICES_SHADOW
     if (ioto->shadowService && (ioInitShadow() < 0)) {
         return R_ERR_CANT_INITIALIZE;
@@ -3084,7 +3167,6 @@ PUBLIC int ioInitCloud(void)
         return R_ERR_CANT_INITIALIZE;
     }
 #endif
-    rSignal("cloud:ready");
     return 0;
 }
 
@@ -3109,19 +3191,6 @@ PUBLIC void ioTermCloud(void)
     ioTermMqtt();
 #endif
     ioto->instance = 0;
-}
-
-/*
-    Called directly from ioConnect() to subscribe to device provisioning and sync events
- */
-PUBLIC void ioOnCloudConnect(void)
-{
-#if SERVICES_PROVISION
-    mqttSubscribe(ioto->mqtt, ioRelease, 1, MQTT_WAIT_NONE, "ioto/device/%s/provision/+", ioto->id);
-#endif
-#if SERVICES_SYNC
-    ioConnectSync();
-#endif
 }
 
 #else
@@ -4595,80 +4664,92 @@ void dummyLogs(void)
 #if SERVICES_PROVISION
 /*********************************** Locals ***********************************/
 
-static REvent provisioningEvent;
+#define PROVISION_MAX_DELAY (24 * 60 * 60 * TPS)
+
+static REvent provisionEvent;
+static bool   provisioning = 0;
 
 /*********************************** Forwards *********************************/
 
-static Ticks backoff(Ticks delay);
-static void extractKeys(void);
-static void parseProvisioningResponse(Json *json);
+static bool parseProvisioningResponse(Json *json);
 static bool provisionDevice(void);
 static void postProvisionSync(void);
+static void releaseProvisioning(const MqttRecv *rp);
+static int  startProvision(void);
+static void subscribeProvisioningEvents(void);
+
+#if SERVICES_KEYS
+static void extractKeys(void);
+#endif
 
 /************************************* Code ***********************************/
 /*
-    If another call is active, wake it up and defer to it
+    Initialize the provisioner service.
+    Always watch for the deprovisioned signal and reprovision.
  */
-PUBLIC void ioWakeProvisioner()
+PUBLIC int ioInitProvisioner(void)
 {
-    if (provisioningEvent) {
-        rRunEvent(provisioningEvent);
+    rWatch("mqtt:connected", (RWatchProc) subscribeProvisioningEvents, 0);
+    rWatch("cloud:deprovisioned", (RWatchProc) startProvision, 0);
+    if (!ioto->endpoint) {
+        startProvision();
+    }
+    return 0;
+}
+
+PUBLIC void ioTermProvisioner(void)
+{
+    rWatchOff("mqtt:connected", (RWatchProc) subscribeProvisioningEvents, 0);
+    rWatchOff("cloud:deprovisioned", (RWatchProc) startProvision, 0);
+}
+
+/*
+    Start the provisioner service if not already provisioned.
+    Can also be called by the user to immmediately provision incase backed off.
+ */
+PUBLIC void ioStartProvisioner(void)
+{
+    if (!ioto->endpoint) {
+        startProvision();
     }
 }
 
 /*
     Provision the device from the device cloud. This blocks until claimed and provisioned.
-    This code is serialized but currently is only ever called by ioConnect which is also serialized.
-    May block for a long time.
+    If called when already provisioned, it will return immediately.
+    This code is idempotent. May block for a long time.
  */
-PUBLIC int ioProvision()
+static int startProvision(void)
 {
-    Ticks       delay;
-    static bool provisioning = 0;
+    Ticks delay;
 
-    //  Wake any long sleeper in backoff()
-    ioWakeProvisioner();
-    rEnter(&provisioning, 0);
+    // Wake any existing provisioner
+    ioResumeBackoff(&provisionEvent);
 
     /*
         Wait for device to be claimed (will set api)
      */
-    for (delay = TPS; !ioto->api; delay = backoff(delay)) {
-        if (ioRegister() == R_ERR_BAD_ARGS) {
-            return R_ERR_BAD_ARGS;
+    rEnter(&provisioning, 0);
+    if (!ioto->endpoint) {
+        for (delay = TPS; !ioto->api && delay; delay = ioBackoff(delay, &provisionEvent)) {
+            if (ioRegister() == R_ERR_BAD_ARGS) {
+                return R_ERR_BAD_ARGS;
+            }
+            if (ioto->api) break;
         }
-        if (ioto->api) break;
-    }
-    for (delay = TPS; !ioto->endpoint; delay = backoff(delay)) {
-        //  This can be long, waiting for the device to be claimed
-        if (provisionDevice()) {
-            break;
+        for (delay = TPS; !ioto->endpoint; delay = ioBackoff(delay, &provisionEvent)) {
+            if (provisionDevice()) {
+                break;
+            }
         }
-        rInfo("ioto", "Device not yet claimed, waiting %lld secs ...", delay / 1000);
+        if (ioto->endpoint) {
+            rSignal("cloud:provisioned");
+        } else {
+            rInfo("ioto", "Provisioning device, waiting for device to be claimed ...");
+        }
     }
     rLeave(&provisioning);
     return 0;
-}
-
-/*
-    Exponential backoff. This can be awakened via ioWakeProvisioner()
- */
-static Ticks backoff(Ticks delay)
-{
-    delay += TPS;
-    if (delay > 86400 * TPS) {
-        delay = 86400 * TPS;
-    }
-    /*
-        Use this rather than sleep so that we can wakeup prematurely if required
-     */
-    if (provisioningEvent) {
-        rStopEvent(provisioningEvent);
-    }
-    provisioningEvent = rStartEvent(NULL, 0, delay);
-    rYieldFiber(0);
-    provisioningEvent = 0;
-    return delay;
 }
 
 /*
@@ -4676,8 +4757,8 @@ static Ticks backoff(Ticks delay)
  */
 static bool provisionDevice(void)
 {
-    Json *json;
-    char data[80], url[512];
+    Json  *json;
+    char  data[80], url[512];
 
     /*
         Talk to the device cloud to get certificates
@@ -4688,11 +4769,13 @@ static bool provisionDevice(void)
     json = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
 
     if (json == 0 || json->count == 0) {
-        rError("ioto", "Cannot provision device");
+        rError("ioto", "Error provisioning device");
         jsonFree(json);
         return 0;
     }
-    parseProvisioningResponse(json);
+    if (!parseProvisioningResponse(json)) {
+        return 0;
+    }
     jsonFree(json);
     return 1;
 }
@@ -4701,13 +4784,22 @@ static bool provisionDevice(void)
     Parse provisioning response payload from the device cloud.
     This saves the response in provision.json5 and sets ioto->api if provisioned.
  */
-static void parseProvisioningResponse(Json *json)
+static bool parseProvisioningResponse(Json *json)
 {
-    cchar *certificate, *key;
+    cchar *certificate, *error, *key;
     char  *certMem, *keyMem, *path;
+    int   delay;
 
     key = certificate = path = 0;
 
+    if ((error = jsonGet(json, 0, "error", 0)) != 0) {
+        delay = jsonGetInt(json, 0, "delay", 0);
+        if (delay > 0) {
+            ioto->blockedUntil = rGetTime() + delay * TPS;
+            rError("ioto", "Device is temporarily blocked for %d seconds due to persistent excessive I/O", delay);
+            return 0;
+        }
+    }
     rInfo("ioto", "Device claimed");
 
     /*
@@ -4717,7 +4809,7 @@ static void parseProvisioningResponse(Json *json)
     key = jsonGet(json, 0, "key", 0);
     if (!certificate || !key) {
         rError("ioto", "Provisioning is missing certificate");
-        return;
+        return 0;
     }
     if (ioto->nosave) {
         certMem = sfmt("@%s", certificate);
@@ -4750,13 +4842,12 @@ static void parseProvisioningResponse(Json *json)
     if (rEmitLog("debug", "provision")) {
         rDebug("provision", "%s", jsonString(json, JSON_HUMAN));
     }
-
     if (!ioto->nosave) {
         path = rGetFilePath(IO_PROVISION_FILE);
         if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("ioto", "Cannot save provisioning state to %s", path);
             rFree(path);
-            return;
+            return 0;
         }
         rFree(path);
     }
@@ -4774,6 +4865,7 @@ static void parseProvisioningResponse(Json *json)
           jsonGet(ioto->config, 0, "provision.cloudName", 0),
           jsonGet(ioto->config, 0, "provision.cloudRegion", 0)
           );
+
 #if SERVICES_SYNC
     rWatch("mqtt:connected", (RWatchProc) postProvisionSync, 0);
 #endif
@@ -4781,8 +4873,11 @@ static void parseProvisioningResponse(Json *json)
     rStartEvent((REventProc) rSignal, "device:provisioned", 0);
 
 #if SERVICES_KEYS
-    ioGetKeys();
+    if (ioto->keyService && smatch(ioto->cloudType, "dedicated")) {
+        ioGetKeys();
+    }
 #endif
+    return 1;
 }
 
 /*
@@ -4795,28 +4890,39 @@ static void postProvisionSync(void)
 }
 
 /*
+    Called on signal mqtt:connected to subscribe for provisioning events from the cloud
+ */
+static void subscribeProvisioningEvents(void)
+{
+    mqttSubscribe(ioto->mqtt, releaseProvisioning, 1, MQTT_WAIT_NONE, "ioto/device/%s/provision/+", ioto->id);
+}
+
+/*
     Receive provisioning command (release)
  */
-PUBLIC void ioRelease(const MqttRecv *rp)
+static void releaseProvisioning(const MqttRecv *rp)
 {
     Time  timestamp;
     cchar *cmd;
 
     cmd = rBasename(rp->topic);
-    if (smatch(cmd, "release")) {
+    if (smatch(cmd, "release") && !ioto->cmdTest) {
         timestamp = stoi(rp->data);
         if (timestamp == 0) {
             timestamp = rGetTime();
         }
-        //  Ignore stale release commands, we may have reprovisioned since then
+        /*
+            Ignore stale release commands that IoT Core may be resending
+            If really deprovisioned, then the connection will fail and mqtt will reprovision after 3 failed retries.
+         */
         if (rGetTime() < (timestamp + 10 * TPS)) {
             //  Unit tests may get a stale restart command
-            if (!ioto->cmdTest) {
-                rInfo("ioto", "Received provisioning command %s", rp->topic);
+            rInfo("ioto", "Received provisioning command %s", rp->topic);
+            dbSetField(ioto->db, "Device", "connection", "offline", DB_PROPS("id", ioto->id), DB_PARAMS());
+            if (ioto->connected) {
                 ioDisconnect();
-                ioDeprovision();
-                dbSetField(ioto->db, "Device", "connection", "offline", NULL, DB_PARAMS());
             }
+            ioDeprovision();
         }
     } else {
         rError("ioto", "Unknown provision command %s", cmd);
@@ -4865,6 +4971,8 @@ PUBLIC void ioDeprovision(void)
     unlink(path);
     rFree(path);
     rInfo("ioto", "Device deprovisioned");
+
+    rSignal("cloud:deprovisioned");
 }
 
 /*
@@ -4918,6 +5026,7 @@ static void extractKeys(void)
     }
     rSignal("device:keys");
 }
+#endif /* SERVICES_KEYS */
 
 #else
 void dummyProvision(void)
@@ -5198,6 +5307,7 @@ static void dbCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams
 static void deviceCommand(void *arg, struct Db *db, struct DbModel *model, struct DbItem *item,
                           struct DbParams *params, cchar *cmd, int event);
 static void freeChange(Change *change);
+static void initSyncConnection(void);
 static void logChange(Change *change);
 static void processDeviceCommand(DbItem *item);
 static cchar *readBlock(FILE *fp, RBuf *buf);
@@ -5216,6 +5326,9 @@ PUBLIC int ioInitSync(void)
 {
     cchar *lastSync;
 
+    /*
+        Review Acceptable - the use of rand here is acceptable as it is only used for the sync sequence number and is not a security risk.
+     */
     nextSeq = rand();
     ioto->syncDue = MAXINT64;
     ioto->syncHash = rAllocHash(0, 0);
@@ -5225,8 +5338,9 @@ PUBLIC int ioInitSync(void)
     } else {
         ioto->lastSync = rGetIsoDate(0);
     }
-    dbAddCallback(ioto->db, (DbCallbackProc) dbCallback, NULL, NULL, DB_ON_COMMIT | DB_ON_FREE);
     recreateSyncLog();
+    dbAddCallback(ioto->db, (DbCallbackProc) dbCallback, NULL, NULL, DB_ON_COMMIT | DB_ON_FREE);
+    rWatch("mqtt:connected", (RWatchProc) initSyncConnection, 0);
     return 0;
 }
 
@@ -5236,8 +5350,9 @@ PUBLIC void ioTermSync(void)
     Change *change;
     char   path[ME_MAX_FNAME];
 
-    dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
-
+    if (ioto->db) {
+        dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
+    }
     for (ITERATE_NAMES(ioto->syncHash, np)) {
         change = np->value;
         freeChange(change);
@@ -5573,7 +5688,7 @@ static void scheduleSync(Change *change)
     Ticks delay, now;
 
     if (!ioto->connected) {
-        ioScheduleConnect();
+        rWatch("mqtt:connected", (RWatchProc) scheduleSync, change);
         return;
     }
     /*
@@ -5610,6 +5725,9 @@ PUBLIC void ioFlushSync(bool force)
     ssize  len;
     int    count, pending, seq;
 
+    if (!ioto->connected) {
+        return;
+    }
     now = rGetTicks();
     buf = 0;
     count = 0;
@@ -5660,7 +5778,6 @@ PUBLIC void ioFlushSync(bool force)
     rFreeBuf(buf);
 
 #if KEEP
-    //  Alternate wait
     if (force) {
         Ticks deadline = rGetTicks() + 5 * TPS;
         while (rGetTicks() < deadline) {
@@ -5738,7 +5855,7 @@ static void recreateSyncLog(void)
     Also fetch database updates made in the cloud since the last sync down from the cloud.
     And then send pending changes to the cloud.
  */
-PUBLIC void ioConnectSync(void)
+static void initSyncConnection(void)
 {
     Time timestamp;
 
@@ -5762,16 +5879,13 @@ PUBLIC void ioConnectSync(void)
     if (!ioto->cmdSync) {
         //  Sync down all changes made since the last sync down (while we were offline)
         ioSyncDown(timestamp);
-    } else {
-        //  Sync all items as required
-        if (smatch(ioto->cmdSync, "up")) {
-            ioSyncUp(0, 1);
-        } else if (smatch(ioto->cmdSync, "down")) {
-            ioSyncDown(0);
-        } else if (smatch(ioto->cmdSync, "both")) {
-            ioSyncUp(0, 1);
-            ioSyncDown(0);
-        }
+    } else if (smatch(ioto->cmdSync, "up")) {
+        ioSyncUp(0, 1);
+    } else if (smatch(ioto->cmdSync, "down")) {
+        ioSyncDown(0);
+    } else if (smatch(ioto->cmdSync, "both")) {
+        ioSyncUp(0, 1);
+        ioSyncDown(0);
     }
 }
 
@@ -5801,17 +5915,19 @@ static void receiveSync(const MqttRecv *rp)
         cleanSyncChanges(json);
 
     } else if (sends(rp->topic, "SYNCDOWN")) {
-        //  Response for syncdown (ioConnectSync)
+        //  Response for syncdown
         rDebug("sync", "Received syncdown ack");
         if ((updated = jsonGet(json, 0, "updated", 0)) != NULL && scmp(updated, ioto->lastSync) > 0) {
             rFree(ioto->lastSync);
             ioto->lastSync = sclone(updated);
             dbUpdate(ioto->db, "SyncState", DB_PROPS("lastSync", ioto->lastSync), DB_PARAMS(.bypass = 1));
         }
-        // If transiently online/offline, may get multiple syncdown responses
-        if (!ioto->synced) {
-            ioto->synced = 1;
-            rSignal("db:syncdown:done");
+        if (!ioto->cloudReady) {
+            /*
+                Signal post-connect syncdown complete. May get multiple syncdown responses.
+             */
+            ioto->cloudReady = 1;
+            rSignal("cloud:ready");
         }
 
     } else {
@@ -5831,16 +5947,16 @@ static void receiveSync(const MqttRecv *rp)
             syncItem(model, prior, NULL, "update", 1);
 
         } else {
-            if (rEmitLog("trace", "sync")) {
+            if (rEmitLog("debug", "sync")) {
                 rTrace("sync", "Received sync response %s: %s", rp->topic, msg);
+                str = jsonToString(json, 0, 0, JSON_HUMAN);
+                rDebug("sync", "Response %s", str);
+                rFree(str);
+            } else if (rEmitLog("trace", "sync")) {
+                rTrace("sync", "Received sync response %s", rp->topic);
             }
             if (sends(rp->topic, "REMOVE")) {
                 jsonRemove(json, 0, "updated");
-                if (rEmitLog("debug", "sync")) {
-                    str = jsonToString(json, 0, 0, JSON_HUMAN);
-                    rDebug("sync", "Remove %s", str);
-                    rFree(str);
-                }
                 dbRemove(db, NULL, json, DB_PARAMS(.bypass = 1));
 
             } else if (sends(rp->topic, "INSERT")) {
@@ -5889,11 +6005,8 @@ static void processDeviceCommand(DbItem *item)
     if (smatch(cmd, "reboot")) {
         rSetState(R_RESTART);
 #if SERVICES_PROVISION
-    } else if (smatch(cmd, "release")) {
+    } else if (smatch(cmd, "release") || smatch(cmd, "reprovision")) {
         ioDeprovision();
-    } else if (smatch(cmd, "reprovision")) {
-        ioDeprovision();
-        ioProvision();
 #endif
 #if SERVICES_UPDATE
     } else if (smatch(cmd, "update")) {
@@ -5994,20 +6107,18 @@ PUBLIC bool ioUpdate(void)
     urlSetTimeout(up, svalue(jsonGet(ioto->config, 0, "timeouts.api", "30 secs")) * TPS);
 
     headers = sfmt("Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
-    rTrace("update", "Request \n%s\n%s\n%s\n\n", url, headers, body);
+    rDebug("update", "Request \n%s\n%s\n%s\n\n", url, headers, body);
     if ((json = urlJson(up, "POST", url, body, -1, headers)) == 0) {
         response = urlGetResponse(up);
-        rInfo("ioto", "\nResponse %s\n", response);
+        rError("ioto", "%s", response);
         if (smatch(response, "Cannot find device") || smatch(response, "Authentication failed")) {
             /*
                 The device has either been removed or released. Release certs and re-provision after a restart
              */
-            rInfo("ioto", "%s: releasing device ...", response);
+            rInfo("ioto", "%s: releasing device and reprovisioning ...", response);
             ioDeprovision();
-            rSetState(R_RESTART);
         } else {
-            //  Transitory error
-            rError("update", "Cannot connect to device cloud");
+            rError("update", "Cannot update device from device cloud");
         }
     }
     rFree(headers);
@@ -6078,7 +6189,7 @@ static void applyUpdate(char *path)
          */
         SFMT(command, "%s \"%s\"", script, path);
         status = rRun(command, &directive);
-        rInfo("ioto", "Update returned status %d, directive: \"%s\"", status, directive);
+        rInfo("ioto", "Update returned status %d, directive: %s", status, directive);
 
         if (status != 0) {
             rError("update", "Update command failed: %s", directive);

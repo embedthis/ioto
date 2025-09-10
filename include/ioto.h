@@ -176,7 +176,9 @@ typedef struct Ioto {
     int cmdCount;              /** Test iterations */
 
     bool aiService : 1;        /** AI service */
-    bool connected : 1;        /** Connected to the cloud over MQTT */
+    bool cloudService : 1;     /** Cloud meta-service */
+    bool cloudReady : 1;       /** Connected and synced to the cloud */
+    bool connected : 1;        /** Connected to the cloud over MQTT, but may not be synced */
     bool dbService : 1;        /** Embedded database service */
     bool keyService : 1;       /** AWS IAM key generation */
     bool logService : 1;       /** Log file ingest to CloudWatch logs */
@@ -188,7 +190,6 @@ typedef struct Ioto {
     bool ready : 1;            /** Ioto initialized and ready (may not be connected to the cloud) */
     bool registerService : 1;  /** Device registration service */
     bool shadowService : 1;    /** AWS IoT core shadows */
-    bool synced : 1;           /** Synced to and from the cloud */
     bool syncService : 1;      /** Sync device state to AWS */
     bool testService : 1;      /** Test service */
     bool updateService : 1;    /** Update service */
@@ -203,6 +204,7 @@ typedef struct Ioto {
     char *awsSecret;           /**< AWS cred secret */
     char *awsToken;            /**< AWS cred token */
     Time awsExpires;           /**< AWS cred expiry */
+    Time blockedUntil;         /**< Time to wait before reprovisioning after blocked connection */
 
     cchar *cmdAccount;         /**< Command line override owning manager account for self-claiming */
     cchar *cmdCloud;           /**< Command line override builder cloud for self-claiming */
@@ -449,7 +451,7 @@ PUBLIC void ioSetNum(cchar *key, double value);
     Schedule a cloud connection based on the mqtt.schedule
     @stability Evolving
  */
-PUBLIC void ioScheduleConnect(void);
+PUBLIC void ioStartConnect(void);
 
 #ifdef SERVICES_SERIALIZE
 /*
@@ -466,12 +468,6 @@ PUBLIC void ioSerialize(void);
 #endif
 
 #if SERVICES_SYNC
-/**
-    Subscribe for DB sync messages after connecting to the cloud
-    @stability Internal
- */
-PUBLIC void ioConnectSync(void);
-
 /**
     Flush pending changes to the cloud
     @description Database changes are buffered before being flushed to the cloud. This forces all
@@ -811,8 +807,10 @@ PUBLIC void ioDeprovision(void);
 PUBLIC int ioConnect(void);
 PUBLIC void ioOnCloudConnect(void);
 PUBLIC void ioDisconnect(void);
+PUBLIC void ioStartProvisioner(void);
 PUBLIC void ioWakeProvisioner(void);
-PUBLIC void ioRelease(const MqttRecv *rp);
+PUBLIC Ticks ioBackoff(Ticks delay, REvent *event);
+PUBLIC void ioResumeBackoff(REvent *event);
 #endif
 
 /*
@@ -835,6 +833,7 @@ PUBLIC int ioInitCloud(void);
 PUBLIC int ioInitDb(void);
 PUBLIC int ioInitLogs(void);
 PUBLIC int ioInitMqtt(void);
+PUBLIC int ioInitProvisioner(void);
 PUBLIC int ioInitShadow(void);
 PUBLIC int ioInitSync(void);
 PUBLIC int ioInitWeb(void);
@@ -844,6 +843,7 @@ PUBLIC void ioTermConfig(void);
 PUBLIC void ioTermDb(void);
 PUBLIC void ioTermLogs(void);
 PUBLIC void ioTermMqtt(void);
+PUBLIC void ioTermProvisioner(void);
 PUBLIC void ioTermShadow(void);
 PUBLIC void ioTermSync(void);
 PUBLIC void ioTermWeb(void);
