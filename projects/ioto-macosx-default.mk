@@ -449,6 +449,7 @@ $(BUILD)/inc/uctx-os.h: $(DEPS_18)
 #   uctx.h
 #
 DEPS_19 += include/uctx.h
+DEPS_19 += $(BUILD)/inc/osdep.h
 DEPS_19 += $(BUILD)/inc/uctx-os.h
 
 $(BUILD)/inc/uctx.h: $(DEPS_19)

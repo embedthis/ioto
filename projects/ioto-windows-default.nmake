@@ -608,6 +608,7 @@ build\$(CONFIG)\inc\uctx-os.h: $(DEPS_18)
 #   uctx.h
 #
 DEPS_19 = $(DEPS_19) include\uctx.h
+DEPS_19 = $(DEPS_19) build\$(CONFIG)\inc\osdep.h
 DEPS_19 = $(DEPS_19) build\$(CONFIG)\inc\uctx-os.h
 
 build\$(CONFIG)\inc\uctx.h: $(DEPS_19)
