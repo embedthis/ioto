@@ -28,29 +28,29 @@
 #if ME_COM_URL
 /*********************************** Locals ***********************************/
 
-#define URL_CHUNK_START      1        /**< Start of a new chunk */
-#define URL_CHUNK_DATA       2        /**< Start of chunk data */
-#define URL_CHUNK_EOF        4        /**< End of all chunk data */
+#define URL_CHUNK_START      1                 /**< Start of a new chunk */
+#define URL_CHUNK_DATA       2                 /**< Start of chunk data */
+#define URL_CHUNK_EOF        4                 /**< End of all chunk data */
 
 #ifndef ME_URL_TIMEOUT
-    #define ME_URL_TIMEOUT   0        /**< Default timeout (none) */
+    #define ME_URL_TIMEOUT   0                 /**< Default timeout (none) */
 #endif
 
 #ifndef URL_MAX_RESPONSE
-    #define URL_MAX_RESPONSE (1024 * 1024)
+    #define URL_MAX_RESPONSE (1024 * 1024)     /**< Maximum response size */
 #endif
 
 #ifndef URL_MAX_RETRIES
-    #define URL_MAX_RETRIES  0
+    #define URL_MAX_RETRIES  0                 /**< Maximum number of retries */
 #endif
 
-#define URL_BUFSIZE          4096
-#define URL_UNLIMITED        MAXINT
+#define URL_BUFSIZE          4096              /**< Buffer size */
+#define URL_UNLIMITED        MAXINT            /**< Unlimited size */
 
-#define HDR_HTTP             (1 << 0)
-#define HDR_SSE              (1 << 1)
+#define HDR_HTTP             (1 << 0)          /**< HTTP header */
+#define HDR_SSE              (1 << 1)          /**< SSE header */
 
-#define isWhite(c) ((c) == ' ' || (c) == '\t')
+#define isWhite(c) ((c) == ' ' || (c) == '\t') /**< Is white space */
 
 static cchar validHeaderChars[128] = {
     ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
@@ -74,6 +74,7 @@ static int connectHost(Url *up);
 static int fetch(Url *up, cchar *method, cchar *uri, cvoid *data, ssize len, cchar *headers);
 static ssize getContentLength(cchar *headers, ssize length);
 static char *getHeader(char *line, char **key, char **value, int flags);
+static bool isprintable(cchar *s, ssize len);
 static int startRequest(Url *up);
 static void parseEvents(Url *up);
 static bool parseHeaders(Url *up);
@@ -107,7 +108,11 @@ PUBLIC Url *urlAlloc(int flags)
     up->bufLimit = URL_MAX_RESPONSE;
 
     if (flags == 0) {
-        //  Review Acceptable: acceptable risk to use getenv here to modify log level
+        /*  
+            SECURITY Acceptable: acceptable risk to use getenv here to modify log level
+            These flags are only used at development time for debugging purposes.
+            On embedded systems, the environment is controlled by the developer.
+        */
         if ((show = getenv("URL_SHOW")) != 0) {
             if (schr(show, 'H')) {
                 flags |= URL_SHOW_REQ_HEADERS;
@@ -132,7 +137,9 @@ PUBLIC Url *urlAlloc(int flags)
 
 PUBLIC void urlFree(Url *up)
 {
-    if (!up) return;
+    if (!up) {
+        return;
+    }
     if (up->inCallback) {
         up->needFree = 1;
         return;
@@ -165,6 +172,9 @@ PUBLIC void urlFree(Url *up)
 
 static void resetState(Url *up)
 {
+    if (!up) {
+        return;
+    }
     resetSocket(up);
     up->boundary = 0;
     up->chunked = 0;
@@ -207,27 +217,37 @@ static void resetSocket(Url *up)
 
 PUBLIC void urlSetFlags(Url *up, int flags)
 {
+    if (!up) {
+        return;
+    }
     up->flags = flags;
 }
 
 PUBLIC void urlSetBufLimit(Url *up, ssize limit)
 {
+    if (!up) {
+        return;
+    }
     up->bufLimit = limit;
 }
 
 PUBLIC void urlClose(Url *up)
 {
-    if (up) {
-        if (up->flags & URL_SHOW_REQ_HEADERS) {
-            rLog("raw", "url", "Disconnect: %s://%s:%d\n", up->sock->tls ? "https" : "http", up->host, up->port);
-        }
-        rFreeSocket(up->sock);
-        up->sock = 0;
+    if (!up) {
+        return;
     }
+    if (up->flags & URL_SHOW_REQ_HEADERS && up->sock) {
+        rLog("raw", "url", "Disconnect: %s://%s:%d\n", up->sock->tls ? "https" : "http", up->host, up->port);
+    }
+    rFreeSocket(up->sock);
+    up->sock = 0;
 }
 
 PUBLIC int urlStart(Url *up, cchar *method, cchar *url)
 {
+    if (!up || !method || !url) {
+        return R_ERR_BAD_ARGS;
+    }
     rFree(up->method);
     up->method = supper(sclone(method));
     rFree(up->url);
@@ -237,6 +257,9 @@ PUBLIC int urlStart(Url *up, cchar *method, cchar *url)
 
 static int startRequest(Url *up)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     resetState(up);
     setDeadline(up);
     connectHost(up);
@@ -252,9 +275,16 @@ static int connectHost(Url *up)
     char host[256];
     int  port;
 
-    if (urlParse(up, up->url) < 0) {
-        urlError(up, "Bad URL: %s", up);
+    if (!up) {
         return R_ERR_BAD_ARGS;
+    }
+    if (urlParse(up, up->url) < 0) {
+        urlError(up, "Bad URL");
+        return R_ERR_BAD_ARGS;
+    }
+    //  Validate host length before copying to prevent buffer overflow
+    if (up->host && slen(up->host) >= sizeof(host)) {
+        return urlError(up, "Host name too long");
     }
     //  Save prior host and port incase connection can be reused
     scopy(host, sizeof(host), up->host);
@@ -292,6 +322,9 @@ static int fetch(Url *up, cchar *method, cchar *uri, cvoid *data, ssize len, cch
 {
     char *allocHeaders;
 
+    if (!up || !method || !uri) {
+        return R_ERR_BAD_ARGS;
+    }
     if (urlStart(up, method, uri) == 0) {
         if (getContentLength(headers, -1) < 0) {
             //  Add a content length header if not already present
@@ -336,6 +369,9 @@ PUBLIC char *urlGet(cchar *uri, cchar *headersFmt, ...)
     cchar   *response;
     char    *headers, *result;
 
+    if (!uri) {
+        return NULL;
+    }
     va_start(args, headersFmt);
     headers = headersFmt ? sfmtv(headersFmt, args) : 0;
     va_end(args);
@@ -362,6 +398,9 @@ PUBLIC Json *urlGetJson(cchar *uri, cchar *headersFmt, ...)
     Url     *up;
     char    *headers;
 
+    if (!uri) {
+        return NULL;
+    }
     va_start(args, headersFmt);
     headers = sfmtv(headersFmt, args);
     va_end(args);
@@ -380,6 +419,9 @@ PUBLIC char *urlPost(cchar *uri, cvoid *data, ssize len, cchar *headersFmt, ...)
     cchar   *response;
     char    *headers, *result;
 
+    if (!uri) {
+        return NULL;
+    }
     va_start(args, headersFmt);
     headers = headersFmt ? sfmtv(headersFmt, args) : 0;
     va_end(args);
@@ -406,6 +448,9 @@ PUBLIC Json *urlPostJson(cchar *uri, cvoid *data, ssize len, cchar *headersFmt, 
     Url     *up;
     char    *headers;
 
+    if (!uri) {
+        return NULL;
+    }
     va_start(args, headersFmt);
     headers = headersFmt ? sfmtv(headersFmt, args) : sclone("Content-Type: application/json\r\n");
     va_end(args);
@@ -480,6 +525,9 @@ PUBLIC Json *urlJson(Url *up, cchar *method, cchar *uri, cvoid *data, ssize len,
 
 static void setDeadline(Url *up)
 {
+    if (!up) {
+        return;
+    }
     if (up->timeout) {
         up->deadline = up->timeout ? rGetTicks() + up->timeout : 0;
     } else {
@@ -494,6 +542,9 @@ static void setDeadline(Url *up)
  */
 PUBLIC int urlFinalize(Url *up)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->finalized) {
         return 0;
     }
@@ -519,6 +570,9 @@ PUBLIC int urlFinalize(Url *up)
  */
 PUBLIC ssize urlWrite(Url *up, cvoid *buf, ssize bufsize)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->finalized) {
         if (buf && bufsize > 0) {
             return urlError(up, "Cannot write after finalize");
@@ -567,6 +621,9 @@ PUBLIC ssize urlWriteFmt(Url *up, cchar *fmt, ...)
     char    *buf;
     ssize   r;
 
+    if (!up || fmt == NULL) {
+        return R_ERR_BAD_ARGS;
+    }
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
     va_end(ap);
@@ -581,6 +638,9 @@ PUBLIC ssize urlWriteFile(Url *up, cchar *path)
     ssize nbytes;
     int   fd;
 
+    if (!up || path == NULL) {
+        return R_ERR_BAD_ARGS;
+    }
     if ((fd = open(path, R_OK)) < 0) {
         return urlError(up, "Cannot open %s", path);
     }
@@ -607,6 +667,9 @@ static int writeChunkDivider(Url *up, ssize len)
 {
     char chunk[24];
 
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->txLen >= 0 || up->boundary) {
         //  Content-Length is known or doing multipart mime file upload
         return 0;
@@ -663,6 +726,9 @@ static int parseResponse(Url *up, ssize headerSize)
     }
     while (*tok == ' ') tok++;
     up->status = atoi(tok);
+    if (up->status < 100 || up->status > 599) {
+        return urlError(up, "Bad response status");
+    }
     rAdjustBufStart(buf, end - buf->start);
 
     if ((tok = strchr(tok, '\n')) != 0) {
@@ -697,12 +763,18 @@ PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize)
 {
     ssize nbytes;
 
+    if (!up || buf == NULL || bufsize < 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->gotResponse) {
         return urlError(up, "Should not call urlRead after urlGetResponse");
     }
     if (urlFinalize(up) < 0) {
         urlError(up, "Cannot finalize request");
         return R_ERR_CANT_READ;
+    }
+    if (bufsize == 0) {
+        return 0;
     }
     if (up->rxRemaining == 0 && rGetBufLength(up->rx) == 0) {
         return 0;
@@ -864,6 +936,9 @@ static ssize readUntil(Url *up, cchar *until, char *buf, ssize bufsize)
 
 PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revoke)
 {
+    if (!up) {
+        return;
+    }
     if (!up->sock) {
         up->sock = rAllocSocket();
     }
@@ -873,6 +948,9 @@ PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revo
 
 PUBLIC void urlSetCiphers(Url *up, cchar *ciphers)
 {
+    if (!up) {
+        return;
+    }
     if (!up->sock) {
         up->sock = rAllocSocket();
     }
@@ -881,6 +959,9 @@ PUBLIC void urlSetCiphers(Url *up, cchar *ciphers)
 
 PUBLIC void urlSetVerify(Url *up, int verifyPeer, int verifyIssuer)
 {
+    if (!up) {
+        return;
+    }
     if (!up->sock) {
         up->sock = rAllocSocket();
     }
@@ -897,14 +978,18 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     char *next, *tok;
     bool hasScheme;
     char *end;
-    
+    long port;
+
+    if (!up || uri == NULL) {
+        return R_ERR_BAD_ARGS;
+    }
     rFree(up->urlbuf);
-    
+
     up->urlbuf = sclone(uri);
     up->scheme = "http";
     up->host = "localhost";
     up->port = 80;
-    up->path = "";
+    up->path = "/";
     up->hash = 0;
     up->query = 0;
     hasScheme = 0;
@@ -922,7 +1007,9 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     }
     if ((next = scontains(tok, "://")) != 0) {
         hasScheme = 1;
-        up->scheme = tok;
+        if (next > tok) {
+            up->scheme = tok;
+        }
         *next = 0;
         if (smatch(up->scheme, "https") || smatch(up->scheme, "wss")) {
             up->port = 443;
@@ -942,15 +1029,17 @@ PUBLIC int urlParse(Url *up, cchar *uri)
         if ((tok = spbrk(tok, ":/")) != 0) {
             if (*tok == ':') {
                 *tok++ = 0;
-                up->port = (int) strtol(tok, &end, 10);
-                if (*end != '\0' && *end != '/') {
+                errno = 0;
+                port = (int) strtol(tok, &end, 10);
+                if (errno == ERANGE || (*end != '\0' && *end != '/')) {
                     urlError(up, "Invalid port number");
                     return R_ERR_BAD_STATE;
                 }
-                if (up->port < 1 || up->port > 65535) {
+                if (port < 1 || port > 65535) {
                     urlError(up, "Invalid port number");
                     return R_ERR_BAD_STATE;
                 }
+                up->port = (int) port;
                 if ((tok = schr(tok, '/')) != 0) {
                     tok++;
                 } else {
@@ -966,15 +1055,17 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     } else if (*tok && *tok == ':') {
         //  :port/path without hostname
         *tok++ = 0;
-        up->port = (int) strtol(tok, &end, 10);
-        if (*end != '\0' && *end != '/') {
+        errno = 0;
+        port = (int) strtol(tok, &end, 10);
+        if (errno == ERANGE || (*end != '\0' && *end != '/')) {
             urlError(up, "Invalid port number");
             return R_ERR_BAD_STATE;
         }
-        if (up->port < 1 || up->port > 65535) {
+        if (port < 1 || port > 65535) {
             urlError(up, "Invalid port number");
             return R_ERR_BAD_STATE;
         }
+        up->port = (int) port;
         if ((tok = schr(tok, '/')) != 0) {
             tok++;
         } else {
@@ -1001,6 +1092,9 @@ PUBLIC RBuf *urlGetResponseBuf(Url *up)
     cchar *contentLength;
     ssize len, nbytes;
 
+    if (!up) {
+        return NULL;
+    }
     if (urlFinalize(up) < 0) {
         urlError(up, "Cannot finalize request");
         return NULL;
@@ -1010,11 +1104,29 @@ PUBLIC RBuf *urlGetResponseBuf(Url *up)
         buf = up->responseBuf = rAllocBuf(ME_BUFSIZE);
     }
     contentLength = urlGetHeader(up, "Content-Length");
-    len = contentLength ? stoi(contentLength) : -1;
-
+    if (contentLength) {
+        len = stoi(contentLength);
+        if (len < 0 || len >= SSIZE_MAX || len >= up->bufLimit) {
+            urlError(up, "Invalid Content-Length");
+            return NULL;
+        }
+    } else {
+        len = -1;
+    }
+    if (up->bufLimit > 0 && len >= up->bufLimit) {
+        urlError(up, "Response too big");
+        return NULL;
+    }
     if (!up->gotResponse && len != 0) {
         do {
             nbytes = contentLength ? len : min(buf->buflen * 2, ME_BUFSIZE * 1024);
+            if (up->bufLimit > 0) {
+                nbytes = min(nbytes, up->bufLimit - rGetBufLength(buf));
+                if (nbytes <= 0) {
+                    urlError(up, "Response too big");
+                    break;
+                }
+            }
             rReserveBufSpace(buf, nbytes);
             if ((nbytes = urlRead(up, rGetBufEnd(buf), nbytes)) < 0) {
                 if (up->rxRemaining) {
@@ -1029,12 +1141,11 @@ PUBLIC RBuf *urlGetResponseBuf(Url *up)
                     break;
                 }
             }
-            if (up->bufLimit > 0 && rGetBufLength(buf) >= up->bufLimit) {
-                urlError(up, "Response too big");
-                break;
-            }
         } while (nbytes > 0);
         up->gotResponse = 1;
+    }
+    if (up->flags & URL_SHOW_RESP_BODY && isprintable(rGetBufStart(buf), rGetBufLength(buf))) {
+        rLog("raw", "url", "Response Body >>>>\n\n%*s", (int) rGetBufLength(buf), (char*) buf->start);
     }
     return buf;
 }
@@ -1043,6 +1154,9 @@ PUBLIC cchar *urlGetResponse(Url *up)
 {
     RBuf *buf;
 
+    if (!up) {
+        return NULL;
+    }
     if (!up->response) {
         if ((buf = urlGetResponseBuf(up)) == 0) {
             return "";
@@ -1057,6 +1171,9 @@ PUBLIC Json *urlGetJsonResponse(Url *up)
     Json *json;
     char *errorMsg;
 
+    if (!up) {
+        return NULL;
+    }
     if ((json = jsonParseString(urlGetResponse(up), &errorMsg, 0)) == 0) {
         urlError(up, "Cannot parse json. %s", errorMsg);
         rFree(errorMsg);
@@ -1067,8 +1184,11 @@ PUBLIC Json *urlGetJsonResponse(Url *up)
 
 PUBLIC int urlGetStatus(Url *up)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (urlFinalize(up) < 0) {
-        return urlError(up, "Cannot finalize request");
+        up->status = urlError(up, "Cannot finalize request");
     }
     return up->status;
 }
@@ -1080,6 +1200,9 @@ PUBLIC cchar *urlGetHeader(Url *up, cchar *header)
 {
     cchar *cp, *end, *start, *value;
 
+    if (!up) {
+        return NULL;
+    }
     if (!up->rxHeaders) {
         return 0;
     }
@@ -1093,6 +1216,53 @@ PUBLIC cchar *urlGetHeader(Url *up, cchar *header)
             while (*cp == ' ') cp++;
             value = cp;
             break;
+        }
+        //  Step over header
+        cp += slen(cp) + 1;
+        if (cp < end && *cp) {
+            //  Step over value
+            cp += slen(cp) + 1;
+        }
+    }
+    return value;
+}
+
+PUBLIC char *urlGetCookie(Url *up, cchar *name)
+{
+    cchar *cp, *end, *ep, *start;
+    char  *value;
+
+    if (!up) {
+        return NULL;
+    }
+    if (!up->rxHeaders) {
+        return 0;
+    }
+    start = rGetBufStart(up->rxHeaders);
+    end = up->rxHeaders->end;
+    value = 0;
+
+    /*
+        Examine all Set-Cookie headers for the required cookie name. Can be multiple.
+     */
+    for (cp = start; cp < end; cp++) {
+        if (scaselessmatch(cp, "Set-Cookie")) {
+            cp += 11;
+            while (isWhite(*cp)) cp++;
+            for (ep = cp + 1; *ep && *ep != '='; ep++) {
+            }
+            if (sncaselesscmp(cp, name, ep - cp - 1) == 0) {
+                // Step over '='
+                for (cp = ep + 1; *cp && isWhite(*cp); cp++) {
+                }
+                if (*cp) {
+                    for (ep = cp + 1; *ep && *ep != ';'; ep++) {
+                    }
+                    while (ep > cp && isWhite(ep[-1])) ep--;
+                    value = snclone(cp, ep - cp);
+                    break;
+                }
+            }
         }
         //  Step over header
         cp += slen(cp) + 1;
@@ -1212,7 +1382,12 @@ static bool parseHeaders(Url *up)
         c = tolower(*key);
         if (c == 'c') {
             if (scaselessmatch(key, "content-length")) {
+                // SECURITY Acceptable: rxLen is ssize and overflow is checked
                 up->rxLen = stoi(value);
+                if (up->rxLen < 0 || up->rxLen >= SSIZE_MAX) {
+                    urlError(up, "Invalid Content-Length");
+                    return 0;
+                }
                 up->rxRemaining = smatch(up->method, "HEAD") ? 0 : up->rxLen;
 
             } else if (scaselessmatch(key, "connection")) {
@@ -1245,6 +1420,9 @@ static bool parseHeaders(Url *up)
 
 PUBLIC void urlSetTimeout(Url *up, Ticks timeout)
 {
+    if (!up) {
+        return;
+    }
     up->timeout = timeout;
     up->deadline = timeout > 0 ? rGetTicks() + timeout : MAXINT64;
 }
@@ -1254,7 +1432,6 @@ PUBLIC void urlSetDefaultTimeout(Ticks value)
     timeout = value;
 }
 
-
 /*
     Write HTTP request headers. Can be called multiple times.
  */
@@ -1263,6 +1440,9 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers)
     RBuf  *buf;
     cchar *protocol, *hash, *hsep, *query, *qsep, *startHeaders;
 
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->wroteHeaders) {
         return 0;
     }
@@ -1343,21 +1523,46 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers)
 
 PUBLIC void urlSetStatus(Url *up, int status)
 {
+    if (!up) {
+        return;
+    }
     up->status = status;
 }
 
 PUBLIC cchar *urlGetError(Url *up)
 {
+    if (!up) {
+        return NULL;
+    }
     if (up->error) {
         return up->error;
     }
-    return "";
+    /*
+       if (up->status != URL_CODE_OK) {
+        up->error = sfmt("Error %d", up->status);
+        return up->error;
+       } */
+    return NULL;
 }
 
 PUBLIC void urlSetProtocol(Url *up, int protocol)
 {
     up->protocol = protocol;
     up->close = protocol == 0 ? 1 : 0;
+}
+
+static bool isprintable(cchar *s, ssize len)
+{
+    cchar *cp;
+    int   c;
+
+    for (cp = s; *cp && cp < &s[len]; cp++) {
+        c = *cp;
+        if ((c > 126) || (c < 32 && c != 10 && c != 13 && c != 9)) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /*
@@ -1371,6 +1576,9 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
     int     next;
     va_list args;
 
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (!up->boundary) {
         rFree(up->boundary);
         up->boundary = sfmt("--BOUNDARY--%lld", rGetTime());
@@ -1396,9 +1604,9 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
     }
     if (files) {
         for (ITERATE_ITEMS(files, path, next)) {
-            /* 
-                Review Acceptable - Must allow relative and absolute paths.  Assume caller is trusted.
-            */
+            /*
+                SECURITY Acceptable: - Must allow relative and absolute paths.  Assume caller is trusted.
+             */
             if (!rFileExists(path) || scontains(path, "..")) {
                 return urlError(up, "Cannot open %s", path);
             }
@@ -1424,6 +1632,9 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
 
 PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg)
 {
+    if (!up) {
+        return;
+    }
     if (up->webSocket) {
         webSocketAsync(up->webSocket, callback, arg, up->rx);
     }
@@ -1437,6 +1648,9 @@ PUBLIC int urlWebSocket(cchar *uri, WebSocketProc callback, void *arg, cchar *he
     Url *up;
     int rc;
 
+    if (!uri || !callback) {
+        return R_ERR_BAD_ARGS;
+    }
     rc = 0;
     up = urlAlloc(0);
 
@@ -1482,8 +1696,13 @@ static ssize writeWebSocketHeaders(Url *up, RBuf *buf)
     up->upgraded = 1;
     up->rxRemaining = URL_UNLIMITED;
 
-    cryptGetRandomBytes(bytes, sizeof(bytes), 0);
+    if (cryptGetRandomBytes(bytes, sizeof(bytes), 1) < 0) {
+        return urlError(up, "Cannot generate random bytes for WebSocket key");
+    }
     key = cryptEncode64Block(bytes, sizeof(bytes));
+    if (!key) {
+        return urlError(up, "Cannot encode WebSocket key");
+    }
     webSocketSetClientKey(ws, key);
 
     urlSetStatus(up, 101);
@@ -1527,7 +1746,7 @@ static int verifyWebSocket(Url *up)
     expected = cryptGetSha1Base64(keybuf, -1);
     key = urlGetHeader(up, "sec-websocket-accept");
     if (!smatch(key, expected)) {
-        urlError(up, "Bad WebSocket handshake key\n%s\n%s", key, expected);
+        urlError(up, "Bad WebSocket handshake key");
         rFree(expected);
         return R_ERR_BAD_STATE;
     }
@@ -1537,6 +1756,9 @@ static int verifyWebSocket(Url *up)
 
 PUBLIC WebSocket *urlGetWebSocket(Url *up)
 {
+    if (!up) {
+        return NULL;
+    }
     return up->webSocket;
 }
 #endif /* ME_COM_WEBSOCKETS */
@@ -1544,6 +1766,9 @@ PUBLIC WebSocket *urlGetWebSocket(Url *up)
 #if URL_SSE
 PUBLIC void urlSetMaxRetries(Url *up, int maxRetries)
 {
+    if (!up) {
+        return;
+    }
     up->maxRetries = maxRetries;
 }
 
@@ -1701,6 +1926,9 @@ static void parseEvents(Url *up)
 
 PUBLIC void urlSseAsync(Url *up, UrlSseProc proc, void *arg)
 {
+    if (!up) {
+        return;
+    }
     up->sseProc = proc;
     up->sseArg = arg;
     up->sse = 1;
@@ -1733,6 +1961,9 @@ static void abortWait(Url *up, int mask)
 
 PUBLIC int urlSseWait(Url *up)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (up->rxRemaining) {
         if (rIsMain()) {
             rServiceEvents();
@@ -1760,6 +1991,9 @@ PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, .
     va_list args;
     Url     *up;
 
+    if (!uri || !proc) {
+        return R_ERR_BAD_ARGS;
+    }
     va_start(args, headers);
     headers = sfmtv(headers, args);
     va_end(args);
@@ -1789,6 +2023,9 @@ PUBLIC int urlError(Url *up, cchar *fmt, ...)
 {
     va_list ap;
 
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
     if (!up->error) {
         va_start(ap, fmt);
         rFree(up->error);
@@ -1803,6 +2040,9 @@ PUBLIC int urlError(Url *up, cchar *fmt, ...)
 #if ME_COM_WEBSOCKETS || URL_SSE
 PUBLIC int urlWait(Url *up)
 {
+    if (!up) {
+        return R_ERR_BAD_ARGS;
+    }
 #if ME_COM_WEBSOCKETS
     if (up->webSocket) {
         return webSocketWait(up->webSocket, up->deadline);

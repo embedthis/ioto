@@ -1,13 +1,16 @@
 
 /********* Start of file ../../../src/osdep/osdep.h ************/
 
-/*
-    osdep.h -- O/S abstraction layer.
-
-    This module provides a portable cross-platform abstraction layer.
-    By including "osdep.h", you will include most common O/S headers and define
-    a set of useful cross-platform constants.
-
+/**
+    Operating system dependent abstraction layer.
+    @description This header provides a comprehensive cross-platform abstraction layer for embedded IoT applications.
+    It defines standard types, platform detection constants, compiler abstractions, and operating system compatibility
+    macros to enable portability across diverse embedded and desktop systems. This is the foundational module consumed
+    by all other EmbedThis modules and must be included first in any source file. The module automatically detects
+    the target platform's CPU architecture, operating system, compiler, and endianness to provide consistent behavior
+    across ARM, x86, MIPS, PowerPC, SPARC, RISC-V, Xtensa, and other architectures running on Linux, macOS, Windows,
+    VxWorks, FreeRTOS, ESP32, and other operating systems.
+    @stability Evolving
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -15,11 +18,6 @@
 #define _h_OSDEP 1
 
 /********************************** Includes **********************************/
-
-/**
-    Operating system dependent layer that provides a portable cross-platform abstraction layer.
-    @stability Evolving
-*/
 
 #ifndef OSDEP_USE_ME
 #define OSDEP_USE_ME 1
@@ -31,7 +29,7 @@
 
 /******************************* Default Features *****************************/
 /*
-    MakeMe defaults
+    Default features
  */
 #ifndef ME_COM_SSL
     #define ME_COM_SSL 0                /**< Build without SSL support */
@@ -46,37 +44,157 @@
     #define ME_ROM 0                    /**< Build for execute from ROM */
 #endif
 
-/********************************* CPU Families *******************************/
-/*
-    CPU Architectures
- */
+/**
+    @section CPU Architecture Detection
+
+    CPU architecture constants for cross-platform compilation. These constants are used with the ME_CPU_ARCH macro
+    to determine the target processor architecture at compile time. The osdep module automatically detects the
+    architecture based on compiler-defined symbols and sets ME_CPU_ARCH to the appropriate value.
+*/
+
+/**
+    Unknown or unsupported CPU architecture.
+    @stability Stable
+*/
 #define ME_CPU_UNKNOWN     0
-#define ME_CPU_ARM         1           /**< Arm */
-#define ME_CPU_ARM64       2           /**< Arm64 */
-#define ME_CPU_ITANIUM     3           /**< Intel Itanium */
-#define ME_CPU_X86         4           /**< X86 */
-#define ME_CPU_X64         5           /**< AMD64 or EMT64 */
-#define ME_CPU_MIPS        6           /**< Mips */
-#define ME_CPU_MIPS64      7           /**< Mips 64 */
-#define ME_CPU_PPC         8           /**< Power PC */
-#define ME_CPU_PPC64       9           /**< Power PC 64 */
-#define ME_CPU_SPARC       10          /**< Sparc */
-#define ME_CPU_TIDSP       11          /**< TI DSP */
-#define ME_CPU_SH          12          /**< SuperH */
-#define ME_CPU_RISCV       13          /**< RiscV */
-#define ME_CPU_RISCV64     14          /**< RiscV64 */
-#define ME_CPU_XTENSA      15          /**< Xtensa / ESP32 */
 
-/*
-    Byte orderings
- */
-#define ME_LITTLE_ENDIAN   1           /**< Little endian byte ordering */
-#define ME_BIG_ENDIAN      2           /**< Big endian byte ordering */
+/**
+    ARM 32-bit architecture (ARMv7 and earlier).
+    @description Covers ARM Cortex-A, Cortex-R, and Cortex-M series processors commonly used in embedded systems.
+    @stability Stable
+*/
+#define ME_CPU_ARM         1
 
-/*
-    Use compiler definitions to determine the CPU type.
-    The default endianness can be overridden by configure --endian big|little.
- */
+/**
+    ARM 64-bit architecture (ARMv8 and later).
+    @description Covers ARM Cortex-A64 and newer 64-bit ARM processors including Apple Silicon and server processors.
+    @stability Stable
+*/
+#define ME_CPU_ARM64       2
+
+/**
+    Intel Itanium (IA-64) architecture.
+    @description Legacy 64-bit architecture primarily used in high-end servers and workstations.
+    @stability Stable
+*/
+#define ME_CPU_ITANIUM     3
+
+/**
+    Intel x86 32-bit architecture.
+    @description Standard 32-bit x86 processors including Intel and AMD variants.
+    @stability Stable
+*/
+#define ME_CPU_X86         4
+
+/**
+    Intel/AMD x86-64 architecture.
+    @description 64-bit x86 processors including Intel x64 and AMD64 variants.
+    @stability Stable
+*/
+#define ME_CPU_X64         5
+
+/**
+    MIPS 32-bit architecture.
+    @description MIPS processors commonly used in embedded systems and networking equipment.
+    @stability Stable
+*/
+#define ME_CPU_MIPS        6
+
+/**
+    MIPS 64-bit architecture.
+    @description 64-bit MIPS processors used in high-performance embedded and server applications.
+    @stability Stable
+*/
+#define ME_CPU_MIPS64      7
+
+/**
+    PowerPC 32-bit architecture.
+    @description IBM PowerPC processors used in embedded systems and legacy workstations.
+    @stability Stable
+*/
+#define ME_CPU_PPC         8
+
+/**
+    PowerPC 64-bit architecture.
+    @description 64-bit PowerPC processors used in high-performance computing and servers.
+    @stability Stable
+*/
+#define ME_CPU_PPC64       9
+
+/**
+    SPARC architecture.
+    @description Sun/Oracle SPARC processors used in servers and workstations.
+    @stability Stable
+*/
+#define ME_CPU_SPARC       10
+
+/**
+    Texas Instruments DSP architecture.
+    @description TI digital signal processors used in specialized embedded applications.
+    @stability Stable
+*/
+#define ME_CPU_TIDSP       11
+
+/**
+    SuperH architecture.
+    @description Hitachi/Renesas SuperH processors used in embedded systems.
+    @stability Stable
+*/
+#define ME_CPU_SH          12
+
+/**
+    RISC-V 32-bit architecture.
+    @description Open-source RISC-V processors gaining popularity in embedded and IoT applications.
+    @stability Stable
+*/
+#define ME_CPU_RISCV       13
+
+/**
+    RISC-V 64-bit architecture.
+    @description 64-bit RISC-V processors for high-performance applications.
+    @stability Stable
+*/
+#define ME_CPU_RISCV64     14
+
+/**
+    Xtensa architecture including ESP32.
+    @description Tensilica Xtensa processors, notably used in Espressif ESP32 Wi-Fi/Bluetooth microcontrollers.
+    @stability Stable
+*/
+#define ME_CPU_XTENSA      15
+
+/**
+    @section Byte Order Detection
+
+    Endianness constants for cross-platform byte order handling. These constants are used with the ME_ENDIAN macro
+    to determine the target platform's byte ordering at compile time. Little endian stores the least significant
+    byte first, while big endian stores the most significant byte first.
+*/
+
+/**
+    Little endian byte ordering.
+    @description In little endian format, the least significant byte is stored at the lowest memory address.
+    Most x86, ARM, and RISC-V processors use little endian ordering.
+    @stability Stable
+*/
+#define ME_LITTLE_ENDIAN   1
+
+/**
+    Big endian byte ordering.
+    @description In big endian format, the most significant byte is stored at the lowest memory address.
+    SPARC, some MIPS, and PowerPC processors traditionally use big endian ordering.
+    @stability Stable
+*/
+#define ME_BIG_ENDIAN      2
+
+/**
+    @section Platform Detection Logic
+
+    Automatic detection of CPU architecture and endianness based on compiler-defined preprocessor symbols.
+    The osdep module examines compiler-specific macros to determine the target platform and sets the
+    appropriate ME_CPU, ME_CPU_ARCH, and CPU_ENDIAN macros. The default endianness can be overridden
+    by the build system using configure --endian big|little.
+*/
 #if defined(__alpha__)
     #define ME_CPU "alpha"
     #define ME_CPU_ARCH ME_CPU_ALPHA
@@ -167,10 +285,14 @@
     #define ME_ENDIAN CPU_ENDIAN
 #endif
 
-/*
-    Operating system defines. Use compiler standard defintions to sleuth. Works for all except 
-    VxWorks which does not define any special symbol (ugh). 
- */
+/**
+    @section Operating System Detection
+
+    Automatic detection of the target operating system based on compiler-defined preprocessor symbols.
+    The osdep module examines compiler-specific OS macros and sets appropriate platform flags including
+    ME_OS, ME_UNIX_LIKE, ME_WIN_LIKE, ME_BSD_LIKE, and threading support flags. Most operating systems
+    provide standard compiler symbols, with VxWorks being a notable exception requiring explicit detection.
+*/
 #if defined(__APPLE__)
     #define ME_OS "macosx"
     #define MACOSX 1
@@ -338,30 +460,83 @@
     #define HAS_INT32 1
 #endif
 
+/**
+    @section Word Size Detection
+
+    Automatic detection of the target platform's word size (32-bit or 64-bit) based on compiler-defined
+    preprocessor symbols. This sets ME_64 and ME_WORDSIZE macros used throughout the codebase for
+    size-dependent operations and pointer arithmetic.
+*/
 #if __WORDSIZE == 64 || __amd64 || __x86_64 || __x86_64__ || _WIN64 || __mips64 || __arch64__ || __arm64__ || __aarch64__
+    /**
+        64-bit platform indicator.
+        @description Set to 1 on 64-bit platforms, 0 on 32-bit platforms.
+        @stability Stable
+    */
     #define ME_64 1
+    /**
+        Platform word size in bits.
+        @description Set to 64 on 64-bit platforms, 32 on 32-bit platforms.
+        @stability Stable
+    */
     #define ME_WORDSIZE 64
 #else
     #define ME_64 0
     #define ME_WORDSIZE 32
 #endif
 
-/*
-    Unicode
- */
+/**
+    @section Unicode Support
+
+    Unicode character support configuration. The ME_CHAR_LEN macro determines the wide character size
+    and enables appropriate Unicode handling. This affects string literals and character processing
+    throughout the system.
+*/
 #ifndef ME_CHAR_LEN
+    /**
+        Character length for Unicode support.
+        @description Set to 1 for ASCII/UTF-8, 2 for UTF-16, or 4 for UTF-32.
+        @stability Stable
+    */
     #define ME_CHAR_LEN 1
 #endif
 #if ME_CHAR_LEN == 4
+    /**
+        Wide character type for 32-bit Unicode (UTF-32).
+        @stability Stable
+    */
     typedef int wchar;
+    /**
+        Unicode string literal macro for UTF-32.
+        @param s String literal to convert to Unicode
+        @stability Stable
+    */
     #define UT(s) L ## s
     #define UNICODE 1
 #elif ME_CHAR_LEN == 2
+    /**
+        Wide character type for 16-bit Unicode (UTF-16).
+        @stability Stable
+    */
     typedef short wchar;
+    /**
+        Unicode string literal macro for UTF-16.
+        @param s String literal to convert to Unicode
+        @stability Stable
+    */
     #define UT(s) L ## s
     #define UNICODE 1
 #else
+    /**
+        Wide character type for ASCII/UTF-8.
+        @stability Stable
+    */
     typedef char wchar;
+    /**
+        String literal macro for ASCII/UTF-8 (no conversion).
+        @param s String literal
+        @stability Stable
+    */
     #define UT(s) s
 #endif
 
@@ -639,16 +814,22 @@
     #include <pthread.h>
 #endif
 
-/************************************** Types *********************************/
-/*
-    Standard types
- */
+/**
+    @section Type Definitions
+
+    Cross-platform type definitions for consistent behavior across different operating systems and compilers.
+    These types provide fixed-size integers, enhanced character types, and platform-specific abstractions
+    for sockets, file offsets, and time values. All types are designed to be null-tolerant and provide
+    consistent sizing across 32-bit and 64-bit platforms.
+*/
 #ifndef HAS_BOOL
     #ifndef __cplusplus
         #if !MACOSX && !FREERTOS
             #define HAS_BOOL 1
             /**
                 Boolean data type.
+                @description Provides consistent boolean type across platforms. Uses char underlying type for
+                compatibility with systems lacking native bool support. Should be used with true/false constants.
                 @stability Stable
              */
             #if !WINDOWS || ((_MSC_VER < 1800) && !defined(bool))
@@ -662,7 +843,8 @@
 #ifndef HAS_UCHAR
     #define HAS_UCHAR 1
     /**
-        Unsigned char data type.
+        Unsigned 8-bit character type.
+        @description Provides explicit unsigned char semantics for byte manipulation and binary data handling.
         @stability Stable
      */
     typedef unsigned char uchar;
@@ -671,7 +853,8 @@
 #ifndef HAS_SCHAR
     #define HAS_SCHAR 1
     /**
-        Signed char data type.
+        Signed 8-bit character type.
+        @description Provides explicit signed char semantics when the sign of char values matters.
         @stability Stable
      */
     typedef signed char schar;
@@ -680,7 +863,8 @@
 #ifndef HAS_CCHAR
     #define HAS_CCHAR 1
     /**
-        Constant char data type.
+        Constant character pointer type.
+        @description Commonly used for read-only string parameters and immutable text data.
         @stability Stable
      */
     typedef const char cchar;
@@ -689,7 +873,8 @@
 #ifndef HAS_CUCHAR
     #define HAS_CUCHAR 1
     /**
-        Unsigned char data type.
+        Constant unsigned character type.
+        @description Provides read-only access to unsigned byte data.
         @stability Stable
      */
     typedef const unsigned char cuchar;
@@ -725,7 +910,8 @@
 #ifndef HAS_INT8
     #define HAS_INT8 1
     /**
-        Integer 8 bits data type.
+        Signed 8-bit integer type.
+        @description Guaranteed 8-bit signed integer (-128 to 127) for precise byte-level operations.
         @stability Stable
      */
     typedef char int8;
@@ -734,7 +920,8 @@
 #ifndef HAS_UINT8
     #define HAS_UINT8 1
     /**
-        Unsigned integer 8 bits data type.
+        Unsigned 8-bit integer type.
+        @description Guaranteed 8-bit unsigned integer (0 to 255) for byte manipulation and flags.
         @stability Stable
      */
     typedef unsigned char uint8;
@@ -743,7 +930,8 @@
 #ifndef HAS_INT16
     #define HAS_INT16 1
     /**
-        Integer 16 bits data type.
+        Signed 16-bit integer type.
+        @description Guaranteed 16-bit signed integer (-32,768 to 32,767) for network protocols and compact data.
         @stability Stable
      */
     typedef short int16;
@@ -752,7 +940,8 @@
 #ifndef HAS_UINT16
     #define HAS_UINT16 1
     /**
-        Unsigned integer 16 bits data type.
+        Unsigned 16-bit integer type.
+        @description Guaranteed 16-bit unsigned integer (0 to 65,535) for ports, packet sizes, and compact counters.
         @stability Stable
      */
     typedef unsigned short uint16;
@@ -761,7 +950,8 @@
 #ifndef HAS_INT32
     #define HAS_INT32 1
     /**
-        Integer 32 bits data type.
+        Signed 32-bit integer type.
+        @description Guaranteed 32-bit signed integer for general-purpose arithmetic and system values.
         @stability Stable
      */
     typedef int int32;
@@ -770,7 +960,8 @@
 #ifndef HAS_UINT32
     #define HAS_UINT32 1
     /**
-        Unsigned integer 32 bits data type.
+        Unsigned 32-bit integer type.
+        @description Guaranteed 32-bit unsigned integer for addresses, large counters, and hash values.
         @stability Stable
      */
     typedef unsigned int uint32;
@@ -807,7 +998,9 @@
     #define HAS_SSIZE 1
     #if ME_UNIX_LIKE || VXWORKS || DOXYGEN
         /**
-            Signed integer size field large enough to hold a pointer offset.
+            Signed size type for memory and I/O operations.
+            @description Platform-appropriate signed integer type large enough to hold array indices, memory sizes,
+            and I/O transfer counts. Can represent negative values for error conditions. Equivalent to size_t but signed.
             @stability Stable
          */
         typedef ssize_t ssize;
@@ -857,7 +1050,9 @@
 #endif
 
 /**
-    Signed file offset data type. Supports large files greater than 4GB in size on all systems.
+    Signed 64-bit file offset type.
+    @description Supports large files greater than 4GB in size on all systems. Used for file positioning,
+    seeking, and size calculations. Always 64-bit regardless of platform word size.
     @stability Stable
  */
 typedef int64 Offset;
@@ -903,13 +1098,17 @@ typedef int64 Offset;
 #endif
 
 /**
-    Time in milliseconds since Jan 1, 1970.
+    Absolute time in milliseconds since Unix epoch.
+    @description Time value representing milliseconds since January 1, 1970 UTC (Unix epoch).
+    Used for timestamps, timeouts, and absolute time calculations across the system.
     @stability Stable
 */
 typedef int64 Time;
 
 /**
-    Elapsed time data type. Stores time in milliseconds from some arbitrary start epoch.
+    Relative time in milliseconds for durations and intervals.
+    @description Elapsed time measurement in milliseconds from an arbitrary starting point.
+    Used for timeouts, delays, performance measurements, and relative time calculations.
     @stability Stable
  */
 typedef int64 Ticks;
@@ -920,13 +1119,31 @@ typedef int64 Ticks;
  */
 #define TPS 1000
 
-/*********************************** Defines **********************************/
+/**
+    @section Utility Macros and Constants
+
+    Common macros and constants for bit manipulation, limits, and cross-platform compatibility.
+    These provide consistent behavior for mathematical operations, type introspection, and
+    platform-specific value definitions.
+*/
 
 #ifndef BITSPERBYTE
+    /**
+        Number of bits per byte.
+        @description Standard definition for bits in a byte, typically 8 on all modern platforms.
+        @stability Stable
+    */
     #define BITSPERBYTE     ((int) (8 * sizeof(char)))
 #endif
 
 #ifndef BITS
+    /**
+        Calculate number of bits in a data type.
+        @description Macro to determine the total number of bits in any data type at compile time.
+        @param type Data type to calculate bits for
+        @return Number of bits in the specified type
+        @stability Stable
+    */
     #define BITS(type)      ((int) (BITSPERBYTE * (int) sizeof(type)))
 #endif
 
@@ -1008,6 +1225,11 @@ typedef int64 Ticks;
 #endif
 
 /*
+    Safe time max value to avoid overflows
+ */
+#define MAXTIME         (MAXINT64 - MAXINT)
+
+/*
     Word size and conversions between integer and pointer.
  */
 #if ME_64
@@ -1043,14 +1265,45 @@ typedef int64 Ticks;
 #undef max
 #undef min
 
+/**
+    Return the maximum of two values.
+    @description Safe macro to return the larger of two values. Arguments are evaluated twice,
+    so avoid using expressions with side effects.
+    @param a First value to compare
+    @param b Second value to compare
+    @return The larger of the two values
+    @stability Stable
+*/
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
+
+/**
+    Return the minimum of two values.
+    @description Safe macro to return the smaller of two values. Arguments are evaluated twice,
+    so avoid using expressions with side effects.
+    @param a First value to compare
+    @param b Second value to compare
+    @return The smaller of the two values
+    @stability Stable
+*/
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
+
+/**
+    @section Compiler Abstractions
+
+    Compiler-specific macros for function attributes, optimization hints, and cross-platform compatibility.
+    These abstractions allow the code to take advantage of compiler-specific features while maintaining
+    portability across different toolchains.
+*/
 
 #ifndef PRINTF_ATTRIBUTE
     #if ((__GNUC__ >= 3) && !DOXYGEN) || MACOSX
         /**
-            Use gcc attribute to check printf fns.  a1 is the 1-based index of the parameter containing the format,
-            and a2 the index of the first argument. Note that some gcc 2.x versions don't handle this properly
+            Printf-style function format checking attribute.
+            @description Enables GCC to check printf-style format strings against their arguments at compile time.
+            Helps catch format string bugs and type mismatches early in development.
+            @param a1 1-based index of the format string parameter
+            @param a2 1-based index of the first format argument parameter
+            @stability Stable
          */
         #define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
     #else
@@ -1058,13 +1311,28 @@ typedef int64 Ticks;
     #endif
 #endif
 
-/*
-    Optimize expression evaluation code depending if the value is likely or not
- */
 #undef likely
 #undef unlikely
 #if (__GNUC__ >= 3)
+    /**
+        Branch prediction hint for likely conditions.
+        @description Tells the compiler that the condition is likely to be true, enabling better
+        branch prediction and code optimization. Use sparingly and only for conditions that are
+        overwhelmingly likely to be true.
+        @param x Condition expression to evaluate
+        @return Same value as x, with optimization hint
+        @stability Stable
+    */
     #define likely(x)   __builtin_expect(!!(x), 1)
+
+    /**
+        Branch prediction hint for unlikely conditions.
+        @description Tells the compiler that the condition is likely to be false, enabling better
+        branch prediction and code optimization. Commonly used for error handling paths.
+        @param x Condition expression to evaluate
+        @return Same value as x, with optimization hint
+        @stability Stable
+    */
     #define unlikely(x) __builtin_expect(!!(x), 0)
 #else
     #define likely(x)   (x)
@@ -1128,58 +1396,127 @@ typedef int64 Ticks;
 
 #define NOT_USED(x) ((void*) x)
 
-/********************************** Tunables *********************************/
-/*
-    These can be defined in main.bit settings (pascal case) to override. E.g.
+/**
+    @section System Configuration Tunables
 
-    settings: {
-        maxPath: 4096
-    }
- */
+    Configurable constants that define system limits and buffer sizes. These values are optimized for
+    different target platforms, with smaller values for microcontrollers and embedded systems, and
+    larger values for desktop and server platforms. Values can be overridden in build configuration
+    files using pascal case names (e.g., maxPath: 4096 in settings).
+*/
 #if ESP32 || FREERTOS || VXWORKS
-    //  Microcontrollers and smaller systems
+    //  Microcontrollers and embedded systems with constrained memory
     #ifndef ME_MAX_FNAME
-        #define ME_MAX_FNAME        128         /**< Reasonable max filename size */
+        /**
+            Maximum filename length for embedded systems.
+            @description Conservative filename size limit for microcontrollers and embedded systems
+            where memory is constrained. Sufficient for most embedded application file naming.
+            @stability Stable
+        */
+        #define ME_MAX_FNAME        128
     #endif
     #ifndef ME_MAX_PATH
-        #define ME_MAX_PATH         256        /**< Reasonable max path size */
+        /**
+            Maximum path length for embedded systems.
+            @description Conservative path size limit for microcontrollers and embedded systems.
+            Balances functionality with memory constraints typical of embedded applications.
+            @stability Stable
+        */
+        #define ME_MAX_PATH         256
     #endif
     #ifndef ME_BUFSIZE
-        #define ME_BUFSIZE          1024        /**< Reasonable size for buffers */
+        /**
+            Standard buffer size for embedded systems.
+            @description Conservative buffer size for I/O operations, string manipulation, and temporary
+            storage in memory-constrained embedded environments.
+            @stability Stable
+        */
+        #define ME_BUFSIZE          1024
     #endif
     #ifndef ME_MAX_BUFFER
         #define ME_MAX_BUFFER       ME_BUFSIZE  /* DEPRECATE */
     #endif
     #ifndef ME_MAX_ARGC
-        #define ME_MAX_ARGC         16          /**< Maximum number of command line args if using MAIN()*/
+        /**
+            Maximum command line arguments for embedded systems.
+            @description Conservative limit for command line argument parsing in embedded applications
+            where argument lists are typically simple and memory is limited.
+            @stability Stable
+        */
+        #define ME_MAX_ARGC         16
     #endif
     #ifndef ME_DOUBLE_BUFFER
+        /**
+            Buffer size for double-precision floating point string conversion.
+            @description Calculated buffer size needed for converting double values to strings.
+            @stability Stable
+        */
         #define ME_DOUBLE_BUFFER    (DBL_MANT_DIG - DBL_MIN_EXP + 4)
     #endif
     #ifndef ME_MAX_IP
+        /**
+            Maximum IP address string length for embedded systems.
+            @description Buffer size for IP address string representation in embedded networking.
+            @stability Stable
+        */
         #define ME_MAX_IP           128
     #endif
 #else
+    // Desktop, server, and high-resource embedded systems
     #ifndef ME_MAX_FNAME
-        #define ME_MAX_FNAME        256         /**< Reasonable filename size */
+        /**
+            Maximum filename length for desktop/server systems.
+            @description Generous filename size limit for desktop and server environments where
+            memory is less constrained and longer filenames are common.
+            @stability Stable
+        */
+        #define ME_MAX_FNAME        256
     #endif
     #ifndef ME_MAX_PATH
-        #define ME_MAX_PATH         1024        /**< Reasonable path size */
+        /**
+            Maximum path length for desktop/server systems.
+            @description Standard path size limit for desktop and server systems, accommodating
+            deep directory structures and long component names.
+            @stability Stable
+        */
+        #define ME_MAX_PATH         1024
     #endif
     #ifndef ME_BUFSIZE
-        #define ME_BUFSIZE          4096        /**< Reasonable size for buffers */
+        /**
+            Standard buffer size for desktop/server systems.
+            @description Larger buffer size for I/O operations and string manipulation in environments
+            with abundant memory. Optimized for performance over memory usage.
+            @stability Stable
+        */
+        #define ME_BUFSIZE          4096
     #endif
     #ifndef ME_MAX_BUFFER
         #define ME_MAX_BUFFER       ME_BUFSIZE  /* DEPRECATE */
     #endif
 
     #ifndef ME_MAX_ARGC
-        #define ME_MAX_ARGC         32          /**< Maximum number of command line args if using MAIN()*/
+        /**
+            Maximum command line arguments for desktop/server systems.
+            @description Higher limit for command line argument parsing in desktop and server
+            applications where complex argument lists are common.
+            @stability Stable
+        */
+        #define ME_MAX_ARGC         32
     #endif
     #ifndef ME_DOUBLE_BUFFER
+        /**
+            Buffer size for double-precision floating point string conversion.
+            @description Calculated buffer size needed for converting double values to strings.
+            @stability Stable
+        */
         #define ME_DOUBLE_BUFFER    (DBL_MANT_DIG - DBL_MIN_EXP + 4)
     #endif
     #ifndef ME_MAX_IP
+        /**
+            Maximum IP address string length for desktop/server systems.
+            @description Extended buffer size for IP address strings, URLs, and network identifiers.
+            @stability Stable
+        */
         #define ME_MAX_IP           1024
     #endif
 #endif
@@ -1187,17 +1524,22 @@ typedef int64 Ticks;
 
 #ifndef ME_STACK_SIZE
 #if ME_COMPILER_HAS_MMU && !VXWORKS
-    /*
-        If the system supports virtual memory, then stack size should use system default. Only used pages will
-        actually consume memory
+    /**
+        Default thread stack size for systems with virtual memory.
+        @description On systems with MMU and virtual memory support, use system default stack size
+        since only actually used pages consume physical memory. Value of 0 means use system default.
+        @stability Stable
     */
-    #define ME_STACK_SIZE    0               /**< Default thread stack size (0 means use system default) */
+    #define ME_STACK_SIZE    0
 #else
-    /*
-        No MMU, so the stack size actually consumes memory. Set this as low as possible.
-        NOTE: php and ejs use stack heavily.
+    /**
+        Default thread stack size for systems without virtual memory.
+        @description On systems without MMU (microcontrollers, embedded), the entire stack size
+        consumes physical memory, so this is set conservatively. Increase if using script engines
+        or deep recursion. Value in bytes.
+        @stability Stable
     */
-    #define ME_STACK_SIZE    (32 * 1024)    /**< Default thread stack size (0 means use system default) */
+    #define ME_STACK_SIZE    (32 * 1024)
 #endif
 #endif
 
@@ -1393,7 +1735,7 @@ typedef int64 Ticks;
     #define getpid      _getpid
     #define gettimezone _gettimezone
     #define lseek       _lseek
-    //  Review Acceptable - the omode parameter is ignored on Windows
+    //  SECURITY Acceptable: - the omode parameter is ignored on Windows
     #define mkdir(a,b)  _mkdir(a)
     #define open        _open
     #define putenv      _putenv
@@ -1649,8 +1991,46 @@ extern "C" {
 
 /********* Start of file ../../../src/r/r.h ************/
 
-/*
-    r.h -- Header for the Portable RunTime.
+/**
+    @file r.h
+    @brief Safe Runtime (R) - Foundational C Runtime for Embedded IoT Applications
+    @description The Safe Runtime (R) is a secure, high-performance C runtime library designed specifically for
+                 embedded IoT applications. It provides a complete replacement for standard C library functions
+                 with enhanced security, memory safety, and fiber-based concurrency.
+
+    ## Key Features
+    - Fiber-based coroutine concurrency instead of traditional threading
+    - Centralized memory management with automatic failure detection
+    - Safe string operations that prevent buffer overflows
+    - Cross-platform support (Linux, macOS, Windows/WSL, ESP32, FreeRTOS)
+    - Null-tolerant APIs for robust error handling
+    - Event-driven I/O with non-blocking operations
+
+    ## Architecture
+    The Safe Runtime consists of several core components:
+    - **Memory Management**: Centralized allocator with failure detection (`rAlloc`, `rFree`)
+    - **String Operations**: Safe replacements for C string functions (`slen`, `scopy`, `scmp`)
+    - **Data Structures**: Dynamic buffers, lists, hash tables, red-black trees
+    - **Fiber System**: Lightweight coroutines with 64K+ stacks for concurrency
+    - **Event System**: I/O multiplexing and event-driven programming
+    - **Platform Abstraction**: Cross-platform OS dependencies via osdep layer
+
+    ## Thread Safety
+    All functions in this API are designed for fiber-based concurrency. Unless explicitly documented otherwise,
+    functions are fiber-safe but may not be thread-safe when called from different OS threads simultaneously.
+    The runtime uses a single-threaded model with fiber coroutines for concurrency.
+
+    ## Memory Management Philosophy
+    - Use `rAlloc()` family instead of `malloc()`/`free()`
+    - No need to check for NULL returns - centralized handler manages failures
+    - Most functions are null-tolerant (e.g., `rFree(NULL)` is safe)
+    - Memory ownership is clearly documented for each function
+
+    ## Error Handling
+    Functions follow consistent error reporting patterns:
+    - Return values indicate success/failure where applicable
+    - Null tolerance prevents crashes from invalid inputs
+    - Error conditions are documented for each function
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -1913,21 +2293,28 @@ PUBLIC_DATA int rState;
 
 /**
     Gracefully stop the app
-    @description Queued events will be serviced.
+    @description Queued events will be serviced before stopping. This function initiates
+                 a graceful shutdown of the runtime, allowing pending operations to complete.
+                 This function is fiber-safe.
     @stability Evolving
+    @see rStop
  */
 PUBLIC void rGracefulStop(void);
 
 /**
     Immediately stop the app
     @description This API is thread safe and can be called from a foreign thread.
-    @description Queued events will not be serviced.
+                 Queued events will not be serviced. This function terminates the runtime
+                 immediately without waiting for graceful shutdown.
     @stability Evolving
+    @see rGracefulStop
  */
 PUBLIC void rStop(void);
 
 /**
     Get the current R state
+    @description Retrieves the current state of the Safe Runtime system. This function
+                 is fiber-safe and can be called from any fiber context.
     @return Returns R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
     @stability Evolving
  */
@@ -2009,10 +2396,11 @@ PUBLIC void *rAllocType(RType type);
 
 /**
     Allocate a block of memory.
-    @description This is the lowest level of memory allocation routine. Memory is freed via rFree.
-    @param size Size of the memory block to allocate.
-    @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion handler will be
-       invoked.
+    @description This is the primary memory allocation routine. Memory is freed via rFree. This function
+                 is fiber-safe and uses the centralized Safe Runtime allocator.
+    @param size Size of the memory block to allocate in bytes. Must be > 0.
+    @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion
+            handler will be invoked (typically causing program termination). Never returns NULL.
     @remarks Do not mix calls to rAlloc and malloc.
     @stability Evolving.
  */
@@ -2020,8 +2408,9 @@ PUBLIC void *rAlloc(size_t size);
 
 /**
     Free a block of memory allocated via rAlloc.
-    @description This releases a block of memory allocated via rAllocMem.
-    @param ptr Pointer to the block. If ptr is null, the call is skipped.
+    @description This releases a block of memory allocated via rAllocMem. This function is null-tolerant
+                 and safe to call with NULL pointers. This function is fiber-safe.
+    @param ptr Pointer to the block. If ptr is NULL, the call is safely skipped.
     @remarks The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.
     @stability Evolving
  */
@@ -2053,10 +2442,46 @@ PUBLIC void *rRealloc(void *ptr, size_t size);
  */
 typedef void (*RMemProc)(int cause, size_t size);
 
-//  Private
+//  Private - Internal memory management functions used by macros
+/**
+    Allocate memory block - internal implementation
+    @description Low-level memory allocator used internally by rAlloc macro. Do not call directly.
+    @param size Size of memory block to allocate in bytes
+    @return Pointer to allocated memory block
+    @stability Internal
+ */
 PUBLIC void *rAllocMem(size_t size);
+
+/**
+    Reallocate memory block - internal implementation
+    @description Low-level memory reallocator used internally by rRealloc macro. Do not call directly.
+    @param ptr Existing memory block pointer or NULL
+    @param size New size for memory block in bytes
+    @return Pointer to reallocated memory block
+    @stability Internal
+ */
 PUBLIC void *rReallocMem(void *ptr, size_t size);
+
+/**
+    Free memory block - internal implementation
+    @description Low-level memory deallocator used internally by rFree macro. Do not call directly.
+    @param ptr Memory block pointer to free. NULL is safely ignored.
+    @stability Internal
+ */
 PUBLIC void rFreeMem(void *ptr);
+
+/**
+    Compare two blocks of memory
+    @description Compare two blocks of memory.
+    @param s1 First block of memory
+    @param s1Len Length of the first block of memory
+    @param s2 Second block of memory
+    @param s2Len Length of the second block of memory
+    @return Returns 0 if the blocks of memory are equal, -1 if the first block of memory is less than the second block
+       of memory, and 1 if the first block of memory is greater than the second block of memory
+    @stability Evolving
+ */
+PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len);
 
 /**
     Copy a block of memory
@@ -2072,10 +2497,12 @@ PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes);
 
 /**
     Duplicate a block of memory.
-    @description Copy a block of memory into a newly allocated block.
-    @param ptr Pointer to the block to duplicate.
-    @param size Size of the block to copy.
-    @return Returns an allocated block.
+    @description Copy a block of memory into a newly allocated block. Memory is allocated
+                 using the Safe Runtime allocator and must be freed with rFree().
+    @param ptr Pointer to the block to duplicate. If NULL, returns NULL.
+    @param size Size of the block to copy in bytes. Must be > 0 for valid duplication.
+    @return Returns a pointer to the newly allocated block containing a copy of the original data.
+            Returns NULL if ptr is NULL. If memory allocation fails, the memory exhaustion handler is invoked.
     @stability Evolving.
  */
 PUBLIC void *rMemdup(cvoid *ptr, size_t size);
@@ -2115,7 +2542,7 @@ typedef struct RFiber {
     uint stackId;
 #endif
 #if ME_FIBER_GUARD_STACK
-    //  REVIEW Acceptable - small guard is enough for embedded systems
+    //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
     uchar stack[];
@@ -2144,7 +2571,9 @@ PUBLIC void rTermFibers(void);
 
 /**
     Spawn a fiber coroutine
-    @description This allocates a new fiber and resumes it.
+    @description This allocates a new fiber and resumes it. The resumed fiber is started via an event to the main fiber
+       to the current fiber will not block and will return from this call before the function
+    is called.
     @param name Fiber name.
     @param fn Fiber entry point.
     @param arg Entry point argument.
@@ -2166,10 +2595,14 @@ PUBLIC void *rSpawnThread(RThreadProc fn, void *arg);
 
 /**
     Resume a fiber
-    @description Resume a fiber. If called from a non-main fiber or foreign-thread
-        the target fiber is resumed via an event to the main fiber. THREAD SAFE
+    @description Resume a fiber. If called from the main fiber, the thread is resumed directly and immediately and
+    the main fiber is suspended until the fiber yields or completes. If called from a non-main fiber or foreign-thread
+    the target fiber is scheduled to be resumed via an event. In this case, the call to rResumeFiber returns
+    without yielding and the resumed fiber will run when the calling fiber next yields. Use rStartFiber if you need
+    a non-blocking way to start or resume a fiber. THREAD SAFE.
     @param fiber Fiber object
     @param result Result to pass to the fiber and will be the value returned from rYieldFiber.
+    @return Value passed by the caller that invokes rResumeFiber to yield back.
     @stability Evolving
  */
 PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
@@ -2178,7 +2611,7 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
     Yield a fiber back to the main fiber
     @description Pause a fiber until resumed by the main fiber.
         the target fiber is resumed via an event to the main fiber.
-    @param value Value to provide as a result to the main fiber that called rResumeFiber.
+    @param value Value to provide as a result to the fiber that called rResumeFiber.
     @stability Evolving
  */
 PUBLIC void *rYieldFiber(void *value);
@@ -2196,6 +2629,13 @@ PUBLIC RFiber *rGetFiber(void);
     @stability Evolving
  */
 PUBLIC bool rIsMain(void);
+
+/**
+    Test if a fiber is a foreign thread
+    @return True if the fiber is a foreign thread
+    @stability Evolving
+ */
+PUBLIC bool rIsForeignThread(void);
 
 #if ME_FIBER_GUARD_STACK
 /**
@@ -2279,7 +2719,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *data);
     @param access Pointer to a boolean initialized to false.
     @param deadline Time in ticks to wait for access. Set to zero for an infinite wait. Set to < 0 to not wait.
     @return Zero if access is granted.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rEnter(bool *access, Ticks deadline);
 
@@ -2287,7 +2727,7 @@ PUBLIC int rEnter(bool *access, Ticks deadline);
     Leave a fiber critical section
     @description This routine must be called on all exit paths from a fiber after calling rEnter.
     @param access Pointer to a boolean initialized to false.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC void rLeave(bool *access);
 #endif
@@ -2581,9 +3021,11 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *data, Ticks dela
 
 /**
     Start a callback event
-    @description This API is a wrapper for rAllocEvent with the fiber set to the current fiber.
+    @description
     This schedules an event to run once. The event can be rescheduled in the callback by invoking
-    rRestartEvent. This routine is THREAD SAFE.
+    rRestartEvent. Events scheduled with the same delay are run in order of scheduling.
+    This routine is THREAD SAFE.
+    This API is a wrapper for rAllocEvent with the fiber set to the current fiber.
     @param proc Callback procedure function. Signature is: void (*fn)(void *data, int id)
     @param data Data reference to pass to the callback
     @param delay Delay in milliseconds in which to run the callback
@@ -2622,7 +3064,13 @@ PUBLIC bool rLookupEvent(REvent id);
     @stability Evolving
  */
 PUBLIC Ticks rRunEvents(void);
-PUBLIC bool rHasDueEvents(void);
+
+/**
+    Return the time of the next due event
+    @return Time in ticks (ms) to the next due event
+    @stability Evolving
+ */
+PUBLIC Time rGetNextDueEvent(void);
 
 /**
     Service events.
@@ -2811,7 +3259,7 @@ PUBLIC void rWakeup(void);
     @param args Variable arguments to format
     @return Returns the count of characters stored in buf or the count of characters that would have been
         stored if not limited by maxsize. Will be >= maxsize if the result is truncated.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
 
@@ -2827,7 +3275,7 @@ PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
     @param fmt Printf style format string
     @param args Variable arguments to format
     @return Returns the count of characters stored in buf or a negative error code for memory errors.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
 
@@ -2842,7 +3290,7 @@ PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
     @param ... Variable arguments to format
     @return Returns the count of characters in buf or the count of characters that would have been written if not
         limited by maxsize.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
 
@@ -2987,11 +3435,12 @@ PUBLIC char *scloneNull(cchar *str);
 
 /**
     Compare strings.
-    @description Compare two strings. This is a r replacement for strcmp. It can handle null args.
-    @param s1 First string to compare.
-    @param s2 Second string to compare.
-    @return Returns zero if the strings are identical. Return -1 if the first string is less than the second. Return 1
-        if the first string is greater than the second.
+    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant
+                 and fiber-safe. NULL strings are treated as empty strings for comparison purposes.
+    @param s1 First string to compare. NULL is safely handled.
+    @param s2 Second string to compare. NULL is safely handled.
+    @return Returns zero if the strings are identical. Returns -1 if the first string is lexicographically
+            less than the second. Returns 1 if the first string is lexicographically greater than the second.
     @stability Evolving
  */
 PUBLIC int scmp(cchar *s1, cchar *s2);
@@ -3008,14 +3457,13 @@ PUBLIC char *scontains(cchar *str, cchar *pattern);
 
 /**
     Copy a string.
-    @description R replacement for strcpy. Copy a string and ensure the destination buffer is not overflowed.
-        The call returns the length of the resultant string or an error code if it will not fit into the target
-        string. This is similar to strcpy, but it will enforce a maximum size for the copied string and will
-        ensure it is always terminated with a null. It is null tolerant in that "src" may be null.
-    @param dest Pointer to a pointer that will hold the address of the allocated block.
-    @param destMax Maximum size of the target string in characters.
-    @param src String to copy. May be null.
-    @return Returns the number of characters in the target string.
+    @description Safe replacement for strcpy. Copy a string and ensure the destination buffer is not overflowed.
+                 This function enforces a maximum size for the copied string and ensures null-termination.
+                 This function is fiber-safe and null-tolerant.
+    @param dest Destination buffer to receive the copied string. Must not be NULL.
+    @param destMax Maximum size of the destination buffer in characters (including null terminator).
+    @param src Source string to copy. NULL is safely handled (results in empty string).
+    @return Returns the number of characters copied to the destination string, or -1 on error.
     @stability Evolving
  */
 PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
@@ -3149,10 +3597,10 @@ PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep);
 
 /**
     Return the length of a string.
-    @description R replacement for strlen. This call returns the length of a string and tests if the length is
-        less than a given maximum. It will return zero for NULL args.
-    @param str String to measure.
-    @return Returns the length of the string
+    @description Safe replacement for strlen. This call returns the length of a string and is null-tolerant.
+                 This function is fiber-safe and does not modify the input string.
+    @param str String to measure. NULL is safely handled and returns 0.
+    @return Returns the length of the string in characters, or 0 if str is NULL.
     @stability Evolving
  */
 PUBLIC ssize slen(cchar *str);
@@ -3449,6 +3897,7 @@ PUBLIC char *stok(char *str, cchar *delim, char **last);
  */
 PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
 
+#if FUTURE
 /**
    String to list. This parses the string of space separated arguments. Single and double quotes are supported.
    @param src Source string to parse
@@ -3456,6 +3905,7 @@ PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
    @stability Evolving
  */
 PUBLIC struct RList *stolist(cchar *src);
+#endif
 
 /**
     Create a substring
@@ -3583,7 +4033,8 @@ PUBLIC RBuf *rAllocBuf(ssize initialSize);
 
 /**
     Free a buffer
-    @param buf Buffere created via #rAllocBuf
+    @description Frees a buffer allocated via rAllocBuf. This function is null-tolerant.
+    @param buf Buffer created via rAllocBuf. NULL is safely ignored.
     @stability Evolving
  */
 PUBLIC void rFreeBuf(RBuf *buf);
@@ -4294,7 +4745,7 @@ PUBLIC RLogHandler rSetLogHandler(RLogHandler handler);
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
         Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING which is typically set via the MakeMe setting "logging: true".
+        ME_R_LOGGING.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -4331,7 +4782,7 @@ PUBLIC void rAssert(cchar *loc, cchar *msg);
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
         Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING which is typically set via the MakeMe setting "logging: true".
+        ME_R_LOGGING.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -4345,6 +4796,11 @@ PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args);
 #if DOXYGEN
 /**
     Emit a debug message to the log
+    @description This routine is only active in debug builds. In production builds it is a no-op. It can be used to emit
+       messages that may contain
+    sensitive information such as passwords, keys, and other confidential data as it will only be enabled in debug
+       builds and never in production builds.
+    (SECURITY: Acceptable)
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
@@ -4570,6 +5026,22 @@ PUBLIC RHash *rCloneHash(RHash *master);
 PUBLIC RName *rAddName(RHash *table, cchar *name, void *ptr, int flags);
 
 /**
+    Add a non-unique name and value into the hash table
+    @description Associate an arbitrary value with a string name and inser into the hash table.
+    @param hash Hash table returned via rAllocHash
+    @param name String name to associate with the data.
+    @param ptr Arbitrary pointer to associate with the name in the table.
+    @param flags Set flags to R_STATIC_NAME if providing statically allocated names. Set to R_TEMPORAL_NAME
+        if the hash must copy the names. Set to R_DYNAMIC_NAME when providing allocated names that the hash may
+        use, own and ultimately free when the hash is free. Set flags to R_STATIC_VALUE if providing statically
+        allocated values. Set to R_DYNAMIC_VALUE when providing allocated values that the hash may use, own
+        and ultimately free when the hash is free. If flags are zero, the flags provided to rAllocHash are used.
+    @return Added RName reference.
+    @stability Evolving
+ */
+PUBLIC RName *rAddDuplicateName(RHash *hash, cchar *name, void *ptr, int flags);
+
+/**
     Add a name and value substring into the hash table
     @description Associate an arbitrary value with a string name and inser into the hash table.
         The flags used are: R_DYNAMIC_NAME | R_DYNAMIC_VALUE.
@@ -4780,10 +5252,14 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix);
 
 /**
     Read data from a file.
-    @description Reads data from a file.
-    @param path Filename to read.
-    @param lenp Pointer to receive the length of the file read.
-    @return The contents of the file in an allocated string
+    @description Reads the entire contents of a file into memory. The file is read in fiber-aware mode
+                 and will yield to other fibers during I/O operations. Memory is allocated using the
+                 Safe Runtime allocator.
+    @param path Filename to read. Must not be NULL.
+    @param lenp Pointer to receive the length of the file read. May be NULL if length is not needed.
+    @return The contents of the file in an allocated string. Returns NULL on error (file not found,
+            permission denied, memory allocation failure, etc.). Caller must free the returned string
+            with rFree().
     @stability Evolving
  */
 PUBLIC char *rReadFile(cchar *path, ssize *lenp);
@@ -5226,23 +5702,33 @@ PUBLIC void rCloseSocket(RSocket *sp);
 /*
     Test if there is a good internet connection
     @return True if the internet can be reached
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC bool rCheckInternet(void);
 
 /**
     Connect a client socket
-    @description Open a client connection. May be called from a fiber or from main.
+    @description Open a client connection. May be called from a fiber or from main. This function is
+                 fiber-aware and will yield during the connection process when called from a fiber.
     @pre If using TLS, this must only be called from a fiber.
-    @param sp Socket object returned via rAllocSocket
-    @param host Host or IP address to connect to.
-    @param port TCP/IP port number to connect to.
+    @param sp Socket object returned via rAllocSocket. Must not be NULL.
+    @param host Host or IP address to connect to. Must not be NULL.
+    @param port TCP/IP port number to connect to. Must be in range 1-65535.
     @param deadline Maximum system time for connect to wait until completion. Use rGetTicks() + elapsed to create a
-       deadline. Set to 0 for no deadline.
-    @return Zero if successful.
+           deadline. Set to 0 for no deadline.
+    @return Zero if successful. Returns negative error code on failure (network unreachable, connection refused,
+            timeout, invalid parameters, etc.).
     @stability Evolving
  */
 PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline);
+
+/**
+    Disconnect a socket
+    @description Disconnect a socket.
+    @param sp Socket object returned from rAllocSocket
+    @stability Evolving
+ */
+PUBLIC void rDisconnectSocket(RSocket *sp);
 
 /**
     Free a socket object
@@ -5401,7 +5887,6 @@ PUBLIC void rSetSocketCerts(RSocket *sp, cchar *ca, cchar *key, cchar *cert, cch
 /**
     Set the socket custom configuration callback
     @param custom Custom callback function
-    @return RWait reference
     @stability Evolving
  */
 PUBLIC void rSetSocketCustom(RSocketCustom custom);
@@ -5907,7 +6392,7 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 /**
     Initialize the NVM flags
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitFlash(void);
 
@@ -5917,7 +6402,7 @@ PUBLIC int rInitFlash(void);
     @param password WIFI password
     @param hostname Network hostname for the device
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname);
 
@@ -5929,7 +6414,7 @@ PUBLIC cchar *rGetIP(void);
     @param path Mount point for the file system
     @param storage Name of the LittleFS partition
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitFilesystem(cchar *path, cchar *storage);
 
@@ -5959,19 +6444,39 @@ PUBLIC void rPlatformReport(char *label);
 
 /********* Start of file ../../../src/json.h ************/
 
-/*
-    json.h -- Header for the JSON library
+/**
+    JSON5/JSON6 Parser and Manipulation Library
+    @description High-performance JSON parser and manipulation library for embedded IoT applications.
+    Supports both traditional JSON and relaxed JSON5/JSON6 syntax with extended features for ease of use.
 
-    Supports JSON5/6 which is a strict JSON superset. Allows:
+    This library provides a complete JSON processing solution including:
+    - Fast parsing of JSON/JSON5/JSON6 text into navigable tree structures
+    - Insitu parsing of JSON text resulting in extremely efficient memory usage
+    - Query API with dot-notation path support (e.g., "config.network.timeout")
+    - Modification APIs for setting values and blending JSON objects
+    - Serialization back to JSON text with multiple formatting options
+    - Template expansion with ${path.var} variable substitution
 
-    . Keyword undefined
-    . Multiline strings
-    . Backtick quotes
-    . Unquoted keys
-    . Trailing commas in objects and arrays
-    . Single and multiline comments
+    JSON5/JSON6 Extended Features:
+    - Unquoted object keys when they contain no special characters
+    - Unquoted string values when they contain no spaces
+    - Trailing commas in objects and arrays
+    - Single-line (//) and multi-line comments
+    - Multi-line strings using backtick quotes
+    - JavaScript-style primitives (undefined, null)
+    - Keyword 'undefined' support
 
-    Copyright (c) All Rights Reserved. See details at the end of the file.
+    The library is designed for embedded developers who need efficient JSON processing
+    with minimal memory overhead and high performance characteristics.
+
+    The parser is lax and will tolerate some non-standard JSON syntax such as:
+    - Multiple or trailing commas in objects and arrays.
+    - An empty string is allowed and returns an empty JSON instance.
+    - Similarly a top level whitespace string is allowed and returns an empty JSON instance.
+
+    Use another tool if you need strict JSON validation.
+
+    @stability Evolving
  */
 
 #pragma once
@@ -6000,67 +6505,92 @@ struct JsonNode;
 #endif
 
 #ifndef ME_JSON_MAX_NODES
-    #define ME_JSON_MAX_NODES    100000
+    #define ME_JSON_MAX_NODES    100000               /**< Maximum number of elements in json text */
 #endif
 
 #ifndef JSON_MAX_LINE_LENGTH
-    #define JSON_MAX_LINE_LENGTH 120
+    #define JSON_MAX_LINE_LENGTH 120                  /**< Default Maximum length of a line for compacted output */
 #endif
 
 #ifndef JSON_DEFAULT_INDENT
-    #define JSON_DEFAULT_INDENT  4
+    #define JSON_DEFAULT_INDENT  4                    /**< Default indent level for json text */
 #endif
 
-/*
-    Json types
+/**
+    JSON node type constants
+    @description These constants define the different types of nodes in the JSON tree.
+    Each node has exactly one type that determines how its value should be interpreted.
+    @stability Evolving
  */
-#define JSON_OBJECT              0x1
-#define JSON_ARRAY               0x2
-#define JSON_COMMENT             0x4
-#define JSON_STRING              0x8                                                  /**< Strings including dates
-                                                                                         encoded as ISO strings */
-#define JSON_PRIMITIVE           0x10                                                 /**< True, false, null, undefined,
-                                                                                         number */
-#define JSON_REGEXP              0x20                                                 /**< Regular expressions */
+#define JSON_OBJECT              0x1                  /**< Object node containing key-value pairs */
+#define JSON_ARRAY               0x2                  /**< Array node containing indexed elements */
+#define JSON_COMMENT             0x4                  /**< Comment node (JSON5 feature) */
+#define JSON_STRING              0x8                  /**< String value including ISO date strings */
+#define JSON_PRIMITIVE           0x10                 /**< Primitive values: true, false, null, undefined, numbers */
+#define JSON_REGEXP              0x20                 /**< Regular expression literal (JSON6 feature) */
 
-/*
-    Parse flags
+/**
+    JSON parsing flags
+    @description Flags that control the behavior of JSON parsing operations.
+    These can be combined using bitwise OR to enable multiple options.
+    @stability Evolving
  */
-#define JSON_STRICT_PARSE        0x1                                                  /**< Parse in strict JSON format
-                                                                                      */
-#define JSON_PASS_VALUE          0x2                                                  /**< Transfer ownership of the
-                                                                                         parsed value to json. */
+#define JSON_STRICT_PARSE        0x1                  /**< Parse in strict JSON format (no JSON5 extensions) */
+#define JSON_PASS_VALUE          0x2                  /**< Transfer string ownership to JSON object during parsing */
 
-/*
-    Render flags
+/**
+    JSON rendering flags
+    @description Flags that control the format and style of JSON serialization output.
+    These can be combined to achieve the desired output format.
+    @stability Evolving
  */
-#define JSON_COMPACT             0x10                                                 /**< Compact properties format */
-#define JSON_DOUBLE_QUOTES       0x20                                                 /**< Use double quotes */
-#define JSON_ENCODE              0x40                                                 /**< Encode control characters */
-#define JSON_EXPAND              0x80                                                 /**< Expand ${path.var} references
-                                                                                      */
-#define JSON_MULTILINE           0x100                                                /**< Save on multiple lines */
-#define JSON_ONE_LINE            0x200                                                /**< Save on one line */
-#define JSON_QUOTE_KEYS          0x400                                                /**< Quote property keys */
-#define JSON_SINGLE_QUOTES       0x800                                                /**< Use single quotes */
+#define JSON_COMPACT             0x10                 /**< Use compact formatting with minimal whitespace */
+#define JSON_DOUBLE_QUOTES       0x20                 /**< Use double quotes for strings and keys */
+#define JSON_ENCODE              0x40                 /**< Encode control characters in strings */
+#define JSON_EXPAND              0x80                 /**< Expand ${path.var} template references during rendering */
+#define JSON_MULTILINE           0x100                /**< Format output across multiple lines for readability */
+#define JSON_ONE_LINE            0x200                /**< Force all output onto a single line */
+#define JSON_QUOTE_KEYS          0x400                /**< Always quote object property keys */
+#define JSON_SINGLE_QUOTES       0x800                /**< Use single quotes instead of double quotes */
 
-/*
-    Internal flags used when rendering
+/**
+    Internal rendering flags
+    @description Internal flags used by the JSON library during rendering operations.
+    These are not intended for direct use by applications.
+    @stability Internal
  */
-#define JSON_KEY                 0x1000                                               /**< Internal flag to designate
-                                                                                         Property key */
-#define JSON_DEBUG               0x2000                                               /**< Internal flag for debug
-                                                                                         formatting */
-#define JSON_BARE                0x4000                                               /**< Internal flag for formatting
-                                                                                         without quotes or [] */
+#define JSON_KEY                 0x1000               /**< Internal: currently rendering a property key */
+#define JSON_DEBUG               0x2000               /**< Internal: enable debug-specific formatting */
+#define JSON_BARE                0x4000               /**< Internal: render without quotes or brackets */
 
-/*
-    Composite flags
+/**
+    Internal parsing flags
+    @description Internal flags used by the JSON library during parsing operations.
+    These are not intended for direct use by applications.
+    @stability Internal
  */
-#define JSON_JS                  (JSON_SINGLE_QUOTES)                                 /**< JavaScript format */
-#define JSON_JSON                (JSON_DOUBLE_QUOTES | JSON_QUOTE_KEYS | JSON_ENCODE) /**< Strict JSON format */
-#define JSON_JSON5               (JSON_SINGLE_QUOTES)                                 /**< JSON5 format */
-#define JSON_HUMAN               (JSON_JSON5 | JSON_MULTILINE | JSON_COMPACT)         /**< Human readable format */
+#define JSON_EXPANDING           0x8000               /**< Internal: expanding a ${path.var} reference */
+#define JSON_EXPECT_KEY          0x10000              /**< Internal: parsing and expect a property key name */
+#define JSON_EXPECT_COMMA        0x20000              /**< Internal: parsing and expect a comma */
+#define JSON_EXPECT_VALUE        0x40000              /**< Internal: parsing and expect a value */
+#define JSON_PARSE_FLAGS         0xFF000              /**< Internal: parsing flags */
+
+/**
+    Composite formatting flags
+    @description Predefined combinations of formatting flags for common output styles.
+    These provide convenient presets for typical use cases.
+    @stability Evolving
+ */
+#define JSON_JS                  (JSON_SINGLE_QUOTES) /**< JavaScript-compatible format with single quotes */
+/**<
+    Strict JSON format compliant with RFC 7159
+ */
+#define JSON_JSON                (JSON_DOUBLE_QUOTES | JSON_QUOTE_KEYS | JSON_ENCODE)
+#define JSON_JSON5               (JSON_SINGLE_QUOTES) /**< JSON5 format allowing relaxed syntax */
+/**<
+    Human-readable format with proper indentation
+ */
+#define JSON_HUMAN               (JSON_JSON5 | JSON_MULTILINE | JSON_COMPACT)
 
 // DEPRECATED - this will be removed in the next release
 #define JSON_PRETTY              (JSON_HUMAN)
@@ -6131,76 +6661,107 @@ struct JsonNode;
 
 /**
     JSON Object
-    @description The JSON library parses JSON strings into an in-memory JSON tree that can be
-        queried and modified and saved. Some APIs such as jsonGet return direct references into
-        the JSON tree for performance as (const char*) references. Others, such as jsonGet will
-        return an allocated string that must be freed by the caller.
-        \n
-        The JSON tree may be locked via the lock flag. A locked JSON object is useful as it will
-        not permit further updates via (jsonSet or jsonBlend) and the internal node structure will
-        be stable such that references returned via jsonGet and jsonGetNode will remain valid.
+    @description The primary JSON container structure that holds a parsed JSON tree in memory.
+    This structure provides efficient access to JSON data through a node-based tree representation.
+
+    The JSON library parses JSON text into an in-memory tree that can be queried, modified,
+    and serialized back to text. APIs like jsonGet() return direct references into the tree
+    for performance, while APIs like jsonGetClone() return allocated copies that must be freed.
+
+    The JSON tree can be locked via jsonLock() to prevent modifications. A locked JSON object
+    ensures that references returned by jsonGet() and jsonGetNode() remain valid, making it
+    safe to hold multiple references without concern for tree modifications.
+
+    Memory management is handled automatically through the R runtime. The entire tree is freed
+    when jsonFree() is called on the root JSON object.
     @stability Evolving
-    @see
  */
 typedef struct Json {
-    struct JsonNode *nodes;
+    struct JsonNode *nodes;              /**< Array of JSON nodes forming the tree structure */
 #if R_USE_EVENT
-    REvent event;                           /**< Saving event */
+    REvent event;                        /**< Event structure for asynchronous saving operations */
 #endif
-    char *text;                             /**< Text being parsed */
-    char *end;                              /**< End of text + 1 */
-    char *next;                             /**< Pointer to next token */
-    char *path;                             /**< Filename being parsed */
-    char *errorMsg;                         /**< Parsing error details */
-    char *value;                            /**< Result from jsonString */
-    char *property;                         /**< Current property buffer */
-    ssize propertyLength;                   /**< Property buffer length */
-    uint size;                              /**< Size of Json.nodes in elements (includes spare) */
-    uint count;                             /**< Number of allocated nodes (count <= size) */
-    uint lineNumber : 16;                   /**< Current parse line number */
-    uint lock : 1;                          /**< Lock JSON object from further updates */
-    uint flags : 7;                         /**< Flags (reserved for future use) */
-    uint userFlags : 8;                     /**< User flags (reserved for user use) */
+    char *text;                          /**< Original JSON text being parsed (will be modified during parsing) */
+char *end;                           /**< Pointer to one byte past the end of the text buffer */
+char *next;                          /**< Current parsing position in the text buffer */
+char *path;                          /**< File path if JSON was loaded from a file (for error reporting) */
+char *error;                         /**< Detailed error message from parsing failures */
+char *property;                      /**< Internal buffer for building property names during parsing */
+ssize propertyLength;                /**< Current allocated size of the property buffer */
+    char *value;                         /**< Cached serialized string result from jsonString() calls */
+    uint size;                           /**< Total allocated capacity of the nodes array */
+    uint count;                          /**< Number of nodes currently used in the tree */
+    uint lineNumber : 16;                /**< Current line number during parsing (for error reporting) */
+    uint lock : 1;                       /**< Lock flag preventing modifications when set */
+    uint flags : 7;                      /**< Internal parser flags (reserved for library use) */
+    uint userFlags : 8;                  /**< Application-specific flags available for user use */
 #if JSON_TRIGGER
-    JsonTrigger trigger;
-    void *triggerArg;
+    JsonTrigger trigger;                 /**< Optional callback function for monitoring changes */
+    void *triggerArg;                    /**< User argument passed to the trigger callback */
 #endif
 } Json;
 
 /**
     JSON Node
+    @description Individual node in the JSON tree representing a single property or value.
+    Each node contains a name/value pair and maintains structural information about its
+    position in the tree hierarchy.
+
+    The JSON tree is stored as a flattened array of nodes with parent-child relationships
+    maintained through indexing. The 'last' field indicates the boundary of child nodes,
+    enabling efficient tree traversal without requiring explicit pointers.
+
+    Memory management for name and value strings is tracked through the allocatedName
+    and allocatedValue flags, allowing the library to optimize memory usage by avoiding
+    unnecessary string copies when possible.
     @stability Evolving
  */
 typedef struct JsonNode {
-    char *name;                                 /**< Property name - null terminated */
-    char *value;                                /**< Property value - null terminated */
-    int last : 24;                              /**< Index +1 of last node for which this node is parent */
-    uint type : 6;                              /**< Primitive type of the node (object, array, string or primitive) */
-    uint allocatedName : 1;                     /**< True if the node text was allocated and must be freed */
-    uint allocatedValue : 1;                    /**< True if the node text was allocated and must be freed */
+    char *name;                /**< Property name (null-terminated string, NULL for array elements) */
+    char *value;               /**< Property value (null-terminated string representation) */
+    int last : 24;             /**< Index + 1 of the last descendant node (defines subtree boundary) */
+    uint type : 6;             /**< Node type: JSON_OBJECT, JSON_ARRAY, JSON_STRING, JSON_PRIMITIVE, etc. */
+    uint allocatedName : 1;    /**< True if name string was allocated and must be freed by JSON library */
+    uint allocatedValue : 1;   /**< True if value string was allocated and must be freed by JSON library */
 #if ME_DEBUG
-    int lineNumber;                             /**< Debug only - json line number */
+    int lineNumber;            /**< Source line number in original JSON text (debug builds only) */
 #endif
 } JsonNode;
 
 #if JSON_TRIGGER
 /**
-    Trigger callback for
+    Trigger callback for monitoring JSON modifications
+    @description Callback function signature for receiving notifications when JSON nodes are modified.
+    The trigger is called whenever a node value is changed through jsonSet or jsonBlend operations.
+    @param arg User-defined argument passed to jsonSetTrigger()
+    @param json The JSON object being modified
+    @param node The specific node that was modified
+    @param name The property name that was modified
+    @param value The new value assigned to the property
+    @param oldValue The previous value before modification
+    @stability Evolving
  */
 typedef void (*JsonTrigger)(void *arg, struct Json *json, JsonNode *node, cchar *name, cchar *value, cchar *oldValue);
 PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg);
 #endif
 
 /**
-    Allocate a json object
-    @return A json object
+    Allocate a new JSON object
+    @description Creates a new, empty JSON object ready for parsing or manual construction.
+    The object is allocated using the R runtime and must be freed with jsonFree() when no longer needed.
+    The initial object contains no nodes and is ready to accept JSON text via jsonParseText() or
+    manual node construction via jsonSet() calls.
+    @return A newly allocated JSON object, or NULL if allocation fails
     @stability Evolving
  */
 PUBLIC Json *jsonAlloc(void);
 
 /**
-    Free a json object
-    @param json A json object
+    Free a JSON object and all associated memory
+    @description Releases all memory associated with a JSON object including the node tree,
+    text buffers, and any allocated strings. After calling this function, the JSON object
+    and all references into it become invalid and must not be used.
+    @param json JSON object to free. Can be NULL (no operation performed).
     @stability Evolving
  */
 PUBLIC void jsonFree(Json *json);
@@ -6223,30 +6784,39 @@ PUBLIC void jsonLock(Json *json);
 PUBLIC void jsonUnlock(Json *json);
 
 /**
-    Set user flags
-    @param json A json object
-    @param flags User flags
+    Set user-defined flags on a JSON object
+    @description Sets application-specific flags in the userFlags field of the JSON object.
+    These flags are reserved for user applications and are not used by the JSON library.
+    Useful for tracking application state or marking JSON objects with custom attributes.
+    @param json JSON object to modify
+    @param flags User-defined flags (8-bit value)
     @stability Evolving
  */
 PUBLIC void jsonSetUserFlags(Json *json, int flags);
 
 /**
-    Get user flags
-    @param json A json object
-    @return User flags
+    Get user-defined flags from a JSON object
+    @description Retrieves the current value of application-specific flags from the JSON object.
+    These flags are managed entirely by the user application.
+    @param json JSON object to query
+    @return Current user flags value (8-bit value)
     @stability Evolving
  */
 PUBLIC int jsonGetUserFlags(Json *json);
 
-/*
-    Flags for jsonBlend
+/**
+    JSON blending operation flags
+    @description Flags that control how jsonBlend() merges JSON objects together.
+    These can be combined to achieve sophisticated merging behaviors.
+    @stability Evolving
  */
-#define JSON_COMBINE      0x1            /**< Combine properies using '+' '-' '=' '?' prefixes */
-#define JSON_OVERWRITE    0x2            /**< Default to overwrite existing properies '=' */
-#define JSON_APPEND       0x4            /**< Default to append to existing '+' (default) */
-#define JSON_REPLACE      0x8            /**< Replace existing properies '-' */
-#define JSON_CCREATE      0x10           /**< Conditional create if not already existing '?' */
-#define JSON_REMOVE_UNDEF 0x20           /**< Remove undefined (NULL) properties */
+#define JSON_COMBINE      0x1            /**< Enable property name prefixes '+', '-', '=', '?' for merge control */
+#define JSON_OVERWRITE    0x2            /**< Default behavior: overwrite existing properties (equivalent to '=') */
+#define JSON_APPEND       0x4            /**< Default behavior: append to existing properties (equivalent to '+') */
+#define JSON_REPLACE      0x8            /**< Default behavior: replace existing properties (equivalent to '-') */
+#define JSON_CCREATE      0x10           /**< Default behavior: conditional create only if not existing (equivalent to
+                                            '?') */
+#define JSON_REMOVE_UNDEF 0x20           /**< Remove properties with undefined (NULL) values during blend */
 
 /**
     Blend nodes by copying from one Json to another.
@@ -6321,7 +6891,8 @@ PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
     @description This call returns a reference into the JSON storage. Such references are
         short-term and may not remain valid if other modifications are made to the JSON tree.
         Only use the result of this API while no other changes are made to the JSON object.
-        Use jsonGet if you need to retain the queried value.
+        Use jsonGet if you need to retain the queried value. If a key value is NULL or undefined,
+        then the defaultValue will be returned.
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -6364,6 +6935,17 @@ PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue
     @stability Evolving
  */
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
+
+/**
+    Get a json node value as a date
+    @param json Source json
+    @param nid Base node ID from which to examine. Set to zero for the top level.
+    @param key Property name to search for. This may include ".". For example: "settings.mode".
+    @param defaultValue If the key is not defined, return the defaultValue.
+    @return The key value as a date or defaultValue if not defined
+    @stability Evolving
+ */
+PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue);
 
 /**
     Get a json node value as a 64-bit integer
@@ -6420,7 +7002,7 @@ PUBLIC int jsonGetId(const Json *json, int nid, cchar *key);
  */
 PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 
-/*
+/**
     Get a json node object ID
     @description This call returns the node ID for a node. Such references are
         not persistent if other modifications are made to the JSON tree.
@@ -6432,17 +7014,22 @@ PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 PUBLIC int jsonGetNodeId(const Json *json, JsonNode *node);
 
 /**
-    Get the Nth child node for a json node.
+    Get the Nth child node for a json node
+    @description Retrieves a specific child node by its index position within a parent node.
+    This is useful for iterating through array elements or object properties in order.
+    The child index is zero-based.
     @param json Source json
     @param nid Base node ID to examine.
-    @param nth Specify which child to return.
-    @return The Nth child node object for the specified node.
+    @param nth Zero-based index of which child to return.
+    @return The Nth child node object for the specified node. Returns NULL if the index is out of range.
     @stability Evolving
  */
 PUBLIC JsonNode *jsonGetChildNode(Json *json, int nid, int nth);
 
 /**
     Get the value type for a node
+    @description Determines the type of a JSON node, which indicates how the value should be interpreted.
+    This is essential for type-safe access to JSON values.
     @param json Source json
     @param nid Base node ID from which to start the search.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -6481,7 +7068,20 @@ PUBLIC Json *jsonParse(cchar *text, int flags);
 PUBLIC Json *jsonParseKeep(char *text, int flags);
 
 /**
-    Convert a string into strict json
+    Parse a json string into an existing json object
+    @description Use this method if you need to have access to the error message if the parse fails.
+    @param json Existing json object to parse into.
+    @param text Json string to parse.
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
+    Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGet and jsonGetNode stable.
+    @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
+    @stability Evolving
+ */
+PUBLIC int jsonParseText(Json *json, char *text, int flags);
+
+/**
+    Parse a string as JSON or JSON5 and convert into strict JSON string.
     @param fmt Printf style format string
     @param ... Args for format
     @return A string. Returns NULL if the text will not parse. Caller must free.
@@ -6510,25 +7110,30 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
 #define JFMT(buf, ...) jsonConvertBuf(buf, sizeof(buf), __VA_ARGS__)
 
 /*
-    Convenience macro for converting a single string into a strict json string in a buffer.
+    Convenience macro for converting a JSON5 string into a strict JSON string in a buffer.
  */
 #define JSON(buf, ...) jsonConvertBuf(buf, sizeof(buf), "%s", __VA_ARGS__)
 
 /**
     Parse a formatted string into a json object
+    @description Convenience function that formats a printf-style string and then parses it as JSON.
+    This is useful for constructing JSON from dynamic values without manual string building.
     @param fmt Printf style format string
     @param ... Args for format
-    @return A json object. Caller must free.
+    @return A json object. Caller must free via jsonFree().
     @stability Evolving
  */
 PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
 
 /**
     Load a JSON object from a filename
+    @description Reads and parses a JSON file from disk into a JSON object tree.
+    This is a convenience function that combines file reading with JSON parsing.
+    If parsing fails, detailed error information is provided.
     @param path Filename path containing a JSON string to load
     @param errorMsg Error message string set if the parse fails. Caller must not free.
     @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
-    @return JSON object tree. Caller must free errorMsg via rFree on errors.
+    @return JSON object tree. Caller must free via jsonFree(). Returns NULL on error.
     @stability Evolving
  */
 PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
@@ -6548,24 +7153,30 @@ PUBLIC Json *jsonParseString(cchar *text, char **errorMsg, int flags);
 
 /**
     Remove a Property from a JSON object
+    @description Removes one or more properties from a JSON object based on the specified key path.
+    The key path supports dot notation for nested property removal. This operation modifies
+    the JSON tree in place.
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start searching for key. Set to zero for the top level.
-    @param key Property name to remove for. This may include ".". For example: "settings.mode".
-    @return Returns a JSON object array of all removed properies. Array will be empty if not qualifying
-        properies were found and removed.
+    @param key Property name to remove. This may include ".". For example: "settings.mode".
+    @return Returns zero if successful, otherwise a negative error code.
     @stability Evolving
  */
 PUBLIC int jsonRemove(Json *obj, int nid, cchar *key);
 
 /**
     Save a JSON object to a filename
+    @description Serializes a JSON object (or a portion of it) to a file on disk.
+    The output format is controlled by the flags parameter. The file is created with
+    the specified permissions mode.
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start searching for key. Set to zero for the top level.
-    @param key Property name to add/update. This may include ".". For example: "settings.mode".
+    @param key Property name to save. Set to NULL to save the entire object. This may include ".". For example:
+       "settings.mode".
     @param path Filename path to contain the saved JSON string
-    @param flags Same flags as for #jsonToString: JSON_JSON5
-    @param mode Permissions mode
-    @return Zero if successful, otherwise a negative RT error code.
+    @param mode File permissions mode (e.g., 0644)
+    @param flags Rendering flags - same as for jsonToString()
+    @return Zero if successful, otherwise a negative error code.
     @stability Evolving
  */
 PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int flags);
@@ -6746,10 +7357,10 @@ PUBLIC void jsonPrint(Json *json);
 
 /**
     Expand a string template with ${prop.prop...} references
-    @description Unexpanded references are replaced with $^{token}
+    @description Unexpanded references left as is.
     @param json Json object
     @param str String template to expand
-    @param keep If true, unexpanded references are retained as ${token}
+    @param keep If true, unexpanded references are retained as ${token}, otherwise removed.
     @return An allocated expanded string. Caller must free.
     @stability Evolving
  */
@@ -6778,6 +7389,25 @@ PUBLIC void jsonSetMaxLength(int length);
     @stability Evolving
  */
 PUBLIC void jsonSetIndent(int indent);
+
+/**
+    Get the length of a property value.
+    If an array, return the array length. If an object, return the number of object properties.
+    @param json Json object
+    @param nid Node id
+    @param key Property name
+    @return Length of the property value, otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key);
+
+/**
+    Get the error message from the JSON object
+    @param json Json object
+    @return The error message. Caller must NOT free.
+    @stability Evolving
+ */
+PUBLIC cchar *jsonGetError(Json *json);
 
 #ifdef __cplusplus
 }

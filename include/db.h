@@ -1,5 +1,13 @@
-/*
-    db.h -- Header for the Embedded Database (DynamoDB Local)
+/** 
+   @file db.h
+   Embedded NoSQL Document Database
+   @description High-performance embedded NoSQL document database for ANSI C applications.
+   Provides JSON5/JSON6 document storage with red/black tree indexing for efficient queries.
+   Features include transaction journaling with crash recovery, schema validation and enforcement,
+   time-based item expiration, result pagination for large datasets, and optional cloud
+   synchronization via triggers. Designed for embedded IoT applications requiring fast,
+   reliable local data storage with minimal memory footprint.
+   @stability Evolving
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -18,13 +26,7 @@
 
 /*********************************** Defines **********************************/
 #if ME_COM_DB
-/**
-    @file db.h
 
-    The embedded database is a high performance NoSQL management document database.
-    It offers JSON document items with flexible query API with efficient import and
-    export of database items. The database uses fast red/black binary search indexes.
- */
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,40 +57,42 @@ struct DbParams;
 #define DB_ON_FREE          0x4
 
 /**
-    Database callback on changes
-    @param arg User argument provided to dbSetCallback.
-    @param db Database instance.
-    @param model DbModel reference describing the item's schema model.
-    @param item Database item that is changing.
-    @param params User params provided to the API that caused the change.
-    @param cmd The nature of the change. Set to "create", "update" or "remove".
-    @param events Events of interest mask. Set to DB_ON_CHANGE, DB_ON_COMMIT.
+    Database change notification callback
+    @description Called when database items are modified, allowing applications to respond to data changes.
+    Callbacks can be registered for specific events and models to enable features like cloud synchronization,
+    audit logging, or cache invalidation.
+    @param arg User-defined argument provided when registering the callback
+    @param db Database instance where the change occurred
+    @param model Schema model describing the item's structure and validation rules
+    @param item Database item that was modified
+    @param params API parameters used in the operation that triggered the change
+    @param cmd Type of change operation: "create", "update", or "remove"
+    @param events Event types that triggered this callback: DB_ON_CHANGE, DB_ON_COMMIT, or both
     @stability Evolving
  */
 typedef void (*DbCallbackProc)(void *arg, struct Db *db, struct DbModel *model, struct DbItem *item,
                                struct DbParams *params, cchar *cmd, int events);
 
 /**
-    Embedded Database based on DynamoDB
-    @description The DB library is a high performance NoSQL in-memory database for embedded
-       applications modeled on DynamoDB. Data items are implemented as JSON documents and are
-       organized into tables. Application entities are defined via an entity schema that specifies
-       data fields and attributes. Data items are JSON documents and are accessed via a flexible API
-       and dot notation queries. DB uses Red/black binary search indexes and has controllable
-       persistency locally to disk and to the cloud on a per-table basis.
+    Main database instance structure
+    @description High-performance NoSQL embedded database inspired by DynamoDB design principles.
+    Stores JSON documents with schema-based validation and efficient red/black tree indexing.
+    Provides transaction journaling for crash recovery, configurable persistence policies,
+    and optional cloud synchronization capabilities. Designed for embedded applications requiring
+    fast local data access with minimal memory footprint.
     @stability Evolving
  */
 typedef struct Db {
-    Json *schema;           /**< OneTable schema */
+    Json *schema;           /**< Database schema defining models, fields, and validation rules */
     char *path;             /**< On-disk path */
     RHash *models;          /**< List of schema models */
     RbTree *primary;        /**< Red/black tree primary index */
     RList *callbacks;       /**< Database change notification triggers */
-    Json *context;          /**< Global context properties - overwrites API properties */
+    Json *context;          /**< Global context properties applied to all API operations */
     char *error;            /**< API error message */
-    cchar *type;            /**< Item schema type property */
+    cchar *type;            /**< Name of the field used to identify item types in the schema */
     FILE *journal;          /**< Journal file descriptor */
-    int flags;              /**< Reserved */
+    int flags;              /**< Database configuration flags (reserved for future use) */
     char *journalPath;      /**< On-disk journal filename */
     ssize journalSize;      /**< Current size of journal file */
     Ticks journalCreated;   /**< When journal file recreated */
@@ -122,8 +126,10 @@ typedef struct DbField {
 } DbField;
 
 /**
-    Model schema
-    @description The model schema defines an application entity and the supported entity fields.
+    Database model schema definition
+    @description Defines an application entity type with its supported fields, validation rules,
+    and behavior. Models provide schema validation, field type checking, and control persistence
+    and synchronization policies for groups of related items.
     @stability Evolving
  */
 typedef struct DbModel {
@@ -177,7 +183,7 @@ typedef const DbItem CDbItem;
     Macro for supplying API parameters
     @stability Evolving
  */
-#define DB_PARAMS(...) ((DbParams[]){{__VA_ARGS__}})
+#define DB_PARAMS(...) ((DbParams[]){ { __VA_ARGS__ } })
 
 /**
     Macro for supplying API properties as key/value pairs.
@@ -240,6 +246,8 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *model, Json *props, DbParams *param
 /**
     Fetch a field value from an item as a string.
     @description Use to examine an item returned via dbGet or other APIs that return items.
+    @note: WARNING: This function returns a pointer to a string that is part of the DbItem structure.
+      Subsequent updates to the item will invalidate the pointer.
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a string. Caller must not free.
@@ -283,7 +291,7 @@ PUBLIC Time dbFieldDate(const DbItem *item, cchar *fieldName);
 /**
     Fetch a field value from an item as a double.
     @description Use to examine an item returned via dbGet or other APIs that return items.
-        This requires that the date value be stored as an ISO date string.
+        Converts numeric field values to double precision floating point format.
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
     @return The field value as a double.
@@ -477,42 +485,56 @@ PUBLIC double dbGetDouble(Db *db, cchar *model, cchar *fieldName, Json *props, D
  */
 PUBLIC int64 dbGetNum(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, int64 defaultValue);
 
-/*
-    Get a JSON object representing the item.
-    @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @return A JSON object. This is an internal reference into the datbase. Caller must NOT modify or free.
+/**
+    Get JSON object representing a database item
+    @description Retrieve the parsed JSON representation of a database item.
+    The returned JSON object provides access to all item fields and values.
+    @param item Database item returned from dbCreate, dbGet, dbFind or dbUpdate
+    @return JSON object containing item data. This is an internal reference - caller must NOT modify or free.
+    Returns NULL if item is invalid.
     @stability Evolving
  */
 PUBLIC const Json *dbJson(const DbItem *item);
 
-/*
-    Get a unique ID (ULID) based on the given time
-    @param when Time to use
-    @return A string ULID representation. Caller must free.
+/**
+    Generate a Universally Unique Lexicographically Sortable Identifier (ULID)
+    @description Creates a ULID based on the specified timestamp. ULIDs are 26-character
+    case-insensitive strings that encode both timestamp and randomness, providing sortable unique identifiers.
+    @param when Timestamp to embed in the ULID (milliseconds since epoch)
+    @return Newly allocated ULID string. Caller must free with rFree.
     @stability Evolving
  */
 PUBLIC char *dbGetULID(Time when);
 
-/*
-    Get a unique ID (UID) of the required size.
-    @return A string UID representation. Caller must free.
+/**
+    Generate a unique identifier of specified length
+    @description Creates a random unique identifier string of the requested size.
+    Uses cryptographically secure random number generation.
+    @param size Length of the generated UID string
+    @return Newly allocated UID string. Caller must free with rFree.
     @stability Evolving
  */
 PUBLIC char *dbGetUID(ssize size);
 
-/*
-    Convert a list of items to a JSON string representation
-    @param list List result returned from dbFind.
-    @return A JSON string. Caller must free.
+/**
+    Convert item list to JSON string representation
+    @description Serializes a list of database items into a JSON string format.
+    Useful for exporting query results or transmitting data.
+    @param list List of DbItem objects returned from dbFind
+    @return Newly allocated JSON string containing the serialized items. Caller must free with rFree.
+    Returns NULL if list is empty or invalid.
     @stability Evolving
  */
 PUBLIC char *dbListToString(RList *list);
 
-/*
-    Convert an item to a JSON string representation
-    @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
-    @param flags JSON_HUMAN, JSON_JSON, JSON_JSON5 or any jsonToString flags.
-    @return A JSON string. Caller must not free.
+/**
+    Convert database item to JSON string
+    @description Serializes a database item into a JSON string with specified formatting options.
+    @param item Database item returned from dbCreate, dbGet, dbFind or dbUpdate
+    @param flags Formatting options: JSON_HUMAN (pretty-printed), JSON_JSON (strict JSON),
+    JSON_JSON5 (JSON5 format), or other jsonToString flags
+    @return JSON string representation. This is an internal reference - caller must not free.
+    Returns NULL if item is invalid.
     @stability Evolving
  */
 PUBLIC cchar *dbString(const DbItem *item, int flags);
@@ -534,25 +556,27 @@ PUBLIC Json *dbPropsToJson(cchar *props[]);
  */
 PUBLIC Json *dbStringToJson(cchar *fmt, ...);
 
-/*
-    Load data from a JSON data file into the database.
-    @description The loaded data overwrites existing items of the same key. This is useful for
-       loading
-        initial state data or debug data.
-    @param db Database object returned via dbOpen
-    @param path Filename of the data file.
+/**
+    Load data from JSON file into database
+    @description Loads JSON data from a file into the database. Existing items with matching keys
+    will be overwritten. This operation is useful for loading initial state data, test fixtures,
+    or restoring database content from backups.
+    @param db Database instance returned from dbOpen
+    @param path Path to JSON data file to load
+    @return Zero on success, negative error code on failure
     @stability Evolving
  */
 PUBLIC int dbLoadData(Db *db, cchar *path);
 
-/*
-    Load data from a JSON object into the database.
-    @description The loaded data overwrites existing items of the same key. This is useful for
-       loading
-        initial state data or debug data.
-    @param db Database object returned via dbOpen
-    @param json Json object
-    @param parent Parent node of data items
+/**
+    Load data from JSON object into database
+    @description Loads JSON data from a parsed JSON object into the database. Existing items
+    with matching keys will be overwritten. This operation processes data items from the
+    specified parent node in the JSON structure.
+    @param db Database instance returned from dbOpen
+    @param json Parsed JSON object containing data to load
+    @param parent Parent JSON node containing the data items to load
+    @return Zero on success, negative error code on failure
     @stability Evolving
  */
 PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent);
@@ -574,9 +598,11 @@ PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent);
  */
 PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags);
 
-/*
-    Print an item to stdout
-    @param item Item returned via dbCreate, dbGet, dbFind or dbUpdate.
+/**
+    Print database item to stdout
+    @description Outputs a formatted representation of a database item to standard output.
+    Useful for debugging and development.
+    @param item Database item returned from dbCreate, dbGet, dbFind or dbUpdate
     @stability Evolving
  */
 PUBLIC void dbPrintItem(const DbItem *item);
@@ -584,16 +610,20 @@ PUBLIC void dbPrintItem(const DbItem *item);
 //  Internal
 PUBLIC void dbPrintList(RList *list);
 
-/*
-    Print all items in the database to stdout
-    @param db Database object returned via dbOpen
+/**
+    Print all database items to stdout
+    @description Outputs a formatted representation of all items in the database to standard output.
+    Useful for debugging and examining database contents during development.
+    @param db Database instance returned from dbOpen
     @stability Evolving
  */
 PUBLIC void dbPrint(Db *db);
 
-/*
-    Print all items in the database to stdout
-    @param properties The JSON properties returned via dbGetJson
+/**
+    Print JSON properties to stdout
+    @description Outputs a formatted representation of JSON properties to standard output.
+    Useful for debugging and examining property values during development.
+    @param properties JSON object containing properties to display
     @stability Evolving
  */
 PUBLIC void dbPrintProperties(Json *properties);
@@ -754,14 +784,16 @@ PUBLIC const DbItem *dbSetNum(Db *db, cchar *model, cchar *fieldName, int64 valu
     @stability Evolving
  */
 PUBLIC const DbItem *dbSetString(Db *db, cchar *model, cchar *fieldName, cchar *value, Json *props, DbParams *params);
-/*
-    Set the database change journal parameters
-    @param db Database object returned via dbOpen
-    @param delay Maximum time in milliseconds after changing data before the journal is rewritten to
-       the
-        persisted database file.
-    @param size Maximum size of the database journal file before flushing to the persisted database
-       file.
+/**
+    Configure database journaling parameters
+    @description Sets the journaling behavior for database persistence. The journal records
+    changes before they are written to the main database file, providing crash recovery capability.
+    Changes are automatically committed when either the delay time expires or the journal
+    reaches the maximum size limit.
+    @param db Database instance returned from dbOpen
+    @param delay Maximum time in milliseconds to delay before committing journal changes to
+    the persistent database file
+    @param size Maximum journal file size in bytes before flushing to the persistent database file
     @stability Evolving
  */
 PUBLIC void dbSetJournalParams(Db *db, Ticks delay, ssize size);
@@ -860,20 +892,35 @@ PUBLIC DbModel *dbGetItemModel(Db *db, CDbItem *item);
 PUBLIC cchar *dbNext(Db *db, RList *list);
 
 /**
-   Remove expired items
-   @param db Database instance
-   @param notify Set to true to invoke callback notifier for removed items.
-   @return The number of items removed or negative error code.
-   @ingroup db
-   @stability Prototype
+    Remove expired database items
+    @description Removes items from the database that have exceeded their TTL (time-to-live) expiration.
+    Items are considered expired when their TTL field value is less than the current time.
+    This operation helps maintain database efficiency by automatically cleaning up stale data.
+    @param db Database instance returned from dbOpen
+    @param notify Set to true to invoke registered callback notifiers for each removed item
+    @return Number of items removed, or negative error code on failure
+    @stability Prototype
  */
 PUBLIC int dbRemoveExpired(Db *db, bool notify);
 
 /**
-   Compact the database by converting JSON items back to a compact string representation
+    Compact database storage
+    @description Optimizes database storage by converting parsed JSON items back to compact
+    string representations. This reduces memory usage and improves storage efficiency by
+    eliminating redundant parsed JSON structures while preserving all data.
+    @param db Database instance returned from dbOpen
+    @stability Evolving
  */
 PUBLIC void dbCompact(Db *db);
 
+/**
+    Get the primary sort key field name
+    @description Returns the name of the field used as the primary sort key for database items.
+    This field determines the ordering of items in the primary index.
+    @param db Database instance returned from dbOpen
+    @return Name of the sort key field. Caller must not free.
+    @stability Evolving
+ */
 PUBLIC cchar *dbGetSortKey(Db *db);
 #ifdef __cplusplus
 }

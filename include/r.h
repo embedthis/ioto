@@ -1,5 +1,43 @@
-/*
-    r.h -- Header for the Portable RunTime.
+/**
+    @file r.h
+    @brief Safe Runtime (R) - Foundational C Runtime for Embedded IoT Applications
+    @description The Safe Runtime (R) is a secure, high-performance C runtime library designed specifically for
+                 embedded IoT applications. It provides a complete replacement for standard C library functions
+                 with enhanced security, memory safety, and fiber-based concurrency.
+
+    ## Key Features
+    - Fiber-based coroutine concurrency instead of traditional threading
+    - Centralized memory management with automatic failure detection
+    - Safe string operations that prevent buffer overflows
+    - Cross-platform support (Linux, macOS, Windows/WSL, ESP32, FreeRTOS)
+    - Null-tolerant APIs for robust error handling
+    - Event-driven I/O with non-blocking operations
+
+    ## Architecture
+    The Safe Runtime consists of several core components:
+    - **Memory Management**: Centralized allocator with failure detection (`rAlloc`, `rFree`)
+    - **String Operations**: Safe replacements for C string functions (`slen`, `scopy`, `scmp`)
+    - **Data Structures**: Dynamic buffers, lists, hash tables, red-black trees
+    - **Fiber System**: Lightweight coroutines with 64K+ stacks for concurrency
+    - **Event System**: I/O multiplexing and event-driven programming
+    - **Platform Abstraction**: Cross-platform OS dependencies via osdep layer
+
+    ## Thread Safety
+    All functions in this API are designed for fiber-based concurrency. Unless explicitly documented otherwise,
+    functions are fiber-safe but may not be thread-safe when called from different OS threads simultaneously.
+    The runtime uses a single-threaded model with fiber coroutines for concurrency.
+
+    ## Memory Management Philosophy
+    - Use `rAlloc()` family instead of `malloc()`/`free()`
+    - No need to check for NULL returns - centralized handler manages failures
+    - Most functions are null-tolerant (e.g., `rFree(NULL)` is safe)
+    - Memory ownership is clearly documented for each function
+
+    ## Error Handling
+    Functions follow consistent error reporting patterns:
+    - Return values indicate success/failure where applicable
+    - Null tolerance prevents crashes from invalid inputs
+    - Error conditions are documented for each function
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -262,21 +300,28 @@ PUBLIC_DATA int rState;
 
 /**
     Gracefully stop the app
-    @description Queued events will be serviced.
+    @description Queued events will be serviced before stopping. This function initiates
+                 a graceful shutdown of the runtime, allowing pending operations to complete.
+                 This function is fiber-safe.
     @stability Evolving
+    @see rStop
  */
 PUBLIC void rGracefulStop(void);
 
 /**
     Immediately stop the app
     @description This API is thread safe and can be called from a foreign thread.
-    @description Queued events will not be serviced.
+                 Queued events will not be serviced. This function terminates the runtime
+                 immediately without waiting for graceful shutdown.
     @stability Evolving
+    @see rGracefulStop
  */
 PUBLIC void rStop(void);
 
 /**
     Get the current R state
+    @description Retrieves the current state of the Safe Runtime system. This function
+                 is fiber-safe and can be called from any fiber context.
     @return Returns R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
     @stability Evolving
  */
@@ -358,10 +403,11 @@ PUBLIC void *rAllocType(RType type);
 
 /**
     Allocate a block of memory.
-    @description This is the lowest level of memory allocation routine. Memory is freed via rFree.
-    @param size Size of the memory block to allocate.
-    @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion handler will be
-       invoked.
+    @description This is the primary memory allocation routine. Memory is freed via rFree. This function
+                 is fiber-safe and uses the centralized Safe Runtime allocator.
+    @param size Size of the memory block to allocate in bytes. Must be > 0.
+    @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion
+            handler will be invoked (typically causing program termination). Never returns NULL.
     @remarks Do not mix calls to rAlloc and malloc.
     @stability Evolving.
  */
@@ -369,8 +415,9 @@ PUBLIC void *rAlloc(size_t size);
 
 /**
     Free a block of memory allocated via rAlloc.
-    @description This releases a block of memory allocated via rAllocMem.
-    @param ptr Pointer to the block. If ptr is null, the call is skipped.
+    @description This releases a block of memory allocated via rAllocMem. This function is null-tolerant
+                 and safe to call with NULL pointers. This function is fiber-safe.
+    @param ptr Pointer to the block. If ptr is NULL, the call is safely skipped.
     @remarks The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.
     @stability Evolving
  */
@@ -402,10 +449,46 @@ PUBLIC void *rRealloc(void *ptr, size_t size);
  */
 typedef void (*RMemProc)(int cause, size_t size);
 
-//  Private
+//  Private - Internal memory management functions used by macros
+/**
+    Allocate memory block - internal implementation
+    @description Low-level memory allocator used internally by rAlloc macro. Do not call directly.
+    @param size Size of memory block to allocate in bytes
+    @return Pointer to allocated memory block
+    @stability Internal
+ */
 PUBLIC void *rAllocMem(size_t size);
+
+/**
+    Reallocate memory block - internal implementation
+    @description Low-level memory reallocator used internally by rRealloc macro. Do not call directly.
+    @param ptr Existing memory block pointer or NULL
+    @param size New size for memory block in bytes
+    @return Pointer to reallocated memory block
+    @stability Internal
+ */
 PUBLIC void *rReallocMem(void *ptr, size_t size);
+
+/**
+    Free memory block - internal implementation
+    @description Low-level memory deallocator used internally by rFree macro. Do not call directly.
+    @param ptr Memory block pointer to free. NULL is safely ignored.
+    @stability Internal
+ */
 PUBLIC void rFreeMem(void *ptr);
+
+/**
+    Compare two blocks of memory
+    @description Compare two blocks of memory.
+    @param s1 First block of memory
+    @param s1Len Length of the first block of memory
+    @param s2 Second block of memory
+    @param s2Len Length of the second block of memory
+    @return Returns 0 if the blocks of memory are equal, -1 if the first block of memory is less than the second block
+       of memory, and 1 if the first block of memory is greater than the second block of memory
+    @stability Evolving
+ */
+PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len);
 
 /**
     Copy a block of memory
@@ -421,10 +504,12 @@ PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes);
 
 /**
     Duplicate a block of memory.
-    @description Copy a block of memory into a newly allocated block.
-    @param ptr Pointer to the block to duplicate.
-    @param size Size of the block to copy.
-    @return Returns an allocated block.
+    @description Copy a block of memory into a newly allocated block. Memory is allocated
+                 using the Safe Runtime allocator and must be freed with rFree().
+    @param ptr Pointer to the block to duplicate. If NULL, returns NULL.
+    @param size Size of the block to copy in bytes. Must be > 0 for valid duplication.
+    @return Returns a pointer to the newly allocated block containing a copy of the original data.
+            Returns NULL if ptr is NULL. If memory allocation fails, the memory exhaustion handler is invoked.
     @stability Evolving.
  */
 PUBLIC void *rMemdup(cvoid *ptr, size_t size);
@@ -464,7 +549,7 @@ typedef struct RFiber {
     uint stackId;
 #endif
 #if ME_FIBER_GUARD_STACK
-    //  REVIEW Acceptable - small guard is enough for embedded systems
+    //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
     uchar stack[];
@@ -641,7 +726,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *data);
     @param access Pointer to a boolean initialized to false.
     @param deadline Time in ticks to wait for access. Set to zero for an infinite wait. Set to < 0 to not wait.
     @return Zero if access is granted.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rEnter(bool *access, Ticks deadline);
 
@@ -649,7 +734,7 @@ PUBLIC int rEnter(bool *access, Ticks deadline);
     Leave a fiber critical section
     @description This routine must be called on all exit paths from a fiber after calling rEnter.
     @param access Pointer to a boolean initialized to false.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC void rLeave(bool *access);
 #endif
@@ -1181,7 +1266,7 @@ PUBLIC void rWakeup(void);
     @param args Variable arguments to format
     @return Returns the count of characters stored in buf or the count of characters that would have been
         stored if not limited by maxsize. Will be >= maxsize if the result is truncated.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
 
@@ -1197,7 +1282,7 @@ PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
     @param fmt Printf style format string
     @param args Variable arguments to format
     @return Returns the count of characters stored in buf or a negative error code for memory errors.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
 
@@ -1212,7 +1297,7 @@ PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
     @param ... Variable arguments to format
     @return Returns the count of characters in buf or the count of characters that would have been written if not
         limited by maxsize.
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
 
@@ -1357,11 +1442,12 @@ PUBLIC char *scloneNull(cchar *str);
 
 /**
     Compare strings.
-    @description Compare two strings. This is a r replacement for strcmp. It can handle null args.
-    @param s1 First string to compare.
-    @param s2 Second string to compare.
-    @return Returns zero if the strings are identical. Return -1 if the first string is less than the second. Return 1
-        if the first string is greater than the second.
+    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant
+                 and fiber-safe. NULL strings are treated as empty strings for comparison purposes.
+    @param s1 First string to compare. NULL is safely handled.
+    @param s2 Second string to compare. NULL is safely handled.
+    @return Returns zero if the strings are identical. Returns -1 if the first string is lexicographically
+            less than the second. Returns 1 if the first string is lexicographically greater than the second.
     @stability Evolving
  */
 PUBLIC int scmp(cchar *s1, cchar *s2);
@@ -1378,14 +1464,13 @@ PUBLIC char *scontains(cchar *str, cchar *pattern);
 
 /**
     Copy a string.
-    @description R replacement for strcpy. Copy a string and ensure the destination buffer is not overflowed.
-        The call returns the length of the resultant string or an error code if it will not fit into the target
-        string. This is similar to strcpy, but it will enforce a maximum size for the copied string and will
-        ensure it is always terminated with a null. It is null tolerant in that "src" may be null.
-    @param dest Pointer to a pointer that will hold the address of the allocated block.
-    @param destMax Maximum size of the target string in characters.
-    @param src String to copy. May be null.
-    @return Returns the number of characters in the target string.
+    @description Safe replacement for strcpy. Copy a string and ensure the destination buffer is not overflowed.
+                 This function enforces a maximum size for the copied string and ensures null-termination.
+                 This function is fiber-safe and null-tolerant.
+    @param dest Destination buffer to receive the copied string. Must not be NULL.
+    @param destMax Maximum size of the destination buffer in characters (including null terminator).
+    @param src Source string to copy. NULL is safely handled (results in empty string).
+    @return Returns the number of characters copied to the destination string, or -1 on error.
     @stability Evolving
  */
 PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
@@ -1519,10 +1604,10 @@ PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep);
 
 /**
     Return the length of a string.
-    @description R replacement for strlen. This call returns the length of a string and tests if the length is
-        less than a given maximum. It will return zero for NULL args.
-    @param str String to measure.
-    @return Returns the length of the string
+    @description Safe replacement for strlen. This call returns the length of a string and is null-tolerant.
+                 This function is fiber-safe and does not modify the input string.
+    @param str String to measure. NULL is safely handled and returns 0.
+    @return Returns the length of the string in characters, or 0 if str is NULL.
     @stability Evolving
  */
 PUBLIC ssize slen(cchar *str);
@@ -1819,6 +1904,7 @@ PUBLIC char *stok(char *str, cchar *delim, char **last);
  */
 PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
 
+#if FUTURE
 /**
    String to list. This parses the string of space separated arguments. Single and double quotes are supported.
    @param src Source string to parse
@@ -1826,6 +1912,7 @@ PUBLIC char *sptok(char *str, cchar *pattern, char **nextp);
    @stability Evolving
  */
 PUBLIC struct RList *stolist(cchar *src);
+#endif
 
 /**
     Create a substring
@@ -1953,7 +2040,8 @@ PUBLIC RBuf *rAllocBuf(ssize initialSize);
 
 /**
     Free a buffer
-    @param buf Buffere created via #rAllocBuf
+    @description Frees a buffer allocated via rAllocBuf. This function is null-tolerant.
+    @param buf Buffer created via rAllocBuf. NULL is safely ignored.
     @stability Evolving
  */
 PUBLIC void rFreeBuf(RBuf *buf);
@@ -2664,7 +2752,7 @@ PUBLIC RLogHandler rSetLogHandler(RLogHandler handler);
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
         Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING which is typically set via the MakeMe setting "logging: true".
+        ME_R_LOGGING.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -2701,7 +2789,7 @@ PUBLIC void rAssert(cchar *loc, cchar *msg);
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
         Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING which is typically set via the MakeMe setting "logging: true".
+        ME_R_LOGGING.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -2715,6 +2803,11 @@ PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args);
 #if DOXYGEN
 /**
     Emit a debug message to the log
+    @description This routine is only active in debug builds. In production builds it is a no-op. It can be used to emit
+       messages that may contain
+    sensitive information such as passwords, keys, and other confidential data as it will only be enabled in debug
+       builds and never in production builds.
+    (SECURITY: Acceptable)
     @param source Module emitting the log message
     @param fmt Printf style format string. Variable number of arguments to
     @param ... Variable arg list from va_list.
@@ -2940,6 +3033,22 @@ PUBLIC RHash *rCloneHash(RHash *master);
 PUBLIC RName *rAddName(RHash *table, cchar *name, void *ptr, int flags);
 
 /**
+    Add a non-unique name and value into the hash table
+    @description Associate an arbitrary value with a string name and inser into the hash table.
+    @param hash Hash table returned via rAllocHash
+    @param name String name to associate with the data.
+    @param ptr Arbitrary pointer to associate with the name in the table.
+    @param flags Set flags to R_STATIC_NAME if providing statically allocated names. Set to R_TEMPORAL_NAME
+        if the hash must copy the names. Set to R_DYNAMIC_NAME when providing allocated names that the hash may
+        use, own and ultimately free when the hash is free. Set flags to R_STATIC_VALUE if providing statically
+        allocated values. Set to R_DYNAMIC_VALUE when providing allocated values that the hash may use, own
+        and ultimately free when the hash is free. If flags are zero, the flags provided to rAllocHash are used.
+    @return Added RName reference.
+    @stability Evolving
+ */
+PUBLIC RName *rAddDuplicateName(RHash *hash, cchar *name, void *ptr, int flags);
+
+/**
     Add a name and value substring into the hash table
     @description Associate an arbitrary value with a string name and inser into the hash table.
         The flags used are: R_DYNAMIC_NAME | R_DYNAMIC_VALUE.
@@ -3150,10 +3259,14 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix);
 
 /**
     Read data from a file.
-    @description Reads data from a file.
-    @param path Filename to read.
-    @param lenp Pointer to receive the length of the file read.
-    @return The contents of the file in an allocated string
+    @description Reads the entire contents of a file into memory. The file is read in fiber-aware mode
+                 and will yield to other fibers during I/O operations. Memory is allocated using the
+                 Safe Runtime allocator.
+    @param path Filename to read. Must not be NULL.
+    @param lenp Pointer to receive the length of the file read. May be NULL if length is not needed.
+    @return The contents of the file in an allocated string. Returns NULL on error (file not found,
+            permission denied, memory allocation failure, etc.). Caller must free the returned string
+            with rFree().
     @stability Evolving
  */
 PUBLIC char *rReadFile(cchar *path, ssize *lenp);
@@ -3596,20 +3709,22 @@ PUBLIC void rCloseSocket(RSocket *sp);
 /*
     Test if there is a good internet connection
     @return True if the internet can be reached
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC bool rCheckInternet(void);
 
 /**
     Connect a client socket
-    @description Open a client connection. May be called from a fiber or from main.
+    @description Open a client connection. May be called from a fiber or from main. This function is
+                 fiber-aware and will yield during the connection process when called from a fiber.
     @pre If using TLS, this must only be called from a fiber.
-    @param sp Socket object returned via rAllocSocket
-    @param host Host or IP address to connect to.
-    @param port TCP/IP port number to connect to.
+    @param sp Socket object returned via rAllocSocket. Must not be NULL.
+    @param host Host or IP address to connect to. Must not be NULL.
+    @param port TCP/IP port number to connect to. Must be in range 1-65535.
     @param deadline Maximum system time for connect to wait until completion. Use rGetTicks() + elapsed to create a
-       deadline. Set to 0 for no deadline.
-    @return Zero if successful.
+           deadline. Set to 0 for no deadline.
+    @return Zero if successful. Returns negative error code on failure (network unreachable, connection refused,
+            timeout, invalid parameters, etc.).
     @stability Evolving
  */
 PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline);
@@ -3779,7 +3894,6 @@ PUBLIC void rSetSocketCerts(RSocket *sp, cchar *ca, cchar *key, cchar *cert, cch
 /**
     Set the socket custom configuration callback
     @param custom Custom callback function
-    @return RWait reference
     @stability Evolving
  */
 PUBLIC void rSetSocketCustom(RSocketCustom custom);
@@ -4285,7 +4399,7 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 /**
     Initialize the NVM flags
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitFlash(void);
 
@@ -4295,7 +4409,7 @@ PUBLIC int rInitFlash(void);
     @param password WIFI password
     @param hostname Network hostname for the device
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname);
 
@@ -4307,7 +4421,7 @@ PUBLIC cchar *rGetIP(void);
     @param path Mount point for the file system
     @param storage Name of the LittleFS partition
     @return Zero if successful, otherwise a negative error code
-    @stability Prototype
+    @stability Evolving
  */
 PUBLIC int rInitFilesystem(cchar *path, cchar *storage);
 

@@ -165,7 +165,11 @@ Me.load({
             ],
             source: [
                 {
-                    from: [ '${TOP}/*.md' ],
+                    from: [ 
+                        '${TOP}/EVAL.md',
+                        '${TOP}/LICENSE.md',
+                        '${TOP}/README*.md'
+                    ],
                     to: '${src}/',
                     fold: true,
                     patch: true,
@@ -303,7 +307,7 @@ Me.load({
                 }, {
                     from:       '${TOP}/installs/',
                     to:         '${src}/installs',
-                    exclude:    /dist.me|main.me/,
+                    exclude:    /dist.me|main.me|CLAUDE/,
 
                 }, {
                     from:       '${TOP}/projects/esp32',
@@ -312,7 +316,7 @@ Me.load({
                 }, {
                     //  These are required to generate makefiles during packaging and are removed later
                     from: [
-                        '${TOP}/Makefile',
+                        '${TOP}/installs/Makefile',
                         '${TOP}/installs/main.me',
                         '${TOP}/installs/dist.me',
                         '${TOP}/pak.json',
@@ -321,6 +325,13 @@ Me.load({
                         '${TOP}/src/ssl/ssl.me',
                     ],
                     to: '${src}',
+                }, {
+                    from: [
+                        '${TOP}/installs/CLAUDE.md',
+                        '${TOP}/../installs/CLAUDE.md',
+                    ],
+                    to: '${src}/CLAUDE.md',
+                    append: true,
                     
                 }, {
                     //  Generate projects

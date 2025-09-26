@@ -3,19 +3,21 @@
 
     Examples:
 
+    json [options] [cmd] file
     json <file
     json file
-    json [options] [cmd] file
+    json --overwrite file
     json --stdin [options] [cmd] <file
 
     Commands:
-    json field=value    # assign
-    json field          # query
-    json .              # convert formats
+    json field=value            # assign
+    json field                  # query
+    json --remove field         # remove field
+    json <options> <no-args>    # convert formats
 
     Options:
     --blend | --bump | --check | --default | --double | --encode | --env | --expand | --export |
-    --header | --indent | --js | --json | --json5 | --length | --one | --profile name |
+    --header | --indent | --js | --json | --json5 | --keys | --length | --one | --profile name |
     --overwrite |--remove | --stdin | --strict | --trace | --verbose | --version
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
@@ -68,6 +70,7 @@ static int encode = 0;
 static int expand = 0;
 static int export = 0;
 static int format = JSON_MAX_LINE_LENGTH;
+static int keys = 0;
 static int multiline = 1;
 static int newline = 1;     // Add a trailing newline to the output
 static int noerror = 0;
@@ -88,7 +91,8 @@ static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
 static void outputAll(Json *json, int flags);
-static void outputNameValue(Json *json, JsonNode *parent, char *base);
+static void outputNode(Json *json, JsonNode *node, char *name, int flags);
+static void outputProperty(Json *json, cchar *name, cchar *value, int type);
 static char *readInput();
 static int run();
 
@@ -114,6 +118,7 @@ static int usage(void)
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
              "  --length num     # Set line length limit for compacted output.\n"
+             "  --keys           # Emit propty key names only.\n"
              "  --noerror        # Ignore errors.\n"
              "  --one            # Emit on one line.\n"
              "  --overwrite      # Overwrite file when converting instead of stdout.\n"
@@ -121,13 +126,13 @@ static int usage(void)
              "  --quiet          # Quiet mode with no error messages.\n"
              "  --remove         # Remove queried property.\n"
              "  --single         # Use single quotes (default with JSON5).\n"
-             "  --stdin          # Read from stdin.\n"
-             "  --strict         # Enforce strict JSON format.\n"
+             "  --stdin          # Read from stdin (default if no file specified).\n"
+             "  --strict         # Perform strict JSON standard parsing of input.\n"
              "\n"
              "  Commands:\n"
              "  property=value   # Set queried property.\n"
              "  property         # Query property (can be dotted property).\n"
-             "  .                # Convert input to desired format\n\n");
+             "                   # If not command, then convert input to desired format\n\n");
     return R_ERR_BAD_ARGS;
 }
 
@@ -240,6 +245,9 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "--noerror") || smatch(argp, "-n")) {
             noerror = 1;
 
+        } else if (smatch(argp, "--keys")) {
+            keys = 1;
+
         } else if (smatch(argp, "--length")) {
             if (nextArg + 1 >= argc) {
                 return usage();
@@ -313,12 +321,13 @@ static int parseArgs(int argc, char **argv)
         }
     }
     if (!cmd) {
-        if (smatch(property, ".")) {
-            cmd = JSON_CMD_CONVERT;
-        } else if (schr(property, '=')) {
+        if (schr(property, '=')) {
             cmd = JSON_CMD_ASSIGN;
-        } else {
+        } else if (property) {
+            // MOB if no property, should be convert
             cmd = JSON_CMD_QUERY;
+        } else {
+            cmd = JSON_CMD_CONVERT;
         }
     }
     if (argc == nextArg) {
@@ -372,8 +381,8 @@ static int run()
         }
         flags |= JSON_STRICT_PARSE | JSON_JSON;
     }
-    json = jsonParseKeep(data, flags);
-    if (json == 0) {
+    json = jsonAlloc();
+    if (jsonParseText(json, data, flags) < 0) {
         error("Cannot parse input");
         return R_ERR_CANT_READ;
     }
@@ -422,8 +431,12 @@ static int run()
         if (jsonSet(json, 0, property, value, 0) < 0) {
             return error("Cannot assign to \"%s\"", property);
         }
-        if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
-            return error("Cannot save \"%s\"", path);
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
     } else if (cmd == JSON_CMD_BUMP) {
         if (bumpVersion(json, bump) < 0) {
@@ -444,14 +457,18 @@ static int run()
             }
             return error("Cannot remove property \"%s\"", property);
         }
-        if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
-            return error("Cannot save \"%s\"", path);
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
 
     } else if (cmd == JSON_CMD_QUERY) {
         if (!check) {
             node = jsonGetNode(json, 0, property);
-            outputNameValue(json, node, property);
+            outputNode(json, node, property, flags);
         }
 
     } else if (cmd == JSON_CMD_CONVERT) {
@@ -657,32 +674,48 @@ static void outputAll(Json *json, int flags)
             if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
                 for (ITERATE_JSON(json, node, child, id)) {
                     property = sjoin(name, ".", child->name, NULL);
-                    outputNameValue(json, child, property);
+                    outputNode(json, child, property, flags);
                     rFree(property);
                 }
                 break;
             } else {
-                outputNameValue(json, node, node->name);
+                outputNode(json, node, node->name, flags);
             }
         }
     }
 }
 
-static void outputNameValue(Json *json, JsonNode *node, char *name)
+static void outputNode(Json *json, JsonNode *node, char *name, int flags)
 {
     JsonNode *child;
     cchar    *value;
-    char     *exp, *property;
-    int      type;
+    char     *output, *property;
+    int      id, type;
 
     if (node) {
         value = node->value;
         type = node->type;
         if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
-            for (ITERATE_JSON(json, node, child, id)) {
-                property = sjoin(name, ".", child->name, NULL);
-                outputNameValue(json, child, property);
-                rFree(property);
+            if (keys || format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
+                for (ITERATE_JSON(json, node, child, id)) {
+                    if (keys) {
+                        if (node->type == JSON_ARRAY) {
+                            rPrintf("%s", child->value);
+                        } else {
+                            rPrintf("%s", child->name);
+                        }
+                        rPrintf("\n");
+                    } else {
+                        property = sjoin(name, ".", child->name, NULL);
+                        outputNode(json, child, property, flags);
+                        rFree(property);
+                    }
+                }
+            } else {
+                id = jsonGetNodeId(json, node);
+                output = jsonToString(json, id, 0, flags);
+                rPrintf("%s", output);
+                rFree(output);
             }
             return;
         }
@@ -693,6 +726,13 @@ static void outputNameValue(Json *json, JsonNode *node, char *name)
         error("Cannot find property \"%s\"", name);
         return;
     }
+    outputProperty(json, name, value, type);
+}
+
+static void outputProperty(Json *json, cchar *name, cchar *value, int type)
+{
+    char *exp, *property;
+
     property = makeName(name);
     if (format == JSON_FORMAT_ENV) {
         exp = export ? "export " : "";
@@ -765,8 +805,8 @@ static int error(cchar *fmt, ...)
         va_start(args, fmt);
         msg = sfmtv(fmt, args);
         va_end(args);
-        if (json && json->errorMsg) {
-            rError("json", "%s: %s", msg, json->errorMsg);
+        if (json && json->error) {
+            rError("json", "%s. %s", msg, json->error);
         } else {
             rError("json", "%s", msg);
         }

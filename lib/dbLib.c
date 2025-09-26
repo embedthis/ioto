@@ -129,9 +129,9 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
     Db  *db;
     int count;
 
-    assert(path && *path);
-    assert(schema && *schema);
-
+    if (!path || !*path || !schema || !*schema) {
+        return NULL;
+    }
     if ((db = rAllocType(Db)) == 0) {
         return 0;
     }
@@ -165,7 +165,7 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
             rError("db", "%s", db->error);
             dbClose(db);
             return 0;
-        } 
+        }
         if (count > 0) {
             dbSave(db, NULL);
         }
@@ -235,12 +235,12 @@ static int loadSchema(Db *db, cchar *schema)
     Json     *blend, *json;
     JsonNode *inc;
     cchar    *dir;
-    char     dirbuf[ME_MAX_FNAME], *errorMsg, *path;
+    char     dirbuf[ME_MAX_FNAME], *errorMsg, *path, *str;
     int      blendId;
 
-    assert(db);
-    assert(schema);
-
+    if (!db || !schema) {
+        return R_ERR_BAD_ARGS;
+    }
     if ((json = jsonParseFile(schema, &errorMsg, 0)) == 0) {
         dberror(db, R_ERR_CANT_READ, "%s", errorMsg);
         rFree(errorMsg);
@@ -295,7 +295,7 @@ static int loadSchema(Db *db, cchar *schema)
 
     //  Trace the resulting schema
     if (rEmitLog("debug", "setup")) {
-        char *str = jsonToString(db->schema, 0, 0, JSON_HUMAN);
+        str = jsonToString(db->schema, 0, 0, JSON_HUMAN);
         rDebug("db", "%s", str);
         rFree(str);
     }
@@ -325,9 +325,9 @@ static int loadModels(Db *db, Json *json)
     char     key[80];
     int      sid, delay, period;
 
-    assert(db);
-    assert(json);
-
+    if (!db || !json) {
+        return R_ERR_BAD_ARGS;
+    }
     db->models = rAllocHash(0, 0);
 
     for (ITERATE_JSON_KEY(json, 0, "models", node, mid)) {
@@ -381,8 +381,9 @@ static int loadModels(Db *db, Json *json)
  */
 static int loadIndexes(Db *db)
 {
-    assert(db);
-
+    if (!db) {
+        return R_ERR_BAD_ARGS;
+    }
     db->primary = rbAlloc(0, (RbCompare) compareItems, (RbFree) freeItem, db);
     return 0;
 }
@@ -397,9 +398,9 @@ static int loadData(Db *db, cchar *path)
     uint16 version;
     FILE   *fp;
 
-    assert(db);
-    assert(path && *path);
-
+    if (!db || !path || !*path) {
+        return R_ERR_BAD_ARGS;
+    }
     if (rAccessFile(path, R_OK) == 0) {
         if ((fp = fopen(path, "r")) == NULL) {
             return dberror(db, R_ERR_CANT_OPEN, "Cannot open %s", path);
@@ -437,8 +438,9 @@ PUBLIC int dbSave(Db *db, cchar *path)
     uint16 version;
     FILE   *fp;
 
-    assert(db);
-
+    if (!db) {
+        return R_ERR_BAD_ARGS;
+    }
     if (db->flags & DB_READ_ONLY) {
         return 0;
     }
@@ -497,14 +499,13 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     JsonNode *prop;
     char     *cp;
 
-    assert(db);
-    assert(cmd);
-    assert(env);
-
     if (!db || !cmd || !env || !params) {
         return R_ERR_BAD_ARGS;
     }
     memset(env, 0, sizeof(Env));
+    rFree(db->error);
+    db->error = 0;
+    
     if (!props) {
         props = jsonAlloc();
         jsonSetUserFlags(props, USER_ALLOC);
@@ -543,7 +544,7 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
                     //  Ignore cloud side hash
                     continue;
                 }
-                rInfo("db", "Unknown property \"%s\" in model \"%s\"", prop->name, modelName);
+                rTrace("db", "Unknown property \"%s\" in model \"%s\"", prop->name, modelName);
                 continue;
             }
             if (field->enums) {
@@ -623,8 +624,9 @@ static void freeEnv(Env *env)
     RbNode *rp;
     int    next;
 
-    assert(env);
-
+    if (!env) {
+        return;
+    }
     if (env->props && (env->props->userFlags & USER_ALLOC)) {
         jsonFree(env->props);
         env->props = 0;
@@ -651,8 +653,9 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *p
     DbField *field;
     RName   *np;
 
-    assert(db);
-
+    if (!db) {
+        return NULL;
+    }
     if (SETUP(db, modelName, props, params, "create", &env) < 0) {
         return 0;
     }
@@ -682,6 +685,7 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *p
     if (env.params->log) {
         rInfo("db", "Create result:\n%s", jsonString(item->json, JSON_HUMAN));
     }
+    // XXXX
     freeEnv(&env);
     return item;
 }
@@ -698,8 +702,9 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *modelName, Json *props, DbParams *para
     RbNode *rp;
     DbItem *item;
 
-    assert(db);
-
+    if (!db) {
+        return 0;
+    }
     if (SETUP(db, modelName, props, params, "get", &env) < 0) {
         return 0;
     }
@@ -726,16 +731,16 @@ PUBLIC cchar *dbGetField(Db *db, cchar *modelName, cchar *fieldName, Json *props
     RbNode *rp;
     DbItem *item;
 
-    assert(db);
-    assert(modelName);
-    assert(fieldName);
-
+    if (!db || !modelName || !fieldName) {
+        return 0;
+    }
     if (SETUP(db, modelName, props, params, "get", &env) < 0) {
         return 0;
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
         if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+            // XXX
             freeEnv(&env);
             return jsonGet(toJson(item), 0, fieldName, 0);
         }
@@ -809,8 +814,9 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     RList  *list;
     int    count, limit;
 
-    assert(db);
-
+    if (!db) {
+        return 0;
+    }
     if (SETUP(db, modelName, props, params, "find", &env) < 0) {
         return 0;
     }
@@ -852,6 +858,7 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     if (env.params->log) {
         dbPrintList(list);
     }
+    // XXX
     freeEnv(&env);
     return list;
 }
@@ -865,8 +872,9 @@ PUBLIC const DbItem *dbFindOne(Db *db, cchar *modelName, Json *props, DbParams *
     RbNode *rp;
     DbItem *item;
 
-    assert(db);
-
+    if (!db) {
+        return 0;
+    }
     if (SETUP(db, modelName, props, params, "find", &env) < 0) {
         return 0;
     }
@@ -893,9 +901,9 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
     DbItem *item, *search;
     int    count, limit;
 
-    assert(db);
-    assert(props);
-
+    if (!db || !props) {
+        return R_ERR_BAD_ARGS;
+    }
     if (SETUP(db, modelName, props, params, "remove", &env) < 0) {
         return db->code;
     }
@@ -935,8 +943,9 @@ PUBLIC int dbRemoveExpired(Db *db, bool notify)
     char    *now;
     int     count;
 
-    assert(db);
-
+    if (!db) {
+        return R_ERR_BAD_ARGS;
+    }
     now = rGetIsoDate(rGetTime());
     db->servicing = 1;
     count = 0;
@@ -1013,10 +1022,9 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
     RbNode *rp;
     DbItem *item;
 
-    assert(db);
-    assert(modelName);
-    assert(fieldName);
-
+    if (!db || !modelName || !fieldName) {
+        return 0;
+    }
     if (SETUP(db, modelName, props, params, "update", &env) < 0) {
         return 0;
     }
@@ -1027,6 +1035,7 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
         if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
             break;
         }
+        item = 0;
     }
     if (!item) {
         if (env.params->upsert) {
@@ -1044,6 +1053,7 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
         jsonSet(toJson(item), 0, fieldName, value, 0);
     }
     change(db, env.model, item, params, env.params->upsert ? "upsert" : "update");
+    //XXX
     freeEnv(&env);
     return item;
 }
@@ -1095,14 +1105,13 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
     RbNode *rp;
     DbItem *item;
 
-    assert(db);
-
+    if (!db) {
+        return NULL;
+    }
     if (!props) {
         dberror(db, R_ERR_BAD_ARGS, "Cannot update, bad properties");
         return 0;
     }
-    assert(props);
-
     if (SETUP(db, modelName, props, params, "update", &env) < 0) {
         return 0;
     }
@@ -1134,15 +1143,13 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
         }
     }
     change(db, env.model, item, params, env.params->upsert ? "upsert" : "update");
+    // XXX
     freeEnv(&env);
     return item;
 }
 
 PUBLIC cchar *dbField(const DbItem *item, cchar *fieldName)
 {
-    assert(item);
-    assert(fieldName);
-
     if (!item || !fieldName) {
         return 0;
     }
@@ -1169,7 +1176,12 @@ PUBLIC bool dbFieldBool(const DbItem *item, cchar *fieldName)
 
 PUBLIC Time dbFieldDate(const DbItem *item, cchar *fieldName)
 {
-    return rParseIsoDate(dbField(item, fieldName));
+    cchar *when;
+
+    if ((when = dbField(item, fieldName)) == NULL) {
+        return 0;
+    }
+    return rParseIsoDate(when);
 }
 
 PUBLIC char *dbListToString(RList *items)
@@ -1178,8 +1190,9 @@ PUBLIC char *dbListToString(RList *items)
     RBuf         *buf;
     int          index;
 
-    assert(items);
-
+    if (!items) {
+        return NULL;
+    }
     buf = rAllocBuf(0);
     rPutCharToBuf(buf, '[');
     for (ITERATE_ITEMS(items, item, index)) {
@@ -1315,10 +1328,9 @@ static void setDefaults(Db *db, DbModel *model, Json *props)
     char    *value;
     ssize   size;
 
-    assert(db);
-    assert(model);
-    assert(props);
-
+    if (!db || !model || !props) {
+        return;
+    }
     for (ITERATE_NAME_DATA(model->fields, np, field)) {
         if (field->def || field->generate) {
             if (jsonGet(props, 0, np->name, 0) != 0) {
@@ -1353,10 +1365,9 @@ static void setTimestamps(Db *db, DbModel *model, Json *props, cchar *cmd)
     DbField *field;
     char    *value;
 
-    assert(db);
-    assert(model);
-    assert(props);
-
+    if (!db || !model || !props) {
+        return;
+    }
     for (ITERATE_NAME_DATA(model->fields, np, field)) {
         if ((smatch(np->name, "created") && smatch(cmd, "create")) ||
             smatch(np->name, "updated") || smatch(np->name, "remove")) {
@@ -1376,10 +1387,9 @@ static void setTemplates(Db *db, DbModel *model, Json *props)
     DbField *field;
     char    *value;
 
-    assert(db);
-    assert(model);
-    assert(props);
-
+    if (!db || !model || !props) {
+        return;
+    }
     for (ITERATE_NAME_DATA(model->fields, np, field)) {
         if (field->value) {
             if (jsonGet(props, 0, np->name, 0) == 0) {
@@ -1400,10 +1410,9 @@ static int mapTypes(Db *db, DbModel *model, Json *props)
     JsonNode *prop;
     cchar    *value;
 
-    assert(db);
-    assert(model);
-    assert(props);
-
+    if (!db || !model || !props) {
+        return R_ERR_BAD_ARGS;
+    }
 again:
     for (ITERATE_JSON(props, 0, prop, ppid)) {
         field = rLookupName(model->fields, prop->name);
@@ -1549,9 +1558,9 @@ static DbModel *allocModel(Db *db, cchar *name, cchar *sync, Time delay)
     DbModel *model;
     DbField *field;
 
-    assert(db);
-    assert(name);
-
+    if (!db || !name) {
+        return NULL;
+    }
     if ((model = rAllocType(DbModel)) == 0) {
         return 0;
     }
@@ -1606,10 +1615,9 @@ static DbField *allocField(Db *db, cchar *name, Json *json, int fid)
 {
     DbField *field;
 
-    assert(name);
-    assert(json);
-    assert(fid >= 0);
-
+    if (!name || !json || fid < 0) {
+        return NULL;
+    }
     if ((field = rAllocType(DbField)) == 0) {
         return 0;
     }
@@ -1668,11 +1676,9 @@ static DbItem *allocItem(cchar *key, Json *json, char *value)
             json = jsonClone(json, 0);
         }
         item->json = json;
-        assert(!value);
     } else {
         item->value = value;
         item->allocatedValue = 1;
-        assert(!json);
     }
     item->key = sclone(key);
     item->allocatedName = 1;
@@ -1790,11 +1796,10 @@ static int readItem(FILE *fp, DbItem **item)
     char  key[DB_MAX_KEY];
     char  *data;
 
-    assert(fp);
-    assert(item);
-
+    if (!fp || !item) {
+        return R_ERR_BAD_ARGS;
+    }
     *item = 0;
-
     if (fread(&length, sizeof(length), 1, fp) != 1) {
         return 0;
     }
@@ -2250,9 +2255,9 @@ static int compareItems(cvoid *n1, cvoid *n2, Env *env)
 {
     DbItem *d1, *d2;
 
-    assert(n1);
-    assert(n2);
-
+    if (!n1 || !n2) {
+        return R_ERR_BAD_ARGS;
+    }
     d1 = (DbItem*) n1;
     d2 = (DbItem*) n2;
 
@@ -2287,9 +2292,9 @@ static bool checkEnum(DbField *field, cchar *value)
 {
     cchar *cp;
 
-    assert(field);
-    assert(value);
-
+    if (!field || !value) {
+        return 0;
+    }
     if ((cp = scontains(field->enums, value)) == 0) {
         return 0;
     }
@@ -2366,8 +2371,7 @@ PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent)
             props = jsonParse(str, 0);
             if (!dbFindOne(db, model->name, props, NULL)) {
                 if (dbCreate(db, model->name, props, NULL) == 0) {
-                    return dberror(db, R_ERR_CANT_COMPLETE, "Cannot create item for %s. %s", str,
-                                   db->error);
+                    return dberror(db, R_ERR_CANT_COMPLETE, "Cannot create item for %s. %s", str, db->error);
                 }
             }
             jsonFree(props);
@@ -2431,10 +2435,9 @@ static int dberror(Db *db, int code, cchar *fmt, ...)
     va_list ap;
     char    *msg;
 
-    assert(db);
-    assert(code);
-    assert(fmt);
-
+    if (!db || !code || !fmt) {
+        return R_ERR_BAD_ARGS;
+    }
     va_start(ap, fmt);
     msg = sfmtv(fmt, ap);
     db->code = code;

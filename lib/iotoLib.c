@@ -501,6 +501,7 @@ static int atoia(cchar **ptr)
     n = 0;
     while (isdigit((int) **ptr)) {
         digit = **ptr - '0';
+        // SECURITY Acceptable: Integer overflow protection with intentional division truncation
         if (n > (LLONG_MAX - digit) / 10) {
             n = LLONG_MAX;
             while (isdigit((int) **ptr)) {
@@ -921,7 +922,7 @@ PUBLIC void ioTerm(void)
         /*
             Security: The reset script is configured via a config file. Ensure the config files
             have permissions that prevent modification by unauthorized users.
-            Review Acceptable - the script is provided by the developer configuration scripts.reset and is secure.
+            SECURITY Acceptable: - the script is provided by the developer configuration scripts.reset and is secure.
          */
         status = rRun(script, &output);
         if (status != 0) {
@@ -1011,8 +1012,9 @@ static int initServices(void)
 #if SERVICES_REGISTER
     /*
         One-time device registration during manufacturer or first connect.
-        NOTE: The Ioto volume license requires that if this code is removed or disabled, you must manually
-        enter and update accurate device volumes using the Embedthis Builder at https://admin.embedthis.com.
+        NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
+        maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a current 
+        contract agreement with Embedthis to use an alternate method.
      */
     if (ioto->registerService) {
         if (!ioto->registered && ioRegister() < 0) {
@@ -1092,7 +1094,7 @@ PUBLIC int ioUpdateLog(bool force)
         return 0;
 #endif
     }
-    // Review Acceptable - the log path is provided by the developer configuration log.path and is secure
+    // SECURITY Acceptable: - the log path is provided by the developer configuration log.path and is secure
     fullPath = rJoinFile(dir, path);
     if (rSetLogPath(fullPath, force) < 0) {
         rError("ioto", "Cannot open log %s", fullPath);
@@ -1117,7 +1119,7 @@ PUBLIC Json *ioAPI(cchar *url, cchar *data)
     Json *response;
     char *api;
 
-    // Review Acceptable - the ioto-api is provided by the cloud service and is secure
+    // SECURITY Acceptable: - the ioto-api is provided by the cloud service and is secure
     api = sfmt("%s/%s", ioto->api, url);
     response = urlPostJson(api, data, -1,
                            "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
@@ -1364,7 +1366,7 @@ static void startMqtt(Time lastConnect)
         jitter = svalue(jsonGet(ioto->config, 0, "mqtt.jitter", "0")) * TPS;
         if (jitter) {
             /*
-                Review Acceptable - the use of rand here is acceptable as it is only used for the 
+                SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the 
                 mqtt schedule jitter and is not a security risk.
              */
             jitter = rand() % jitter;
@@ -1647,7 +1649,7 @@ static void onEvent(Mqtt *mqtt, int event)
 
 /*
     Alloc a request/response. This manages the MQTT subscriptions for specific topics.
-    REVIEW Acceptable - Request IDs will wrap around after 2^31.
+    SECURITY Acceptable: - Request IDs will wrap around after 2^31.
  */
 static RR *allocRR(Mqtt *mq, cchar *topic)
 {
@@ -1982,8 +1984,9 @@ void dummyMqttImport(void)
 /*
     register.c - One-time device registration during manufacturer or first connect.
 
-    NOTE: The Ioto license requires that if this code is removed or disabled, you must
-    manually enter and maintain device volumes using Embedthis Builder (https://admin.embedthis.com).
+    NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
+    maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a current
+    contract agreement with Embedthis to use an alternate method.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -2070,7 +2073,7 @@ PUBLIC int ioRegister(void)
         rInfo("ioto", "Registering %sdevice with %s", test ? "test " : "", ioto->builder);
     }
 
-    // Review Acceptable - the ioto-api is provided by the developer configuration and is secure
+    // SECURITY Acceptable: - the ioto-api is provided by the developer configuration and is secure
     sfmtbuf(url, sizeof(url), "%s/device/register", ioto->builder);
     response = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
                            ioto->product);
@@ -2162,6 +2165,8 @@ static int parseRegisterResponse(Json *json)
     If the "services.serialize" is set to "auto", this module will dynamically create a random device ID.
     If set to "factory", ioSerialize() will call the factory serialization service defined via
     the "api.serialize" URL setting. The resultant deviceId is saved in the config/device.json5 file.
+
+    SECURITY Acceptable: This program is a developer / manufacturing tool and is not used in production devices.
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -2265,7 +2270,7 @@ static bool getSerial(void)
                 }
             }
             /*
-                Review Acceptable: This program is a tool not used in production devices.
+                SECURITY Acceptable: This program is a tool not used in production devices.
                 This is an acceptable security risk.
              */
             command = sfmt("serialize \"%s\"", product);
@@ -2539,7 +2544,7 @@ PUBLIC int ioLoadConfig(void)
 
     /*
         Command line --config, --state and --ioto can set the config/state and ioto.json paths.
-        Review Acceptable: ioto->cmdStateDir is set internally and is not a security risk.
+        SECURITY Acceptable:: ioto->cmdStateDir is set internally and is not a security risk.
      */
     rAddDirectory("state", ioto->cmdStateDir ? ioto->cmdStateDir : IO_STATE_DIR);
 
@@ -2672,8 +2677,9 @@ static void enableServices(void)
         ioto->testService = jsonGetBool(config, sid, "test", 0);
 
         /*
-            NOTE: The Ioto license requires that if this code is removed or disabled, you must
-            manually enter and maintain device volumes using Embedthis Builder (https://admin.embedthis.com).
+            NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
+            maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a 
+            current contract agreement with Embedthis to use an alternate method.
          */
         ioto->registerService = jsonGetBool(config, sid, "register", ioto->provisionService ? 1 : 0);
     }
@@ -2845,7 +2851,7 @@ static void reset(void)
     removeFile("@db/device.db.jnl");
     removeFile("@db/device.db.sync");
     /*
-        Review Acceptable: TOCTOU race risk is accepted. Expect file system to be secured.
+        SECURITY Acceptable:: TOCTOU race risk is accepted. Expect file system to be secured.
      */
     path = rGetFilePath("@db/device.db.reset");
     if (rAccessFile(path, R_OK) == 0) {
@@ -3087,7 +3093,7 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey)
 PUBLIC void webLoginUser(Web *web)
 {
     /*
-        Review Acceptable: Users should utilize the anti-CSRF token protection provided by the web server.
+        SECURITY Acceptable:: Users should utilize the anti-CSRF token protection provided by the web server.
      */
     const DbItem *user;
     cchar        *password, *role, *username;
@@ -4485,7 +4491,7 @@ static int openLog(Log *lp)
         rTrace("logs", "Run command: %s", lp->command);
         assert(lp->fp == 0);
         /*
-            REVIEW Acceptable: The command is configured by device developer and is deemed secure.
+            SECURITY Acceptable:: The command is configured by device developer and is deemed secure.
          */
         if ((lp->fp = popen(lp->command, "r")) == 0) {
             rError("logs", "Cannnot open command \"%s\", errno %d", lp->command, errno);
@@ -4762,7 +4768,7 @@ static bool provisionDevice(void)
 
     /*
         Talk to the device cloud to get certificates
-        Review Acceptable: ioto->api is of limited length and is not a security risk.
+        SECURITY Acceptable:: ioto->api is of limited length and is not a security risk.
      */
     SFMT(url, "%s/tok/device/provision", ioto->api);
     SFMT(data, "{\"id\":\"%s\"}", ioto->id);
@@ -5329,7 +5335,7 @@ PUBLIC int ioInitSync(void)
     cchar *lastSync;
 
     /*
-        Review Acceptable - the use of rand here is acceptable as it is only used for the sync sequence number and is not a security risk.
+        SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the sync sequence number and is not a security risk.
      */
     nextSeq = rand();
     ioto->syncDue = MAXINT64;
@@ -6110,6 +6116,7 @@ PUBLIC bool ioUpdate(void)
 
     headers = sfmt("Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
     rDebug("update", "Request \n%s\n%s\n%s\n\n", url, headers, body);
+    
     if ((json = urlJson(up, "POST", url, body, -1, headers)) == 0) {
         response = urlGetResponse(up);
         rError("ioto", "%s", response);
@@ -6130,7 +6137,7 @@ PUBLIC bool ioUpdate(void)
     if (json) {
         /*
             Got an update response with checksum, version and image url
-            Review Acceptable: The update url is provided by the device cloud and is secure. So an 
+            SECURITY Acceptable:: The update url is provided by the device cloud and is secure. So an 
             additional signature is not required.
          */
         image = jsonGet(json, 0, "url", 0);
@@ -6187,7 +6194,7 @@ static void applyUpdate(char *path)
     script = jsonGet(ioto->config, 0, "scripts.update", 0);
     if (script) {
         /*
-            REVIEW Acceptable: The command is configured by device developer and is deemed secure.
+            SECURITY Acceptable:: The command is configured by device developer and is deemed secure.
          */
         SFMT(command, "%s \"%s\"", script, path);
         status = rRun(command, &directive);
@@ -6206,6 +6213,8 @@ static void applyUpdate(char *path)
     }
     unlink(path);
     rFree(path);
+#else
+    rSignalSync("device:update", path);
 #endif
 }
 

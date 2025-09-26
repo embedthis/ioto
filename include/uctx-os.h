@@ -1,34 +1,34 @@
 /*
-	uctx-os.h -- Fiber Coroutine support
+    uctx-os.h -- Fiber Coroutine support
 
-	Copyright (c) All Rights Reserved. See details at the end of the file.
+    Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 #ifndef _h_UCTX_OS
-#define _h_UCTX_OS 1
+#define _h_UCTX_OS    1
 
 /*
     Architectures. These CPU families have dedicated fiber coroutine switching modules.
-    Other architectures can enable the PTHREADS emulation module. 
+    Other architectures can enable the PTHREADS emulation module.
  */
-#define UCTX_UNKNOWN     0
-#define UCTX_ARM         1           /**< Arm */
-#define UCTX_ARM64       2           /**< Arm64 */
-#define UCTX_ITANIUM     3           /**< Intel Itanium */
-#define UCTX_X86         4           /**< X86 */
-#define UCTX_X64         5           /**< AMD64 or EMT64 */
-#define UCTX_MIPS        6           /**< Mips */
-#define UCTX_MIPS64      7           /**< Mips 64 */
-#define UCTX_PPC         8           /**< Power PC */
-#define UCTX_PPC64       9           /**< Power PC 64 */
-#define UCTX_SPARC       10          /**< Sparc */
-#define UCTX_TIDSP       11          /**< TI DSP */
-#define UCTX_SH          12          /**< SuperH */
-#define UCTX_RISCV       13          /**< RiscV */
-#define UCTX_RISCV64     14          /**< RiscV64 */
-#define UCTX_XTENSA      15          /**< Xtensa ESP32 */
-#define UCTX_PTHREADS    16          /**< Generic pthreads */
-#define UCTX_FREERTOS    17          /**< FreeRTOS tasks */
+#define UCTX_UNKNOWN  0
+#define UCTX_ARM      1              /**< Arm */
+#define UCTX_ARM64    2              /**< Arm64 */
+#define UCTX_ITANIUM  3              /**< Intel Itanium */
+#define UCTX_X86      4              /**< X86 */
+#define UCTX_X64      5              /**< AMD64 or EMT64 */
+#define UCTX_MIPS     6              /**< Mips */
+#define UCTX_MIPS64   7              /**< Mips 64 */
+#define UCTX_PPC      8              /**< Power PC */
+#define UCTX_PPC64    9              /**< Power PC 64 */
+#define UCTX_SPARC    10             /**< Sparc */
+#define UCTX_TIDSP    11             /**< TI DSP */
+#define UCTX_SH       12             /**< SuperH */
+#define UCTX_RISCV    13             /**< RiscV */
+#define UCTX_RISCV64  14             /**< RiscV64 */
+#define UCTX_XTENSA   15             /**< Xtensa ESP32 */
+#define UCTX_PTHREADS 16             /**< Generic pthreads */
+#define UCTX_FREERTOS 17             /**< FreeRTOS tasks */
 
 /*
     Use compiler definitions to determine the CPU type and select the relevant fiber module.
@@ -86,17 +86,17 @@
 
 #elif __loongarch__ || __loongarch64
     #define UCTX_ARCH UCTX_LOONGARCH
-    
+
 #else
-    //  Fallback is to use PTHREADS emulation
+//  Fallback is to use PTHREADS emulation
     #define UCTX_ARCH UCTX_PTHREADS
 #endif
 
 #if defined(ESP_PLATFORM) || defined(INC_FREERTOS_H)
-    #define FREERTOS 1
+    #define FREERTOS  1
 #endif
 
-#if UCTX_OVERRIDE 
+#if UCTX_OVERRIDE
 #undef UCTX_ARCH
 #define UCTX_ARCH UCTX_PTHREADS
 #endif

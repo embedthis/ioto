@@ -1,14 +1,25 @@
-/*
-	uctx.h -- Fiber Coroutine support
+/**
+    @file uctx.h
+    High-performance user-space context switching and coroutine primitives.
+    @description This module provides portable, high-performance context switching for cooperative multitasking systems.
+    It supports multiple architectures including x86/x64, ARM/ARM64, MIPS, RISC-V, PowerPC, and others.
+    These functions enable fiber coroutines used throughout the Ioto Agent ecosystem.
 
-	Copyright (c) All Rights Reserved. See details at the end of the file.
+    The implementation uses architecture-specific assembly code for optimal performance on each supported platform,
+    with fallback implementations using pthreads where native context switching is not available.
+
+    @stability Evolving
+    @copyright Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 #pragma once
 
 #ifndef _h_UCTX
 #define _h_UCTX 1
 
-#include <stddef.h>
+#if R_USE_ME
+   #include "me.h"
+#endif
+#include "osdep.h"
 #include "uctx-os.h"
 
 #if UCTX_ARCH == UCTX_ARM
@@ -673,19 +684,142 @@ typedef struct uctx_t {
 
 
 
+#ifndef UCTX_MIN_STACK_SIZE
+    #define UCTX_MIN_STACK_SIZE (32 * 1024) /**< Minimum stack size in bytes */
+#endif
+
+#ifndef UCTX_MAX_STACK_SIZE
+    #define UCTX_MAX_STACK_SIZE (16 * 1024 * 1024) /**< Maximum stack size in bytes */
+#endif
+
+/**
+    Execution context structure for fiber coroutines.
+    @description Platform-specific structure that holds the complete execution state including
+    CPU registers, stack pointer, program counter, and processor flags. The exact layout varies
+    by architecture but always contains sufficient information to suspend and resume execution
+    at any point. This structure is opaque to application code and should only be manipulated
+    through the uctx API functions.
+
+    Key fields (architecture-dependent):
+    - uc_flags: Context flags and state information
+    - uc_link: Pointer to context to resume when this context terminates
+    - uc_stack: Stack configuration (base, size, flags)
+    - uc_mcontext: Machine-specific register state
+    @stability Evolving
+ */
+
+/**
+    @warning These functions are NOT thread safe and must only be used in single-threaded contexts.
+    @warning These functions are NOT NULL tolerant. Passing NULL to any function will result in undefined behavior.
+
+    All context operations are designed for cooperative multitasking within a single thread.
+    Callers are responsible for providing valid pointers and managing stack memory.
+ */
+
+/**
+    Function type for fiber entry points.
+    @description Defines the signature for functions that can be executed as fiber entry points.
+    The function takes no parameters and returns no value. Arguments must be passed through
+    global variables, context-specific storage, or captured variables in the calling scope.
+    @stability Evolving
+ */
 typedef void (*uctx_proc)(void);
+
+/**
+    Save the current execution context.
+    @description Captures the current CPU state (registers, stack pointer, program counter) and stores
+    it in the provided context structure. This is typically used before switching to another context
+    to enable later resumption from this exact point.
+    @param ucp Pointer to context structure where current state will be stored
+    @return 0 on success, -1 on failure
+    @stability Evolving
+ */
 extern int  uctx_getcontext(uctx_t *ucp);
+
+/**
+    Create a new execution context for a fiber.
+    @description Initializes a context structure to execute the specified function when activated.
+    The context must have a stack configured via uctx_setstack() before calling this function.
+    When the context is later activated, execution will begin at the specified function.
+    @param ucp Pointer to context structure to initialize
+    @param fn Entry point function for the new context
+    @param argc Number of integer arguments to pass to the function (currently unused)
+    @param ... Variable arguments to pass to the function (currently unused)
+    @return 0 on success, -1 on failure
+    @stability Evolving
+ */
 extern int  uctx_makecontext(uctx_t *ucp, void (*fn)(void), int argc, ...);
+
+/**
+    Restore execution context and transfer control.
+    @description Restores the CPU state from the specified context and transfers control to that context.
+    This function does not return to the caller - execution continues from where the context was saved
+    or created. Use uctx_swapcontext() if you need to save the current context before switching.
+    @param ucp Pointer to context structure to restore and activate
+    @return This function does not return on success. Returns -1 only on failure.
+    @stability Evolving
+ */
 extern int  uctx_setcontext(uctx_t *ucp);
+
+/**
+    Atomically save current context and switch to another context.
+    @description Saves the current execution state in the 'from' context, then restores and activates
+    the 'to' context. This is the primary mechanism for cooperative context switching between fibers.
+    The operation is atomic - either both save and restore succeed, or the operation fails.
+    @param from Pointer to context structure where current state will be saved
+    @param to Pointer to context structure to restore and activate
+    @return 0 when returning to this context after a later context switch, -1 on failure
+    @stability Evolving
+ */
 extern int  uctx_swapcontext(uctx_t *from, uctx_t *to);
+
+/**
+    Release resources associated with a context.
+    @description Frees any internal resources allocated for the context. Does not free the context
+    structure itself or any user-provided stack memory. After calling this function, the context
+    should not be used for further operations without reinitialization.
+    @param ucp Pointer to context structure to clean up
+    @stability Evolving
+ */
 extern void uctx_freecontext(uctx_t *ucp);
-extern void uctx_setstack(uctx_t *up, void *stack, size_t stackSize);
+
+/**
+    Configure stack memory for a context.
+    @description Associates a stack memory region with the context. The stack must be allocated by the caller
+    and remain valid for the lifetime of the context. Stack grows downward on most architectures,
+    so the top of the stack is at (stack + stackSize). The minimum stack size is platform-dependent.
+    @param up Pointer to context structure to configure
+    @param stack Pointer to the base of the stack memory region. Must be 16-byte aligned.
+    @param stackSize Size of the stack in bytes. Must be between UCTX_MIN_STACK_SIZE and UCTX_MAX_STACK_SIZE.
+    @return 0 on success, -1 on failure
+    @stability Evolving
+ */
+extern int uctx_setstack(uctx_t *up, void *stack, size_t stackSize);
+
+/**
+    Retrieve the stack base pointer for a context.
+    @description Returns the stack memory base address that was previously configured with uctx_setstack().
+    The address returned points to the end of the stack memory region, not the current stack pointer. To use the stack, you would need to subtract the stack size from the address returned. To push items onto the stack, you would decrement first and then store the item.
+    @param up Pointer to context structure to query
+    @return Pointer to the base of the stack memory region, or NULL if no stack is configured. This is the same pointer that was passed to uctx_setstack(), not the current stack pointer.
+    @stability Evolving
+ */
 extern void *uctx_getstack(uctx_t *up);
+
+/**
+    Determine if explicit stack allocation is required.
+    @description Indicates whether this platform implementation requires explicit stack allocation
+    via uctx_setstack() before creating contexts with uctx_makecontext(). Some implementations
+    (such as pthreads-based) may manage stacks internally.
+    @return 1 if explicit stack allocation is required, 0 if stacks are managed internally
+    @stability Evolving
+ */
 extern int uctx_needstack(void);
+
 #endif // _h_UCTX
 
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.
-	Portions copyright (c) 2018-2022 Ariadne Conill <ariadne@dereferenced.org>
+    Portions copyright (c) 2018-2022 Ariadne Conill <ariadne@dereferenced.org>
     This is proprietary software and requires a commercial license from the author.
  */

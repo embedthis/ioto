@@ -1,7 +1,22 @@
-/*
-    ioto.h -- EmbedThis Ioto header
+/**
+    @file ioto.h
+    @brief Ioto Device Agent API
+    @description Complete IoT solution combining multiple embedded C libraries into a unified agent
+    for local and cloud-based device management. This header provides the main API for the Ioto Device Agent,
+    including cloud connectivity, database services, web server, MQTT client, and device provisioning.
+
+    The Ioto Device Agent is designed for embedded IoT applications and provides:
+    - Cloud connectivity and device management
+    - Embedded database with synchronization
+    - HTTP/HTTPS web server
+    - MQTT client protocol
+    - Device provisioning and registration
+    - Real-time messaging and state management
+    - AI service integration
+    - AWS IoT Core integration
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
+    @stability Evolving
  */
 
 #ifndef _h_IOTO_H
@@ -130,7 +145,10 @@ struct IotoLog;
 
 /************************************* Ioto ***********************************/
 /**
-    Ioto control structure
+    Ioto Device Agent control structure.
+    @description Main control structure that contains all the state and configuration for the Ioto Device Agent.
+    This structure holds references to all enabled services including database, web server, MQTT client,
+    and cloud connectivity components. The global instance is accessible via the 'ioto' variable.
     @stability Evolving
  */
 typedef struct Ioto {
@@ -236,32 +254,43 @@ typedef struct Ioto {
 } Ioto;
 
 /**
-    Ioto global object.
-    @description Created via ioInitIoto
+    Global Ioto Device Agent instance.
+    @description Main global instance of the Ioto Device Agent control structure. This is initialized
+    by calling ioInit() and contains all the runtime state, configuration, and service references.
+    Applications access this global instance to interact with Ioto services.
     @stability Evolving
  */
 PUBLIC_DATA Ioto *ioto;
 
 /**
     Allocate the Ioto global object.
+    @description Creates and initializes a new Ioto control structure. This is typically called internally
+    by ioInit() and should not be called directly by applications.
+    @return A newly allocated Ioto structure or NULL on allocation failure.
     @stability Internal
  */
 PUBLIC Ioto *ioAlloc(void);
 
 /**
     Free the Ioto global object.
+    @description Releases all resources associated with the global Ioto instance. This is typically called
+    internally by ioTerm() and should not be called directly by applications.
     @stability Internal
  */
 PUBLIC void ioFree(void);
 
 /**
-    Initialize Ioto
+    Initialize the Ioto Device Agent.
+    @description Initializes the Ioto Device Agent by creating the global ioto instance, loading configuration,
+    and starting all enabled services. This must be called before using any other Ioto APIs.
     @stability Evolving
  */
 PUBLIC void ioInit(void);
 
 /**
-    Terminate Ioto
+    Terminate the Ioto Device Agent.
+    @description Shuts down all Ioto services, disconnects from the cloud, and releases all resources.
+    This should be called when the application is shutting down.
     @stability Evolving
  */
 PUBLIC void ioTerm(void);
@@ -285,30 +314,32 @@ PUBLIC Json *ioAPI(cchar *url, cchar *data);
 PUBLIC int ioAutomation(cchar *name, cchar *context);
 
 /**
-    User config entry point
+    User configuration entry point.
     @description The ioConfig function is invoked when Ioto has read its configuration into ioto->config
-        and before Ioto initializes services.
-        Users can provide their own ioConfig function and link with the Ioto library. Ioto will then
-        invoke the user's ioConfig for custom configuratoiun.
+        and before Ioto initializes services. Users can provide their own ioConfig function and link with
+        the Ioto library. Ioto will then invoke the user's ioConfig for custom configuration.
+    @param config The loaded configuration object
+    @return Zero if successful, otherwise a negative error code.
     @stability Evolving
     @see ioStart, ioStop
  */
 PUBLIC int ioConfig(Json *config);
 
 /**
-    User start entry point
+    User start entry point.
     @description The ioStart function is invoked when Ioto is fully initialized and ready to start.
         Users can provide their own ioStart and ioStop functions and link with the Ioto library. Ioto will then
         invoke the user's ioStart for custom initialization.
+    @return Zero if successful, otherwise a negative error code.
     @stability Evolving
     @see ioStop, ioConfig
  */
 PUBLIC int ioStart(void);
 
 /**
-    User stop entry point
+    User stop entry point.
     @description The ioStop function is invoked when Ioto is shutting down.
-        Users can provide their own ioStart function and link with the Ioto library. Ioto will then
+        Users can provide their own ioStop function and link with the Ioto library. Ioto will then
         invoke the user's ioStop for custom shutdown cleanup.
     @stability Evolving
     @see ioConfig, ioStart
@@ -343,35 +374,35 @@ PUBLIC bool ioGetBool(cchar *key);
 PUBLIC double ioGetNum(cchar *key);
 
 /**
-    Convenience routine to get a value from the Ioto configuration files.
-    Get a json node value as an allocated string
-    @description This call is a thin wrapper over jsonGet(ioto->config, ...).
-    @param key Property name to search for. This may include ".". For example: "settings.mode".
-    @param defaultValue If the key is not defined, return a copy of the defaultValue. The defaultValue
-        can be NULL in which case the return value will be an allocated empty string.
-    @return An string reference into the config store or defaultValue if not defined. Caller must not free.
+    Get a configuration value as a string.
+    @description This call is a thin wrapper over jsonGet(ioto->config, ...) that retrieves a configuration
+        value from the loaded Ioto configuration files and returns it as a string.
+    @param key Property name to search for. This may include dots for nested properties (e.g., "settings.mode").
+    @param defaultValue Default value to return if the key is not defined. If NULL, an empty string is returned.
+    @return String reference into the config store or defaultValue if not defined. Caller must not free.
     @stability Evolving
  */
 PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue);
 
 /**
-    Convenience routine to get an integer value from the Ioto configuration files.
-    @param key Property name to search for. This may include ".". For example: "settings.mode".
-    @param defaultValue If the key is not defined, return the defaultValue.
+    Get a configuration value as an integer.
+    @description Retrieves an integer configuration value from the loaded Ioto configuration files.
+    @param key Property name to search for. This may include dots for nested properties (e.g., "settings.mode").
+    @param defaultValue Default value to return if the key is not defined or cannot be converted to an integer.
     @return The integer value from the config store or defaultValue if not defined.
     @stability Evolving
  */
 PUBLIC int ioGetConfigInt(cchar *key, int defaultValue);
 
 /**
-    Get a metric value in the Ioto cloud
-    @description This call retrieves a metric in the Ioto cloud for this device.
-    @param metric String Metric name to define in the Embedthis/Device namespace.
+    Get a metric value from the Ioto cloud.
+    @description This call retrieves a metric from the Ioto cloud for this device.
+    @param metric Metric name to retrieve from the Embedthis/Device namespace.
     @param dimensions JSON array of dimensions as a string. Each element is an object that defines
-        the properties of that dimension. The empty object {} denotes All.
-    @param statistic Set to avg, min, max, count or current
+        the properties of that dimension. The empty object {} denotes All dimensions.
+    @param statistic Statistic type to retrieve: "avg", "min", "max", "count", or "current".
     @param period Number of seconds for the statistic period.
-    @returns The metric value or NAN if it cannot be found.
+    @return The metric value as a double, or NAN if the metric cannot be found.
     @stability Evolving
  */
 PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, int period);
@@ -383,126 +414,130 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
  */
 PUBLIC bool ioConnected(void);
 
-/*
-    Run function when connected to the cloud
-    @description This call the supplied function immediately if already connected. Otherwise,
+/**
+    Run function when connected to the cloud.
+    @description This calls the supplied function immediately if already connected. Otherwise,
         when the connection to the cloud is re-established, the function will be invoked.
-        If inline is true, the function may be executed inline without spawning a fiber. If not
+        If direct is true, the function may be executed inline without spawning a fiber. If not
         connected, the function will be run in a fiber when due.
-    @param fn Function to invoke
-    @param arg Argument to supply
+    @param fn Function to invoke when connected.
+    @param arg Argument to supply to the function.
     @param direct Set to true to invoke the function directly without spawning a fiber.
     @stability Evolving
  */
 PUBLIC void ioOnConnect(RWatchProc fn, void *arg, bool direct);
 
-/*
-    Disable running function when connected to the cloud
-    @param fn Function to invoke
-    @param arg Argument to supply
+/**
+    Disable running function when connected to the cloud.
+    @description Removes a previously registered connection callback function.
+    @param fn Function to remove from the connection callback list.
+    @param arg Argument that was supplied when the function was registered.
     @stability Evolving
  */
 PUBLIC void ioOnConnectOff(RWatchProc fn, void *arg);
 
 /**
-    Set a string value in the Ioto cloud key/value Store
-    @description This call defines a value in the Ioto cloud key/value store for this device.
-    Uses db sync if available, otherwise uses MQTT.
-    @param key String key value to assign a value in the store.
-    @param value Value to assign to the key
+    Set a string value in the Ioto cloud key/value store.
+    @description This call defines a string value in the Ioto cloud key/value store for this device.
+        Uses database sync if available, otherwise uses MQTT messaging.
+    @param key String key to assign in the store.
+    @param value String value to assign to the key.
     @stability Evolving
  */
 PUBLIC void ioSet(cchar *key, cchar *value);
 
 /**
-    Set a boolean value in the Ioto cloud key/value Store
+    Set a boolean value in the Ioto cloud key/value store.
     @description This call defines a boolean value in the Ioto cloud key/value store for this device.
-    Uses db sync if available, otherwise uses MQTT.
-    @param key String key value to assign a value in the store.
-    @param value Value to assign to the key
+        Uses database sync if available, otherwise uses MQTT messaging.
+    @param key String key to assign in the store.
+    @param value Boolean value to assign to the key.
     @stability Evolving
  */
 PUBLIC void ioSetBool(cchar *key, bool value);
 
 /**
-    Set a metric value in the Ioto cloud
+    Set a metric value in the Ioto cloud.
     @description This call defines a metric in the Ioto cloud for this device.
-    @param metric String Metric name to define in the Embedthis/Device namespace.
-    @param value Double Metric value.
+    @param metric Metric name to define in the Embedthis/Device namespace.
+    @param value Metric value as a double.
     @param dimensions JSON array of dimensions as a string. Each element is an object that defines
         the properties of that dimension. The empty object {} denotes no dimensions.
-    @param elapsed Number of seconds to buffer metric updates in the cloud before committing to the database. This is an
-       optimization. Set to zero for no buffering.
+    @param elapsed Number of seconds to buffer metric updates in the cloud before committing to the database.
+        This is an optimization. Set to zero for no buffering.
     @stability Evolving
  */
 PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
 
 /**
-    Set a numeric value in the Ioto cloud key/value Store
+    Set a numeric value in the Ioto cloud key/value store.
     @description This call defines a numeric value in the Ioto cloud key/value store for this device.
-    Uses db sync if available, otherwise uses MQTT.
-    @param key String key value to assign a value in the store.
-    @param value Double value to assign to the key
+        Uses database sync if available, otherwise uses MQTT messaging.
+    @param key String key to assign in the store.
+    @param value Numeric value to assign to the key.
     @stability Evolving
  */
 PUBLIC void ioSetNum(cchar *key, double value);
 
 /**
-    Schedule a cloud connection based on the mqtt.schedule
+    Schedule a cloud connection based on the MQTT schedule.
+    @description Schedules a connection attempt to the cloud based on the configured MQTT connection schedule.
+        This will initiate the connection process according to the timing parameters in the configuration.
     @stability Evolving
  */
 PUBLIC void ioStartConnect(void);
 
 #ifdef SERVICES_SERIALIZE
-/*
+/**
     Device ID serialization.
     @description If the device.json5 config file does not already have a device ID, this call will
-    allocate a unique device claim ID (10 character UDI) if required.
-    If the ioto.json5 "services.serialize" is set to "auto", this API will dynamically create a
-    random device ID. If the "serialize" setting is "factory", this call will invoke the factory
-    serialization service defined via the "api.serialize" URL setting. The resultant deviceId is
-    saved in the config/device.json5 file.
-    WARNING: this blocks ioto if calling the factory service.
+        allocate a unique device claim ID (10 character UDI) if required.
+        If the ioto.json5 "services.serialize" is set to "auto", this API will dynamically create a
+        random device ID. If the "serialize" setting is "factory", this call will invoke the factory
+        serialization service defined via the "api.serialize" URL setting. The resultant deviceId is
+        saved in the config/device.json5 file.
+        WARNING: this blocks Ioto if calling the factory service.
+    @stability Evolving
  */
 PUBLIC void ioSerialize(void);
 #endif
 
 #if SERVICES_SYNC
 /**
-    Flush pending changes to the cloud
+    Flush pending changes to the cloud.
     @description Database changes are buffered before being flushed to the cloud. This forces all
-        pending changes to be sent to the cloud.
-    @param force Set to true to flush items that are not yet due to be sync'd.
+        pending changes to be sent to the cloud immediately.
+    @param force Set to true to flush items that are not yet due to be synchronized.
     @stability Evolving
  */
 PUBLIC void ioFlushSync(bool force);
 
 /**
-    Sync all items to the cloud
+    Sync all items to the cloud.
     @description This call can be used to force a full sync-up of the local database to the cloud.
     @param timestamp Sync items updated after this time.
-    @param guarantee Set to true to true, peform a reliable sync by waiting for the cloud to send
-    a receipt acknowlegement for each item.
+    @param guarantee Set to true to perform a reliable sync by waiting for the cloud to send
+        a receipt acknowledgement for each item.
     @stability Evolving
  */
 PUBLIC void ioSyncUp(Time timestamp, bool guarantee);
 
 /**
-    Sync items from the cloud down to the device
-    @description This call can be used to retrieve all items updated after the requested timestamp
+    Sync items from the cloud down to the device.
+    @description This call can be used to retrieve all items updated after the requested timestamp.
     @param timestamp Retrieve items updated after this time. If timestamp is negative, the call will
-        retrieve items updates since the last sync.
+        retrieve items updated since the last sync.
     @stability Evolving
  */
 PUBLIC void ioSyncDown(Time timestamp);
 
 /**
-    Sync items to and from the cloud
+    Sync items to and from the cloud.
     @description This call can be used to force a sync-up and sync-down of the local database to and from the cloud.
     @param when Retrieve items updated after this time. If when is negative, the call will sync items updated
         since the last sync.
-    @param guarantee Set to true to true, peform a reliable sync by waiting for the cloud to send
-        a receipt acknowlegement for each item.
+    @param guarantee Set to true to perform a reliable sync by waiting for the cloud to send
+        a receipt acknowledgement for each item.
     @stability Evolving
  */
 PUBLIC void ioSync(Time when, bool guarantee);
@@ -520,7 +555,9 @@ PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len);
 
 #if SERVICES_DATABASE
 /**
-    Restart the database
+    Restart the database service.
+    @description Stops and restarts the embedded database service. This will close all database
+        connections and reinitialize the database subsystem.
     @stability Evolving
  */
 PUBLIC void ioRestartDb(void);
@@ -528,7 +565,9 @@ PUBLIC void ioRestartDb(void);
 
 #if SERVICES_WEB
 /**
-    Restart the web server
+    Restart the web server service.
+    @description Stops and restarts the web server service. This will close all client connections
+        and reinitialize the web server subsystem.
     @stability Evolving
  */
 PUBLIC void ioRestartWeb(void);
@@ -803,13 +842,65 @@ PUBLIC int ioLogMessage(IotoLog *log, Time time, cchar *msg);
  */
 PUBLIC int ioProvision();
 
+/**
+    Deprovision the device.
+    @description Removes device provisioning and resets the device to an unprovisioned state.
+    @stability Internal
+ */
 PUBLIC void ioDeprovision(void);
+
+/**
+    Connect to the cloud.
+    @description Initiates a connection to the cloud services.
+    @return Zero if successful, otherwise a negative error code.
+    @stability Internal
+ */
 PUBLIC int ioConnect(void);
+
+/**
+    Handle cloud connection established.
+    @description Internal callback when cloud connection is established.
+    @stability Internal
+ */
 PUBLIC void ioOnCloudConnect(void);
+
+/**
+    Disconnect from the cloud.
+    @description Terminates the connection to cloud services.
+    @stability Internal
+ */
 PUBLIC void ioDisconnect(void);
+
+/**
+    Start the provisioning service.
+    @description Initializes and starts the device provisioning service.
+    @stability Internal
+ */
 PUBLIC void ioStartProvisioner(void);
+
+/**
+    Wake the provisioning service.
+    @description Signals the provisioning service to check for pending work.
+    @stability Internal
+ */
 PUBLIC void ioWakeProvisioner(void);
+
+/**
+    Calculate exponential backoff delay.
+    @description Calculates an exponential backoff delay for retry operations.
+    @param delay Current delay value.
+    @param event Event to schedule.
+    @return New delay value.
+    @stability Internal
+ */
 PUBLIC Ticks ioBackoff(Ticks delay, REvent *event);
+
+/**
+    Resume from backoff delay.
+    @description Resumes operation after a backoff delay.
+    @param event Event that was scheduled.
+    @stability Internal
+ */
 PUBLIC void ioResumeBackoff(REvent *event);
 #endif
 

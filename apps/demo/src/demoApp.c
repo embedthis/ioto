@@ -17,7 +17,7 @@
 #endif
 
 /*
-    Review Acceptable: This is the public eval product ID.
+    SECURITY Acceptable:: This is the public eval product ID.
     Disclosure here is not a security risk.
  */
 #define EVAL_PRODUCT "01H4R15D3478JD26YDYK408XE6"
@@ -203,7 +203,7 @@ static void customCommand(void *ctx, DbItem *item)
 
     /*
         WARNING: no error checking of program or parameters here
-        REVIEW Acceptable: This is demo code and is not used in production.
+        SECURITY Acceptable:: This is demo code and is not used in production.
      */
     print("Run custom command: %s %s", program, parameters ? parameters : "");
     SFMT(cmd, "%s %s", program, parameters ? parameters : "");

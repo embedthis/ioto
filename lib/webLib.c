@@ -40,7 +40,7 @@ PUBLIC bool webAuthenticate(Web *web)
 
     if (web->cookie && webGetSession(web, 0) != 0) {
         /*
-            Review Acceptable: Retrieve authentication state from the session storage.
+            SECURITY Acceptable:: Retrieve authentication state from the session storage.
             Faster than re-authenticating.
          */
         if ((web->username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
@@ -184,19 +184,19 @@ PUBLIC int webFileHandler(Web *web)
     char     *path;
     int      rc;
 
-    // Review Acceptable: the path is already validated and normalized in webValidateRequest / webNormalizePath
+    // SECURITY Acceptable:: the path is already validated and normalized in webValidateRequest / webNormalizePath
     path = sjoin(webGetDocs(web->host), web->path, NULL);
 
     web->exists = stat(path, &info) == 0;
     web->ext = strrchr(path, '.');
 
-    if (smatch(web->method, "GET") || smatch(web->method, "HEAD") || smatch(web->method, "POST")) {
+    if (web->get || web->head || web->post) {
         rc = getFile(web, path, &info);
 
-    } else if (smatch(web->method, "PUT")) {
+    } else if (web->put) {
         rc = putFile(web, path);
 
-    } else if (smatch(web->method, "DELETE")) {
+    } else if (web->del) {
         rc = deleteFile(web, path);
 
     } else {
@@ -250,7 +250,7 @@ static int getFile(Web *web, cchar *path, FileInfo *info)
     //  ETag is a hash of the file's inode, size and last modified time.
     webAddHeader(web, "ETag", "\"%Ld\"", (uint64) info->st_ino ^ (uint64) info->st_size ^ (uint64) info->st_mtime);
 
-    if (smatch(web->method, "HEAD")) {
+    if (web->head) {
         webFinalize(web);
         close(fd);
         rFree(lpath);
@@ -437,20 +437,20 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
 
 #if ME_WEB_LIMITS
     host->maxBuffer = svalue(jsonGet(host->config, 0, "web.limits.buffer", "64K"));
-    host->maxHeader = svalue(jsonGet(host->config, 0, "web.limits.header", "10K"));
-    host->maxConnections = svalue(jsonGet(host->config, 0, "web.limits.connections", "100"));
     host->maxBody = svalue(jsonGet(host->config, 0, "web.limits.body", "100K"));
+    host->maxConnections = svalue(jsonGet(host->config, 0, "web.limits.connections", "100"));
+    host->maxHeader = svalue(jsonGet(host->config, 0, "web.limits.header", "10K"));
     host->maxSessions = svalue(jsonGet(host->config, 0, "web.limits.sessions", "20"));
     host->maxUpload = svalue(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
-    host->maxUploads = svalue(jsonGet(host->config, 0, "web.limits.uploads", "128"));
+    host->maxUploads = svalue(jsonGet(host->config, 0, "web.limits.uploads", "0"));
 #endif
 
     host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
     host->name = jsonGet(host->config, 0, "web.name", 0);
     host->uploadDir = jsonGet(host->config, 0, "web.upload.dir", uploadDir());
+    host->sessionCookie = jsonGet(host->config, 0, "web.sessions.cookie", WEB_SESSION_COOKIE);
     host->sameSite = jsonGet(host->config, 0, "web.sessions.sameSite", "Lax");
     host->httpOnly = jsonGetBool(host->config, 0, "web.sessions.httpOnly", 1);
-    host->xsrf = jsonGetBool(host->config, 0, "web.sessions.xsrf", 0);
     host->roles = jsonGetId(host->config, 0, "web.auth.roles");
     host->headers = jsonGetId(host->config, 0, "web.headers");
 
@@ -516,7 +516,6 @@ PUBLIC void webFreeHost(WebHost *host)
         webFreeSession(np->value);
     }
     rFreeHash(host->sessions);
-
     rFreeHash(host->mimeTypes);
     if (host->freeConfig) {
         jsonFree(host->config);
@@ -847,6 +846,7 @@ static void initRoutes(WebHost *host)
             rp->handler = jsonGet(json, id, "handler", "file");
             rp->stream = jsonGetBool(json, id, "stream", 0);
             rp->validate = jsonGetBool(json, id, "validate", 0);
+            rp->xsrf = jsonGetBool(json, id, "xsrf", 0);
 
             if ((methods = jsonToString(json, id, "methods", 0)) != 0) {
                 // Trim leading and trailing brackets
@@ -965,6 +965,7 @@ static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int cl
 static int handleRequest(Web *web);
 static bool matchFrom(Web *web, cchar *from);
 static int parseHeaders(Web *web, ssize headerSize);
+static void parseMethod(Web *web);
 static int processBody(Web *web);
 static void processOptions(Web *web);
 static void processRequests(Web *web);
@@ -989,7 +990,7 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
 
     host = listen->host;
 
-    if (++host->connections > host->maxConnections) {
+    if (host->connections >= host->maxConnections) {
         rTrace("web", "Too many connections %d/%d", (int) host->connections, (int) host->maxConnections);
         rFreeSocket(sock);
         return R_ERR_WONT_FIT;
@@ -997,6 +998,7 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
     if ((web = rAllocType(Web)) == 0) {
         return R_ERR_MEMORY;
     }
+    host->connections++;
     web->conn = conn++;
     initWeb(web, listen, sock, 0, 0);
     rAddItem(host->webs, web);
@@ -1079,7 +1081,7 @@ static void freeWebFields(Web *web, bool keepAlive)
     rFree(web->path);
     rFree(web->redirect);
     rFree(web->securityToken);
-    rFreeBuf(web->trace);
+    // rFreeBuf(web->trace);
     rFreeBuf(web->rxHeaders);
     rFreeHash(web->txHeaders);
     jsonFree(web->qvars);
@@ -1183,7 +1185,7 @@ static int handleRequest(Web *web)
     route = web->route;
     handler = route->handler;
 
-    if (tolower(web->method[0]) == 'o' && scaselessmatch(web->method, "OPTIONS") && route->methods) {
+    if (web->options && route->methods) {
         processOptions(web);
         return 0;
     }
@@ -1217,6 +1219,21 @@ static int handleRequest(Web *web)
         // Return zero as a valid response has been generated
         return 0;
     }
+    if (web->route->xsrf) {
+        if (web->get) {
+            /*
+                This send the XSRF token to the client. It will generate a new XSRF token if there is
+                not one already in the session state.
+             */
+            webAddSecurityToken(web, 0);
+        } else if (!web->options && !web->head && !web->trace) {
+            if (!webCheckSecurityToken(web)) {
+                webError(web, 400, "Invalid XSRF token");
+                return R_ERR_BAD_REQUEST;
+            }
+        }
+    }
+
     /*
         Run standard handlers: action and file
      */
@@ -1239,14 +1256,18 @@ static bool validateRequest(Web *web)
 {
     WebHost *host;
     char    path[WEB_MAX_SIG];
-    ssize   len;
+    ssize   len, urlLen;
     char    *cp;
 
     assert(web);
     host = web->host;
 
     len = slen(web->route->match);
-    sncopy(path, sizeof(path), &web->url[len], slen(web->url) - len);
+    urlLen = slen(web->url);
+    if (urlLen < len) {
+        return 0;
+    }
+    sncopy(path, sizeof(path), &web->url[len], urlLen - len);
     for (cp = path; cp < &path[sizeof(path)] && *cp; cp++) {
         if (*cp == '/') *cp = '.';
     }
@@ -1305,13 +1326,11 @@ static bool routeRequest(Web *web)
             if (route->redirect) {
                 webRedirect(web, 302, route->redirect);
 
-            } else if (route->role) {
-                if (!(tolower(web->method[0]) == 'o' && scaselessmatch(web->method, "OPTIONS"))) {
-                    if (!webAuthenticate(web) || !webCan(web, route->role)) {
-                        if (!smatch(route->role, "public")) {
-                            webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
-                            return 0;
-                        }
+            } else if (route->role && !web->options) {
+                if (!webAuthenticate(web) || !webCan(web, route->role)) {
+                    if (!smatch(route->role, "public")) {
+                        webError(web, 401, "Access Denied. User not logged in or insufficient privilege.");
+                        return 0;
                     }
                 }
             }
@@ -1371,7 +1390,7 @@ static bool matchFrom(Web *web, cchar *from)
             rc = 0;
         }
     }
-    if (path && !smatch(&web->path[1], path)) {
+    if (path && (slen(web->path) < 2 || !smatch(&web->path[1], path))) {
         //  Path does not contain leading "/"
         rc = 0;
     } else if (query && !smatch(web->query, query)) {
@@ -1404,6 +1423,8 @@ static int parseHeaders(Web *web, ssize headerSize)
         rLog("raw", "web", "Request <<<<\n\n%s\n", web->rxHeaders->start);
     }
     web->method = supper(stok(web->rxHeaders->start, " \t", &tok));
+    parseMethod(web);
+
     web->url = stok(tok, " \t", &tok);
     web->protocol = supper(stok(tok, "\r", &tok));
     web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
@@ -1431,6 +1452,54 @@ static int parseHeaders(Web *web, ssize headerSize)
     return 0;
 }
 
+static void parseMethod(Web *web)
+{
+    cchar *method;
+
+    method = web->method;
+
+    switch (method[0]) {
+    case 'D':
+        if (strcmp(method, "DELETE") == 0) {
+            web->del = 1;
+        }
+        break;
+
+    case 'G':
+        if (strcmp(method, "GET") == 0) {
+            web->get = 1;
+        }
+        break;
+
+    case 'H':
+        if (strcmp(method, "HEAD") == 0) {
+            web->head = 1;
+        }
+        break;
+
+    case 'O':
+        if (strcmp(method, "OPTIONS") == 0) {
+            web->options = 1;
+        }
+        break;
+
+    case 'P':
+        if (strcmp(method, "POST") == 0) {
+            web->post = 1;
+
+        } else if (strcmp(method, "PUT") == 0) {
+            web->put = 1;
+        }
+        break;
+
+    case 'T':
+        if (strcmp(method, "TRACE") == 0) {
+            web->trace = 1;
+        }
+        break;
+    }
+}
+
 /*
     Parse a headers block. Used here and by file upload.
  */
@@ -1439,6 +1508,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
     struct tm tm;
     cchar     *end;
     char      c, *cp, *endKey, *key, *prior, *t, *value;
+    uchar     uc;
     bool      hasCL = 0, hasTE = 0;
 
     if (!headers || *headers == '\0') {
@@ -1485,10 +1555,15 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
                 break;
             }
         }
+        /* 
+            From here, we've ensured the key and value are valid and do not contain any whitespace.
+            This prevents CRLF injection attacks in header values.
+        */
 
         //  Validate header name
         for (t = key; t < endKey; t++) {
-            if (*t >= sizeof(validHeaderChars) || !validHeaderChars[*t & 0x7f]) {
+            uc = (uchar) *t;
+            if (uc >= sizeof(validHeaderChars) || !validHeaderChars[uc]) {
                 return 0;
             }
         }
@@ -1525,6 +1600,10 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
             } else if (scaselessmatch(key, "content-length")) {
                 hasCL = 1;
                 web->rxLen = web->rxRemaining = stoi(value);
+                if (web->rxLen < 0 || web->rxLen > web->host->maxBody) {
+                    webNetError(web, "Bad Content-Length");
+                    return 0;
+                }
 
             } else if (scaselessmatch(key, "cookie")) {
                 if (web->cookie) {
@@ -1664,7 +1743,7 @@ PUBLIC int webReadBody(Web *web)
 static int processBody(Web *web)
 {
     /*
-        Review Acceptable - This logging is only enabled for testing and development,
+        SECURITY Acceptable: - This logging is only enabled for testing and development,
         and is an acceptable risk to use getenv here to modify log level
      */
     if (web->host->flags & WEB_SHOW_REQ_BODY && rGetBufLength(web->body)) {
@@ -2160,12 +2239,12 @@ PUBLIC void webAddHeader(Web *web, cchar *key, cchar *fmt, ...)
 
 PUBLIC void webAddHeaderDynamicString(Web *web, cchar *key, char *value)
 {
-    rAddName(getTxHeaders(web), key, value, R_DYNAMIC_VALUE);
+    rAddDuplicateName(getTxHeaders(web), key, value, R_DYNAMIC_VALUE);
 }
 
 PUBLIC void webAddHeaderStaticString(Web *web, cchar *key, cchar *value)
 {
-    rAddName(getTxHeaders(web), key, (void*) value, R_STATIC_VALUE);
+    rAddDuplicateName(getTxHeaders(web), key, (void*) value, R_STATIC_VALUE);
 }
 
 static RHash *getTxHeaders(Web *web)
@@ -2232,6 +2311,11 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
     if (!web->wroteHeaders && webWriteHeaders(web) < 0) {
         //  Already closed
         return R_ERR_CANT_WRITE;
+    }
+    if (web->head && !web->writingHeaders && bufsize > 0) {
+        // Non-finalizing head requests remit no body
+        webUpdateDeadline(web);
+        return 0;
     }
     if (writeChunkDivider(web, bufsize) < 0) {
         //  Already closed
@@ -2374,7 +2458,7 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
     if (webWriteHeaders(web) < 0) {
         rc = R_ERR_CANT_WRITE;
     } else {
-        if (web->status != 204 && !smatch(web->method, "HEAD") && web->txLen > 0) {
+        if (web->status != 204 && !web->head && web->txLen > 0) {
             (void) webWrite(web, msg, web->txLen);
         }
         rc = webFinalize(web);
@@ -2599,6 +2683,16 @@ static bool isprintable(cchar *s, ssize len)
 
     This implements server side request state that is identified by a request cookie.
 
+    Sessions are created on-demand whenever a variable is set in the session state via webSetSessionVar.
+    Sessions can be manually created via webCreateSession and destroyed via webDestroySession.
+
+    XSRF tokens are created for routes that have xsrf enabled. When a GET request is made, http.c:handleRequest
+    will call web AddSecurityToken to add the XSRF token to the response headers and cookies.
+    When a subsequent POST|PUT|DELETE request is made, http.c:handleRequest will call webCheckSecurityToken to
+    check the XSRF token.
+
+    Clients
+
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
@@ -2614,7 +2708,6 @@ static bool isprintable(cchar *s, ssize len)
 /*********************************** Forwards *********************************/
 
 static WebSession *createSession(Web *web);
-static char *makeSessionID(Web *web);
 static void pruneSessions(WebHost *host);
 
 /************************************ Locals **********************************/
@@ -2636,7 +2729,7 @@ static WebSession *webAllocSession(Web *web, int lifespan)
     }
     sp->lifespan = lifespan;
     sp->expires = rGetTicks() + lifespan;
-    sp->id = makeSessionID(web);
+    sp->id = cryptID(32);
 
     if ((sp->cache = rAllocHash(0, 0)) == 0) {
         rFree(sp->id);
@@ -2665,17 +2758,10 @@ PUBLIC void webFreeSession(WebSession *sp)
 
 PUBLIC void webDestroySession(Web *web)
 {
-    WebHost    *host;
     WebSession *session;
-    cchar      *httpOnly, *secure, *sameSite;
 
     if ((session = webGetSession(web, 0)) != 0) {
-        host = web->host;
-        httpOnly = host->httpOnly ? "HttpOnly; " : "";
-        secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
-        sameSite = host->sameSite ? host->sameSite : "Lax";
-        webAddHeader(web, "Set-Cookie", "%s=; Max-Age=0; path=/; %s%sSameSite=%s",
-                     WEB_SESSION_COOKIE, secure, httpOnly, sameSite);
+        webSetCookie(web, web->host->sessionCookie, NULL, "/", 0, 0);
         rRemoveName(web->host->sessions, session->id);
         webFreeSession(session);
         web->session = 0;
@@ -2698,20 +2784,21 @@ WebSession *webGetSession(Web *web, int create)
     char       *id;
 
     assert(web);
+
     session = web->session;
 
     if (!session) {
-        id = webParseCookie(web, WEB_SESSION_COOKIE);
+        id = webParseCookie(web, web->host->sessionCookie);
         if ((session = rLookupName(web->host->sessions, id)) == 0) {
             if (create) {
                 session = createSession(web);
             }
+            web->session = session;
         }
         rFree(id);
     }
     if (session) {
         session->expires = rGetTicks() + session->lifespan;
-        web->session = session;
     }
     return session;
 }
@@ -2720,7 +2807,6 @@ static WebSession *createSession(Web *web)
 {
     WebSession *session;
     WebHost    *host;
-    cchar      *httpOnly, *secure, *sameSite;
     int        count;
 
     host = web->host;
@@ -2733,18 +2819,11 @@ static WebSession *createSession(Web *web)
     if ((session = webAllocSession(web, host->sessionTimeout)) == 0) {
         return 0;
     }
-    secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
-    httpOnly = host->httpOnly ? "HttpOnly; " : "";
-    sameSite = host->sameSite ? host->sameSite : "Lax";
-    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=/; %s%sSameSite=%s", WEB_SESSION_COOKIE,
-                 session->id, host->sessionTimeout / TPS, secure, httpOnly, sameSite);
-    if (host->xsrf && web->securityToken) {
-        webSetSessionVar(web, WEB_XSRF_COOKIE, web->securityToken);
-    }
+    webSetCookie(web, web->host->sessionCookie, session->id, "/", 0, 0);
     return session;
 }
 
-PUBLIC char *webParseCookie(Web *web, char *name)
+PUBLIC char *webParseCookie(Web *web, cchar *name)
 {
     char *buf, *cookie, *end, *key, *tok, *value, *vtok;
 
@@ -2861,44 +2940,29 @@ static void pruneSessions(WebHost *host)
     host->sessionEvent = rStartEvent((REventProc) pruneSessions, host, WEB_SESSION_PRUNE);
 }
 
-static char *makeSessionID(Web *web)
-{
-    uchar idBuf[64];
-
-    assert(web);
-
-    cryptGetRandomBytes(idBuf, sizeof(idBuf), 0);
-    return cryptEncode64Block(idBuf, sizeof(idBuf));
-}
-
 /*
-    Create a security token to use to mitiate CSRF threats. 
+    Get a security token to use to mitiate CSRF threats and store it in the session state.
+    This will create a security token and save it in session state.
+    This will not send the token to the client. Use webAddSecurityToken to send the XSRF token to the client.
     Security tokens are expected to be sent with POST requests to verify the request is not being forged.
     Note: the Session API prevents session hijacking by pairing with the client IP
  */
-static cchar *createSecurityToken(Web *web)
-{
-    assert(web);
-
-    if (!web->securityToken) {
-        web->securityToken = cryptID(32);
-    }
-    return web->securityToken;
-}
-
-/*
-    Get the security token from the session. Create one if one does not exist. Store the token in session store.
- */
 PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
 {
+    cchar *token;
+
     if (recreate) {
+        rFree(web->securityToken);
         web->securityToken = 0;
-    } else {
-        web->securityToken = (char*) webGetSessionVar(web, WEB_XSRF_COOKIE, 0);
+    } else if (!web->securityToken) {
+        // Find the existing token in the session state
+        if ((token = webGetSessionVar(web, WEB_SESSION_XSRF, 0)) != 0) {
+            web->securityToken = sclone(token);
+        }
     }
     if (web->securityToken == 0) {
-        createSecurityToken(web);
-        webSetSessionVar(web, WEB_XSRF_COOKIE, web->securityToken);
+        web->securityToken = cryptID(32);
+        webSetSessionVar(web, WEB_SESSION_XSRF, web->securityToken);
     }
     return web->securityToken;
 }
@@ -2906,23 +2970,13 @@ PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
 /*
     Add the security token to an XSRF cookie and an X-XSRF-TOKEN response header
     Set recreate to true to force a recreation of the token.
+    This will create a session and cause a session cookie to be set in the response.
  */
 PUBLIC int webAddSecurityToken(Web *web, bool recreate)
 {
-    WebRoute *route;
-    WebHost  *host;
-    cchar    *securityToken, *url;
-    cchar    *httpOnly, *secure, *sameSite;
+    cchar *securityToken;
 
-    host = web->host;
-    route = web->route;
     securityToken = webGetSecurityToken(web, recreate);
-    url = (route->match && *route->match) ? route->match : "/";
-    secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
-    httpOnly = host->httpOnly ? "HttpOnly; " : "";
-    sameSite = host->sameSite ? host->sameSite : "Lax";
-    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=%s; %s%sSameSite=%s", WEB_XSRF_COOKIE,
-                 securityToken, host->sessionTimeout / TPS, url, secure, httpOnly, sameSite);
     webAddHeader(web, WEB_XSRF_HEADER, securityToken);
     return 0;
 }
@@ -2932,29 +2986,91 @@ PUBLIC int webAddSecurityToken(Web *web, bool recreate)
     It is expected the client will set the X-XSRF-TOKEN request header with the token.
     The user should call this function in the post action handler.
  */
-PUBLIC bool webCheckSecurityToken(Web *stream)
+PUBLIC bool webCheckSecurityToken(Web *web)
 {
     cchar *requestToken, *sessionToken;
 
-    if ((sessionToken = webGetSessionVar(stream, WEB_XSRF_COOKIE, 0)) != 0) {
-        requestToken = webGetHeader(stream, WEB_XSRF_HEADER);
+    if ((sessionToken = webGetSessionVar(web, WEB_SESSION_XSRF, 0)) == 0) {
+        // No prior GET to establish a token
+        webAddSecurityToken(web, 1);
+        return 0;
+    } else {
+        requestToken = webGetHeader(web, WEB_XSRF_HEADER);
         if (!requestToken) {
-            requestToken = webGetVar(stream, WEB_XSRF_PARAM, 0);
+            requestToken = webGetVar(web, WEB_XSRF_PARAM, 0);
             if (!requestToken) {
                 rError("session", "Missing security token in request");
+                webAddSecurityToken(web, 1);
+                return 0;
             }
         }
-        if (!smatch(sessionToken, requestToken)) {
+        if (!requestToken || !cryptMatch(sessionToken, requestToken)) {
             /*
-                Potential CSRF attack. Deny request. Re-create a new security token so legitimate clients can retry.
+                Potential CSRF attack. Deny request.
              */
-            rError("session", "Security token in request does not match session token, xsrf:%s, sessionXsrf:%s",
-                   requestToken, sessionToken);
-            webAddSecurityToken(stream, 1);
+            rError("session", "Security token in request does not match session token");
+            webAddSecurityToken(web, 1);
             return 0;
         }
     }
     return 1;
+}
+
+/*
+    Get a request cookie. The web->cookie contains a list of header cookies.
+    A site may submit multiple cookies separated by ";"
+ */
+PUBLIC char *webGetCookie(Web *web, cchar *name)
+{
+    char *buf, *cookie, *end, *key, *tok, *value, *vtok;
+
+    //  Limit cookie size to 8192 bytes for security (consistent with webParseCookie)
+    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > 8192) {
+        return 0;
+    }
+    buf = sclone(web->cookie);
+    end = &buf[slen(buf)];
+    value = 0;
+
+    for (tok = buf; tok && tok < end; ) {
+        cookie = stok(tok, ";", &tok);
+        cookie = strim(cookie, " ", R_TRIM_BOTH);
+        key = stok(cookie, "=", &vtok);
+        if (smatch(key, name)) {
+            // Remove leading spaces first, then double quotes. Spaces inside double quotes preserved.
+            value = sclone(strim(strim(vtok, " ", R_TRIM_BOTH), "\"", R_TRIM_BOTH));
+            break;
+        }
+    }
+    rFree(buf);
+    return value;
+}
+
+/*
+    Set a response cookie
+ */
+PUBLIC void webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags)
+{
+    WebHost *host;
+    cchar   *httpOnly, *secure, *sameSite;
+    Ticks   maxAge;
+
+    host = web->host;
+    if (flags & WEB_COOKIE_OVERRIDE) {
+        httpOnly = flags & WEB_COOKIE_HTTP_ONLY ? "HttpOnly; " : "";
+        secure = flags & WEB_COOKIE_SECURE ? "Secure; " : "";
+        sameSite = flags & WEB_COOKIE_SAME_SITE ? host->sameSite : "Lax";
+    } else {
+        httpOnly = host->httpOnly ? "HttpOnly; " : "";
+        secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
+        sameSite = host->sameSite ? host->sameSite : "Lax";
+    }
+    if (path == 0) {
+        path = "/";
+    }
+    maxAge = (lifespan ? lifespan: host->sessionTimeout) / TPS;
+    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=%s; %s%sSameSite=%s",
+                 name, value, maxAge, path, secure, httpOnly, sameSite);
 }
 #endif /* ME_WEB_SESSION */
 
@@ -3003,7 +3119,7 @@ PUBLIC int webUpgradeSocket(Web *web)
 
     assert(web);
 
-    if (!web->host->webSocketsEnable || web->error || web->wroteHeaders || !smatch(web->method, "GET")) {
+    if (!web->host->webSocketsEnable || web->error || web->wroteHeaders || !web->get) {
         return R_ERR_BAD_STATE;
     }
     host = web->host;
@@ -3220,7 +3336,7 @@ static void showRequest(Web *web)
         jsonSetFmt(json, 0, "bodyLength", "%ld", len);
         isPrintable = 1;
         for (i = 0; i < len; i++) {
-            if (!isprint((uchar) body[i]) || body[i] == '\n' || body[i] == '\r' || body[i] == '\t') {
+            if (!isprint((uchar) body[i]) && body[i] != '\n' && body[i] != '\r' && body[i] != '\t') {
                 isPrintable = 0;
                 break;
             }
@@ -3232,8 +3348,8 @@ static void showRequest(Web *web)
     showRequestContext(web, json);
     showServerContext(web, json);
 
+    webAddHeaderStaticString(web, "Content-Type", "application/json");
     webWriteJson(web, json);
-
     jsonFree(json);
 }
 
@@ -3425,6 +3541,63 @@ static void uploadAction(Web *web)
 }
 #endif
 
+static void sessionAction(Web *web)
+{
+    cchar *sessionToken;
+    char  *token;
+
+    if (smatch(web->path, "/test/session/create")) {
+        /*
+            Set a token in the session state and return it to the client.
+            It will send it back in the query string to the /check action below.
+         */
+        token = cryptID(32);
+        webSetSessionVar(web, "token", token);
+        webWriteFmt(web, "%s", token);
+        rFree(token);
+
+    } else if (smatch(web->path, "/test/session/check")) {
+        /*
+            Check the session token matches the query token
+         */
+        sessionToken = webGetSessionVar(web, "token", 0);
+        if (smatch(web->query, sessionToken)) {
+            webWriteFmt(web, "success");
+        } else {
+            webWriteFmt(web, "token mismatch");
+        }
+
+    } else if (smatch(web->path, "/test/session/form.html")) {
+        /*
+           if (web->get) {
+            // Add an XSRF token to the response in the headers and cookies
+            webAddSecurityToken(web, 1);
+
+           } else
+           if (web->post) {
+            if (webCheckSecurityToken(web)) {
+                webWriteFmt(web, "success");
+            } else {
+                webWriteFmt(web, "Security token matches");
+            }
+           }
+         */
+        webWriteFmt(web, "success");
+    }
+    webFinalize(web);
+}
+
+/*
+    This action is invoked for the GET and POST requests to the /test/xsrf/ route.
+    The core engine will add an XSRF token in response to the GET request and will validate it
+    in subsequent POST requests. We don't need to do anything here.
+ */
+static void xsrfAction(Web *web)
+{
+    webWriteFmt(web, "success");
+    webFinalize(web);
+}
+
 /*
     Read a streamed rx body
  */
@@ -3488,6 +3661,8 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 #if ME_COM_WEBSOCKETS
     webAddAction(host, SFMT(url, "%s/ws", prefix), webSocketAction, NULL);
 #endif
+    webAddAction(host, SFMT(url, "%s/session", prefix), sessionAction, NULL);
+    webAddAction(host, SFMT(url, "%s/xsrf", prefix), xsrfAction, NULL);
     webAddAction(host, SFMT(url, "%s/sig", prefix), sigAction, NULL);
     webAddAction(host, SFMT(url, "%s/buffer", prefix), bufferAction, NULL);
 }
@@ -3688,7 +3863,13 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *content
     upload->fd = -1;
 
     if (path) {
-        if (*path == '.' || strpbrk(path, "\\/:*?<>|~\"'%`^\n\r\t\f")) {
+        // Enhanced validation against directory traversal
+        if (*path == '.' || strstr(path, "..") || strpbrk(path, "\\/:*?<>|~\"'%`^\n\r\t\f")) {
+            webError(web, 400, "Bad upload client filename");
+            return 0;
+        }
+        // Check for URL-encoded directory traversal attempts
+        if (strstr(path, "%2e") || strstr(path, "%2E") || strstr(path, "%2f") || strstr(path, "%2F") || strstr(path, "%5c") || strstr(path, "%5C")) {
             webError(web, 400, "Bad upload client filename");
             return 0;
         }
@@ -3698,14 +3879,13 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *content
             Create the file to hold the uploaded data
          */
         if ((upload->filename = rGetTempFile(web->host->uploadDir, "tmp")) == 0) {
-            webError(web, 500, "Cannot create upload temp file %s. Check upload temp dir %s", upload->filename,
-                     web->host->uploadDir);
+            webError(web, 500, "Cannot create upload temp file. Check upload directory configuration");
             return 0;
         }
         rTrace("web", "File upload of: %s stored as %s", upload->clientFilename, upload->filename);
 
         if ((upload->fd = open(upload->filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0600)) < 0) {
-            webError(web, 500, "Cannot open upload temp file %s", upload->filename);
+            webError(web, 500, "Cannot open upload temp file");
             return 0;
         }
         rAddName(web->uploads, upload->name, upload, 0);
@@ -4038,7 +4218,7 @@ PUBLIC char *webParseUrl(cchar *uri,
     Normalize a path to remove "./",  "../" and redundant separators.
     This does not map separators nor change case. Returns an allocated path, caller must free.
 
-    Review Acceptable: This routine does not check for path traversal because
+    SECURITY Acceptable:: This routine does not check for path traversal because
     all callers validate the path before calling this routine.
  */
 PUBLIC char *webNormalizePath(cchar *pathArg)
@@ -4086,7 +4266,7 @@ PUBLIC char *webNormalizePath(cchar *pathArg)
         if (smatch(sp, "..")) {
             if (j > 0) {
                 j--;
-            } else if (!isAbs) {
+            } else {
                 //  Attempt to traverse up from a relative path's root. This is a security risk.
                 rFree(dupPath);
                 rFree(segments);
@@ -4185,10 +4365,8 @@ PUBLIC char *webEncode(cchar *uri)
     char         *result, *op;
     int          len;
 
-    assert(uri);
-
     if (!uri) {
-        return sclone("");
+        return NULL;
     }
     for (len = 1, ip = uri; *ip; ip++, len++) {
         if (charMatch[(uchar) * ip] & WEB_ENCODE_URI) {

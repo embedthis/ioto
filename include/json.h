@@ -1,16 +1,36 @@
-/*
-    json.h -- Header for the JSON library
+/**
+    JSON5/JSON6 Parser and Manipulation Library
+    @description High-performance JSON parser and manipulation library for embedded IoT applications.
+    Supports both traditional JSON and relaxed JSON5/JSON6 syntax with extended features for ease of use.
 
-    Supports JSON5/6 which is a strict JSON superset. Allows:
+    This library provides a complete JSON processing solution including:
+    - Fast parsing of JSON/JSON5/JSON6 text into navigable tree structures
+    - Insitu parsing of JSON text resulting in extremely efficient memory usage
+    - Query API with dot-notation path support (e.g., "config.network.timeout")
+    - Modification APIs for setting values and blending JSON objects
+    - Serialization back to JSON text with multiple formatting options
+    - Template expansion with ${path.var} variable substitution
 
-    . Keyword undefined
-    . Multiline strings
-    . Backtick quotes
-    . Unquoted keys
-    . Trailing commas in objects and arrays
-    . Single and multiline comments
+    JSON5/JSON6 Extended Features:
+    - Unquoted object keys when they contain no special characters
+    - Unquoted string values when they contain no spaces
+    - Trailing commas in objects and arrays
+    - Single-line (//) and multi-line comments
+    - Multi-line strings using backtick quotes
+    - JavaScript-style primitives (undefined, null)
+    - Keyword 'undefined' support
 
-    Copyright (c) All Rights Reserved. See details at the end of the file.
+    The library is designed for embedded developers who need efficient JSON processing
+    with minimal memory overhead and high performance characteristics.
+
+    The parser is lax and will tolerate some non-standard JSON syntax such as:
+    - Multiple or trailing commas in objects and arrays.
+    - An empty string is allowed and returns an empty JSON instance.
+    - Similarly a top level whitespace string is allowed and returns an empty JSON instance.
+
+    Use another tool if you need strict JSON validation.
+
+    @stability Evolving
  */
 
 #pragma once
@@ -39,67 +59,92 @@ struct JsonNode;
 #endif
 
 #ifndef ME_JSON_MAX_NODES
-    #define ME_JSON_MAX_NODES    100000
+    #define ME_JSON_MAX_NODES    100000               /**< Maximum number of elements in json text */
 #endif
 
 #ifndef JSON_MAX_LINE_LENGTH
-    #define JSON_MAX_LINE_LENGTH 120
+    #define JSON_MAX_LINE_LENGTH 120                  /**< Default Maximum length of a line for compacted output */
 #endif
 
 #ifndef JSON_DEFAULT_INDENT
-    #define JSON_DEFAULT_INDENT  4
+    #define JSON_DEFAULT_INDENT  4                    /**< Default indent level for json text */
 #endif
 
-/*
-    Json types
+/**
+    JSON node type constants
+    @description These constants define the different types of nodes in the JSON tree.
+    Each node has exactly one type that determines how its value should be interpreted.
+    @stability Evolving
  */
-#define JSON_OBJECT              0x1
-#define JSON_ARRAY               0x2
-#define JSON_COMMENT             0x4
-#define JSON_STRING              0x8                                                  /**< Strings including dates
-                                                                                         encoded as ISO strings */
-#define JSON_PRIMITIVE           0x10                                                 /**< True, false, null, undefined,
-                                                                                         number */
-#define JSON_REGEXP              0x20                                                 /**< Regular expressions */
+#define JSON_OBJECT              0x1                  /**< Object node containing key-value pairs */
+#define JSON_ARRAY               0x2                  /**< Array node containing indexed elements */
+#define JSON_COMMENT             0x4                  /**< Comment node (JSON5 feature) */
+#define JSON_STRING              0x8                  /**< String value including ISO date strings */
+#define JSON_PRIMITIVE           0x10                 /**< Primitive values: true, false, null, undefined, numbers */
+#define JSON_REGEXP              0x20                 /**< Regular expression literal (JSON6 feature) */
 
-/*
-    Parse flags
+/**
+    JSON parsing flags
+    @description Flags that control the behavior of JSON parsing operations.
+    These can be combined using bitwise OR to enable multiple options.
+    @stability Evolving
  */
-#define JSON_STRICT_PARSE        0x1                                                  /**< Parse in strict JSON format
-                                                                                      */
-#define JSON_PASS_VALUE          0x2                                                  /**< Transfer ownership of the
-                                                                                         parsed value to json. */
+#define JSON_STRICT_PARSE        0x1                  /**< Parse in strict JSON format (no JSON5 extensions) */
+#define JSON_PASS_VALUE          0x2                  /**< Transfer string ownership to JSON object during parsing */
 
-/*
-    Render flags
+/**
+    JSON rendering flags
+    @description Flags that control the format and style of JSON serialization output.
+    These can be combined to achieve the desired output format.
+    @stability Evolving
  */
-#define JSON_COMPACT             0x10                                                 /**< Compact properties format */
-#define JSON_DOUBLE_QUOTES       0x20                                                 /**< Use double quotes */
-#define JSON_ENCODE              0x40                                                 /**< Encode control characters */
-#define JSON_EXPAND              0x80                                                 /**< Expand ${path.var} references
-                                                                                      */
-#define JSON_MULTILINE           0x100                                                /**< Save on multiple lines */
-#define JSON_ONE_LINE            0x200                                                /**< Save on one line */
-#define JSON_QUOTE_KEYS          0x400                                                /**< Quote property keys */
-#define JSON_SINGLE_QUOTES       0x800                                                /**< Use single quotes */
+#define JSON_COMPACT             0x10                 /**< Use compact formatting with minimal whitespace */
+#define JSON_DOUBLE_QUOTES       0x20                 /**< Use double quotes for strings and keys */
+#define JSON_ENCODE              0x40                 /**< Encode control characters in strings */
+#define JSON_EXPAND              0x80                 /**< Expand ${path.var} template references during rendering */
+#define JSON_MULTILINE           0x100                /**< Format output across multiple lines for readability */
+#define JSON_ONE_LINE            0x200                /**< Force all output onto a single line */
+#define JSON_QUOTE_KEYS          0x400                /**< Always quote object property keys */
+#define JSON_SINGLE_QUOTES       0x800                /**< Use single quotes instead of double quotes */
 
-/*
-    Internal flags used when rendering
+/**
+    Internal rendering flags
+    @description Internal flags used by the JSON library during rendering operations.
+    These are not intended for direct use by applications.
+    @stability Internal
  */
-#define JSON_KEY                 0x1000                                               /**< Internal flag to designate
-                                                                                         Property key */
-#define JSON_DEBUG               0x2000                                               /**< Internal flag for debug
-                                                                                         formatting */
-#define JSON_BARE                0x4000                                               /**< Internal flag for formatting
-                                                                                         without quotes or [] */
+#define JSON_KEY                 0x1000               /**< Internal: currently rendering a property key */
+#define JSON_DEBUG               0x2000               /**< Internal: enable debug-specific formatting */
+#define JSON_BARE                0x4000               /**< Internal: render without quotes or brackets */
 
-/*
-    Composite flags
+/**
+    Internal parsing flags
+    @description Internal flags used by the JSON library during parsing operations.
+    These are not intended for direct use by applications.
+    @stability Internal
  */
-#define JSON_JS                  (JSON_SINGLE_QUOTES)                                 /**< JavaScript format */
-#define JSON_JSON                (JSON_DOUBLE_QUOTES | JSON_QUOTE_KEYS | JSON_ENCODE) /**< Strict JSON format */
-#define JSON_JSON5               (JSON_SINGLE_QUOTES)                                 /**< JSON5 format */
-#define JSON_HUMAN               (JSON_JSON5 | JSON_MULTILINE | JSON_COMPACT)         /**< Human readable format */
+#define JSON_EXPANDING           0x8000               /**< Internal: expanding a ${path.var} reference */
+#define JSON_EXPECT_KEY          0x10000              /**< Internal: parsing and expect a property key name */
+#define JSON_EXPECT_COMMA        0x20000              /**< Internal: parsing and expect a comma */
+#define JSON_EXPECT_VALUE        0x40000              /**< Internal: parsing and expect a value */
+#define JSON_PARSE_FLAGS         0xFF000              /**< Internal: parsing flags */
+
+/**
+    Composite formatting flags
+    @description Predefined combinations of formatting flags for common output styles.
+    These provide convenient presets for typical use cases.
+    @stability Evolving
+ */
+#define JSON_JS                  (JSON_SINGLE_QUOTES) /**< JavaScript-compatible format with single quotes */
+/**<
+    Strict JSON format compliant with RFC 7159
+ */
+#define JSON_JSON                (JSON_DOUBLE_QUOTES | JSON_QUOTE_KEYS | JSON_ENCODE)
+#define JSON_JSON5               (JSON_SINGLE_QUOTES) /**< JSON5 format allowing relaxed syntax */
+/**<
+    Human-readable format with proper indentation
+ */
+#define JSON_HUMAN               (JSON_JSON5 | JSON_MULTILINE | JSON_COMPACT)
 
 // DEPRECATED - this will be removed in the next release
 #define JSON_PRETTY              (JSON_HUMAN)
@@ -170,76 +215,107 @@ struct JsonNode;
 
 /**
     JSON Object
-    @description The JSON library parses JSON strings into an in-memory JSON tree that can be
-        queried and modified and saved. Some APIs such as jsonGet return direct references into
-        the JSON tree for performance as (const char*) references. Others, such as jsonGet will
-        return an allocated string that must be freed by the caller.
-        \n
-        The JSON tree may be locked via the lock flag. A locked JSON object is useful as it will
-        not permit further updates via (jsonSet or jsonBlend) and the internal node structure will
-        be stable such that references returned via jsonGet and jsonGetNode will remain valid.
+    @description The primary JSON container structure that holds a parsed JSON tree in memory.
+    This structure provides efficient access to JSON data through a node-based tree representation.
+
+    The JSON library parses JSON text into an in-memory tree that can be queried, modified,
+    and serialized back to text. APIs like jsonGet() return direct references into the tree
+    for performance, while APIs like jsonGetClone() return allocated copies that must be freed.
+
+    The JSON tree can be locked via jsonLock() to prevent modifications. A locked JSON object
+    ensures that references returned by jsonGet() and jsonGetNode() remain valid, making it
+    safe to hold multiple references without concern for tree modifications.
+
+    Memory management is handled automatically through the R runtime. The entire tree is freed
+    when jsonFree() is called on the root JSON object.
     @stability Evolving
-    @see
  */
 typedef struct Json {
-    struct JsonNode *nodes;
+    struct JsonNode *nodes;              /**< Array of JSON nodes forming the tree structure */
 #if R_USE_EVENT
-    REvent event;                           /**< Saving event */
+    REvent event;                        /**< Event structure for asynchronous saving operations */
 #endif
-    char *text;                             /**< Text being parsed */
-    char *end;                              /**< End of text + 1 */
-    char *next;                             /**< Pointer to next token */
-    char *path;                             /**< Filename being parsed */
-    char *errorMsg;                         /**< Parsing error details */
-    char *value;                            /**< Result from jsonString */
-    char *property;                         /**< Current property buffer */
-    ssize propertyLength;                   /**< Property buffer length */
-    uint size;                              /**< Size of Json.nodes in elements (includes spare) */
-    uint count;                             /**< Number of allocated nodes (count <= size) */
-    uint lineNumber : 16;                   /**< Current parse line number */
-    uint lock : 1;                          /**< Lock JSON object from further updates */
-    uint flags : 7;                         /**< Flags (reserved for future use) */
-    uint userFlags : 8;                     /**< User flags (reserved for user use) */
+    char *text;                          /**< Original JSON text being parsed (will be modified during parsing) */
+char *end;                           /**< Pointer to one byte past the end of the text buffer */
+char *next;                          /**< Current parsing position in the text buffer */
+char *path;                          /**< File path if JSON was loaded from a file (for error reporting) */
+char *error;                         /**< Detailed error message from parsing failures */
+char *property;                      /**< Internal buffer for building property names during parsing */
+ssize propertyLength;                /**< Current allocated size of the property buffer */
+    char *value;                         /**< Cached serialized string result from jsonString() calls */
+    uint size;                           /**< Total allocated capacity of the nodes array */
+    uint count;                          /**< Number of nodes currently used in the tree */
+    uint lineNumber : 16;                /**< Current line number during parsing (for error reporting) */
+    uint lock : 1;                       /**< Lock flag preventing modifications when set */
+    uint flags : 7;                      /**< Internal parser flags (reserved for library use) */
+    uint userFlags : 8;                  /**< Application-specific flags available for user use */
 #if JSON_TRIGGER
-    JsonTrigger trigger;
-    void *triggerArg;
+    JsonTrigger trigger;                 /**< Optional callback function for monitoring changes */
+    void *triggerArg;                    /**< User argument passed to the trigger callback */
 #endif
 } Json;
 
 /**
     JSON Node
+    @description Individual node in the JSON tree representing a single property or value.
+    Each node contains a name/value pair and maintains structural information about its
+    position in the tree hierarchy.
+
+    The JSON tree is stored as a flattened array of nodes with parent-child relationships
+    maintained through indexing. The 'last' field indicates the boundary of child nodes,
+    enabling efficient tree traversal without requiring explicit pointers.
+
+    Memory management for name and value strings is tracked through the allocatedName
+    and allocatedValue flags, allowing the library to optimize memory usage by avoiding
+    unnecessary string copies when possible.
     @stability Evolving
  */
 typedef struct JsonNode {
-    char *name;                                 /**< Property name - null terminated */
-    char *value;                                /**< Property value - null terminated */
-    int last : 24;                              /**< Index +1 of last node for which this node is parent */
-    uint type : 6;                              /**< Primitive type of the node (object, array, string or primitive) */
-    uint allocatedName : 1;                     /**< True if the node text was allocated and must be freed */
-    uint allocatedValue : 1;                    /**< True if the node text was allocated and must be freed */
+    char *name;                /**< Property name (null-terminated string, NULL for array elements) */
+    char *value;               /**< Property value (null-terminated string representation) */
+    int last : 24;             /**< Index + 1 of the last descendant node (defines subtree boundary) */
+    uint type : 6;             /**< Node type: JSON_OBJECT, JSON_ARRAY, JSON_STRING, JSON_PRIMITIVE, etc. */
+    uint allocatedName : 1;    /**< True if name string was allocated and must be freed by JSON library */
+    uint allocatedValue : 1;   /**< True if value string was allocated and must be freed by JSON library */
 #if ME_DEBUG
-    int lineNumber;                             /**< Debug only - json line number */
+    int lineNumber;            /**< Source line number in original JSON text (debug builds only) */
 #endif
 } JsonNode;
 
 #if JSON_TRIGGER
 /**
-    Trigger callback for
+    Trigger callback for monitoring JSON modifications
+    @description Callback function signature for receiving notifications when JSON nodes are modified.
+    The trigger is called whenever a node value is changed through jsonSet or jsonBlend operations.
+    @param arg User-defined argument passed to jsonSetTrigger()
+    @param json The JSON object being modified
+    @param node The specific node that was modified
+    @param name The property name that was modified
+    @param value The new value assigned to the property
+    @param oldValue The previous value before modification
+    @stability Evolving
  */
 typedef void (*JsonTrigger)(void *arg, struct Json *json, JsonNode *node, cchar *name, cchar *value, cchar *oldValue);
 PUBLIC void jsonSetTrigger(Json *json, JsonTrigger proc, void *arg);
 #endif
 
 /**
-    Allocate a json object
-    @return A json object
+    Allocate a new JSON object
+    @description Creates a new, empty JSON object ready for parsing or manual construction.
+    The object is allocated using the R runtime and must be freed with jsonFree() when no longer needed.
+    The initial object contains no nodes and is ready to accept JSON text via jsonParseText() or
+    manual node construction via jsonSet() calls.
+    @return A newly allocated JSON object, or NULL if allocation fails
     @stability Evolving
  */
 PUBLIC Json *jsonAlloc(void);
 
 /**
-    Free a json object
-    @param json A json object
+    Free a JSON object and all associated memory
+    @description Releases all memory associated with a JSON object including the node tree,
+    text buffers, and any allocated strings. After calling this function, the JSON object
+    and all references into it become invalid and must not be used.
+    @param json JSON object to free. Can be NULL (no operation performed).
     @stability Evolving
  */
 PUBLIC void jsonFree(Json *json);
@@ -262,30 +338,39 @@ PUBLIC void jsonLock(Json *json);
 PUBLIC void jsonUnlock(Json *json);
 
 /**
-    Set user flags
-    @param json A json object
-    @param flags User flags
+    Set user-defined flags on a JSON object
+    @description Sets application-specific flags in the userFlags field of the JSON object.
+    These flags are reserved for user applications and are not used by the JSON library.
+    Useful for tracking application state or marking JSON objects with custom attributes.
+    @param json JSON object to modify
+    @param flags User-defined flags (8-bit value)
     @stability Evolving
  */
 PUBLIC void jsonSetUserFlags(Json *json, int flags);
 
 /**
-    Get user flags
-    @param json A json object
-    @return User flags
+    Get user-defined flags from a JSON object
+    @description Retrieves the current value of application-specific flags from the JSON object.
+    These flags are managed entirely by the user application.
+    @param json JSON object to query
+    @return Current user flags value (8-bit value)
     @stability Evolving
  */
 PUBLIC int jsonGetUserFlags(Json *json);
 
-/*
-    Flags for jsonBlend
+/**
+    JSON blending operation flags
+    @description Flags that control how jsonBlend() merges JSON objects together.
+    These can be combined to achieve sophisticated merging behaviors.
+    @stability Evolving
  */
-#define JSON_COMBINE      0x1            /**< Combine properies using '+' '-' '=' '?' prefixes */
-#define JSON_OVERWRITE    0x2            /**< Default to overwrite existing properies '=' */
-#define JSON_APPEND       0x4            /**< Default to append to existing '+' (default) */
-#define JSON_REPLACE      0x8            /**< Replace existing properies '-' */
-#define JSON_CCREATE      0x10           /**< Conditional create if not already existing '?' */
-#define JSON_REMOVE_UNDEF 0x20           /**< Remove undefined (NULL) properties */
+#define JSON_COMBINE      0x1            /**< Enable property name prefixes '+', '-', '=', '?' for merge control */
+#define JSON_OVERWRITE    0x2            /**< Default behavior: overwrite existing properties (equivalent to '=') */
+#define JSON_APPEND       0x4            /**< Default behavior: append to existing properties (equivalent to '+') */
+#define JSON_REPLACE      0x8            /**< Default behavior: replace existing properties (equivalent to '-') */
+#define JSON_CCREATE      0x10           /**< Default behavior: conditional create only if not existing (equivalent to
+                                            '?') */
+#define JSON_REMOVE_UNDEF 0x20           /**< Remove properties with undefined (NULL) values during blend */
 
 /**
     Blend nodes by copying from one Json to another.
@@ -360,7 +445,8 @@ PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
     @description This call returns a reference into the JSON storage. Such references are
         short-term and may not remain valid if other modifications are made to the JSON tree.
         Only use the result of this API while no other changes are made to the JSON object.
-        Use jsonGet if you need to retain the queried value.
+        Use jsonGet if you need to retain the queried value. If a key value is NULL or undefined,
+        then the defaultValue will be returned.
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -470,7 +556,7 @@ PUBLIC int jsonGetId(const Json *json, int nid, cchar *key);
  */
 PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 
-/*
+/**
     Get a json node object ID
     @description This call returns the node ID for a node. Such references are
         not persistent if other modifications are made to the JSON tree.
@@ -482,17 +568,22 @@ PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key);
 PUBLIC int jsonGetNodeId(const Json *json, JsonNode *node);
 
 /**
-    Get the Nth child node for a json node.
+    Get the Nth child node for a json node
+    @description Retrieves a specific child node by its index position within a parent node.
+    This is useful for iterating through array elements or object properties in order.
+    The child index is zero-based.
     @param json Source json
     @param nid Base node ID to examine.
-    @param nth Specify which child to return.
-    @return The Nth child node object for the specified node.
+    @param nth Zero-based index of which child to return.
+    @return The Nth child node object for the specified node. Returns NULL if the index is out of range.
     @stability Evolving
  */
 PUBLIC JsonNode *jsonGetChildNode(Json *json, int nid, int nth);
 
 /**
     Get the value type for a node
+    @description Determines the type of a JSON node, which indicates how the value should be interpreted.
+    This is essential for type-safe access to JSON values.
     @param json Source json
     @param nid Base node ID from which to start the search.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -531,7 +622,20 @@ PUBLIC Json *jsonParse(cchar *text, int flags);
 PUBLIC Json *jsonParseKeep(char *text, int flags);
 
 /**
-    Convert a string into strict json
+    Parse a json string into an existing json object
+    @description Use this method if you need to have access to the error message if the parse fails.
+    @param json Existing json object to parse into.
+    @param text Json string to parse.
+    @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
+    Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend.
+    This will make returned references via jsonGet and jsonGetNode stable.
+    @return Json object if successful. Caller must free via jsonFree. Returns null if the text will not parse.
+    @stability Evolving
+ */
+PUBLIC int jsonParseText(Json *json, char *text, int flags);
+
+/**
+    Parse a string as JSON or JSON5 and convert into strict JSON string.
     @param fmt Printf style format string
     @param ... Args for format
     @return A string. Returns NULL if the text will not parse. Caller must free.
@@ -560,25 +664,30 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
 #define JFMT(buf, ...) jsonConvertBuf(buf, sizeof(buf), __VA_ARGS__)
 
 /*
-    Convenience macro for converting a single string into a strict json string in a buffer.
+    Convenience macro for converting a JSON5 string into a strict JSON string in a buffer.
  */
 #define JSON(buf, ...) jsonConvertBuf(buf, sizeof(buf), "%s", __VA_ARGS__)
 
 /**
     Parse a formatted string into a json object
+    @description Convenience function that formats a printf-style string and then parses it as JSON.
+    This is useful for constructing JSON from dynamic values without manual string building.
     @param fmt Printf style format string
     @param ... Args for format
-    @return A json object. Caller must free.
+    @return A json object. Caller must free via jsonFree().
     @stability Evolving
  */
 PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
 
 /**
     Load a JSON object from a filename
+    @description Reads and parses a JSON file from disk into a JSON object tree.
+    This is a convenience function that combines file reading with JSON parsing.
+    If parsing fails, detailed error information is provided.
     @param path Filename path containing a JSON string to load
     @param errorMsg Error message string set if the parse fails. Caller must not free.
     @param flags Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.
-    @return JSON object tree. Caller must free errorMsg via rFree on errors.
+    @return JSON object tree. Caller must free via jsonFree(). Returns NULL on error.
     @stability Evolving
  */
 PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags);
@@ -598,24 +707,30 @@ PUBLIC Json *jsonParseString(cchar *text, char **errorMsg, int flags);
 
 /**
     Remove a Property from a JSON object
+    @description Removes one or more properties from a JSON object based on the specified key path.
+    The key path supports dot notation for nested property removal. This operation modifies
+    the JSON tree in place.
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start searching for key. Set to zero for the top level.
-    @param key Property name to remove for. This may include ".". For example: "settings.mode".
-    @return Returns a JSON object array of all removed properies. Array will be empty if not qualifying
-        properies were found and removed.
+    @param key Property name to remove. This may include ".". For example: "settings.mode".
+    @return Returns zero if successful, otherwise a negative error code.
     @stability Evolving
  */
 PUBLIC int jsonRemove(Json *obj, int nid, cchar *key);
 
 /**
     Save a JSON object to a filename
+    @description Serializes a JSON object (or a portion of it) to a file on disk.
+    The output format is controlled by the flags parameter. The file is created with
+    the specified permissions mode.
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start searching for key. Set to zero for the top level.
-    @param key Property name to add/update. This may include ".". For example: "settings.mode".
+    @param key Property name to save. Set to NULL to save the entire object. This may include ".". For example:
+       "settings.mode".
     @param path Filename path to contain the saved JSON string
-    @param flags Same flags as for #jsonToString: JSON_JSON5
-    @param mode Permissions mode
-    @return Zero if successful, otherwise a negative RT error code.
+    @param mode File permissions mode (e.g., 0644)
+    @param flags Rendering flags - same as for jsonToString()
+    @return Zero if successful, otherwise a negative error code.
     @stability Evolving
  */
 PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int flags);
@@ -796,10 +911,10 @@ PUBLIC void jsonPrint(Json *json);
 
 /**
     Expand a string template with ${prop.prop...} references
-    @description Unexpanded references are replaced with $^{token}
+    @description Unexpanded references left as is.
     @param json Json object
     @param str String template to expand
-    @param keep If true, unexpanded references are retained as ${token}
+    @param keep If true, unexpanded references are retained as ${token}, otherwise removed.
     @return An allocated expanded string. Caller must free.
     @stability Evolving
  */
@@ -828,6 +943,25 @@ PUBLIC void jsonSetMaxLength(int length);
     @stability Evolving
  */
 PUBLIC void jsonSetIndent(int indent);
+
+/**
+    Get the length of a property value.
+    If an array, return the array length. If an object, return the number of object properties.
+    @param json Json object
+    @param nid Node id
+    @param key Property name
+    @return Length of the property value, otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key);
+
+/**
+    Get the error message from the JSON object
+    @param json Json object
+    @return The error message. Caller must NOT free.
+    @stability Evolving
+ */
+PUBLIC cchar *jsonGetError(Json *json);
 
 #ifdef __cplusplus
 }

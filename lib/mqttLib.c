@@ -11,7 +11,7 @@
 /********* Start of file src/mqttLib.c ************/
 
 /*
-    mqtt.c - MQTT library
+    mqttLib.c - MQTT library
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
 
@@ -30,13 +30,13 @@
 /********************************** Defines ***********************************/
 
 #ifndef MQTT_THROTTLE_MIN
-    #define MQTT_THROTTLE_MIN   2 * TPS
+    #define MQTT_THROTTLE_MIN           2 * TPS
 #endif
-#ifndef MQTT_THROTTLE_MAX 
-    #define MQTT_THROTTLE_MAX   30 * TPS
+#ifndef MQTT_THROTTLE_MAX
+    #define MQTT_THROTTLE_MAX           30 * TPS
 #endif
 #ifndef MQTT_THROTTLE_DECAY_BASE
-    #define MQTT_THROTTLE_DECAY_BASE 2 /** Decay throttle delay by 2ms per second */
+    #define MQTT_THROTTLE_DECAY_BASE    2   /** Decay throttle delay by 2ms per second */
 #endif
 #ifndef MQTT_THROTTLE_DECAY_PERCENT
     #define MQTT_THROTTLE_DECAY_PERCENT 400 /** Decay throttle delay by 0.25% (1/400) per second */
@@ -179,6 +179,7 @@ static int unpackRespHdr(Mqtt *mq, MqttRecv *rp);
 static int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static int unpackUnsubAck(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static uint16 unpackUint16(cuchar *bp);
+static bool validateTopic(cchar *topic, bool publishing);
 static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags state);
 
 /************************************* Code ***********************************/
@@ -187,8 +188,9 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
 {
     Mqtt *mq;
 
-    assert(clientId && *clientId);
-
+    if (clientId == NULL || *clientId == '\0') {
+        return NULL;
+    }
     mq = rAllocType(Mqtt);
 
     if ((mq->buf = rAllocBuf(MQTT_BUF_SIZE)) == 0) {
@@ -217,6 +219,9 @@ PUBLIC void mqttFree(Mqtt *mq)
 {
     if (!mq) return;
 
+    if (mq->sock && mq->sock->wait) {
+        rSetWaitMask(mq->sock->wait, 0, 0);
+    }
     resumeFibers(mq);
     if (mq->keepAliveEvent) {
         rStopEvent(mq->keepAliveEvent);
@@ -229,6 +234,8 @@ PUBLIC void mqttFree(Mqtt *mq)
     rFree(mq->willMsg);
     rFree(mq->willTopic);
     rFree(mq->id);
+    // Just for debugging
+    mq->destroyed = 1;
     rFree(mq);
 }
 
@@ -240,10 +247,13 @@ static void resumeFibers(Mqtt *mq)
     MqttMsg *msg, *next;
     int     i;
 
+    if (!mq) {
+        return;
+    }
     /*
-        Disconnected - resume all waiting fibers
+        Resume all fibers waiting for message sent or ack
      */
-     for (msg = mq->head.next; msg != &mq->head; msg = next) {
+    for (msg = mq->head.next; msg != &mq->head; msg = next) {
         next = msg->next;
         if (msg->fiber) {
             /*
@@ -268,16 +278,21 @@ static void processMqtt(Mqtt *mq)
 {
     ssize mask;
 
-    assert(mq);
-
-    mask = (int) (ssize) (rGetFiber()->result);
-    if (mask != 0) {
-        if (mask & R_READABLE) {
-            recvMsgs(mq);
+    if (!mq) {
+        return;
+    }
+    if (mq->sock) {
+        mask = (int) (ssize) (rGetFiber()->result);
+        if (mask != 0) {
+            if (mask & R_READABLE) {
+                recvMsgs(mq);
+            }
+            if (mask & R_WRITABLE && mqttMsgsToSend(mq)) {
+                sendMsgs(mq);
+            }
         }
-        if (mask & R_WRITABLE && mqttMsgsToSend(mq)) {
-            sendMsgs(mq);
-        }
+    } else {
+        setError(mq, R_ERR_NETWORK, "Socket closed");
     }
     if (mq->error) {
         resumeFibers(mq);
@@ -293,6 +308,9 @@ static void processMqtt(Mqtt *mq)
 
 PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password)
 {
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
     rFree(mq->password);
     rFree(mq->username);
 
@@ -316,8 +334,12 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     uchar   *bp;
     int     rc, length;
 
-    assert(mq);
-
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!sock) {
+        return R_ERR_BAD_ARGS;
+    }
     flags = flags & ~(MQTT_CONNECT_RESERVED);
     mq->sock = sock;
 
@@ -356,7 +378,6 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         }
         length += 2 + (int) mq->willMsgSize;
 
-        // assert that the will QOS is valid (i.e. not 3)
         if ((flags & 0x18) == 0x18) {
             // bitwise equality with QoS 3 (invalid)
             return setError(mq, R_ERR_BAD_ARGS, "Bad QOS in flags 0x%x", flags);
@@ -472,7 +493,7 @@ static void idleCheck(Mqtt *mq)
 {
     Ticks delay, elapsed;
 
-    if (!mq->sock || mq->error) return;
+    if (!mq || !mq->sock || mq->error) return;
 
     elapsed = rGetTicks() - mq->lastActivity + 1;
     if (elapsed >= mq->timeout) {
@@ -524,14 +545,15 @@ static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags wait)
     ssize result;
 
     assert(!rIsMain());
-    assert(mq);
-    assert(msg);
 
-    if (!mq || !mq->sock) {
+    if (!mq || !msg || !mq->sock) {
         return R_ERR_NOT_CONNECTED;
     }
     if (!(wait & (MQTT_WAIT_SENT | MQTT_WAIT_ACK))) {
         return 0;
+    }
+    if (wait & MQTT_WAIT_ACK) {
+        wait &= ~MQTT_WAIT_SENT;
     }
     msg->wait = wait;
     msg->hold = 1;
@@ -539,11 +561,15 @@ static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags wait)
     mq->fiberCount++;
 
     result = (ssize) rYieldFiber(0);
-    
+
+    msg->fiber = NULL;
     mq->fiberCount--;
     msg->hold = 0;
-    freeMsg(msg);
 
+    if (wait == MQTT_WAIT_ACK) {
+        // WAIT_SENT messages must wait for the actual ack to come before freeing
+        freeMsg(msg);
+    }
     if (result < 0) {
         return R_ERR_NOT_CONNECTED;
     }
@@ -557,13 +583,16 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFla
     char    topicBuf[MQTT_MAX_TOPIC_SIZE];
     ssize   len;
 
-    assert(buf);
     if (mq == 0) {
-        rError("mqtt", "Publish on bad Mqtt object");
+        rTrace("mqtt", "Publish on bad Mqtt object");
         return R_ERR_BAD_ARGS;
     }
-    if (topic == 0) {
-        rError("mqtt", "Publish with null topic");
+    if (!buf) {
+        rTrace("mqtt", "Publish with null buffer");
+        return R_ERR_BAD_ARGS;
+    }
+    if (topic == 0 || *topic == '\0' || isspace(*topic)) {
+        rTrace("mqtt", "Publish with null or empty topic");
         return R_ERR_BAD_ARGS;
     }
     if (mq->error) {
@@ -572,8 +601,9 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFla
     va_start(ap, topic);
     len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
     va_end(ap);
+
     if (len >= sizeof(topicBuf)) {
-        rError("mqtt", "Topic is too big");
+        rTrace("mqtt", "Topic is too big");
         return R_ERR_BAD_ARGS;
     }
     return publish(mq, buf, bufsize, qos, wait, 0, topicBuf);
@@ -585,22 +615,23 @@ PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, Mqt
     char    topicBuf[MQTT_MAX_TOPIC_SIZE];
     ssize   len;
 
-    assert(buf);
-    assert(bufsize > 0);
-
     if (mq == 0) {
-        rError("mqtt", "Publish on bad Mqtt object");
+        rTrace("mqtt", "Publish on bad Mqtt object");
         return R_ERR_BAD_ARGS;
     }
-    if (topic == 0) {
-        rError("mqtt", "Publish with null topic");
+    if (topic == 0 || *topic == '\0' || isspace(*topic)) {
+        rTrace("mqtt", "Publish with null or empty topic");
+        return R_ERR_BAD_ARGS;
+    }
+    if (!buf || bufsize < 0) {
+        rTrace("mqtt", "Publish with null buffer");
         return R_ERR_BAD_ARGS;
     }
     va_start(ap, topic);
     len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
     va_end(ap);
     if (len >= sizeof(topicBuf)) {
-        rError("mqtt", "Topic is too big");
+        rTrace("mqtt", "Topic is too big");
         return R_ERR_BAD_ARGS;
     }
     return publish(mq, buf, bufsize, qos, wait, MQTT_RETAIN, topicBuf);
@@ -614,21 +645,26 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
     uchar   *bp;
     int     flags, id, rc, length;
 
-    assert(mq);
-    assert(buf);
-    assert(topic);
-
+    if (!mq || !buf || !topic) {
+        return R_ERR_BAD_ARGS;
+    }
     if (!onDemandAttach(mq)) {
         return R_ERR_CANT_WRITE;
     }
+    if (!mq->connected) {
+        return R_ERR_NOT_CONNECTED;
+    }
     id = getId(mq);
 
-    if (topic == NULL || slen(topic) > MQTT_MAX_TOPIC_SIZE) {
+    if (topic == NULL || *topic == '\0' || isspace(*topic) || slen(topic) > MQTT_MAX_TOPIC_SIZE) {
         return R_ERR_BAD_NULL;
     }
     flags = (retain ? MQTT_RETAIN : 0) | (qos << 1 & 0x6);
     if (qos < 0 || qos >= 3) {
         return R_ERR_BAD_ARGS;
+    }
+    if (qos == 0) {
+        wait &= ~MQTT_WAIT_ACK;
     }
     if (bufsize < 0) {
         // If bufsize is negative, the caller is passing a null terminated string in the buf parameter
@@ -640,11 +676,10 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
     hdr.flags = flags;
     hdr.type = MQTT_PACKET_PUBLISH;
 
-    rc = getStringLen(topic);
-    if (rc < 0) {
-        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+    if (!validateTopic(topic, 1)) {
+        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
     }
-    length = rc;
+    length = getStringLen(topic);
     if (qos > 0) {
         //  Add room for the packet ID for retransmits
         length += 2;
@@ -684,7 +719,8 @@ static int publish(Mqtt *mq, cvoid *buf, ssize bufsize, int qos, MqttWaitFlags w
          */
         elapsed = (now - mq->throttleLastPub + TPS - 1);
 
-        decay = (mq->throttle * (elapsed / TPS) / MQTT_THROTTLE_DECAY_PERCENT) + (elapsed * MQTT_THROTTLE_DECAY_BASE / TPS);
+        decay = (mq->throttle * (elapsed / TPS) / MQTT_THROTTLE_DECAY_PERCENT) +
+                (elapsed * MQTT_THROTTLE_DECAY_BASE / TPS);
 
         if (mq->throttle) {
             rTrace("mqtt", "Delay sending message for %lld ms", mq->throttle);
@@ -711,6 +747,9 @@ PUBLIC void mqttThrottle(Mqtt *mq)
 {
     Ticks now;
 
+    if (!mq) {
+        return;
+    }
     /*
         Throttle rising exponentially
      */
@@ -721,7 +760,7 @@ PUBLIC void mqttThrottle(Mqtt *mq)
     if (mq->throttle > MQTT_THROTTLE_MAX) {
         mq->throttle = MQTT_THROTTLE_MAX;
     }
-    rError("mqtt", "Device sending too much data, sending throttled for %lld ms", mq->throttle);
+    rTrace("mqtt", "Device sending too much data, sending throttled for %lld ms", mq->throttle);
 }
 
 /*
@@ -735,12 +774,15 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     int     rc;
     ssize   len;
 
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
     va_start(ap, fmt);
     topic = sfmtv(fmt, ap);
     va_end(ap);
-    if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
-        rError("mqtt", "Topic is too big");
-        return R_ERR_BAD_ARGS;
+
+    if (!validateTopic(topic, 0)) {
+        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
     }
     rTrace("mqtt", "Define master MQTT subscription \"%s\"", topic);
 
@@ -763,11 +805,11 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
     va_list   ap;
     cchar     *masterTopic;
     char      topic[MQTT_MAX_TOPIC_SIZE];
-    ssize     len;
     int       mid;
+    ssize     len;
 
     if (mq == 0) {
-        rError("mqtt", "Subscribe on bad Mqtt object");
+        rTrace("mqtt", "Subscribe on bad Mqtt object");
         return R_ERR_BAD_ARGS;
     }
     if (mq->error) {
@@ -776,9 +818,13 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
     va_start(ap, fmt);
     len = rVsnprintf(topic, sizeof(topic), fmt, ap);
     va_end(ap);
+
     if (len >= sizeof(topic)) {
-        rError("mqtt", "Topic is too big");
+        rTrace("mqtt", "Topic is too big");
         return R_ERR_BAD_ARGS;
+    }
+    if (!validateTopic(topic, 0)) {
+        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
     }
     if (callback) {
         if ((tp = allocTopic(mq, callback, topic, wait)) == 0) {
@@ -912,8 +958,9 @@ PUBLIC int mqttPing(Mqtt *mq)
     uchar   *bp;
     int     rc;
 
-    assert(mq);
-
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
     if (mq->error) {
         return mq->error;
     }
@@ -947,8 +994,9 @@ PUBLIC int mqttDisconnect(Mqtt *mq)
     uchar   *bp;
     int     rc;
 
-    assert(mq);
-
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
     if (!mq->sock) {
         //  No demand attach - no point
         return R_ERR_CANT_WRITE;
@@ -972,25 +1020,25 @@ PUBLIC int mqttDisconnect(Mqtt *mq)
     return 0;
 }
 
-int pubAck(Mqtt *mq, int id)
+static int pubAck(Mqtt *mq, int id)
 {
     MqttMsg *msg;
 
-    assert(mq);
-    assert(id);
-
+    if (!mq || !id) {
+        return R_ERR_BAD_ARGS;
+    }
     msg = packPub(mq, MQTT_PACKET_PUB_ACK, id);
     queueMsg(mq, msg, NULL);
     return 0;
 }
 
-int pubRec(Mqtt *mq, int id)
+static int pubRec(Mqtt *mq, int id)
 {
     MqttMsg *msg;
 
-    assert(mq);
-    assert(id);
-
+    if (!mq || !id) {
+        return R_ERR_BAD_ARGS;
+    }
     msg = packPub(mq, MQTT_PACKET_PUB_REC, id);
     queueMsg(mq, msg, NULL);
     return 0;
@@ -1000,9 +1048,9 @@ static int pubRel(Mqtt *mq, int id)
 {
     MqttMsg *msg;
 
-    assert(mq);
-    assert(id);
-
+    if (!mq || !id) {
+        return R_ERR_BAD_ARGS;
+    }
     msg = packPub(mq, MQTT_PACKET_PUB_REL, id);
     queueMsg(mq, msg, NULL);
     return 0;
@@ -1012,9 +1060,9 @@ static int pubComp(Mqtt *mq, int id)
 {
     MqttMsg *msg;
 
-    assert(mq);
-    assert(id);
-
+    if (!mq || !id) {
+        return R_ERR_BAD_ARGS;
+    }
     msg = packPub(mq, MQTT_PACKET_PUB_COMP, id);
     queueMsg(mq, msg, NULL);
     return 0;
@@ -1027,8 +1075,9 @@ static int sendMsgs(Mqtt *mq)
     int     written;
     int     wait, rc, send, qos2 = 0;
 
-    assert(mq);
-
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
     if (mq->error) {
         //  A connection fatal error has occurred.
         return mq->error;
@@ -1068,11 +1117,11 @@ static int sendMsgs(Mqtt *mq)
         written = (int) rWriteSocketSync(mq->sock, msg->start, msg->end - msg->start);
 
         if (written < 0) {
-            rDebug("mqtt", "Error writing to mqtt: %d", written);
+            rTrace("mqtt", "Error writing to mqtt: %d", written);
             return setError(mq, R_ERR_NETWORK, "Cannot write to socket: errno %d", rGetOsError());
 
         } else if (written > 0) {
-            rDebug("mqtt", "Wrote %d bytes to mqtt", written);
+            rTrace("mqtt", "Wrote %d bytes to mqtt", written);
             msg->start += written;
         }
         if (msg->start < msg->end) {
@@ -1102,9 +1151,9 @@ static int processSentMsg(Mqtt *mq, MqttMsg *msg)
     rDebug("mqtt", "Sent message \"%s\"", packetTypes[msg->type]);
 #endif
 
-    assert(mq);
-    assert(msg);
-
+    if (!mq || !msg) {
+        return R_ERR_BAD_ARGS;
+    }
     switch (msg->type) {
     case MQTT_PACKET_PUB_ACK:
     case MQTT_PACKET_PUB_COMP:
@@ -1146,10 +1195,16 @@ static int recvMsgs(Mqtt *mq)
     ssize    bytes, space;
     int      consumed;
 
-    assert(mq);
-
+    if (!mq) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!mq->sock) {
+        return R_ERR_CANT_CONNECT;
+    }
     buf = mq->buf;
-
+    if (!buf) {
+        return R_ERR_BAD_ARGS;
+    }
     while (!mq->error) {
         rResetBufIfEmpty(buf);
         space = rGetBufSpace(buf);
@@ -1162,7 +1217,7 @@ static int recvMsgs(Mqtt *mq)
         if (bytes < 0) {
             return setError(mq, R_ERR_NETWORK, "Cannot read from socket, errno %d", rGetOsError());
         }
-        if (bytes == 0) {
+        if (bytes == 0 && rGetBufLength(buf) == 0) {
             break;
         }
         rDebug("mqtt", "Read %zd bytes from mqtt", bytes);
@@ -1195,9 +1250,9 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
     RFiber    *fiber;
     int       rc, wait;
 
-    assert(mq);
-    assert(rp);
-
+    if (!mq || !rp) {
+        return R_ERR_BAD_ARGS;
+    }
 #if ME_R_DEBUG_LOGGING
     if (0 < rp->hdr.type && rp->hdr.type < sizeof(packetTypes) / sizeof(char**)) {
         rDebug("mqtt", "Receive message \"%s\"", packetTypes[rp->hdr.type]);
@@ -1268,8 +1323,8 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
                 (rp->matched->callback)(rp);
             } else {
                 /*
-                    Copy the receive message which is on the stack to an arg block so that it can be passed 
-                    to the fiber/callback. Allocate the topic here as it is not null terminated in the header 
+                    Copy the receive message which is on the stack to an arg block so that it can be passed
+                    to the fiber/callback. Allocate the topic here as it is not null terminated in the header
                     incomingMsg will free it.
                  */
                 arg = rAllocType(MqttRecv);
@@ -1278,6 +1333,8 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
                 sncopy(arg->topic, rp->topicSize + 1, (char*) rp->topic, rp->topicSize);
                 if (rp->dataSize > 0) {
                     if ((arg->data = rAlloc(rp->dataSize + 1)) == 0) {
+                        rFree(arg->topic);
+                        rFree(arg);
                         break;
                     }
                     memcpy(arg->data, rp->data, rp->dataSize);
@@ -1408,9 +1465,8 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
 static void incomingMsg(MqttRecv *rp)
 {
     Mqtt *mq;
-    assert(rp && rp->matched && rp->matched->callback);
 
-    if (!rp) {
+    if (!rp || !rp->mq) {
         return;
     }
     mq = rp->mq;
@@ -1428,12 +1484,11 @@ static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, Mqtt
 {
     MqttTopic *tp;
 
-    assert(mq);
-    assert(topic);
-    assert(callback);
-
+    if (!mq || !topic || !callback) {
+        return NULL;
+    }
     if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
-        rError("mqtt", "Topic is too big");
+        rTrace("mqtt", "Topic is too big");
         return NULL;
     }
     tp = rAllocType(MqttTopic);
@@ -1449,8 +1504,9 @@ static void freeTopics(Mqtt *mq, cchar *topic)
     MqttTopic *tp;
     int       next;
 
-    assert(mq);
-
+    if (!mq) {
+        return;
+    }
     for (ITERATE_ITEMS(mq->topics, tp, next)) {
         if (!topic || smatch(topic, tp->topic)) {
             freeTopic(tp);
@@ -1461,8 +1517,9 @@ static void freeTopics(Mqtt *mq, cchar *topic)
 
 static void freeTopic(MqttTopic *tp)
 {
-    assert(tp);
-
+    if (!tp) {
+        return;
+    }
     rFree(tp->topic);
     rFree(tp->segments);
     rFree(tp->segbuf);
@@ -1489,9 +1546,9 @@ static MqttTopic *getTopic(Mqtt *mq, MqttRecv *rp)
     char      *segbuf;
     int       next;
 
-    assert(mq);
-    assert(rp);
-
+    if (!mq || !rp) {
+        return NULL;
+    }
     if ((segments = splitTopic(rp->topic, rp->topicSize, &segbuf)) == 0) {
         return 0;
     }
@@ -1513,9 +1570,9 @@ static cchar **splitTopic(cchar *topic, int topicLen, char **segbuf)
     char  *next, **segments;
     int   i, count;
 
-    assert(topic);
-    assert(segbuf);
-
+    if (!topic || !segbuf) {
+        return NULL;
+    }
     for (count = 1, cp = topic; cp < &topic[topicLen]; cp++) {
         if (*cp == '/') count++;
     }
@@ -1535,9 +1592,9 @@ static bool matchTopic(MqttTopic *tp, cchar **segments)
 {
     cchar **ip, **mp;
 
-    assert(tp);
-    assert(segments);
-
+    if (!tp || !segments) {
+        return 0;
+    }
     for (mp = tp->segments, ip = segments; *mp && *ip; mp++, ip++) {
         if ((*mp)[0] == '#') {
             // Multi-level wildcard (must be last term)
@@ -1562,8 +1619,9 @@ static int checkHdr(Mqtt *mq, MqttHdr *hdr)
 {
     uchar flags, type, requiredFlags, requiredFlagsMask;
 
-    assert(mq);
-
+    if (!mq || !hdr) {
+        return R_ERR_BAD_ARGS;
+    }
     // get value and rules
     type = hdr->type;
     flags = hdr->flags;
@@ -1590,8 +1648,9 @@ static int unpackRespHdr(Mqtt *mq, MqttRecv *rp)
     uint32  lvalue;
     int     err, shift;
 
-    assert(rGetBufLength(mq->buf) > 0);
-
+    if (!mq || !rp || rGetBufLength(mq->buf) <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     buf = mq->buf;
     bp = start = (cuchar*) rGetBufStart(buf);
     end = (cuchar*) rGetBufEnd(buf);
@@ -1671,8 +1730,12 @@ static MqttMsg *allocMsg(Mqtt *mq, int type, int id, ssize size)
 {
     MqttMsg *msg;
 
-    if (size > UINT32_MAX) {
-        //  Message too big
+    // Reject negative and oversized sizes before adding header slack 
+    if (size < 0) {
+        return NULL;
+    }
+    if (size > (ssize) (UINT32_MAX - 7)) {
+        // Message too big (would overflow when adding header slack) 
         return NULL;
     }
     if ((msg = rAllocType(MqttMsg)) == NULL) {
@@ -1945,7 +2008,7 @@ static int getId(Mqtt *mq)
         lsb = mq->nextId & 1;
         (mq->nextId) >>= 1;
         if (lsb) {
-            // Review Acceptable - this is a LFSR sequence and message won't live long enough to wrap IDs
+            // SECURITY Acceptable: - this is a LFSR sequence and message won't live long enough to wrap IDs
             mq->nextId ^= 0xB400u;
         }
         // check that the ID is unique
@@ -2007,6 +2070,15 @@ static int getId(Mqtt *mq)
 }
 #endif
 
+PUBLIC bool mqttCheckQueue(Mqtt *mq)
+{
+    MqttMsg *msg;
+
+    for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
+    }
+    return 1;
+}
+
 static void queueMsg(Mqtt *mq, MqttMsg *msg, uchar *end)
 {
     msg->next = &mq->head;
@@ -2025,6 +2097,8 @@ static void dequeueMsg(Mqtt *mq, MqttMsg *msg)
 {
     msg->prev->next = msg->next;
     msg->next->prev = msg->prev;
+    msg->next = NULL;
+    msg->prev = NULL;
     if (!(msg->wait & (MQTT_WAIT_SENT | MQTT_WAIT_ACK))) {
         freeMsg(msg);
     }
@@ -2036,6 +2110,9 @@ PUBLIC int mqttMsgsToSend(Mqtt *mq)
     Ticks   now;
     int     count;
 
+    if (!mq) {
+        return 0;
+    }
     now = rGetTicks();
     count = 0;
     for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
@@ -2062,8 +2139,9 @@ static MqttMsg *findMsg(Mqtt *mq, MqttPacketType type, int id)
 {
     MqttMsg *msg;
 
-    assert(mq);
-
+    if (!mq) {
+        return NULL;
+    }
     for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
         if (msg->type == type) {
             if (id == msg->id) {
@@ -2078,7 +2156,9 @@ static MqttMsg *findMsgByType(Mqtt *mq, MqttPacketType type)
 {
     MqttMsg *msg;
 
-    assert(mq);
+    if (!mq) {
+        return NULL;
+    }
     for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
         if (msg->type == type && msg->state != MQTT_COMPLETE) {
             return msg;
@@ -2089,8 +2169,9 @@ static MqttMsg *findMsgByType(Mqtt *mq, MqttPacketType type)
 
 PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize size)
 {
-    assert(topic && msg && size > 0);
-
+    if (!topic || !msg || size <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
         return R_ERR_BAD_ARGS;
     }
@@ -2108,9 +2189,9 @@ PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize size)
 
 static void setState(Mqtt *mq, MqttMsg *msg, int state)
 {
-    assert(mq);
-    assert(msg);
-
+    if (!mq || !msg) {
+        return;
+    }
     msg->state = state;
     if (msg->state == MQTT_COMPLETE) {
         dequeueMsg(mq, msg);
@@ -2129,9 +2210,11 @@ static int setError(Mqtt *mq, int error, cchar *fmt, ...)
     mq->error = error;
     mq->errorMsg = sfmtv(fmt, ap);
     if (error != R_ERR_NETWORK) {
-        rError("mqtt", "Mqtt error %d: %s. Closing socket.", mq->error, mq->errorMsg);
+        rTrace("mqtt", "Mqtt error %d: %s. Closing socket.", mq->error, mq->errorMsg);
     }
-    rDisconnectSocket(mq->sock);
+    if (mq->sock) {
+        rDisconnectSocket(mq->sock);
+    }
     va_end(ap);
     return error;
 }
@@ -2149,7 +2232,9 @@ PUBLIC bool mqttIsConnected(Mqtt *mq)
 
 PUBLIC cchar *mqttGetError(Mqtt *mq)
 {
-    assert(mq);
+    if (!mq) {
+        return NULL;
+    }
     return rGetError(mq->error);
 }
 
@@ -2157,8 +2242,9 @@ static int getStringLen(cchar *s)
 {
     ssize len;
 
-    assert(s);
-
+    if (!s) {
+        return -1;
+    }
     len = slen(s);
     if (len > 0xFFFF) {
         return -1;
@@ -2171,14 +2257,17 @@ static int getStringLen(cchar *s)
  */
 PUBLIC void mqttSetMessageSize(Mqtt *mq, int size)
 {
-    assert(mq);
-    assert(size > 0);
-
+    if (!mq || size <= 0) {
+        return;
+    }
     mq->maxMessage = size;
 }
 
 PUBLIC void mqttSetKeepAlive(Mqtt *mq, Ticks keepAlive)
 {
+    if (!mq) {
+        return;
+    }
     if (keepAlive <= 0) {
         keepAlive = MQTT_KEEP_ALIVE;
     }
@@ -2190,6 +2279,9 @@ PUBLIC void mqttSetKeepAlive(Mqtt *mq, Ticks keepAlive)
 
 PUBLIC void mqttSetTimeout(Mqtt *mq, Ticks timeout)
 {
+    if (!mq) {
+        return;
+    }
     if (timeout < 0) {
         timeout = MQTT_TIMEOUT;
     } else if (timeout == 0) {
@@ -2204,7 +2296,65 @@ PUBLIC void mqttSetTimeout(Mqtt *mq, Ticks timeout)
 
 PUBLIC Time mqttGetLastActivity(Mqtt *mq)
 {
+    if (!mq) {
+        return 0;
+    }
     return mq->lastActivity;
+}
+
+/*
+    Validate a topic string for publishing or subscribing
+    We don't validate the full UTF-8 correctness, just the basic rules
+ */
+static bool validateTopic(cchar *topic, bool publish)
+{
+    ssize i, len;
+
+    len = slen(topic);
+    if (len < 0 || len > MQTT_MAX_TOPIC_SIZE || topic == NULL || *topic == '\0') {
+        return 0;
+    }
+    for (i = 0; i < len; i++) {
+        uchar c = (uchar) topic[i];
+        if (c == '\0') {
+            // Null character not allowed
+            return 0;
+        }
+        //  Optionally, you might reject other control characters (below 0x20) except tab/newline etc.
+        if (c < 0x20 || c == 0x7F) {
+            // control characters generally undesirable
+            return 0;
+        }
+        if (publish) {
+            if (c == '+' || c == '#') {
+                // Wildcards not allowed in topic names when publishing
+                return 0;
+            }
+        } else {
+            if (c == '#') {
+                // '#' must be last character, and either the only one in its level, i.e. preceded by '/' or at start
+                if (i != len - 1) {
+                    // # not at end
+                    return 0;
+                }
+                if (i > 0 && topic[i-1] != '/') {
+                    // not preceded by /
+                    return 0;
+                }
+            } else if (c == '+') {
+                /*/
+                    + must occupy full level: i.e. either at start or preceded by /, and either at end or followed by /
+                 */
+                if (i > 0 && topic[i-1] != '/') {
+                    return 0;
+                }
+                if (i + 1 < len && topic[i+1] != '/') {
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 #else

@@ -117,6 +117,9 @@ PUBLIC WebSocket *webSocketAlloc(RSocket *sock, bool client)
 {
     WebSocket *ws;
 
+    if (!sock) {
+        return 0;
+    }
     if ((ws = rAllocType(WebSocket)) == 0) {
         rFatal("sockets", "memory error");
         return 0;
@@ -128,7 +131,6 @@ PUBLIC WebSocket *webSocketAlloc(RSocket *sock, bool client)
     ws->maxFrame = WS_MAX_FRAME;
     ws->maxMessage = WS_MAX_MESSAGE;
     ws->validate = 1;
-
     ws->buf = rAllocBuf(ME_BUFSIZE);
     return ws;
 }
@@ -137,7 +139,7 @@ PUBLIC void webSocketFree(WebSocket *ws)
 {
     if (!ws) return;
 
-    //  Review Acceptable - Defer free until the callback completes
+    //  SECURITY Acceptable: - Defer free until the callback completes
     if (ws->inCallback) {
         ws->needFree = 1;
         return;
@@ -168,7 +170,7 @@ static ssize readSocket(WebSocket *ws)
     ssize nbytes, toRead;
 
     bp = ws->buf;
-    //  Compact if empty or insufficient space 
+    //  Compact if empty or insufficient space
     if (rGetBufLength(bp) == 0 || rGetBufSpace(bp) < ME_BUFSIZE) {
         rCompactBuf(bp);
     }
@@ -201,7 +203,7 @@ static void invokeCallback(WebSocket *ws, int event, cchar *buf, ssize len)
  */
 static void waitCallback(WebSocket *ws, int mask)
 {
-    ssize   rc;
+    ssize rc;
 
     if ((rc = readSocket(ws)) < 0) {
         webSocketSendClose(ws, WS_STATUS_COMMS_ERROR, NULL);
@@ -330,7 +332,7 @@ PUBLIC int webSocketProcess(WebSocket *ws)
  */
 static int parseFrame(WebSocket *ws)
 {
-    RBuf *buf;
+    RBuf  *buf;
     char  *fp;
     ssize len;
     int   i, fin, mask, lenBytes, opcode;
@@ -419,7 +421,7 @@ static int parseFrame(WebSocket *ws)
  */
 static int parseMessage(WebSocket *ws)
 {
-    RBuf *buf;
+    RBuf  *buf;
     char  *cp, *end, *msg;
     ssize nbytes, len;
     int   event, validated;
@@ -670,7 +672,7 @@ static int writeFrame(WebSocket *ws, int type, int fin, cchar *buf, ssize len)
     }
     tbuf = 0;
     if (ws->client) {
-        cryptGetRandomBytes((uchar*) dataMask, sizeof(dataMask), 0);
+        cryptGetRandomBytes((uchar*) dataMask, sizeof(dataMask), 1);
         for (i = 0; i < 4; i++) {
             *pp++ = dataMask[i];
         }

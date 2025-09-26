@@ -1,5 +1,11 @@
-/*
-    mqtt.h -- Header for the MQTT library.
+/**
+    @file mqtt.h
+    MQTT client library for IoT publish/subscribe communications.
+    @description This module provides a complete MQTT 3.1.1 client implementation
+    for embedded IoT applications. Features include secure TLS connections,
+    quality of service levels 0-2, retained messages, last will and testament,
+    and efficient publish/subscribe operations with topic pattern matching.
+    @stability Evolving
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -87,7 +93,7 @@ typedef enum MqttMsgState {
 #define MQTT_WAIT_FAST 0x4   /**< Fast callback.
                                 @warning The MqttRecv* passed to the callback is allocated on the stack and is only
                                    valid
-                                for the duration of the callback. Do not store this pointer for later use. Also, 
+                                for the duration of the callback. Do not store this pointer for later use. Also,
                                 the rp->data pointer is not null terminated. */
 
 typedef int MqttWaitFlags;
@@ -289,6 +295,7 @@ typedef struct Mqtt {
     uint subscribedApi : 1; /**< Reserved */
     uint connected : 1;     /**< Mqtt is currently connected flag */
     uint processing : 1;    /**< ProcessMqtt is running */
+    uint destroyed : 1;     /**< Mqtt instance is destroyed - just for debugging */
 
     Ticks throttle;         /**< Throttle delay in msec */
     Ticks throttleLastPub;  /**< Time of last publish or throttle */
@@ -299,213 +306,286 @@ typedef struct Mqtt {
 } Mqtt;
 
 /**
-    Allocate an MQTT object
-    @param clientId Unique client identifier string.
-    @param proc Event notification callback procedure.
+    Allocate an MQTT client instance.
+    @description Create a new MQTT client instance with the specified client ID and event callback.
+    The client ID must be unique among all clients connecting to the same broker.
+    @param clientId Unique client identifier string. Maximum length is MQTT_MAX_CLIENT_ID_SIZE.
+    @param proc Optional event notification callback procedure for connection/disconnection events.
+    Set to NULL if not required.
+    @return Returns an allocated Mqtt instance or NULL on allocation failure.
     @stability Evolving
  */
 PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc);
 
 /**
-   Establish a session with the MQTT broker.
-   @description This call established a new MQTT connection to the broker using the supplied
-        socket. The MQTT object keeps a reference to the socket. If the socket is closed or
-        freed by the caller, the caller must call mqttDisconnect.
-   @param mq The Mqtt object.
-   @param sock The underlying socket to use for communications.
-   @param flags Additional MqttConnectFlags to use when establishing the connection.
-        These flags are for forcing the session to start clean: MQTT_CONNECT_CLEAN_SESSION,
-        the QOS level to publish the will and testament messages with, and whether
-        or not the broker should retain the will_message, MQTT_CONNECT_WILL_RETAIN.
-   @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
-   @returns Zero if successful.
-   @stability Evolving
+    Establish a session with the MQTT broker.
+    @description This call establishes a new MQTT connection to the broker using the supplied
+    socket. The MQTT object keeps a reference to the socket. If the socket is closed or
+    freed by the caller, the caller must call mqttDisconnect first. This function must be
+    called before any publish or subscribe operations.
+    @param mq The Mqtt object allocated via mqttAlloc.
+    @param sock The underlying socket to use for communications. This socket must be connected to an MQTT broker.
+    @param flags Additional MqttConnectFlags to use when establishing the connection.
+    These flags control session behavior: MQTT_CONNECT_CLEAN_SESSION to start fresh,
+    QOS levels for will messages, and MQTT_CONNECT_WILL_RETAIN for retained will messages.
+    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
+    @return Zero if successful, negative on error.
+    @stability Evolving
  */
 PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags waitFlags);
 
 /**
-    Send a disconnection packet
-    @description This will not close the socket. The peer, upon receiving the disconnection
-        will close the connection.
-    @returns Zero if successful.
+    Send a disconnection packet to the MQTT broker.
+    @description This sends a DISCONNECT packet to gracefully terminate the MQTT session.
+    This will not close the underlying socket. The broker, upon receiving the disconnection
+    packet, will close the connection. Call this before freeing the socket or MQTT instance.
+    @param mq The Mqtt object.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttDisconnect(Mqtt *mq);
 
 /**
-    Free an Mqtt instance
-    @param mq Mqtt instance allocated via #mqttAlloc
+    Free an MQTT client instance.
+    @description Release all resources associated with the MQTT instance. This will automatically
+    disconnect from the broker if still connected and free all subscriptions and queued messages.
+    @param mq Mqtt instance allocated via mqttAlloc. Pass NULL to ignore.
+    @stability Evolving
  */
 PUBLIC void mqttFree(Mqtt *mq);
 
 /**
-    Returns an error message for error code, error.
+    Get the last error message for the MQTT instance.
+    @description Returns a human-readable error message describing the last error that occurred
+    on this MQTT instance. This is useful for debugging connection and protocol issues.
     @param mq Mqtt object.
-    @return The associated error message.
+    @return The associated error message string or empty string if no error.
     @stability Evolving
  */
 PUBLIC cchar *mqttGetError(struct Mqtt *mq);
 
 /**
-    Return the time of last I/O activity
-    @return The time in Ticks of the last I/O.
+    Return the time of last I/O activity.
+    @description Get the timestamp of the last network I/O activity on the MQTT connection.
+    This is useful for implementing connection monitoring and keep-alive logic.
+    @param mq The Mqtt object.
+    @return The time in Ticks of the last I/O activity.
     @stability Evolving
  */
 PUBLIC Ticks mqttGetLastActivity(Mqtt *mq);
 
 /**
-    Get the number of messages in the queue
-    @param mq The MQTT mq.
-    @return The number of messages in the queue
+    Get the number of messages pending transmission.
+    @description Returns the count of messages in the outbound queue waiting to be sent
+    or acknowledged by the broker. This is useful for flow control and monitoring.
+    @param mq The MQTT object.
+    @return The number of messages in the transmission queue.
     @stability Evolving
  */
 PUBLIC int mqttMsgsToSend(Mqtt *mq);
 
 /**
-    Ping the broker.
-    @param mq The MQTT mq.
-    @returns Zero if successful.
+    Send a ping request to the broker.
+    @description Send a PINGREQ packet to the broker to test connectivity and reset
+    the keep-alive timer. The broker will respond with a PINGRESP packet.
+    @param mq The MQTT object.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttPing(Mqtt *mq);
 
 /**
-    Publish an application message to the MQTT broker
+    Publish an application message to the MQTT broker.
+    @description Publish a message to the specified topic. The MQTT instance must be
+    connected to a broker via mqttConnect before calling this function.
     @param mq The Mqtt object.
-    @param msg The data to be published.
-    @param size The size of application_message in bytes.
-    @param qos Quality of service. 0, 1, or 2.
-    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
-    @param topic Printf style topic string.
-    @param ... Topic args.
-    @returns Zero if successful.
+    @param msg The data to be published. Can be binary data.
+    @param size The size of the message in bytes. Maximum size is MQTT_MAX_MESSAGE_SIZE.
+    @param qos Quality of service level: 0 (at most once), 1 (at least once), or 2 (exactly once).
+    If QOS 0 is used, MQTT_WAIT_ACK will be ignored.
+    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @param topic Printf-style topic string. Maximum length is MQTT_MAX_TOPIC_SIZE.
+    @param ... Topic formatting arguments.
+    @return Zero if successful, negative on error.
+    @stability Evolving
  */
 PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, ssize size, int qos, MqttWaitFlags waitFlags, cchar *topic, ...);
 
 /**
-    Publish a retained message to the MQTT broker
+    Publish a retained message to the MQTT broker.
+    @description Publish a message with the retain flag set. Retained messages are stored
+    by the broker and delivered to new subscribers immediately upon subscription.
+    The MQTT instance must be connected to a broker via mqttConnect.
     @param mq The Mqtt object.
-    @param msg The data to be published.
-    @param size The size of application_message in bytes.
-    @param qos Quality of service. 0, 1, or 2.
-    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
-    @param topic Printf style topic string.
-    @param ... Topic args.
-    @returns Zero if successful.
+    @param msg The data to be published. Can be binary data.
+    @param size The size of the message in bytes. Maximum size is MQTT_MAX_MESSAGE_SIZE.
+    @param qos Quality of service level: 0 (at most once), 1 (at least once), or 2 (exactly once).
+    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @param topic Printf-style topic string. Maximum length is MQTT_MAX_TOPIC_SIZE.
+    @param ... Topic formatting arguments.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, ssize size, int qos,
                                MqttWaitFlags waitFlags, cchar *topic, ...);
 
-/*
-    Define the username and password to use when connecting
+/**
+    Set authentication credentials for broker connection.
+    @description Define the username and password to use when connecting to the MQTT broker.
+    These credentials must be set before calling mqttConnect if the broker requires authentication.
+    @param mq The Mqtt object.
     @param username The username to use when establishing the session with the MQTT broker.
-        Set to NULL if a username is not required.
+    Set to NULL if a username is not required. Maximum length is MQTT_MAX_USERNAME_SIZE.
     @param password The password to use when establishing the session with the MQTT broker.
-        Set to NULL if a password is not required.
+    Set to NULL if a password is not required. Maximum length is MQTT_MAX_PASSWORD_SIZE.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password);
 
 /**
-    Set the maximum message size
-    @description AWS supports a smaller maximum message size
-    @param mq The MQTT mq.
-    @param size The maximum message size
+    Set the maximum message size for this MQTT instance.
+    @description Configure the maximum allowed message size for publish operations.
+    Some brokers like AWS IoT have smaller limits than the default. This setting
+    helps prevent oversized messages from being rejected.
+    @param mq The MQTT object.
+    @param size The maximum message size in bytes. Must be positive and less than MQTT_MAX_MESSAGE_SIZE.
     @stability Evolving
  */
 PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
 
 /**
-    Set the will and testament message
-    @param mq The MQTT mq.
-    @param topic Will message topic.
-    @param msg Message to send
-    @param length Message size.
+    Set the last will and testament message.
+    @description Configure a message that the broker will publish if this client
+    disconnects unexpectedly. The will message is sent when the broker detects
+    an abnormal disconnection (network failure, client crash, etc.).
+    @param mq The MQTT object.
+    @param topic Topic where the will message will be published. Maximum length is MQTT_MAX_TOPIC_SIZE.
+    @param msg Will message data. Can be binary data.
+    @param length Size of the will message in bytes.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
 
 /**
-    Subscribe to a topic.
+    Subscribe to a topic pattern.
+    @description Subscribe to receive messages published to topics matching the specified pattern.
+    The MQTT instance must be connected to a broker via mqttConnect. Topic patterns support
+    MQTT wildcards: '+' for single level, '#' for multi-level.
     @param mq Mqtt object.
-    @param callback Function to invoke on receipt of messages.
-    @param maxQos Maximum quality of service message to receive.
-    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
-    @param topic Printf style topic string.
-    @param ... Topic args.
-    @returns Zero if successful.
+    @param callback Function to invoke when messages are received on this topic. Set to NULL
+    to use a default handler.
+    @param maxQos Maximum quality of service level to accept: 0, 1, or 2.
+    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @param topic Printf-style topic pattern string supporting MQTT wildcards.
+    @param ... Topic formatting arguments.
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos,
                          MqttWaitFlags waitFlags, cchar *topic, ...);
 
 /**
-    Perform a master subscription.
-    @description To minimize the number of active MQTT subscriptions, this call can establish a
-    master subscription. Subsequent subscriptions using this master topic as a prefix will
-    not incurr an MQTT protocol subscription. But will be processed off the master subscription locally.
+    Establish a master subscription for efficient topic management.
+    @description To minimize the number of active MQTT protocol subscriptions, this call
+    establishes a master subscription. Subsequent local subscriptions using this master
+    topic as a prefix will not incur additional MQTT protocol subscriptions but will be
+    processed locally off the master subscription. This is useful for applications with
+    many related topic subscriptions.
     @param mq Mqtt object.
-    @param maxQos Maximum quality of service message to receive. This is used for all local subscriptions
-        using this master.
-    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE, MQTT_WAIT_SENT or MQTT_WAIT_ACK.
-    @param topic Printf style topic string.
-    @param ... Topic args.
-    @returns Zero if successful.
-    @stability Prototype
+    @param maxQos Maximum quality of service level to accept: 0, 1, or 2. This QOS level
+    applies to all local subscriptions using this master.
+    @param waitFlags Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @param topic Printf-style master topic pattern string.
+    @param ... Topic formatting arguments.
+    @return Zero if successful, negative on error.
+    @stability Evolving
  */
 PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cchar *topic, ...);
 
 /**
     Unsubscribe from a topic.
-    @description This call will unsubscribe from a topic. If the topic is a master topic,
-    it will be unsubscribed from locally.
-    @param mq The MQTT mq.
-    @param topic The name of the topic to unsubscribe from.
-    @param wait Wait flags
-    @returns Zero if successful.
+    @description Remove a subscription for the specified topic pattern. If the topic
+    is a local subscription under a master topic, it will be removed locally without
+    affecting the master subscription.
+    @param mq The MQTT object.
+    @param topic The topic pattern to unsubscribe from. Must match a previously subscribed topic.
+    @param wait Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @return Zero if successful, negative on error.
     @stability Evolving
  */
 PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
 
 /**
     Unsubscribe from a master topic.
-    @param mq The MQTT mq.
-    @param topic The name of the topic to unsubscribe from.
-    @param wait Wait flags
-    @returns Zero if successful.
+    @description Remove a master subscription and all associated local subscriptions.
+    This will send an UNSUBSCRIBE packet to the broker for the master topic.
+    @param mq The MQTT object.
+    @param topic The master topic pattern to unsubscribe from.
+    @param wait Wait flags. Set to MQTT_WAIT_NONE (async), MQTT_WAIT_SENT (wait for send),
+    or MQTT_WAIT_ACK (wait for broker acknowledgment).
+    @return Zero if successful, negative on error.
+    @stability Evolving
  */
 PUBLIC int mqttUnsubscribeMaster(Mqtt *mq, cchar *topic, MqttWaitFlags wait);
 
 /**
-    Set the keep-alive timeout
-    @param mq The MQTT mq.
-    @param keepAlive Time to wait in milliseconds before sending a keep-alive message
+    Set the keep-alive timeout interval.
+    @description Configure the maximum time interval between client messages to the broker.
+    If no messages are sent within this period, a PINGREQ packet will be sent automatically
+    to maintain the connection.
+    @param mq The MQTT object.
+    @param keepAlive Time interval in milliseconds before sending a keep-alive message.
+    Set to 0 to disable keep-alive.
     @stability Evolving
  */
 PUBLIC void mqttSetKeepAlive(Mqtt *mq, Ticks keepAlive);
 
 /**
-    Set the idle connection timeout
-    @param mq The MQTT mq.
-    @param timeout Time to wait in milliseconds before closing the connection
+    Set the idle connection timeout.
+    @description Configure how long the connection can remain idle before being automatically
+    closed. This is useful for on-demand connections that should disconnect when not in use.
+    @param mq The MQTT object.
+    @param timeout Time to wait in milliseconds before closing an idle connection.
+    Set to MAXINT to disable automatic disconnection.
     @stability Evolving
  */
 PUBLIC void mqttSetTimeout(Mqtt *mq, Ticks timeout);
 
 /**
-    Return true if the MQTT instance is connected to a peer
-    @param mq The MQTT mq.
-    @return True if connected
-    @stability prototype
+    Check if the MQTT instance is connected to a broker.
+    @description Test whether the MQTT client currently has an active connection
+    to an MQTT broker and can send/receive messages.
+    @param mq The MQTT object.
+    @return True if connected to a broker, false otherwise.
+    @stability Prototype
  */
 PUBLIC bool mqttIsConnected(Mqtt *mq);
 
 /**
-    Throttle sending
+    Enable transmission throttling.
+    @description Temporarily throttle message transmission to prevent overwhelming
+    the broker or network. This is used internally for flow control.
+    @param mq The MQTT object.
     @stability Internal
  */
 PUBLIC void mqttThrottle(Mqtt *mq);
+
+/**
+    Check if there are messages in the transmission queue.
+    @description Determine if there are pending messages waiting to be processed
+    or transmitted to the broker.
+    @param mq The MQTT object.
+    @return True if messages are queued, false if queue is empty.
+    @stability Internal
+ */
+PUBLIC bool mqttCheckQueue(Mqtt *mq);
 
 #ifdef __cplusplus
 }

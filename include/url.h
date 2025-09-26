@@ -1,6 +1,11 @@
 
-/*
-    url.h -- Header for the URL client HTTP library
+/**
+    @file url.h
+    HTTP client library for embedded IoT applications.
+    @description The URL module provides a lightweight, streaming HTTP client optimized for embedded IoT devices.
+        Supports HTTP/HTTPS, WebSockets, and Server-Sent Events (SSE) with fiber-based concurrency.
+        Uses the R runtime for memory management and cross-platform compatibility.
+    @stability Evolving
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -109,7 +114,7 @@ typedef void (*UrlSseProc)(struct Url *up, ssize id, cchar *event, cchar *data, 
     @stability Evolving
  */
 typedef struct Url {
-    uint status : 10;              /**< Response (rx) status */
+    int status;                    /**< Response (rx) status */
     uint chunked : 4;              /**< Request is using transfer chunk encoding */
     uint close : 1;                /**< Connection should be closed on completion of the current request */
     uint certsDefined : 1;         /**< Certificates have been defined */
@@ -134,6 +139,8 @@ typedef struct Url {
     RBuf *rx;                      /**< Buffer for progressive reading response data */
     char *response;                /**< Response as a string */
     RBuf *responseBuf;             /**< Buffer to hold complete response */
+
+    // SECURITY Acceptable: Important to note that rxLen is ssize and overflow is checked
     ssize rxLen;                   /**< Length of rx body */
     ssize rxRemaining;             /**< Remaining rx data to read from the socket */
     ssize bufLimit;                /**< Maximum number of bytes to buffer from the response */
@@ -183,8 +190,8 @@ PUBLIC Url *urlAlloc(int flags);
 /**
     Close the underlying network socket associated with the URL object.
     @description This is not normally necessary to invoke unless you want to force the socket
-        connection to be recreated before issuing a subsequent request.
-    @param up URL object.
+        connection to be recreated before issuing a subsequent request. Does not free the URL object.
+    @param up URL object to close. Function is null tolerant.
     @stability Evolving
  */
 PUBLIC void urlClose(Url *up);
@@ -254,8 +261,10 @@ PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, ssize size
 PUBLIC int urlFinalize(Url *up);
 
 /**
-    Free a URL object and all resources
-    @param up URL object
+    Free a URL object and all resources.
+    @description Releases all memory and closes any network connections associated with the URL object.
+        After calling this function, the URL object is invalid and must not be used.
+    @param up URL object to free. Function is null tolerant.
     @stability Evolving
  */
 PUBLIC void urlFree(Url *up);
@@ -274,6 +283,17 @@ PUBLIC void urlFree(Url *up);
     @stability Evolving
  */
 PUBLIC char *urlGet(cchar *url, cchar *headers, ...);
+
+/**
+    Get a cookie from the response headers.
+    @description Extracts a specific cookie value from the HTTP response headers.
+        The request must have been completed and response headers received.
+    @param up URL object containing the response headers
+    @param name Cookie name to retrieve
+    @return The cookie value. Returns NULL if not found. Caller must free the returned string.
+    @stability Prototype
+ */
+PUBLIC char *urlGetCookie(Url *up, cchar *name);
 
 /**
     Get the URL internal error message
@@ -334,29 +354,29 @@ PUBLIC Json *urlGetJsonResponse(Url *up);
         Other fibers continue to run.
         \n\n
         If receiving a binary response, use urlGetResponseBuf instead.
-    @param up URL object
-    @return The response body as a string. Caller must NOT free. Will return an empty string on errors.
+    @param up URL object containing the response data
+    @return The response body as a null-terminated string. Caller must NOT free. Will return an empty string on errors.
     @stability Evolving
  */
 PUBLIC cchar *urlGetResponse(Url *up);
 
 /**
-    Get the response to a URL request in a buffer
+    Get the response to a URL request in a buffer.
     @description After issuing urlFetch, urlGet or urlPost, this routine may be called to read, buffer and return
-        the response body. This call should only be used when the response is a valid UTF-8 string. Otherwise, use
-        urlRead to read the response body. As this routine buffers the entire response body, it should only be used for
-        relatively small requests. Otherwise, the memory footprint of the application may be larger than desired.
+        the response body. Unlike urlGetResponse, this works with both text and binary response data.
+        As this routine buffers the entire response body, it should only be used for relatively small requests.
         \n\n
         This routine will block the current fiber while waiting for the request to complete.
         Other fibers continue to run.
-    @param up URL object
-    @return The response body as runtime buffer. Caller must NOT free.
+    @param up URL object containing the response data
+    @return The response body as runtime buffer. Returns NULL on errors. Caller must NOT free.
     @stability Evolving
  */
 PUBLIC RBuf *urlGetResponseBuf(Url *up);
 
 /**
     Get the HTTP response status code for a request.
+    @description This will finalize the request if not already finalized.
     @param up URL object
     @return The HTTP status code for the most recently completed request.
     @stability Evolving
@@ -365,8 +385,11 @@ PUBLIC int urlGetStatus(Url *up);
 
 /**
     Parse a URL into its constituent components in the Url structure.
-    @description This should not be manually called while a URL request is in progress as it will invalidate the
-        current request.
+    @description This will parse URLs or URL portions. It will use default values for missing components. For example:
+       'http://' will use localhost as the host, port 80 and a path of '/'. If passed 'a-string', it wll interpret this
+       as the path portion and use 'http' as the scheme and 'localhost' as the host. If passed ':4100/' it will
+       interpret this as the path portion and use 'http' as the scheme and 'localhost' as the host and port 4100. This
+       should not be manually called while a URL request is in progress as it will invalidate the current request.
     @param up URL object
     @param url Url to parse.
     @return Zero if the url parses successfully.
@@ -418,52 +441,62 @@ PUBLIC Json *urlPostJson(cchar *url, cvoid *data, ssize len, cchar *headers, ...
 PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
 
 /**
-    Set the maximum number of bytes to buffer from the response
-    @param up URL object
-    @param limit Maximum number of bytes
+    Set the maximum number of bytes to buffer from the response.
+    @description This will limit the number of bytes that can be buffered from the response. If using urlRead, this
+       limit will not apply. Use this to prevent excessive memory consumption for large responses.
+    @param up URL object to configure
+    @param limit Maximum number of bytes to buffer. Set to 0 for unlimited buffering.
     @stability Evolving
  */
 PUBLIC void urlSetBufLimit(Url *up, ssize limit);
 
 /**
-    Define the certificates to use with TLS
-    @param up URL object
-    @param ca Certificate authority to verify client certificates
-    @param key Certificate private key
-    @param cert Certificate text
-    @param revoke Certificates to revoke
+    Define the certificates to use with TLS connections.
+    @description Configure TLS client certificates for secure connections. All parameters are optional.
+        Use NULL for any certificate parameter not required.
+    @param up URL object to configure
+    @param ca Certificate authority bundle to verify server certificates. PEM format.
+    @param key Private key for client certificate authentication. PEM format.
+    @param cert Client certificate for authentication. PEM format.
+    @param revoke Certificate revocation list. PEM format.
     @stability Evolving
  */
 PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revoke);
 
 /**
-    Set the list of available ciphers to use
-    @param up URL object
-    @param ciphers String list of available ciphers
+    Set the list of available ciphers to use for TLS connections.
+    @description Configure the cipher suites available for TLS negotiation.
+        Use standard OpenSSL or MbedTLS cipher suite names.
+    @param up URL object to configure
+    @param ciphers Colon-separated list of cipher suites in order of preference
     @stability Evolving
  */
 PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
 
 /**
     Set the default request timeout to use for future URL instances.
-    @description This does not change the timeout for existing Url objects.
-    @param timeout Timeout in milliseconds.
+    @description This does not change the timeout for existing Url objects. The timeout applies to
+        the entire request including connection establishment, data transfer, and response reading.
+    @param timeout Timeout in milliseconds. Set to 0 for no timeout.
     @stability Evolving
  */
 PUBLIC void urlSetDefaultTimeout(Ticks timeout);
 
 /**
-    Set the URL flags
-    @param up URL object.
-    @param flags Set flags to URL_SHOW_REQ_HEADERS | URL_SHOW_REQ_BODY | URL_SHOW_RESP_HEADERS | URL_SHOW_RESP_BODY.
+    Set the URL flags for request tracing and protocol control.
+    @description Configure debugging output and protocol behavior.
+    @param up URL object to configure
+    @param flags Bitwise OR of URL_SHOW_REQ_HEADERS, URL_SHOW_REQ_BODY, URL_SHOW_RESP_HEADERS,
+        URL_SHOW_RESP_BODY, URL_HTTP_0 flags
     @stability Evolving
  */
 PUBLIC void urlSetFlags(Url *up, int flags);
 
 /**
-    Set the HTTP response status
-    @param up URL object
-    @param status HTTP status code
+    Set the HTTP response status code.
+    @description Override the HTTP response status. Typically used internally or for testing.
+    @param up URL object to modify
+    @param status HTTP status code to set
     @stability Evolving
  */
 PUBLIC void urlSetStatus(Url *up, int status);
@@ -478,8 +511,10 @@ PUBLIC void urlSetProtocol(Url *up, int protocol);
 
 /**
     Set the request timeout to use for the specific URL object.
-    @param up URL object
-    @param timeout Timeout in milliseconds.
+    @description The timeout applies to the entire request including connection establishment,
+        data transfer, and response reading. Overrides the default timeout for this URL object.
+    @param up URL object to configure
+    @param timeout Timeout in milliseconds. Set to 0 for no timeout.
     @stability Evolving
  */
 PUBLIC void urlSetTimeout(Url *up, Ticks timeout);
@@ -507,17 +542,17 @@ PUBLIC void urlSetVerify(Url *up, int verifyPeer, int verifyIssuer);
 PUBLIC int urlStart(Url *up, cchar *method, cchar *url);
 
 /**
-    Upload files in a request.
+    Upload files in a multipart/form-data request.
     @description This constructs and writes the HTTP request headers for a multipart/form-data request.
-        Use this routine instead of $urlWriteHeaders to write headers.
-        Use $urlStart to initiate the request before calling $urlUpload.
-    @param up URL object
-    @param files List of filenames to upload.
-    @param forms Hash of key/value form values to add to the request.
+        Use this routine instead of urlWriteHeaders to write headers.
+        Use urlStart to initiate the request before calling urlUpload.
+    @param up URL object for the request
+    @param files List of filenames to upload. May be NULL if no files.
+    @param forms Hash of key/value form values to add to the request. May be NULL if no form data.
     @param headers Printf style formatted pattern with following arguments. Individual header lines must be
-       terminated with "\r\n".
-    @param ... Optional header arguments.
-    @return Zero if successful.
+       terminated with "\r\n". May be NULL.
+    @param ... Optional header arguments
+    @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
 PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...);
@@ -575,28 +610,34 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers);
 #if ME_COM_WEBSOCKETS
 /**
     Issue a simple WebSocket request.
-    @param url HTTP URL
-    @param callback Callback function to invoke for read data.
-    @param arg Argument to pass to the callback function.
-    @param headers Optional request headers. Individual header lines must be terminated with "\r\n".
-    @return Zero when closed, otherwise a negative status code.
+    @description Establishes a WebSocket connection and processes messages until the connection closes.
+        This is a blocking call that will run until the WebSocket is closed.
+    @param url WebSocket URL (ws:// or wss://)
+    @param callback Callback function to invoke for received WebSocket messages
+    @param arg User argument to pass to the callback function
+    @param headers Optional request headers. Individual header lines must be terminated with "\r\n"
+    @return Zero when connection closes normally, negative error code on failure.
+    @stability Evolving
  */
 PUBLIC int urlWebSocket(cchar *url, WebSocketProc callback, void *arg, cchar *headers);
 
 /**
     Get the WebSocket object for a URL request.
-    @param up URL object
-    @return The WebSocket object for the URL request.
+    @description Retrieve the underlying WebSocket object after a successful WebSocket upgrade.
+        The URL object must have completed a WebSocket handshake.
+    @param up URL object with established WebSocket connection
+    @return The WebSocket object for the URL request. Returns NULL if no WebSocket connection.
     @stability Evolving
  */
 PUBLIC WebSocket *urlGetWebSocket(Url *up);
 
 /**
-    Define the async callbacks.
-    @description This will invoke the callback function with an OPEN event.
-    @param up URL object
-    @param callback Callback function to invoke for read data.
-    @param arg Argument to pass to the callback function.
+    Define async WebSocket callbacks.
+    @description Configure asynchronous WebSocket message handling. This will invoke the callback function
+        with an OPEN event initially, then MESSAGE events for received data.
+    @param up URL object with WebSocket connection
+    @param callback Callback function to invoke for WebSocket events
+    @param arg User argument to pass to the callback function
     @stability Evolving
  */
 PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
@@ -604,38 +645,46 @@ PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
 
 #if URL_SSE
 /**
-    Wait for SSE events
-    @param up URL object
-    @return Zero if successful.
+    Wait for Server-Sent Events.
+    @description Block the current fiber waiting for SSE events. Other fibers continue to run.
+        Events will be delivered via the SSE callback if configured.
+    @param up URL object with active SSE connection
+    @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
 PUBLIC int urlSseWait(Url *up);
 
 /**
     Define an SSE async callback.
-    @description This will invoke the callback function when SSE events are received.
-    @param up URL object
-    @param proc Callback function to invoke for read data.
-    @param arg Argument to pass to the callback function.
+    @description Configure asynchronous Server-Sent Event handling. The callback function will be
+        invoked when SSE events are received from the server.
+    @param up URL object with SSE connection
+    @param proc Callback function to invoke for SSE events
+    @param arg User argument to pass to the callback function
     @stability Evolving
  */
 PUBLIC void urlSseAsync(Url *up, UrlSseProc proc, void *arg);
 
 /**
-    Get SSE events
-    @param uri URL to get events from
-    @param proc Callback function to invoke for read data.
-    @param arg Argument to pass to the callback function.
-    @param headers Optional request headers.
-    @return Zero if successful.
+    Get Server-Sent Events from a URL.
+    @description Establish a connection to receive SSE events and invoke the callback for each event.
+        This is a blocking call that runs until the connection closes.
+    @param uri URL to get events from (http:// or https://)
+    @param proc Callback function to invoke for received SSE events
+    @param arg User argument to pass to the callback function
+    @param headers Optional request headers. Printf style format string.
+    @param ... Optional header arguments
+    @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
 PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, ...);
 
 /**
-    Set the maximum number of retries for SSE requests
-    @param up URL object
-    @param maxRetries Maximum number of retries
+    Set the maximum number of retries for SSE requests.
+    @description Configure automatic retry behavior for SSE connections that fail or disconnect.
+        The client will automatically attempt to reconnect up to the specified limit.
+    @param up URL object to configure
+    @param maxRetries Maximum number of automatic reconnection attempts
     @stability Evolving
  */
 PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
@@ -643,10 +692,11 @@ PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
 
 #if URL_SSE || ME_COM_WEBSOCKETS
 /**
-    Wait for the connection to be closed
-    @description Used for SSE and WebSocket connections.
-    @param up URL object
-    @return Zero if successful.
+    Wait for the connection to be closed.
+    @description Block the current fiber until the connection closes. Used for SSE and WebSocket connections
+        to keep the connection alive until the remote end closes it.
+    @param up URL object with active connection
+    @return Zero when connection closes normally, negative error code on failure.
     @stability Evolving
  */
 PUBLIC int urlWait(Url *up);

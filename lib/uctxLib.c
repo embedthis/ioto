@@ -6,8 +6,6 @@
 
 /********************************** Includes **********************************/
 
-#include <stddef.h>
-#include <stdlib.h>
 #include "uctx.h"
 
 /************************************ Code ************************************/
@@ -15,23 +13,39 @@
 int uctx_needstack(void)
 {
 #if FREERTOS
-	return 0;
+    return 0;
 #else
-	return 1;
+    return 1;
 #endif
 }
 
-void uctx_setstack(uctx_t *up, void *stack, size_t stackSize) 
+int uctx_setstack(uctx_t *up, void *stack, size_t stackSize)
 {
-	up->uc_stack.ss_sp = stack;
-	up->uc_stack.ss_size = stackSize;
-	up->uc_stack.ss_flags = 0;
-	up->uc_link = NULL;
+    if (!up || !stack || stackSize <= 0) {
+        return -1;
+    }
+    if (stackSize < UCTX_MIN_STACK_SIZE || stackSize > UCTX_MAX_STACK_SIZE) {
+        return -1;
+    }
+#if FUTURE
+    if ((((uintptr_t) stack) & 0xF) != 0) {
+        // Stack must be 16-byte aligned on some architectures
+        return -1;
+    }
+#endif
+    up->uc_stack.ss_sp = stack;
+    up->uc_stack.ss_size = stackSize;
+    up->uc_stack.ss_flags = 0;
+    up->uc_link = NULL;
+    return 0;
 }
 
 void *uctx_getstack(uctx_t *up)
 {
-	return (char*) up->uc_stack.ss_sp + up->uc_stack.ss_size;
+    if (!up) {
+        return NULL;
+    }
+    return (char*) up->uc_stack.ss_sp + up->uc_stack.ss_size;
 }
 
 

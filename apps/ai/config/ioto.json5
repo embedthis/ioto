@@ -47,6 +47,7 @@
     },
     limits: {
         reprovision: 5,
+        _fibers: 10,
         _stack: '64k'
     },
     log: {

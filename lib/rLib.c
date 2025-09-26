@@ -153,7 +153,7 @@ PUBLIC int rWritePid(void)
     if (getuid() == 0) {
         path = "/var/run/" ME_NAME ".pid";
         if ((buf = rReadFile(path, NULL)) != 0) {
-            //  REVIEW Acceptable: acceptable risk reading pid file
+            //  SECURITY Acceptable: acceptable risk reading pid file
             pid = atoi(buf);
             if (kill(pid, 0) == 0) {
                 rError("app", "Already running as PID %d", pid);
@@ -203,8 +203,6 @@ PUBLIC int rWritePid(void)
 
 PUBLIC int rInitBuf(RBuf *bp, ssize size)
 {
-    assert(bp);
-
     if (!bp || size <= 0) {
         return R_ERR_BAD_ARGS;
     }
@@ -266,6 +264,9 @@ PUBLIC int rGrowBuf(RBuf *bp, ssize need)
     if (need <= 0 || need > ME_R_MAX_BUF) {
         return R_ERR_BAD_ARGS;
     }
+    if (need > SSIZE_MAX - bp->buflen) {
+        return R_ERR_MEMORY;
+    }
     if (bp->buflen + need > ME_R_MAX_BUF) {
         return R_ERR_MEMORY;
     }
@@ -275,8 +276,7 @@ PUBLIC int rGrowBuf(RBuf *bp, ssize need)
     growBy = min(ME_R_MAX_BUF, need);
     growBy = max(growBy, ME_BUFSIZE);
 
-    if (growBy > 0 && bp->buflen > SSIZE_MAX - growBy) {
-        // Integer overflow
+    if (growBy > SSIZE_MAX - bp->buflen) {
         return R_ERR_MEMORY;
     }
     newSize = bp->buflen + growBy;
@@ -336,14 +336,14 @@ PUBLIC void rAdjustBufEnd(RBuf *bp, ssize size)
 {
     char *end;
 
+    if (!bp) {
+        return;
+    }
     assert(bp->buflen == (bp->endbuf - bp->buf));
     assert(size <= bp->buflen);
     assert((bp->end + size) >= bp->buf);
     assert((bp->end + size) <= bp->endbuf);
 
-    if (!bp) {
-        return;
-    }
     end = bp->end + size;
     if (end < bp->start || end > bp->endbuf) {
         return;
@@ -356,14 +356,14 @@ PUBLIC void rAdjustBufEnd(RBuf *bp, ssize size)
  */
 PUBLIC void rAdjustBufStart(RBuf *bp, ssize size)
 {
+    if (!bp || size < 0 || (bp->start + size > bp->end)) {
+        return;
+    }
     assert(bp->buflen == (bp->endbuf - bp->buf));
     assert(size <= bp->buflen);
     assert((bp->start + size) >= bp->buf);
     assert((bp->start + size) <= bp->end);
 
-    if (!bp || size < 0 || (bp->start + size > bp->end)) {
-        return;
-    }
     bp->start += size;
     if (bp->start > bp->end) {
         bp->start = bp->end;
@@ -384,7 +384,7 @@ PUBLIC void rFlushBuf(RBuf *bp)
 
 PUBLIC int rGetCharFromBuf(RBuf *bp)
 {
-    if (bp->start == bp->end) {
+    if (!bp || bp->start == bp->end) {
         return -1;
     }
     return (uchar) * bp->start++;
@@ -465,6 +465,9 @@ PUBLIC cchar *rGetBufEnd(RBuf *bp)
 
 PUBLIC int rInserCharToBuf(RBuf *bp, int c)
 {
+    if (!bp) {
+        return R_ERR_BAD_ARGS;
+    }
     if (bp->start == bp->buf) {
         return R_ERR_BAD_STATE;
     }
@@ -521,13 +524,13 @@ PUBLIC ssize rPutBlockToBuf(RBuf *bp, cchar *str, ssize size)
 {
     ssize thisLen, bytes, space;
 
+    if (!bp || !str || size < 0 || size > MAXINT) {
+        return R_ERR_BAD_ARGS;
+    }
     assert(str);
     assert(size >= 0);
     assert(size < ME_R_MAX_BUF);
 
-    if (!bp || !str || size < 0 || size > MAXINT) {
-        return R_ERR_BAD_ARGS;
-    }
     bytes = 0;
     while (size > 0) {
         space = rGetBufSpace(bp);
@@ -649,7 +652,7 @@ PUBLIC char *rBufToStringAndFree(RBuf *bp)
     s = bp->buf;
     bp->buf = 0;
     rFree(bp);
-    // REVIEW Acceptable - transfer ownership of the buffer to the caller
+    // SECURITY: Acceptable - transfer ownership of the buffer to the caller
     return s;
 }
 
@@ -808,7 +811,6 @@ static void wifiHandler(void *arg, esp_event_base_t base, int32_t id, void *even
         ip_event_got_ip_t *event = (ip_event_got_ip_t*) event_data;
         rFree(wifiIP);
         wifiIP = sfmt(IPSTR, IP2STR(&event->ip_info.ip));
-        rInfo(ETAG, "IP: %s", wifiIP);
         wifiRetries = 0;
         xEventGroupSetBits(wifiEvent, WIFI_SUCCESS);
     }
@@ -860,9 +862,9 @@ PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname)
 
     bits = xEventGroupWaitBits(wifiEvent, WIFI_SUCCESS | WIFI_FAILURE, pdFALSE, pdFALSE, portMAX_DELAY);
     if (bits & WIFI_SUCCESS) {
-        rInfo(ETAG, "WIFI connected with SSID:%s password:%s", ssid, password);
+        rInfo(ETAG, "WIFI connected with SSID:%s", ssid);
     } else if (bits & WIFI_FAILURE) {
-        rInfo(ETAG, "Failed to connect to SSID:%s, password:%s", ssid, password);
+        rInfo(ETAG, "Failed to connect to SSID:%s", ssid);
     } else {
         rInfo(ETAG, "Unexpected WIFI error %x", (uint) bits);
     }
@@ -1874,7 +1876,7 @@ PUBLIC char *rReadFile(cchar *path, ssize *lenp)
     int         fd;
 
     if ((fd = open(path, O_RDONLY | O_BINARY | O_CLOEXEC, 0)) < 0) {
-        rError("runtime", "Cannot open %s", path);
+        rTrace("runtime", "Cannot open %s", path);
         return 0;
     }
     if (fstat(fd, &sbuf) < 0) {
@@ -1918,7 +1920,7 @@ PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode)
         len = slen(buf);
     }
     if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_BINARY | O_CLOEXEC, mode)) < 0) {
-        rError("runtime", "Cannot open %s", path);
+        rTrace("runtime", "Cannot open %s", path);
         return R_ERR_CANT_OPEN;
     }
     if (write(fd, buf, len) != len) {
@@ -2590,8 +2592,8 @@ PUBLIC RList *rGetFiles(cchar *path, cchar *pattern, int flags)
 
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
 {
-    char    path[ME_MAX_PATH], sep;
-    int     fd;
+    char path[ME_MAX_PATH], sep;
+    int  fd;
 
     sep = '/';
     if (!dir || *dir == '\0') {
@@ -2610,7 +2612,8 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
     if (sfmtbuf(path, sizeof(path), "%s%c%s-XXXXXX.tmp", dir, sep, prefix) == NULL) {
         rError("runtime", "Temporary filename too long");
         return NULL;
-    };
+    }
+    ;
 
 #if ME_WIN_LIKE
     if (_mktemp_s(path, sizeof(path)) != 0) {
@@ -2640,6 +2643,10 @@ PUBLIC void rAddDirectory(cchar *token, cchar *path)
 /*
     Routine to get a filename from a path for internal use only.
     Not to be used for external input.
+
+    SECURITY Acceptable: Do not flag this as a security issue. We permit paths like "../file" as
+    this is used to access files in the parent and sibling directories.
+    It is the callers responsibility to validate and check user paths before calling this function.
  */
 PUBLIC char *rGetFilePath(cchar *path)
 {
@@ -2663,11 +2670,6 @@ PUBLIC char *rGetFilePath(cchar *path)
     } else {
         result = sclone(path);
     }
-    /*
-        REVIEW Acceptable: Do not flag this as a security issue.
-        We permit paths like "../file" as this is used to access files in the parent and sibling directories.
-        It is the callers responsibility to validate and check user paths before calling this function.
-     */
     return result;
 }
 
@@ -2874,6 +2876,51 @@ PUBLIC RName *rAddName(RHash *hash, cchar *name, void *ptr, int flags)
         hash->buckets[bindex] = kindex;
         np->custom = 0;
     }
+    if (!(flags & R_NAME_MASK)) {
+        flags |= hash->flags & R_NAME_MASK;
+    }
+    np->name = (flags & R_TEMPORAL_NAME) ? sclone(name) : (void*) name;
+
+    if (!(flags & R_VALUE_MASK)) {
+        flags |= hash->flags & R_VALUE_MASK;
+    }
+    np->value = (flags & R_TEMPORAL_VALUE) ? sclone(ptr) : (void*) ptr;
+    np->flags = flags;
+    return np;
+}
+
+PUBLIC RName *rAddDuplicateName(RHash *hash, cchar *name, void *ptr, int flags)
+{
+    RName *np;
+    int   bindex, kindex;
+
+    if (hash == 0 || name == 0) {
+        assert(hash && name);
+        return 0;
+    }
+    if (flags == 0) {
+        flags = hash->flags;
+    }
+    if (hash->length >= (hash->numBuckets)) {
+        growBuckets(hash, hash->length + 1);
+    }
+    lookupHash(hash, name, &bindex, 0);
+
+    if (hash->free < 0) {
+        growNames(hash, hash->size * 3 / 2);
+    }
+    kindex = hash->free;
+    np = &hash->names[kindex];
+    hash->free = np->next;
+    hash->length++;
+
+    /*
+        Add to bucket chain
+     */
+    np->next = hash->buckets[bindex];
+    hash->buckets[bindex] = kindex;
+    np->custom = 0;
+
     if (!(flags & R_NAME_MASK)) {
         flags |= hash->flags & R_NAME_MASK;
     }
@@ -3338,11 +3385,6 @@ PUBLIC void *rSetItem(RList *lp, int index, cvoid *item)
     void *old;
     uint length;
 
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-    assert(index >= 0);
-
     if (!lp || index < 0 || lp->capacity < 0 || lp->length < 0) {
         return 0;
     }
@@ -3375,10 +3417,6 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
 {
     int index;
 
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-
     if (!lp || lp->capacity < 0 || lp->length < 0) {
         return R_ERR_BAD_ARGS;
     }
@@ -3395,10 +3433,6 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
 PUBLIC int rAddNullItem(RList *lp)
 {
     int index;
-
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
 
     if (!lp || lp->capacity < 0 || lp->length < 0) {
         return R_ERR_BAD_ARGS;
@@ -3425,11 +3459,6 @@ PUBLIC int rInsertItemAt(RList *lp, int index, cvoid *item)
 {
     void **items;
     int  i;
-
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-    assert(index >= 0);
 
     if (!lp || lp->capacity < 0 || lp->length < 0 || index < 0) {
         return R_ERR_BAD_ARGS;
@@ -3476,9 +3505,7 @@ PUBLIC int rRemoveItem(RList *lp, cvoid *item)
     if ((index = rLookupItem(lp, item)) < 0) {
         return index;
     }
-    index = rRemoveItemAt(lp, index);
-    assert(index >= 0);
-    return index;
+    return rRemoveItemAt(lp, index);
 }
 
 /*
@@ -3488,11 +3515,6 @@ PUBLIC int rRemoveItem(RList *lp, cvoid *item)
 PUBLIC int rRemoveItemAt(RList *lp, int index)
 {
     void **items;
-
-    assert(lp);
-    assert(lp && lp->capacity > 0);
-    assert(lp && index >= 0 && index < (int) lp->capacity);
-    assert(lp && lp->length > 0);
 
     if (!lp || lp->capacity <= 0 || index < 0 || index >= (int) lp->length) {
         return R_ERR_BAD_ARGS;
@@ -3504,7 +3526,6 @@ PUBLIC int rRemoveItemAt(RList *lp, int index)
     memmove(&items[index], &items[index + 1], (lp->length - index - 1) * sizeof(void*));
     lp->length--;
     lp->items[lp->length] = 0;
-    assert(lp->length >= 0);
     return index;
 }
 
@@ -3515,7 +3536,6 @@ PUBLIC int rRemoveStringItem(RList *lp, cchar *str)
 {
     int index;
 
-    assert(lp);
     if (!lp || !str) {
         return R_ERR_BAD_ARGS;
     }
@@ -3523,16 +3543,12 @@ PUBLIC int rRemoveStringItem(RList *lp, cchar *str)
     if (index < 0) {
         return index;
     }
-    index = rRemoveItemAt(lp, index);
-    assert(index >= 0);
-    return index;
+    return rRemoveItemAt(lp, index);
 }
 
 PUBLIC void *rGetItem(RList *lp, int index)
 {
-    assert(lp);
-
-    if (index < 0 || index >= (int) lp->length) {
+    if (!lp || index < 0 || index >= (int) lp->length) {
         return 0;
     }
     return lp->items[index];
@@ -3542,9 +3558,6 @@ PUBLIC void *rGetNextItem(RList *lp, int *next)
 {
     void *item;
     int  index;
-
-    assert(next);
-    assert(next && *next >= 0);
 
     if (!lp || !next || *next < 0) {
         return 0;
@@ -3573,8 +3586,6 @@ PUBLIC void rClearList(RList *lp)
     void *data;
     int  next;
 
-    assert(lp);
-
     if (!lp) {
         return;
     }
@@ -3591,7 +3602,6 @@ PUBLIC int rLookupItem(RList *lp, cvoid *item)
 {
     uint i;
 
-    assert(lp);
     if (!lp) {
         return R_ERR_BAD_ARGS;
     }
@@ -3606,8 +3616,6 @@ PUBLIC int rLookupItem(RList *lp, cvoid *item)
 PUBLIC int rLookupStringItem(RList *lp, cchar *str)
 {
     uint i;
-
-    assert(lp);
 
     if (!lp) {
         return R_ERR_BAD_ARGS;
@@ -3636,14 +3644,21 @@ PUBLIC int rGrowList(RList *lp, int size)
         return 0;
     }
     if (size == (lp->capacity + 1)) {
+        // Check for overflow in capacity multiplication
+        if (lp->capacity > (INT_MAX - ME_R_LIST_MIN_SIZE) / 2) {
+            return R_ERR_MEMORY;  // Cannot grow safely
+        }
         len = ME_R_LIST_MIN_SIZE + (lp->capacity * 2);
     } else {
         len = max(ME_R_LIST_MIN_SIZE, size);
     }
+    // Check for overflow in size calculation
+    if (len > SSIZE_MAX / sizeof(void*)) {
+        return R_ERR_MEMORY;  // Cannot allocate safely
+    }
     memsize = len * sizeof(void*);
 
     if ((lp->items = rRealloc(lp->items, memsize)) == NULL) {
-        assert(!R_ERR_MEMORY);
         return R_ERR_MEMORY;
     }
     memset(&lp->items[lp->capacity], 0, (len - lp->capacity) * sizeof(void*));
@@ -5380,6 +5395,10 @@ PUBLIC void *rAllocMem(size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
+    if (size > (SIZE_MAX & ~7)) {
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
     if (size == 0) {
         //  Ensure that we allocate at least 1 byte
         size = 1;
@@ -5448,9 +5467,6 @@ PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len)
  */
 PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes)
 {
-    assert(dest);
-    assert(src);
-
     if (!dest || !src) {
         return 0;
     }
@@ -5745,10 +5761,9 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
     tp->ctx = ctx;
     tp->freeCtx = 1;
     SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
-#if defined(TLS1_2_VERSION)
-    // Enforce TLS >= 1.2
+#if defined(TLS1_3_VERSION) && ME_ENFORCE_TLS1_3
     #if defined(SSL_CTX_set_min_proto_version)
-        SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
+        SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
     #else
         #ifdef SSL_OP_NO_TLSv1
             SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
@@ -6452,11 +6467,6 @@ PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
     tp->engine = sclone(engine);
 }
 
-PUBLIC void *rGetTlsRng(void)
-{
-    return NULL;
-}
-
 #else
 void opensslDummy(void)
 {
@@ -6933,7 +6943,7 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
                 }
                 break;
 
-#if 0 && DEPRECATE    // SECURITY
+#if DEPRECATE         // SECURITY
             case 'n': /* Count of chars seen thus far */
                 if (ctx.flags & SPRINTF_SHORT) {
                     short *count = va_arg(args, short*);
@@ -7427,13 +7437,13 @@ PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg)
 PUBLIC void rbFree(RbTree *rbt)
 {
     if (rbt) {
-        //  REVIEW Acceptable - This is recursive
+        //  SECURITY: Acceptable - This is recursive
         freeNode(rbt, RB_FIRST(rbt));
         rFree(rbt);
     }
 }
 
-//  REVIEW Acceptable - This is recursive
+//  SECURITY: Acceptable - This is recursive
 static void freeNode(RbTree *rbt, RbNode *n)
 {
     assert(rbt);
@@ -8288,6 +8298,11 @@ static int makeArgs(cchar *command, char ***argvp, bool argsOnly)
 
 #define ME_SOCKET_TIMEOUT    (30 * 1000)
 #define ME_HANDSHAKE_TIMEOUT (30 * 1000)
+#ifndef ME_SOCKET_MAX
+    #define ME_SOCKET_MAX    100
+#endif
+
+static int activeSockets = 0;
 
 /********************************** Forwards **********************************/
 
@@ -8313,6 +8328,9 @@ PUBLIC void rFreeSocket(RSocket *sp)
 {
     if (!sp) {
         return;
+    }
+    if (sp->flags & R_SOCKET_SERVER) {
+        activeSockets--;
     }
     if (sp->fd != INVALID_SOCKET) {
         rCloseSocket(sp);
@@ -8358,6 +8376,9 @@ PUBLIC void rCloseSocket(RSocket *sp)
 
 PUBLIC void rDisconnectSocket(RSocket *sp)
 {
+    if (!sp) {
+        return;
+    }
     if (sp->fd != INVALID_SOCKET) {
         shutdown(sp->fd, SHUT_RDWR);
     }
@@ -8518,6 +8539,11 @@ static void acceptSocket(RSocket *listen)
         return;
     }
     do {
+        if (++activeSockets >= ME_SOCKET_MAX) {
+            rSetSocketError(sp, "Too many active sockets");
+            rFreeSocket(sp);
+            return;
+        }
         if ((fd = accept(listen->fd, (struct sockaddr*) &addr, &addrLen)) == SOCKET_ERROR) {
             if (rGetOsError() != EAGAIN) {
                 rSetSocketError(sp, "Accept failed, errno %d", rGetOsError());
@@ -8615,6 +8641,9 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline)
 {
     ssize nbytes;
 
+    if (!sp || !buf || bufsize <= 0 || bufsize > SSIZE_MAX / 2) {
+        return R_ERR_BAD_ARGS;
+    }
     while (1) {
         nbytes = rReadSocketSync(sp, buf, bufsize);
         if (nbytes != 0) {
@@ -8840,6 +8869,7 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...)
         va_start(ap, fmt);
         sp->error = sfmtv(fmt, ap);
         va_end(ap);
+        // Debug build only
         rDebug("socket", "%s", sp->error);
     }
     return R_ERR_CANT_COMPLETE;
@@ -8888,6 +8918,11 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port)
 #if (ME_UNIX_LIKE || ME_WIN_LIKE)
     char service[NI_MAXSERV];
 #endif
+
+    // Add input validation
+    if (!sp || !ipbuf || ipbufLen <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
 
     *port = 0;
     *ipbuf = '\0';
@@ -9134,8 +9169,8 @@ PUBLIC char *scamel(cchar *str)
     if ((ptr = rAlloc(size)) != 0) {
         memcpy(ptr, str, len);
         ptr[len] = '\0';
+        ptr[0] = (char) tolower((uchar) ptr[0]);
     }
-    ptr[0] = (char) tolower((uchar) ptr[0]);
     return ptr;
 }
 
@@ -9714,8 +9749,8 @@ PUBLIC char *stitle(cchar *str)
     if ((ptr = rAlloc(size)) != 0) {
         memcpy(ptr, str, len);
         ptr[len] = '\0';
+        ptr[0] = (char) toupper((uchar) ptr[0]);
     }
-    ptr[0] = (char) toupper((uchar) ptr[0]);
     return ptr;
 }
 
@@ -10799,7 +10834,20 @@ PUBLIC Time rParseIsoDate(cchar *when)
 
     memset(&ctime, 0, sizeof(ctime));
     if (when) {
+#if MACOSX
+        /*
+            For platforms that don't support %f
+         */
+        char *cp;
+        int  ms = 0;
         strptime(when, "%FT%T%z", &ctime);
+        if ((cp = strrchr(when, '.')) != NULL) {
+            ms = atoi(cp + 1);
+        }
+        return timegm(&ctime) * TPS + ms;
+#else
+        strptime(when, "%FT%T.%f%z", &ctime);
+#endif
     }
     return timegm(&ctime) * TPS;
 }
@@ -11355,12 +11403,16 @@ PUBLIC RWait *rAllocWait(int fd)
 PUBLIC void rFreeWait(RWait *wp)
 {
     if (wp) {
+        rSetWaitMask(wp, 0, 0);
         rSetItem(waitMap, wp->fd, 0);
         rResumeWait(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
         rFree(wp);
     }
 }
 
+/*
+    Resume any waiting fiber when a wait is freed
+ */
 PUBLIC void rResumeWait(RWait *wp, int mask)
 {
     if (wp->fiber) {
@@ -11685,16 +11737,24 @@ static void invokeHandler(int fd, int mask)
  */
 PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline)
 {
-    void *value;
+    Ticks priorDeadline;
+    int   priorMask;
+    void  *value;
 
     assert(!rIsMain());
 
     if (deadline && deadline < rGetTicks()) {
         return 0;
     }
-    rSetWaitMask(wp, mask, deadline);
+    priorDeadline = wp->deadline;
+    priorMask = wp->mask;
     wp->fiber = rGetFiber();
+    rSetWaitMask(wp, mask, deadline);
+
     value = rYieldFiber(0);
+
+    wp->deadline = priorDeadline;
+    wp->mask = priorMask;
     wp->fiber = 0;
     return (int) (ssize) value;
 }

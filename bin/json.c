@@ -6,19 +6,21 @@
 
     Examples:
 
+    json [options] [cmd] file
     json <file
     json file
-    json [options] [cmd] file
+    json --overwrite file
     json --stdin [options] [cmd] <file
 
     Commands:
-    json field=value    # assign
-    json field          # query
-    json .              # convert formats
+    json field=value            # assign
+    json field                  # query
+    json --remove field         # remove field
+    json <options> <no-args>    # convert formats
 
     Options:
     --blend | --bump | --check | --default | --double | --encode | --env | --expand | --export |
-    --header | --indent | --js | --json | --json5 | --length | --one | --profile name |
+    --header | --indent | --js | --json | --json5 | --keys | --length | --one | --profile name |
     --overwrite |--remove | --stdin | --strict | --trace | --verbose | --version
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
@@ -71,6 +73,7 @@ static int encode = 0;
 static int expand = 0;
 static int export = 0;
 static int format = JSON_MAX_LINE_LENGTH;
+static int keys = 0;
 static int multiline = 1;
 static int newline = 1;     // Add a trailing newline to the output
 static int noerror = 0;
@@ -91,7 +94,8 @@ static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
 static void outputAll(Json *json, int flags);
-static void outputNameValue(Json *json, JsonNode *parent, char *base);
+static void outputNode(Json *json, JsonNode *node, char *name, int flags);
+static void outputProperty(Json *json, cchar *name, cchar *value, int type);
 static char *readInput();
 static int run();
 
@@ -117,6 +121,7 @@ static int usage(void)
              "  --json           # Emit output in JSON form.\n"
              "  --json5          # Emit output in JSON5 form (default).\n"
              "  --length num     # Set line length limit for compacted output.\n"
+             "  --keys           # Emit propty key names only.\n"
              "  --noerror        # Ignore errors.\n"
              "  --one            # Emit on one line.\n"
              "  --overwrite      # Overwrite file when converting instead of stdout.\n"
@@ -124,13 +129,13 @@ static int usage(void)
              "  --quiet          # Quiet mode with no error messages.\n"
              "  --remove         # Remove queried property.\n"
              "  --single         # Use single quotes (default with JSON5).\n"
-             "  --stdin          # Read from stdin.\n"
-             "  --strict         # Enforce strict JSON format.\n"
+             "  --stdin          # Read from stdin (default if no file specified).\n"
+             "  --strict         # Perform strict JSON standard parsing of input.\n"
              "\n"
              "  Commands:\n"
              "  property=value   # Set queried property.\n"
              "  property         # Query property (can be dotted property).\n"
-             "  .                # Convert input to desired format\n\n");
+             "                   # If not command, then convert input to desired format\n\n");
     return R_ERR_BAD_ARGS;
 }
 
@@ -243,6 +248,9 @@ static int parseArgs(int argc, char **argv)
         } else if (smatch(argp, "--noerror") || smatch(argp, "-n")) {
             noerror = 1;
 
+        } else if (smatch(argp, "--keys")) {
+            keys = 1;
+
         } else if (smatch(argp, "--length")) {
             if (nextArg + 1 >= argc) {
                 return usage();
@@ -316,12 +324,13 @@ static int parseArgs(int argc, char **argv)
         }
     }
     if (!cmd) {
-        if (smatch(property, ".")) {
-            cmd = JSON_CMD_CONVERT;
-        } else if (schr(property, '=')) {
+        if (schr(property, '=')) {
             cmd = JSON_CMD_ASSIGN;
-        } else {
+        } else if (property) {
+            // MOB if no property, should be convert
             cmd = JSON_CMD_QUERY;
+        } else {
+            cmd = JSON_CMD_CONVERT;
         }
     }
     if (argc == nextArg) {
@@ -375,8 +384,8 @@ static int run()
         }
         flags |= JSON_STRICT_PARSE | JSON_JSON;
     }
-    json = jsonParseKeep(data, flags);
-    if (json == 0) {
+    json = jsonAlloc();
+    if (jsonParseText(json, data, flags) < 0) {
         error("Cannot parse input");
         return R_ERR_CANT_READ;
     }
@@ -425,8 +434,12 @@ static int run()
         if (jsonSet(json, 0, property, value, 0) < 0) {
             return error("Cannot assign to \"%s\"", property);
         }
-        if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
-            return error("Cannot save \"%s\"", path);
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
     } else if (cmd == JSON_CMD_BUMP) {
         if (bumpVersion(json, bump) < 0) {
@@ -447,14 +460,18 @@ static int run()
             }
             return error("Cannot remove property \"%s\"", property);
         }
-        if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
-            return error("Cannot save \"%s\"", path);
+        if (overwrite) {
+            if (jsonSave(json, 0, NULL, path, 0, flags) < 0) {
+                return error("Cannot save \"%s\"", path);
+            }
+        } else {
+            outputAll(json, flags);
         }
 
     } else if (cmd == JSON_CMD_QUERY) {
         if (!check) {
             node = jsonGetNode(json, 0, property);
-            outputNameValue(json, node, property);
+            outputNode(json, node, property, flags);
         }
 
     } else if (cmd == JSON_CMD_CONVERT) {
@@ -660,32 +677,48 @@ static void outputAll(Json *json, int flags)
             if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
                 for (ITERATE_JSON(json, node, child, id)) {
                     property = sjoin(name, ".", child->name, NULL);
-                    outputNameValue(json, child, property);
+                    outputNode(json, child, property, flags);
                     rFree(property);
                 }
                 break;
             } else {
-                outputNameValue(json, node, node->name);
+                outputNode(json, node, node->name, flags);
             }
         }
     }
 }
 
-static void outputNameValue(Json *json, JsonNode *node, char *name)
+static void outputNode(Json *json, JsonNode *node, char *name, int flags)
 {
     JsonNode *child;
     cchar    *value;
-    char     *exp, *property;
-    int      type;
+    char     *output, *property;
+    int      id, type;
 
     if (node) {
         value = node->value;
         type = node->type;
         if (node->type == JSON_ARRAY || node->type == JSON_OBJECT) {
-            for (ITERATE_JSON(json, node, child, id)) {
-                property = sjoin(name, ".", child->name, NULL);
-                outputNameValue(json, child, property);
-                rFree(property);
+            if (keys || format == JSON_FORMAT_ENV || format == JSON_FORMAT_HEADER) {
+                for (ITERATE_JSON(json, node, child, id)) {
+                    if (keys) {
+                        if (node->type == JSON_ARRAY) {
+                            rPrintf("%s", child->value);
+                        } else {
+                            rPrintf("%s", child->name);
+                        }
+                        rPrintf("\n");
+                    } else {
+                        property = sjoin(name, ".", child->name, NULL);
+                        outputNode(json, child, property, flags);
+                        rFree(property);
+                    }
+                }
+            } else {
+                id = jsonGetNodeId(json, node);
+                output = jsonToString(json, id, 0, flags);
+                rPrintf("%s", output);
+                rFree(output);
             }
             return;
         }
@@ -696,6 +729,13 @@ static void outputNameValue(Json *json, JsonNode *node, char *name)
         error("Cannot find property \"%s\"", name);
         return;
     }
+    outputProperty(json, name, value, type);
+}
+
+static void outputProperty(Json *json, cchar *name, cchar *value, int type)
+{
+    char *exp, *property;
+
     property = makeName(name);
     if (format == JSON_FORMAT_ENV) {
         exp = export ? "export " : "";
@@ -768,8 +808,8 @@ static int error(cchar *fmt, ...)
         va_start(args, fmt);
         msg = sfmtv(fmt, args);
         va_end(args);
-        if (json && json->errorMsg) {
-            rError("json", "%s: %s", msg, json->errorMsg);
+        if (json && json->error) {
+            rError("json", "%s. %s", msg, json->error);
         } else {
             rError("json", "%s", msg);
         }
@@ -811,17 +851,16 @@ static int error(cchar *fmt, ...)
 /*********************************** Locals ***********************************/
 
 #ifndef ME_JSON_INC
-    #define ME_JSON_INC              64
+    #define ME_JSON_INC              64        /**< Increment size for node array */
 #endif
+
 #ifndef ME_JSON_MAX_RECURSION
-    #define ME_JSON_MAX_RECURSION    1000
+    #define ME_JSON_MAX_RECURSION    32        /**< Maximum depth of recursion */
 #endif
 
 #ifndef ME_JSON_DEFAULT_PROPERTY
-    #define ME_JSON_DEFAULT_PROPERTY 64
+    #define ME_JSON_DEFAULT_PROPERTY 64        /**< Default property size */
 #endif
-
-#define JSON_TMP                     ".tmp.json"
 
 static int maxLength = JSON_MAX_LINE_LENGTH;
 static int indentLevel = JSON_DEFAULT_INDENT;
@@ -838,9 +877,9 @@ static bool isfnumber(cchar *s, ssize len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
 static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf);
-static int parseJson(Json *json, char *text, int flags);
 static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent);
-static int sleuthValueType(cchar *value, ssize len);
+static char *parseValue(Json *json, int parent, int type, char *name, char *value, int flags);
+static int sleuthValueType(cchar *value, ssize len, int flags);
 static void spaces(RBuf *buf, int count);
 
 /************************************* Code ***********************************/
@@ -879,7 +918,7 @@ PUBLIC void jsonFree(Json *json)
         rStopEvent(json->event);
     }
 #endif
-    rFree(json->errorMsg);
+    rFree(json->error);
     rFree(json->path);
     rFree(json->nodes);
 
@@ -890,8 +929,9 @@ PUBLIC void jsonFree(Json *json)
 
 static void freeNode(JsonNode *node)
 {
-    assert(node);
-
+    if (!node) {
+        return;
+    }
     if (node->allocatedName) {
         rFree(node->name);
         node->allocatedName = 0;
@@ -906,17 +946,17 @@ static bool growNodes(Json *json, int num)
 {
     void *p;
 
-    assert(json);
-    assert(num > 0);
-
+    if (!json || num <= 0) {
+        return 0;
+    }
     if (num > ME_JSON_MAX_NODES) {
-        jerror(json, "Too many nodes");
+        jerror(json, "Too many elements in json text");
         return 0;
     }
     if ((json->count + num) > json->size) {
         json->size += max(num, ME_JSON_INC);
         if (json->size > ME_JSON_MAX_NODES) {
-            jerror(json, "Too many nodes");
+            jerror(json, "Too many elements in json text");
             return 0;
         }
         p = rRealloc(json->nodes, sizeof(JsonNode) * json->size);
@@ -933,9 +973,9 @@ static void initNode(Json *json, int nid)
 {
     JsonNode *node;
 
-    assert(json);
-    assert(0 <= nid && nid < json->count);
-
+    if (!json || nid < 0 || nid >= json->count) {
+        return;
+    }
     node = &json->nodes[nid];
     node->name = 0;
     node->value = 0;
@@ -955,9 +995,9 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
 {
     JsonNode *node;
 
-    assert(json);
-    assert(0 <= nid && nid < json->count);
-
+    if (!json || nid < 0 || nid >= json->count) {
+        return;
+    }
     node = &json->nodes[nid];
     node->type = type;
 
@@ -1003,9 +1043,7 @@ static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value)
 {
     int nid;
 
-    assert(json);
-
-    if (json->count >= json->size && !growNodes(json, 1)) {
+    if (!json || (json->count >= json->size && !growNodes(json, 1))) {
         return 0;
     }
     nid = json->count++;
@@ -1022,11 +1060,9 @@ static void copyNodes(Json *dest, int did, Json *src, int sid, ssize slen)
     JsonNode *dp, *sp;
     int      i;
 
-    assert(dest);
-    assert(src);
-    assert(0 <= did && did < dest->count);
-    assert(0 <= sid && sid < src->count);
-
+    if (!dest || !src || did < 0 || did >= dest->count || sid < 0 || sid >= src->count) {
+        return;
+    }
     dp = &dest->nodes[did];
     sp = &src->nodes[sid];
 
@@ -1056,10 +1092,9 @@ static int insertNodes(Json *json, int nid, int num, int parentId)
     JsonNode *node;
     int      i;
 
-    assert(json);
-    assert(0 <= nid && nid <= json->count);
-    assert(num > 0);
-
+    if (!json || nid < 0 || nid > json->count || num <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if ((json->count + num) >= json->size && !growNodes(json, num)) {
         return R_ERR_MEMORY;
     }
@@ -1080,7 +1115,6 @@ static int insertNodes(Json *json, int nid, int num, int parentId)
         }
         if (node->last >= nid) {
             node->last += num;
-            assert(node->last >= 0);
         }
     }
     for (i = 0; i < num; i++) {
@@ -1094,10 +1128,9 @@ static int removeNodes(Json *json, int nid, int num)
     JsonNode *node;
     int      i;
 
-    assert(json);
-    assert(0 <= nid && nid < json->count);
-    assert(num >= 0);
-
+    if (!json || nid < 0 || nid >= json->count || num <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (num <= 0) {
         return 0;
     }
@@ -1114,7 +1147,6 @@ static int removeNodes(Json *json, int nid, int num)
         node = &json->nodes[i];
         if (node->last > nid) {
             node->last -= num;
-            assert(node->last >= 0);
         }
     }
     return nid;
@@ -1151,10 +1183,7 @@ PUBLIC Json *jsonParse(cchar *ctext, int flags)
 
     json = jsonAlloc();
     text = sclone(ctext);
-    if (parseJson(json, text, flags) < 0) {
-        if (json->errorMsg && !rEmitLog("json", "trace")) {
-            rError("json", "%s", json->errorMsg);
-        }
+    if (jsonParseText(json, text, flags) < 0) {
         jsonFree(json);
         return 0;
     }
@@ -1172,15 +1201,11 @@ PUBLIC Json *jsonParseKeep(char *text, int flags)
     Json *json;
 
     json = jsonAlloc();
-    if (parseJson(json, text, flags) < 0) {
-        if (json->errorMsg && !rEmitLog("json", "trace")) {
-            rError("json", "%s", json->errorMsg);
-        }
+    if (jsonParseText(json, text, flags) < 0) {
         jsonFree(json);
         return 0;
     }
     return json;
-
 }
 
 PUBLIC Json *jsonParseFmt(cchar *fmt, ...)
@@ -1207,8 +1232,15 @@ PUBLIC char *jsonConvert(cchar *fmt, ...)
 
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
+    if (!buf || *buf == '\0') {
+        rFree(buf);
+        return 0;
+    }
     json = jsonParseKeep(buf, 0);
     va_end(ap);
+    if (!json) {
+        return 0;
+    }
     msg = jsonToString(json, 0, 0, JSON_JSON);
     jsonFree(json);
     return msg;
@@ -1238,21 +1270,21 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...)
 /*
     Parse JSON text and return a JSON tree and error message if parsing fails.
  */
-PUBLIC Json *jsonParseString(cchar *atext, char **errorMsg, int flags)
+PUBLIC Json *jsonParseString(cchar *atext, char **error, int flags)
 {
     Json *json;
     char *text;
 
-    if (errorMsg) {
-        *errorMsg = 0;
+    if (error) {
+        *error = 0;
     }
     json = jsonAlloc();
     text = sclone(atext);
 
-    if (parseJson(json, text, flags) < 0) {
-        if (errorMsg) {
-            *errorMsg = (char*) json->errorMsg;
-            json->errorMsg = 0;
+    if (jsonParseText(json, text, flags) < 0) {
+        if (error) {
+            *error = (char*) json->error;
+            json->error = 0;
         }
         jsonFree(json);
         return 0;
@@ -1264,19 +1296,20 @@ PUBLIC Json *jsonParseString(cchar *atext, char **errorMsg, int flags)
 /*
     Parse JSON text from a file
  */
-PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
+PUBLIC Json *jsonParseFile(cchar *path, char **error, int flags)
 {
     Json *json;
     char *text;
 
-    assert(path && *path);
-
-    if (errorMsg) {
-        *errorMsg = 0;
+    if (!path || *path == '\0') {
+        return NULL;
+    }
+    if (error) {
+        *error = 0;
     }
     if ((text = rReadFile(path, 0)) == 0) {
-        if (errorMsg) {
-            *errorMsg = sfmt("Cannot open: \"%s\"", path);
+        if (error) {
+            *error = sfmt("Cannot open: \"%s\"", path);
         }
         return 0;
     }
@@ -1284,10 +1317,10 @@ PUBLIC Json *jsonParseFile(cchar *path, char **errorMsg, int flags)
     if (path) {
         json->path = sclone(path);
     }
-    if (parseJson(json, text, flags) < 0) {
-        if (errorMsg) {
-            *errorMsg = json->errorMsg;
-            json->errorMsg = 0;
+    if (jsonParseText(json, text, flags) < 0) {
+        if (error) {
+            *error = json->error;
+            json->error = 0;
         }
         jsonFree(json);
         return 0;
@@ -1305,9 +1338,9 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
     int   fd;
     ssize len;
 
-    assert(json);
-    assert(path && *path);
-
+    if (!json || !path || *path == '\0') {
+        return R_ERR_BAD_ARGS;
+    }
     if ((text = jsonToString(json, nid, key, flags)) == 0) {
         return R_ERR_BAD_STATE;
     }
@@ -1339,44 +1372,18 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
 }
 
 /*
-    Set the json error message
+    Parse primitive values including key names and unquoted strings
+    Return with json->next pointing to the character after the primitive value.
  */
-static int jerror(Json *json, cchar *fmt, ...)
-{
-    va_list args;
-    char    *msg;
-
-    assert(json);
-    assert(fmt);
-
-    if (!json->errorMsg) {
-        va_start(args, fmt);
-        msg = sfmtv(fmt, args);
-        va_end(args);
-        if (json->path) {
-            json->errorMsg = sfmt("JSON Parse Error: %s\nIn file '%s' at line %d. Near:\n%s\n", msg, json->path,
-                                  json->lineNumber + 1, json->next);
-        } else {
-            json->errorMsg =
-                sfmt("JSON Parse Error: %s\nAt line %d. Near:\n%s\n", msg, json->lineNumber + 1, json->next);
-        }
-        rTrace("json", "%s", json->errorMsg);
-        rFree(msg);
-    }
-    return R_ERR_BAD_STATE;
-}
-
-/*
-    Parse primitive values including unquoted strings
- */
-static int parsePrimitive(Json *json)
+static char *parsePrimitive(Json *json)
 {
     char *next, *start;
 
-    assert(json);
-    assert(json->next);
-
-    for (start = next = json->next; next < json->end && *next; next++) {
+    if (!json || !json->next || !json->end) {
+        jerror(json, "Bad args");
+        return NULL;
+    }
+    for (start = next = json->next; next < json->end; next++) {
         switch (*next) {
         case '\n':
             json->lineNumber++;
@@ -1384,71 +1391,78 @@ static int parsePrimitive(Json *json)
         case ' ':
         case '\t':
         case '\r':
-            *next = 0;
+            // Can terminate here as we have a space/newline/tab/carriage return
+            *next++ = 0;
             json->next = next;
-            return 0;
+            return start;
 
         //  Balance nest '{' ']'
         case '}':
         case ']':
         case ':':
         case ',':
-            json->next = next - 1;
-            return 0;
+            // Cant terminate here as we need the brace/colon/comma to parse next token
+            json->next = next;
+            return start;
 
         default:
-            if (*next != '_' && *next != '-' && *next != '.' && !isalnum((uchar) * next)) {
-                *next = 0;
+            if (*next != '_' && *next != '-' && *next != '.' && !isalnum((uchar) *next)) {
                 json->next = next;
-                return 0;
+                return start;
             }
             if (*next < 32 || *next >= 127) {
-                json->next = start;
-                return jerror(json, "Illegal character in primitive");
+                jerror(json, "Illegal character in primitive");
+                return NULL;
             }
             if ((*next == '.' || *next == '[') && (next == start || !isalnum((uchar) next[-1]))) {
-                return jerror(json, "Illegal dereference in primitive");
+                jerror(json, "Illegal dereference in primitive");
+                return NULL;
             }
         }
     }
-    json->next = next - 1;
-    return 0;
+    // Cant terminate here as we need the brace/colon/comma to parse next token
+    json->next = next;
+    return start;
 }
 
-static int parseRegExp(Json *json)
+static char *parseRegExp(Json *json)
 {
     char *end, *next, *start, c;
 
-    assert(json);
-    assert(json->next);
-    assert(json->end);
-
+    if (!json || !json->next || !json->end) {
+        jerror(json, "Bad args");
+        return NULL;
+    }
     start = json->next;
     end = json->end;
 
     for (next = start; next < end && *next; next++) {
         c = *next;
         if (c == '/' && next[-1] != '\\') {
-            *next = '\0';
+            *next++ = '\0';
             json->next = next;
-            return 0;
+            return start;
         }
     }
     // Ran out of input
     json->next = start;
     jerror(json, "Incomplete regular expression");
-    return R_ERR_BAD_STATE;
+    return NULL;
 }
 
-static int parseString(Json *json)
+/*
+    Parse a string and advance json->next to the end of the string.
+    Quotes are removed. Return with json->next pointing to the character after the closing quote.
+ */
+static char *parseString(Json *json)
 {
     char *end, *next, *op, *start, c, quote;
     int  d, j;
 
-    assert(json);
-    assert(json->next);
-    assert(json->end);
-
+    if (!json || !json->next || !json->end) {
+        jerror(json, "Bad args");
+        return NULL;
+    }
     next = json->next;
     end = json->end;
     quote = *next++;
@@ -1489,12 +1503,12 @@ static int parseString(Json *json)
                         c = (c * 16) + d - 'a' + 10;
                     } else {
                         jerror(json, "Unexpected hex characters");
-                        return R_ERR_BAD_STATE;
+                        return NULL;
                     }
                 }
                 if (j < 4) {
                     jerror(json, "Invalid unicode characters");
-                    return R_ERR_BAD_STATE;
+                    return NULL;
                 }
                 next--;
                 break;
@@ -1502,14 +1516,14 @@ static int parseString(Json *json)
             default:
                 json->next = start;
                 jerror(json, "Unexpected characters in string");
-                return R_ERR_BAD_STATE;
+                return NULL;
             }
             *op = c;
 
         } else if (c == quote) {
             *op = '\0';
-            json->next = next;
-            return 0;
+            json->next = next + 1;
+            return start;
 
         } else if (op != next) {
             *op = c;
@@ -1518,7 +1532,7 @@ static int parseString(Json *json)
     // Ran out of input
     json->next = start;
     jerror(json, "Incomplete string");
-    return R_ERR_BAD_STATE;
+    return NULL;
 }
 
 static int parseComment(Json *json)
@@ -1526,9 +1540,9 @@ static int parseComment(Json *json)
     char *next;
     int  startLine;
 
-    assert(json);
-    assert(json->next);
-
+    if (!json || !json->next) {
+        return R_ERR_BAD_ARGS;
+    }
     next = json->next;
     startLine = json->lineNumber;
 
@@ -1537,48 +1551,60 @@ static int parseComment(Json *json)
         }
 
     } else if (*next == '*') {
-        for (next++; next < json->end && *next && (*next != '*' || next[1] != '/'); next++) {
+        for (next++; next < &json->end[-1] && (*next != '*' || next[1] != '/'); next++) {
             if (*next == '\n') {
                 json->lineNumber++;
             }
         }
-        if (*next) {
+        if (*next == '*' && next[1] == '/') {
             next += 2;
         } else {
             return jerror(json, "Cannot find end of comment started on line %d", startLine);
         }
     }
-    json->next = next - 1;
+    json->next = next;
     return 0;
 }
 
 /*
     Parse the text and assume ownership of the text.
+    This is a fast, linear, insitu-parser. It does not use recursion or a parser stack.
+    Because we parse in-situ, the text is modified as we parse it. This also means that
+    terminating values witih '\0' is somewhat delayed until we parse the next token -- 
+    otherwise we would erase the next token prematurely. This happens when parsing key
+    names followed by a colon or a comma.
  */
-static int parseJson(Json *json, char *text, int flags)
+PUBLIC int jsonParseText(Json *json, char *text, int flags)
 {
     JsonNode *node;
-    char     *name, *value;
+    char     *name;
+    int      level, parent, type;
     uchar    c;
-    int      level, parent, prior, type, rc;
 
-    assert(json);
-
+    if (!json || !text) {
+        return R_ERR_BAD_ARGS;
+    }
     json->next = json->text = text;
     json->end = &json->text[slen(text)];
 
     name = 0;
     parent = -1;
     level = 0;
+    flags &= ~JSON_EXPECT_KEY;
 
-    for (; json->next < json->end && *json->next; json->next++) {
+    while (json->next < json->end && !json->error) {
         c = *json->next;
         switch (c) {
         case '{':
         case '[':
-            *json->next = 0;
-            level++;
+            if (flags & JSON_EXPECT_COMMA) {
+                return jerror(json, "Invalid brace/bracket");
+            }
+            flags &= ~JSON_PARSE_FLAGS;
             type = (c == '{' ? JSON_OBJECT : JSON_ARRAY);
+            flags |= type == JSON_OBJECT ? JSON_EXPECT_KEY: JSON_EXPECT_VALUE;
+            *json->next++ = 0;
+            level++;
             if ((node = allocNode(json, type, name, 0)) == 0) {
                 return R_ERR_MEMORY;
             }
@@ -1593,94 +1619,96 @@ static int parseJson(Json *json, char *text, int flags)
             if (--level < 0) {
                 return jerror(json, "Unmatched brace/bracket");
             }
-            *json->next = 0;
-            prior = json->nodes[parent].last;
+            if ((c == '}' ? JSON_OBJECT : JSON_ARRAY) != type) {
+                return jerror(json, "Mismatched brace/bracket");
+            }
+            if (name) {
+                return jerror(json, "Missing property value");
+            }
+            if (flags & JSON_STRICT_PARSE && flags & (JSON_EXPECT_VALUE | JSON_EXPECT_KEY)) {
+                return jerror(json, "Missing value");
+            }
+            flags &= ~JSON_PARSE_FLAGS;
+            int prior = json->nodes[parent].last;
+            if (prior >= 0) {
+                flags = JSON_EXPECT_COMMA;
+            }
+            *json->next++ = 0;
             json->nodes[parent].last = json->count;
             parent = prior;
-            name = 0;
-            break;
-
-        case '/':
-            if (++json->next < json->end && (*json->next == '*' || *json->next == '/')) {
-                if (parseComment(json) < 0) {
-                    return R_ERR_BAD_STATE;
-                }
-            } else {
-                type = JSON_REGEXP;
-                value = json->next;
-                rc = parseRegExp(json);
-                goto value;
-            }
+            type = json->nodes[parent].type;
             break;
 
         case '\n':
             json->lineNumber++;
+            json->next++;
             break;
 
         case '\t':
         case '\r':
         case ' ':
+            json->next++;
             break;
 
         case ',':
+            if (type != JSON_OBJECT && type != JSON_ARRAY) {
+                return jerror(json, "Comma in non-object or array");
+            }
+            if (flags & JSON_STRICT_PARSE && flags & (JSON_EXPECT_VALUE | JSON_EXPECT_KEY)) {
+                return jerror(json, "Invalid comma");
+            }
+            flags &= ~JSON_EXPECT_COMMA;
+            flags |= type == JSON_OBJECT ? JSON_EXPECT_KEY: JSON_EXPECT_VALUE;
             name = 0;
-            *json->next = 0;
+            *json->next++ = 0;
             break;
 
         case ':':
             if (!name) {
                 return jerror(json, "Missing property name");
             }
-            *json->next = 0;
+            *json->next++ = 0;
+            flags &= ~JSON_EXPECT_KEY;
             break;
 
-        case '"':
-            type = JSON_STRING;
-            value = json->next + 1;
-            rc = parseString(json);
-            goto value;
+        case '/':
+            if (++json->next < json->end && (*json->next == '*' || *json->next == '/')) {
+                if (flags & JSON_STRICT_PARSE) {
+                    return jerror(json, "Comments are not allowed in JSON mode");
+                }
+                if (parseComment(json) < 0) {
+                    return R_ERR_BAD_STATE;
+                }
+            } else {
+                name = parseValue(json, parent, JSON_REGEXP, name, parseRegExp(json), flags);
+            }
+            break;
 
         case '\'':
         case '`':
             if (flags & JSON_STRICT_PARSE) {
-                return jerror(json, "Single quotes are not allowed in JSON strict mode");
+                return jerror(json, "Single and backtick quotes are not allowed in JSON mode");
             }
-            type = JSON_STRING;
-            value = json->next + 1;
-            rc = parseString(json);
-            goto value;
+            // Fall through
+        case '"':
+            name = parseValue(json, parent, JSON_STRING, name, parseString(json), flags);
+            break;
 
         default:
-            value = json->next;
-            rc = parsePrimitive(json);
-            if (*value == 0) {
-                return jerror(json, "Empty primitive token");
+            /*
+                Either a key name or a primitive value (including unquoted strings)
+             */
+            if (flags & JSON_EXPECT_COMMA) {
+                return jerror(json, "Comma expected");
             }
-            type = sleuthValueType(value, json->next - value + 1);
-            if (type != JSON_PRIMITIVE) {
-                if (level == 0 || (flags & JSON_STRICT_PARSE)) {
-                    return jerror(json, "Invalid primitive token");
-                }
+            if (flags & JSON_STRICT_PARSE && type == JSON_OBJECT && !name) {
+                return jerror(json, "Invalid property name");
             }
-            goto value;
-
-value:
-            if (rc < 0) {
-                return R_ERR_BAD_STATE;
+            name = parseValue(json, parent, 0, name, parsePrimitive(json), flags);
+            if (!name) {
+                flags |= JSON_EXPECT_COMMA;
             }
-            if (parent >= 0 && json->nodes[parent].type == JSON_ARRAY) {
-                allocNode(json, type, 0, value);
-            } else if (name) {
-                // The Object value may not be null terminated here. It will be terminated after parsing the next token.
-                allocNode(json, type, name, value);
-                name = 0;
-            } else if (parent >= 0) {
-                // Object property name
-                name = value;
-            } else {
-                // Value outside an array or object
-                allocNode(json, type, 0, value);
-            }
+            flags &= ~(JSON_EXPECT_KEY | JSON_EXPECT_VALUE);
             break;
         }
     }
@@ -1690,15 +1718,72 @@ value:
     if (level != 0) {
         return jerror(json, "Unclosed brace/bracket");
     }
+    if (json->error) {
+        return R_ERR_BAD_STATE;
+    }
+    if (flags & JSON_STRICT_PARSE && json->count == 0) {
+        return jerror(json, "Empty JSON document");
+    }
     return 0;
 }
 
-static int sleuthValueType(cchar *value, ssize len)
+/*
+    Parse a value which may be either a key name or a primitive value (including unquoted strings)
+ */
+static char *parseValue(Json *json, int parent, int type, char *name, char *value, int flags)
+{
+    if (value == NULL || json->error) {
+        return NULL;
+    }
+    /*
+        Object and expecting a key name. Use the value as the key name. Note: the value is not yet null 
+        terminated here while we awaiting parsing the next colon, comma or closing brace/bracket.
+     */
+    if (!name && parent >= 0 && json->nodes[parent].type == JSON_OBJECT) {
+        if (!(flags & JSON_EXPECT_KEY)) {
+            jerror(json, "Missing property name");
+        }
+        return value;
+    }
+    /*
+        Determine the type of the value.
+     */
+    if (type == 0) {
+        type = sleuthValueType(value, json->next - value - 1, flags);
+        if (flags & JSON_STRICT_PARSE && type != JSON_PRIMITIVE) {
+            jerror(json, "Invalid primitive token");
+            return NULL;
+        }
+    }
+    /*
+        Empty primitive token is not allowed.
+     */
+    if (type == JSON_PRIMITIVE && *value == 0) {
+        jerror(json, "Empty primitive token");
+        return NULL;
+    }
+
+    if (parent >= 0 && json->nodes[parent].type == JSON_ARRAY) {
+        // Value for array element.
+        allocNode(json, type, 0, value);
+    } else if (name) {
+        // Object property value. May not be null terminated here while parsing next token.
+        allocNode(json, type, name, value);
+        name = 0;
+    } else if (json->count == 0) {
+        // Top-level value outside an array or object
+        allocNode(json, type, 0, value);
+    } else {
+        jerror(json, "Invalid primitive");
+        return NULL;
+    }
+    return name;
+}
+
+static int sleuthValueType(cchar *value, ssize len, int flags)
 {
     uchar c;
-    int   type;
-
-    assert(value);
+    int type;
 
     if (!value) {
         return JSON_PRIMITIVE;
@@ -1707,7 +1792,7 @@ static int sleuthValueType(cchar *value, ssize len)
     if ((c == 't' && sncmp(value, "true", len) == 0) ||
         (c == 'f' && sncmp(value, "false", len) == 0) ||
         (c == 'n' && sncmp(value, "null", len) == 0) ||
-        (c == 'u' && sncmp(value, "undefined", len) == 0)) {
+        ((c == 'u' && sncmp(value, "undefined", len) == 0) && !(flags & JSON_STRICT_PARSE))) {
         type = JSON_PRIMITIVE;
 
     } else if (isfnumber(value, len)) {
@@ -1721,8 +1806,6 @@ static int sleuthValueType(cchar *value, ssize len)
 
 PUBLIC int jsonGetType(Json *json, int nid, cchar *key)
 {
-    assert(json);
-
     if (!json) {
         return R_ERR_BAD_ARGS;
     }
@@ -1739,7 +1822,7 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key)
 
 static char *getNextTerm(char *str, char **rest, int *type)
 {
-    char  *start, *end, *seps;
+    char *start, *end, *seps;
     ssize i;
 
     seps = ".[]";
@@ -1786,6 +1869,7 @@ static char *getNextTerm(char *str, char **rest, int *type)
             if (*end == '\0') {
                 end = 0;
             }
+            *type = JSON_OBJECT;
         }
     }
     *rest = end;
@@ -1795,11 +1879,12 @@ static char *getNextTerm(char *str, char **rest, int *type)
 static int findProperty(Json *json, int nid, cchar *property)
 {
     JsonNode *node, *np;
-    int      index, id;
+    ssize index;
+    int id;
 
-    assert(json);
-    assert((0 <= nid && nid < json->count) || json->count == 0);
-
+    if (!json || nid < 0 || nid >= json->count) {
+        return R_ERR_BAD_ARGS;
+    }
     if (json->count == 0) {
         return R_ERR_CANT_FIND;
     }
@@ -1808,7 +1893,7 @@ static int findProperty(Json *json, int nid, cchar *property)
         return R_ERR_CANT_FIND;
     }
     if (node->type == JSON_ARRAY) {
-        if (!isdigit((uchar) * property) || (index = (int) stoi(property)) < 0) {
+        if (!isdigit((uchar) * property) || (index = stoi(property)) < 0) {
             for (id = nid + 1; id < node->last; id = np->last) {
                 np = &json->nodes[id];
                 if (smatch(property, np->value)) {
@@ -1818,7 +1903,7 @@ static int findProperty(Json *json, int nid, cchar *property)
             return R_ERR_CANT_FIND;
 
         } else {
-            if (index >= INT_MAX) {
+            if (index >= SSIZE_MAX) {
                 return R_ERR_CANT_FIND;
             }
             for (id = nid + 1; index-- > 0 && id < node->last; id = np->last) {
@@ -1848,11 +1933,11 @@ static int findProperty(Json *json, int nid, cchar *property)
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 {
     char *property, *rest;
-    int  cid, id, ntype, qtype;
+    int cid, id, ntype, qtype;
 
-    assert(json);
-    assert((0 <= nid && nid < json->count) || json->count == 0);
-
+    if (!json || nid < 0 || nid > json->count) {
+        return R_ERR_BAD_ARGS;
+    }
     if (key == 0 || *key == '\0') {
         return R_ERR_CANT_FIND;
     }
@@ -1919,7 +2004,7 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 static char *copyProperty(Json *json, cchar *key)
 {
     ssize len;
-    void  *p;
+    void *p;
 
     len = slen(key) + 1;
     if (len > json->propertyLength) {
@@ -1940,8 +2025,6 @@ static char *copyProperty(Json *json, cchar *key)
  */
 PUBLIC JsonNode *jsonGetNode(const Json *json, int nid, cchar *key)
 {
-    assert(json);
-
     if (!json || nid < 0) {
         return NULL;
     }
@@ -1985,10 +2068,11 @@ PUBLIC JsonNode *jsonGetChildNode(Json *json, int pid, int nth)
 {
     JsonNode *child;
 
-    assert(json);
-
+    if (!json || pid < 0 || pid >= json->count || nth < 0) {
+        return NULL;
+    }
     for (ITERATE_JSON_ID(json, pid, child, id)) {
-        if (--nth <= 0) {
+        if (nth-- <= 0) {
             return child;
         }
     }
@@ -2057,21 +2141,49 @@ PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue)
     return defaultValue;
 }
 
+PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
+{
+    cchar *value;
+    char defbuf[16];
+
+    sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
+    value = jsonGet(json, nid, key, defbuf);
+    if (snumber(value)) {
+        return stoi(value);
+    }
+    return rParseIsoDate(value);
+}
+
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue)
 {
     cchar *value;
-    char  defbuf[16];
+    char defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%d", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
     return (int) stoi(value);
 }
 
+PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key)
+{
+    JsonNode *node, *child;
+    ssize length;
+
+    if ((node = jsonGetNode(json, nid, key)) == NULL) {
+        return R_ERR_CANT_FIND;
+    }
+    length = 0;
+    for (ITERATE_JSON(json, node, child, id)) {
+        length++;
+    }
+    return length;
+}
+
 
 PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue)
 {
     cchar *value;
-    char  defbuf[16];
+    char defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
@@ -2081,7 +2193,7 @@ PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue)
 PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue)
 {
     cchar *value;
-    char  defbuf[16];
+    char defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%f", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
@@ -2102,16 +2214,14 @@ PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
  */
 PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
 {
-    if (!json) {
+    if (!json || nid < 0 || nid > json->count) {
         return R_ERR_BAD_ARGS;
     }
-    assert((0 <= nid && nid < json->count) || json->count == 0);
-
     if (json->lock) {
         return jerror(json, "Cannot set value in a locked JSON object");
     }
     if (type <= 0 && value) {
-        type = sleuthValueType(value, slen(value));
+        type = sleuthValueType(value, slen(value), 0);
     }
     if (!value) {
         value = "undefined";
@@ -2122,8 +2232,8 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
 PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
 {
     va_list ap;
-    Json    *jvalue;
-    char    *value;
+    Json *jvalue;
+    char *value;
 
     if (fmt == 0) {
         return R_ERR_BAD_ARGS;
@@ -2159,7 +2269,7 @@ PUBLIC int jsonSetDouble(Json *json, int nid, cchar *key, double value)
 PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value)
 {
     char *date;
-    int  rc;
+    int rc;
 
     date = rGetIsoDate(value);
     rc = jsonSet(json, nid, key, date, JSON_STRING);
@@ -2170,8 +2280,8 @@ PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value)
 PUBLIC int jsonSetFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
 {
     va_list ap;
-    char    *value;
-    int     result;
+    char *value;
+    int result;
 
     if (fmt == 0) {
         return 0;
@@ -2180,7 +2290,7 @@ PUBLIC int jsonSetFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
     value = sfmtv(fmt, ap);
     va_end(ap);
 
-    result = jsonSet(json, nid, key, value, sleuthValueType(value, slen(value)));
+    result = jsonSet(json, nid, key, value, sleuthValueType(value, slen(value), 0));
     rFree(value);
     return result;
 }
@@ -2222,11 +2332,9 @@ PUBLIC void jsonSetNodeType(JsonNode *node, int type)
 
 PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 {
-    if (!json) {
+    if (!json || nid < 0 || nid > json->count) {
         return R_ERR_BAD_ARGS;
     }
-    assert(0 <= nid && nid < json->count);
-
     if (key) {
         if ((nid = jquery(json, nid, key, 0, 0)) <= 0) {
             return R_ERR_CANT_FIND;
@@ -2242,10 +2350,9 @@ PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent)
 {
     cchar *cp;
-    char  *end;
-    int   bareFlags, encode, quotes, quoteKeys;
+    char *end, *key;
+    int bareFlags, encode, quotes, quoteKeys;
 
-    assert(buf);
     if (!buf) {
         return;
     }
@@ -2313,14 +2420,13 @@ static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, 
                 rPutToBuf(buf, "\\u%04x", *cp);
             } else if (*cp == '$' && cp[1] == '{' && (flags & JSON_EXPAND) && json) {
                 if ((end = strchr(cp + 2, '}')) != 0) {
-                    *end = '\0';
+                    key = snclone(cp + 2, end - cp - 2);
                     bareFlags = flags | JSON_BARE;
-                    if (expandValue(json, buf, &cp[2], indent, bareFlags)) {
-                        *end = '}';
-                        cp = end;
-                    } else {
-                        rPutCharToBuf(buf, *cp);
+                    if (expandValue(json, buf, key, indent, bareFlags) < 0) {
+                        // Nothing to do - ${var} remains
                     }
+                    rFree(key);
+                    cp = end;
                 }
             } else {
                 rPutCharToBuf(buf, *cp);
@@ -2340,13 +2446,20 @@ PUBLIC void jsonPutValueToBuf(RBuf *buf, cchar *value, int flags)
 
 /*
     Expand a ${path.var} reference described by the key.
+    Indent is the textual indentation. Depth is the recursive depth.
  */
 static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags)
 {
     int nid;
 
+    if (flags & JSON_EXPANDING) {
+        jerror((Json*) json, "Recursive expanding not supported");
+        // Keep the original text
+        rPutToBuf(buf, "${%s}", key);
+        return R_ERR_BAD_ARGS;
+    }
     if ((nid = jquery((Json*) json, 0, key, 0, 0)) >= 0) {
-        return nodeToString(json, nid, indent, flags, buf);
+        return nodeToString(json, nid, indent, flags | JSON_EXPANDING, buf);
     }
     return R_ERR_CANT_FIND;
 }
@@ -2354,17 +2467,11 @@ static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int 
 static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf)
 {
     JsonNode *node;
-    char     *end, *key, *sol, *start;
-    bool     multiline;
-    int      bareFlags, eid;
+    char *end, *key, *key2, *sol, *start;
+    bool multiline;
+    int bareFlags, eid;
 
-    assert(json);
-    assert(buf);
-    assert(0 <= nid && nid <= json->count);
-    assert(0 <= indent);
-    assert(indent < ME_JSON_MAX_RECURSION);
-
-    if (indent > ME_JSON_MAX_RECURSION) {
+    if (!json || !buf || nid < 0 || nid > json->count || indent < 0) {
         return R_ERR_BAD_ARGS;
     }
     if (nid < 0 || nid > json->count) {
@@ -2443,12 +2550,12 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
             eid = -1;
             if (flags & JSON_EXPAND && *key == '$' && key[1] == '{') {
                 if ((end = strchr(key + 2, '}')) != 0) {
-                    *end = '\0';
-                    bareFlags = flags; // & ~(JSON_DOUBLE_QUOTES | JSON_SINGLE_QUOTES);
+                    key2 = snclone(key, end - key);
+                    bareFlags = flags;
                     if ((eid = expandValue(json, buf, &key[2], indent + 1, bareFlags)) >= 0) {
                         nid++;
                     }
-                    *end = '}';
+                    rFree(key2);
                 }
             }
             if (eid < 0) {
@@ -2481,7 +2588,7 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
 static void compactProperties(RBuf *buf, char *sol, int indent)
 {
     char *cp, *sp, *dp;
-    int  spaces;
+    int spaces;
 
     // Count redundant spaces to see how much the line can be shortened
     for (spaces = 0, cp = sol; cp < buf->end; cp++) {
@@ -2509,10 +2616,8 @@ static void compactProperties(RBuf *buf, char *sol, int indent)
     }
 }
 
-
 PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags)
 {
-    assert(buf);
     if (!buf) {
         return R_ERR_BAD_ARGS;
     }
@@ -2609,16 +2714,15 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid
 
 static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth)
 {
-    Json     *src, *tmpSrc;
+    Json *src, *tmpSrc;
     JsonNode *dp, *sp, *spc, *dpc;
-    cchar    *property;
-    char     *srcData, *value;
-    int      at, id, dlen, slen, didc, kind, pflags;
+    cchar *property;
+    char *srcData, *value;
+    int at, id, dlen, slen, didc, kind, pflags;
 
     if (depth > ME_JSON_MAX_RECURSION) {
         return jerror(dest, "Blend recursion limit exceeded");
     }
-
     //  Cast const away because ITERATE macros make this difficult
     src = (Json*) csrc;
     if (dest->lock) {
@@ -2630,16 +2734,13 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
     if (src == 0 || src->count == 0) {
         return 0;
     }
-    assert(0 <= did && did <= dest->count);
-    assert(0 <= sid && sid <= src->count);
-
     if (dest->count == 0) {
         allocNode(dest, JSON_OBJECT, 0, 0);
     }
     if (dest == src) {
         srcData = jsonToString(src, sid, 0, 0);
         src = tmpSrc = jsonAlloc();
-        parseJson(tmpSrc, srcData, flags);
+        jsonParseText(tmpSrc, srcData, flags);
         rFree(srcData);
         sid = 0;
     } else {
@@ -2775,7 +2876,6 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
             }
         }
     } else {
-        assert(sp->type & (JSON_PRIMITIVE | JSON_STRING | JSON_REGEXP));
         if (flags & JSON_APPEND) {
             freeNode(dp);
             dp->value = sjoin(dp->value, " ", sp->value, NULL);
@@ -2823,9 +2923,9 @@ static void spaces(RBuf *buf, int count)
 {
     int i, j;
 
-    assert(buf);
-    assert(0 <= count);
-
+    if (!buf || count < 0) {
+        return;
+    }
     for (i = 0; i < count; i++) {
         for (j = 0; j < indentLevel; j++) {
             rPutCharToBuf(buf, ' ');
@@ -2853,15 +2953,15 @@ PUBLIC void jsonSetIndent(int indent)
 
 /*
     Expand ${token} references in a path or string.
-    Unexpanded tokens are replaced with $^{token}
+    Unexpanded tokens are left as is if keep is true, otherise removed.
     Return clone of the string if passed NULL or empty string or json not defined.
     Unterminated tokens are an error and return NULL.
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
 {
-    RBuf  *buf;
+    RBuf *buf;
     cchar *value;
-    char  *src, *cp, *start, *tok;
+    char *src, *cp, *start, *tok;
 
     if (!str || schr(str, '$') == 0 || !json) {
         return sclone(str);
@@ -2905,7 +3005,7 @@ PUBLIC int jsonCheckIteration(struct Json *json, int count, int nid)
 static bool isfnumber(cchar *s, ssize len)
 {
     cchar *cp;
-    int   dots;
+    int dots;
 
     if (!s || !*s) {
         return 0;
@@ -2929,6 +3029,39 @@ static bool isfnumber(cchar *s, ssize len)
         }
     }
     return 1;
+}
+
+PUBLIC cchar *jsonGetError(Json *json)
+{
+    return json->error;
+}
+
+/*
+   Set the json error message
+ */
+static int jerror(Json *json, cchar *fmt, ...)
+{
+    va_list args;
+    char *msg;
+
+    if (!json || !fmt) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!json->error) {
+        va_start(args, fmt);
+        msg = sfmtv(fmt, args);
+        va_end(args);
+        if (json->path) {
+            json->error = sfmt("JSON Parse Error: %s\nIn file '%s' at line %d. Near => %s\n", msg, json->path,
+                               json->lineNumber + 1, json->next);
+        } else {
+            json->error =
+                sfmt("JSON Parse Error: %s\nAt line %d. Near:\n%s\n", msg, json->lineNumber + 1, json->next);
+        }
+        rTrace("json", "%s", json->error);
+        rFree(msg);
+    }
+    return R_ERR_BAD_STATE;
 }
 
 #else
@@ -3100,7 +3233,7 @@ PUBLIC int rWritePid(void)
     if (getuid() == 0) {
         path = "/var/run/" ME_NAME ".pid";
         if ((buf = rReadFile(path, NULL)) != 0) {
-            //  REVIEW Acceptable: acceptable risk reading pid file
+            //  SECURITY Acceptable: acceptable risk reading pid file
             pid = atoi(buf);
             if (kill(pid, 0) == 0) {
                 rError("app", "Already running as PID %d", pid);
@@ -3109,7 +3242,7 @@ PUBLIC int rWritePid(void)
             }
         }
         sfmtbuf(pidbuf, sizeof(pidbuf), "%d\n", getpid());
-        if (rWriteFile(path, pidbuf, slen(pidbuf), 0666) < 0) {
+        if (rWriteFile(path, pidbuf, slen(pidbuf), 0600) < 0) {
             rError("app", "Could not create pid file %s", path);
             return R_ERR_CANT_OPEN;
         }
@@ -3150,8 +3283,6 @@ PUBLIC int rWritePid(void)
 
 PUBLIC int rInitBuf(RBuf *bp, ssize size)
 {
-    assert(bp);
-
     if (!bp || size <= 0) {
         return R_ERR_BAD_ARGS;
     }
@@ -3213,6 +3344,9 @@ PUBLIC int rGrowBuf(RBuf *bp, ssize need)
     if (need <= 0 || need > ME_R_MAX_BUF) {
         return R_ERR_BAD_ARGS;
     }
+    if (need > SSIZE_MAX - bp->buflen) {
+        return R_ERR_MEMORY;
+    }
     if (bp->buflen + need > ME_R_MAX_BUF) {
         return R_ERR_MEMORY;
     }
@@ -3222,8 +3356,7 @@ PUBLIC int rGrowBuf(RBuf *bp, ssize need)
     growBy = min(ME_R_MAX_BUF, need);
     growBy = max(growBy, ME_BUFSIZE);
 
-    if (growBy > 0 && bp->buflen > SSIZE_MAX - growBy) {
-        // Integer overflow
+    if (growBy > SSIZE_MAX - bp->buflen) {
         return R_ERR_MEMORY;
     }
     newSize = bp->buflen + growBy;
@@ -3283,14 +3416,14 @@ PUBLIC void rAdjustBufEnd(RBuf *bp, ssize size)
 {
     char *end;
 
+    if (!bp) {
+        return;
+    }
     assert(bp->buflen == (bp->endbuf - bp->buf));
     assert(size <= bp->buflen);
     assert((bp->end + size) >= bp->buf);
     assert((bp->end + size) <= bp->endbuf);
 
-    if (!bp) {
-        return;
-    }
     end = bp->end + size;
     if (end < bp->start || end > bp->endbuf) {
         return;
@@ -3303,14 +3436,14 @@ PUBLIC void rAdjustBufEnd(RBuf *bp, ssize size)
  */
 PUBLIC void rAdjustBufStart(RBuf *bp, ssize size)
 {
+    if (!bp || size < 0 || (bp->start + size > bp->end)) {
+        return;
+    }
     assert(bp->buflen == (bp->endbuf - bp->buf));
     assert(size <= bp->buflen);
     assert((bp->start + size) >= bp->buf);
     assert((bp->start + size) <= bp->end);
 
-    if (!bp || size < 0 || (bp->start + size > bp->end)) {
-        return;
-    }
     bp->start += size;
     if (bp->start > bp->end) {
         bp->start = bp->end;
@@ -3468,13 +3601,13 @@ PUBLIC ssize rPutBlockToBuf(RBuf *bp, cchar *str, ssize size)
 {
     ssize thisLen, bytes, space;
 
+    if (!bp || !str || size < 0 || size > MAXINT) {
+        return R_ERR_BAD_ARGS;
+    }
     assert(str);
     assert(size >= 0);
     assert(size < ME_R_MAX_BUF);
 
-    if (!bp || !str || size < 0 || size > MAXINT) {
-        return R_ERR_BAD_ARGS;
-    }
     bytes = 0;
     while (size > 0) {
         space = rGetBufSpace(bp);
@@ -3596,7 +3729,7 @@ PUBLIC char *rBufToStringAndFree(RBuf *bp)
     s = bp->buf;
     bp->buf = 0;
     rFree(bp);
-    // REVIEW Acceptable - transfer ownership of the buffer to the caller
+    // SECURITY: Acceptable - transfer ownership of the buffer to the caller
     return s;
 }
 
@@ -3755,7 +3888,6 @@ static void wifiHandler(void *arg, esp_event_base_t base, int32_t id, void *even
         ip_event_got_ip_t *event = (ip_event_got_ip_t*) event_data;
         rFree(wifiIP);
         wifiIP = sfmt(IPSTR, IP2STR(&event->ip_info.ip));
-        rInfo(ETAG, "IP: %s", wifiIP);
         wifiRetries = 0;
         xEventGroupSetBits(wifiEvent, WIFI_SUCCESS);
     }
@@ -3807,9 +3939,9 @@ PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname)
 
     bits = xEventGroupWaitBits(wifiEvent, WIFI_SUCCESS | WIFI_FAILURE, pdFALSE, pdFALSE, portMAX_DELAY);
     if (bits & WIFI_SUCCESS) {
-        rInfo(ETAG, "WIFI connected with SSID:%s password:%s", ssid, password);
+        rInfo(ETAG, "WIFI connected with SSID:%s", ssid);
     } else if (bits & WIFI_FAILURE) {
-        rInfo(ETAG, "Failed to connect to SSID:%s, password:%s", ssid, password);
+        rInfo(ETAG, "Failed to connect to SSID:%s", ssid);
     } else {
         rInfo(ETAG, "Unexpected WIFI error %x", (uint) bits);
     }
@@ -3891,7 +4023,7 @@ typedef struct Event {
     REventProc proc;
     void *arg;
     struct Event *next;
-    Time when;
+    Ticks when;
     REvent id;
     int fast;
 } Event;
@@ -3901,7 +4033,7 @@ typedef struct Event {
  */
 static Event *events = 0;
 static bool  eventsWrapped = 0;
-static bool  eventsChanged = 0;
+static bool  eventsStopped = 0;
 
 /*
     Event lock so rStartEvent can be thread safe
@@ -3932,7 +4064,7 @@ static Event *lookupEvent(REvent id, Event **priorp);
 PUBLIC int rInitEvents(void)
 {
     events = 0;
-    eventsChanged = 0;
+    eventsStopped = 0;
     eventsWrapped = 0;
     watches = rAllocHash(0, R_TEMPORAL_NAME | R_STATIC_VALUE);
     rInitLock(&eventLock);
@@ -3964,7 +4096,7 @@ PUBLIC void rTermEvents(void)
 }
 
 /*
-    Allocate an event.
+    Allocate an event. Events are run and respect the order of scheduling.
     If a fiber is supplied, the proc is run on that fiber. Otherwise a new fiber is allocated
     to run the proc. This routine is THREAD SAFE and is the only safe way to interact with R
     services from foreign threads. Returns an event ID that may be used with rStopEvent to
@@ -3985,7 +4117,12 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *arg, Ticks delay
         fiber = rGetFiber();
     }
     ep->arg = arg;
-    ep->when = delay >= MAXINT ? MAXINT : (rGetTicks() + delay);
+    Ticks now = rGetTicks();
+    if (delay > 0 && now > MAXINT64 - delay) {
+        ep->when = MAXINT64;
+    } else {
+        ep->when = now + delay;
+    }
     ep->id = getNextID();
     ep->fiber = fiber;
     ep->fast = (!fiber && flags & R_EVENT_FAST) ? 1 : 0;
@@ -4022,6 +4159,7 @@ PUBLIC int rStopEvent(REvent id)
     }
     if ((ep = lookupEvent(id, &prior)) != 0) {
         unlinkEvent(ep, prior);
+        eventsStopped = 1;
         return 0;
     }
     return R_ERR_CANT_FIND;
@@ -4066,9 +4204,12 @@ PUBLIC Ticks rRunEvents(void)
     assert(rIsMain());
 rescan:
     now = rGetTicks();
-    deadline = MAXINT;
-    eventsChanged = 0;
+    deadline = MAXINT64;
+    eventsStopped = 0;
 
+    /*
+        Run due events in the order of scheduling
+     */
     for (prior = 0, ep = events; ep && rState < R_STOPPING; ep = next) {
         next = ep->next;
         if (ep->when <= now) {
@@ -4087,8 +4228,11 @@ rescan:
                 unlinkEvent(ep, prior);
                 rResumeFiber(fiber, arg);
             }
-            if (eventsChanged) {
-                //  New event created or stopped so rescan
+            if (eventsStopped) {
+                /*
+                    Event stopped and removed when proc/fiber ran, so our "next" may not be valid.
+                    If new due events are added by proc/fiber, they will be serviced up on the next call to rRunEvents.
+                 */
                 goto rescan;
             }
         } else {
@@ -4099,39 +4243,29 @@ rescan:
     return deadline;
 }
 
-PUBLIC bool rHasDueEvents(void)
+PUBLIC Time rGetNextDueEvent(void)
 {
-    Event *ep;
-    Ticks now;
-
     if (rState >= R_STOPPING) {
-        return 1;
+        return 0;
     }
-    now = rGetTicks();
-    for (ep = events; ep ; ep = ep->next) {
-        if (ep->when <= now) {
-            return 1;
-        }
-    }
-    return 0;
+    return events ? events->when : MAXINT64;
 }
 
 /*
-    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase.
+    Event IDs are 64 bits and should never wrap in our lifetime, but we do handle wrapping just incase. In that case,
+       events with IDs starting from 1 should have long since run.
+    Regardless, we check for collisions with existing events.
     Event ID == 0 is invalid.
  */
 static REvent getNextID(void)
 {
     static REvent nextID = 1;
 
-    if (!eventsWrapped) {
-        return nextID++;
-    }
     // Will not happen in our lifetime
     if (nextID >= MAXINT64) {
         nextID = 1;
-        eventsWrapped = 1;
     }
+    // Will always find an ID on an embedded system
     while (rLookupEvent(nextID)) {
         nextID++;
     }
@@ -4156,15 +4290,34 @@ static Event *lookupEvent(REvent id, Event **priorp)
 
 /*
     THREAD SAFE
-    Note: this appends to the head of the list. If two events with the same "when" are scheduled,
-    the last scheduled will be launched first.
+    Note: do an in-order insertion. This inserts after the last event of the same time.
  */
-static void linkEvent(Event *ep)
+static void linkEvent(Event *event)
 {
+    Event *ep, *prior;
+
     rLock(&eventLock);
-    ep->next = events;
-    events = ep;
-    eventsChanged = 1;
+    if (events) {
+        prior = 0;
+        for (ep = events; ep; ep = ep->next) {
+            if (ep->when > event->when) {
+                if (ep == events) {
+                    // Insert at the head
+                    event->next = events;
+                    events = event;
+                } else {
+                    event->next = prior->next;
+                    prior->next = event;
+                }
+                break;
+            }
+            prior = ep;
+        }
+    } else {
+        // Add to the head
+        event->next = events;
+        events = event;
+    }
     rUnlock(&eventLock);
 }
 
@@ -4180,7 +4333,6 @@ static void unlinkEvent(Event *ep, Event *prior)
     }
     rUnlock(&eventLock);
     freeEvent(ep);
-    eventsChanged = 1;
 }
 
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data)
@@ -4233,7 +4385,7 @@ static void signalFiber(Watch *watch)
 
 /*
     Signal watchers of an event
-    This spawns a fiber for each watcher and so cannot take an argument.
+    This spawns a fiber for each watcher and is difficult to reliably take an argument that needs freeing.
  */
 PUBLIC void rSignal(cchar *name)
 {
@@ -4243,8 +4395,7 @@ PUBLIC void rSignal(cchar *name)
 
     if ((list = rLookupName(watches, name)) != 0) {
         for (ITERATE_ITEMS(list, watch, next)) {
-            // watch->arg = arg;
-            rSpawnFiber(name, (RFiberProc) signalFiber, watch);
+            rStartEvent((RFiberProc) signalFiber, watch, 0);
         }
     }
 }
@@ -4432,60 +4583,75 @@ void rFreeFiber(RFiber *fiber)
 }
 
 /*
-    Resume a fiber and pass a result. THREAD SAFE.
+    Swap context between two fibers. Pass a result to the target fiber rYieldFiber return value.
+ */
+static void *swapContext(RFiber *from, RFiber *to, void *result)
+{
+    to->result = result;
+    currentFiber = to;
+    if (uctx_swapcontext(&from->context, &to->context) < 0) {
+        rError("runtime", "Cannot swap context");
+        return 0;
+    }
+    result = from->result;
+    if (to->done) {
+        rFreeFiber(to);
+    }
+    return result;
+}
+
+/*
+    Yield from a fiber back to the main fiber.
+    The caller must have some mechanism to resume. i.e. someone must call rResumeFiber. See rSleep()
+    The parameter is passed to the
+    The return result it
+ */
+PUBLIC void *rYieldFiber(void *result)
+{
+    assert(currentFiber);
+    return swapContext(currentFiber, mainFiber, result);
+}
+
+/*
+    Resume a fiber and pass a result. The resumed fiber will receive the result value as a return value from
+    rYieldFiber. If called from the main fiber, the thread is resumed directly and immediately and
+    the main fiber is suspended until the fiber yields or completes. If called from a non-main fiber or
+    foreign-thread the target fiber is scheduled to be resumed via an event. In this case, the call to
+    rResumeFiber returns without yielding and the resumed fiber will run when the calling fiber next yields.
+    THREAD SAFE.
  */
 PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
 {
-    RFiber *prior;
-
     assert(fiber);
 
     if (fiber->done) {
         return fiber->result;
     }
     if (rIsMain()) {
-        fiber->result = result;
-        prior = currentFiber;
-
-        //  Switch to a new fiber
-        currentFiber = fiber;
-        if (uctx_swapcontext(&prior->context, &fiber->context) < 0) {
-            rError("runtime", "Cannot swap context");
-            return 0;
-        }
-        //  Back from the fiber, extract the result and terminate fiber if done
-        result = fiber->result;
-        if (fiber->done) {
-            rFreeFiber(fiber);
-        }
+        result = swapContext(currentFiber, fiber, result);
     } else {
-        //  OPTIMIZE - could do direct swapcontext if main thread
-        //  Foreign threads or non-main fibers
-        //  Let main call ResumeFiber for us
+        // Foreign thread or non-main fiber running in an Ioto thread
         rStartFiber(fiber, (void*) result);
+#if FUTURE
+        /*
+            Direct swap between fibers
+            We don't use this which may be faster, but it means the critical main fiber would not be resumed
+            until the target fiber yields or completes. If the target fiber resumed other fibers, those would
+            further delay the main fiber. The current design ensures the main fiber is resumed between each
+            yielded fiber so it can respond to I/O events and scheduled events.
+         */
+    } else if (rIsForeignThread()) {
+        // A foreign thread cannot swap stacks
+        rStartFiber(fiber, (void*) result);
+    } else {
+        /*
+            Non-main fiber running in an Ioto thread
+            Direct swap context between non-main fiber and target fiber
+         */
+        result = swapContext(currentFiber, fiber, result);
+#endif
     }
     return result;
-}
-
-/*
-    Yield from a fiber back to the main fiber
-    The caller must have some mechanism to resume. i.e. someone must call rResumeFiber. See rSleep()
- */
-inline void *rYieldFiber(void *value)
-{
-    RFiber *fiber;
-
-    assert(currentFiber);
-
-    fiber = currentFiber;
-    fiber->result = value;
-    currentFiber = mainFiber;
-    if (uctx_swapcontext(&fiber->context, &mainFiber->context) < 0) {
-        rError("runtime", "Cannot swap context");
-        return 0;
-    }
-    //  Resumed original fiber so pass back result
-    return fiber->result;
 }
 
 /*
@@ -4500,7 +4666,7 @@ PUBLIC void rStartFiber(RFiber *fiber, void *arg)
 }
 
 /*
-    Allocate a new fiber and resume it. The resumption happens via rStartFiber and the main fiber.
+    Allocate a new fiber and resume it
  */
 PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg)
 {
@@ -4509,7 +4675,7 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg)
     if ((fiber = rAllocFiber(name, fn, arg)) == 0) {
         return R_ERR_MEMORY;
     }
-    rResumeFiber(fiber, 0);
+    rStartFiber(fiber, 0);
     return 0;
 }
 
@@ -4542,6 +4708,11 @@ PUBLIC bool rIsMain(void)
         return 1;
     }
     return rGetCurrentThread() == rGetMainThread() && currentFiber == mainFiber;
+}
+
+PUBLIC bool rIsForeignThread(void)
+{
+    return rGetCurrentThread() != rGetMainThread();
 }
 
 /*
@@ -4782,7 +4953,7 @@ PUBLIC char *rReadFile(cchar *path, ssize *lenp)
     int         fd;
 
     if ((fd = open(path, O_RDONLY | O_BINARY | O_CLOEXEC, 0)) < 0) {
-        rError("runtime", "Cannot open %s", path);
+        rTrace("runtime", "Cannot open %s", path);
         return 0;
     }
     if (fstat(fd, &sbuf) < 0) {
@@ -4826,7 +4997,7 @@ PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode)
         len = slen(buf);
     }
     if ((fd = open(path, O_WRONLY | O_TRUNC | O_CREAT | O_BINARY | O_CLOEXEC, mode)) < 0) {
-        rError("runtime", "Cannot open %s", path);
+        rTrace("runtime", "Cannot open %s", path);
         return R_ERR_CANT_OPEN;
     }
     if (write(fd, buf, len) != len) {
@@ -5498,7 +5669,7 @@ PUBLIC RList *rGetFiles(cchar *path, cchar *pattern, int flags)
 
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
 {
-    char *path, sep;
+    char path[ME_MAX_PATH], sep;
     int  fd;
 
     sep = '/';
@@ -5515,29 +5686,30 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
     if (!prefix) {
         prefix = "tmp";
     }
-    path = sfmt("%s%c%s-XXXXXX.tmp", dir, sep, prefix);
+    if (sfmtbuf(path, sizeof(path), "%s%c%s-XXXXXX.tmp", dir, sep, prefix) == NULL) {
+        rError("runtime", "Temporary filename too long");
+        return NULL;
+    }
+    ;
 
 #if ME_WIN_LIKE
-    if (_mktemp(path) == NULL) {
+    if (_mktemp_s(path, sizeof(path)) != 0) {
         rError("runtime", "Cannot create temporary filename");
-        rFree(path);
         return NULL;
     }
     if ((fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_BINARY | O_CLOEXEC, 0600)) < 0) {
         rError("runtime", "Cannot create temporary file %s", path);
-        rFree(path);
         return NULL;
     }
 #else
     if ((fd = mkstemps(path, 4)) < 0) {
         rError("runtime", "Cannot create temporary file %s", path);
-        rFree(path);
         return NULL;
     }
     fchmod(fd, 0600);
 #endif
     close(fd);
-    return path;
+    return sclone(path);
 }
 
 PUBLIC void rAddDirectory(cchar *token, cchar *path)
@@ -5548,6 +5720,10 @@ PUBLIC void rAddDirectory(cchar *token, cchar *path)
 /*
     Routine to get a filename from a path for internal use only.
     Not to be used for external input.
+
+    SECURITY Acceptable: Do not flag this as a security issue. We permit paths like "../file" as
+    this is used to access files in the parent and sibling directories.
+    It is the callers responsibility to validate and check user paths before calling this function.
  */
 PUBLIC char *rGetFilePath(cchar *path)
 {
@@ -5571,11 +5747,6 @@ PUBLIC char *rGetFilePath(cchar *path)
     } else {
         result = sclone(path);
     }
-    /*
-        REVIEW Acceptable: Do not flag this as a security issue.
-        We permit paths like "../file" as this is used to access files in the parent and sibling directories.
-        It is the callers responsibility to validate and check user paths before calling this function.
-     */
     return result;
 }
 
@@ -5782,6 +5953,51 @@ PUBLIC RName *rAddName(RHash *hash, cchar *name, void *ptr, int flags)
         hash->buckets[bindex] = kindex;
         np->custom = 0;
     }
+    if (!(flags & R_NAME_MASK)) {
+        flags |= hash->flags & R_NAME_MASK;
+    }
+    np->name = (flags & R_TEMPORAL_NAME) ? sclone(name) : (void*) name;
+
+    if (!(flags & R_VALUE_MASK)) {
+        flags |= hash->flags & R_VALUE_MASK;
+    }
+    np->value = (flags & R_TEMPORAL_VALUE) ? sclone(ptr) : (void*) ptr;
+    np->flags = flags;
+    return np;
+}
+
+PUBLIC RName *rAddDuplicateName(RHash *hash, cchar *name, void *ptr, int flags)
+{
+    RName *np;
+    int   bindex, kindex;
+
+    if (hash == 0 || name == 0) {
+        assert(hash && name);
+        return 0;
+    }
+    if (flags == 0) {
+        flags = hash->flags;
+    }
+    if (hash->length >= (hash->numBuckets)) {
+        growBuckets(hash, hash->length + 1);
+    }
+    lookupHash(hash, name, &bindex, 0);
+
+    if (hash->free < 0) {
+        growNames(hash, hash->size * 3 / 2);
+    }
+    kindex = hash->free;
+    np = &hash->names[kindex];
+    hash->free = np->next;
+    hash->length++;
+
+    /*
+        Add to bucket chain
+     */
+    np->next = hash->buckets[bindex];
+    hash->buckets[bindex] = kindex;
+    np->custom = 0;
+
     if (!(flags & R_NAME_MASK)) {
         flags |= hash->flags & R_NAME_MASK;
     }
@@ -6246,11 +6462,6 @@ PUBLIC void *rSetItem(RList *lp, int index, cvoid *item)
     void *old;
     uint length;
 
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-    assert(index >= 0);
-
     if (!lp || index < 0 || lp->capacity < 0 || lp->length < 0) {
         return 0;
     }
@@ -6283,10 +6494,6 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
 {
     int index;
 
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-
     if (!lp || lp->capacity < 0 || lp->length < 0) {
         return R_ERR_BAD_ARGS;
     }
@@ -6303,10 +6510,6 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
 PUBLIC int rAddNullItem(RList *lp)
 {
     int index;
-
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
 
     if (!lp || lp->capacity < 0 || lp->length < 0) {
         return R_ERR_BAD_ARGS;
@@ -6333,11 +6536,6 @@ PUBLIC int rInsertItemAt(RList *lp, int index, cvoid *item)
 {
     void **items;
     int  i;
-
-    assert(lp);
-    assert(lp && lp->capacity >= 0);
-    assert(lp && lp->length >= 0);
-    assert(index >= 0);
 
     if (!lp || lp->capacity < 0 || lp->length < 0 || index < 0) {
         return R_ERR_BAD_ARGS;
@@ -6384,9 +6582,7 @@ PUBLIC int rRemoveItem(RList *lp, cvoid *item)
     if ((index = rLookupItem(lp, item)) < 0) {
         return index;
     }
-    index = rRemoveItemAt(lp, index);
-    assert(index >= 0);
-    return index;
+    return rRemoveItemAt(lp, index);
 }
 
 /*
@@ -6396,11 +6592,6 @@ PUBLIC int rRemoveItem(RList *lp, cvoid *item)
 PUBLIC int rRemoveItemAt(RList *lp, int index)
 {
     void **items;
-
-    assert(lp);
-    assert(lp && lp->capacity > 0);
-    assert(lp && index >= 0 && index < (int) lp->capacity);
-    assert(lp && lp->length > 0);
 
     if (!lp || lp->capacity <= 0 || index < 0 || index >= (int) lp->length) {
         return R_ERR_BAD_ARGS;
@@ -6412,7 +6603,6 @@ PUBLIC int rRemoveItemAt(RList *lp, int index)
     memmove(&items[index], &items[index + 1], (lp->length - index - 1) * sizeof(void*));
     lp->length--;
     lp->items[lp->length] = 0;
-    assert(lp->length >= 0);
     return index;
 }
 
@@ -6423,7 +6613,6 @@ PUBLIC int rRemoveStringItem(RList *lp, cchar *str)
 {
     int index;
 
-    assert(lp);
     if (!lp || !str) {
         return R_ERR_BAD_ARGS;
     }
@@ -6431,16 +6620,12 @@ PUBLIC int rRemoveStringItem(RList *lp, cchar *str)
     if (index < 0) {
         return index;
     }
-    index = rRemoveItemAt(lp, index);
-    assert(index >= 0);
-    return index;
+    return rRemoveItemAt(lp, index);
 }
 
 PUBLIC void *rGetItem(RList *lp, int index)
 {
-    assert(lp);
-
-    if (index < 0 || index >= (int) lp->length) {
+    if (!lp || index < 0 || index >= (int) lp->length) {
         return 0;
     }
     return lp->items[index];
@@ -6450,9 +6635,6 @@ PUBLIC void *rGetNextItem(RList *lp, int *next)
 {
     void *item;
     int  index;
-
-    assert(next);
-    assert(next && *next >= 0);
 
     if (!lp || !next || *next < 0) {
         return 0;
@@ -6481,8 +6663,6 @@ PUBLIC void rClearList(RList *lp)
     void *data;
     int  next;
 
-    assert(lp);
-
     if (!lp) {
         return;
     }
@@ -6499,7 +6679,6 @@ PUBLIC int rLookupItem(RList *lp, cvoid *item)
 {
     uint i;
 
-    assert(lp);
     if (!lp) {
         return R_ERR_BAD_ARGS;
     }
@@ -6514,8 +6693,6 @@ PUBLIC int rLookupItem(RList *lp, cvoid *item)
 PUBLIC int rLookupStringItem(RList *lp, cchar *str)
 {
     uint i;
-
-    assert(lp);
 
     if (!lp) {
         return R_ERR_BAD_ARGS;
@@ -6551,7 +6728,6 @@ PUBLIC int rGrowList(RList *lp, int size)
     memsize = len * sizeof(void*);
 
     if ((lp->items = rRealloc(lp->items, memsize)) == NULL) {
-        assert(!R_ERR_MEMORY);
         return R_ERR_MEMORY;
     }
     memset(&lp->items[lp->capacity], 0, (len - lp->capacity) * sizeof(void*));
@@ -7579,8 +7755,8 @@ static char *defaultKeyFile;               /* Default Alternatively, locate the 
 static char *defaultRevokeFile;            /* Default certificate revocation list */
 static char *defaultCiphers;               /* Default Ciphers to use for connection */
 
-static int defaultVerifyPeer = 1;
-static int defaultVerifyIssuer = 1;
+static int defaultVerifyPeer = 1;          /* Verify peer certificates */
+static int defaultVerifyIssuer = 1;        /* Verify issuer of peer certificates */
 
 /********************************** Forwards **********************************/
 
@@ -7742,6 +7918,10 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         rSetSocketError(tp->sock, "Cannot set mbedtls defaults");
         return R_ERR_CANT_INITIALIZE;
     }
+#if defined(MBEDTLS_SSL_MAJOR_VERSION_3) && defined(MBEDTLS_SSL_MINOR_VERSION_3)
+    // Enforce TLS >= 1.2
+    mbedtls_ssl_conf_min_version(&tp->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+#endif
     mbedtls_ssl_conf_rng(&tp->conf, mbedtls_ctr_drbg_random, &ctr);
 
     /*
@@ -8284,6 +8464,10 @@ PUBLIC void *rAllocMem(size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
+    if (size > (SIZE_MAX & ~7)) {
+        rAllocException(R_MEM_FAIL, size);
+        return 0;
+    }
     if (size == 0) {
         //  Ensure that we allocate at least 1 byte
         size = 1;
@@ -8352,9 +8536,6 @@ PUBLIC int rMemcmp(cvoid *s1, size_t s1Len, cvoid *s2, size_t s2Len)
  */
 PUBLIC size_t rMemcpy(void *dest, size_t destMax, cvoid *src, size_t nbytes)
 {
-    assert(dest);
-    assert(src);
-
     if (!dest || !src) {
         return 0;
     }
@@ -8469,7 +8650,8 @@ PUBLIC void rAllocException(int cause, size_t size)
                 SSL_OP_NO_SSLv2 | \
                 SSL_OP_NO_SSLv3 | \
                 SSL_OP_NO_TLSv1 | \
-                SSL_OP_NO_TLSv1_1)
+                SSL_OP_NO_TLSv1_1 | \
+                SSL_OP_NO_TLSv1_2)
 #endif
 #ifndef ME_R_TLS_CLEAR_OPTIONS
     #define ME_R_TLS_CLEAR_OPTIONS 0
@@ -8520,8 +8702,8 @@ static char *defaultCertFile;             /* Default certificate filename */
 static char *defaultKeyFile;              /* Default Alternatively, locate the key in a file */
 static char *defaultRevokeFile;           /* Default certificate revocation list */
 static char *defaultCiphers;              /* Default Ciphers to use for connection */
-static int  defaultVerifyPeer = 1;
-static int  defaultVerifyIssuer = 1;
+static int  defaultVerifyPeer = 1;        /* Verify peer certificates */
+static int  defaultVerifyIssuer = 1;      /* Verify issuer of peer certificates */
 
 /***************************** Forward Declarations ***************************/
 
@@ -8649,7 +8831,19 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
     tp->ctx = ctx;
     tp->freeCtx = 1;
     SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
-
+#if defined(TLS1_3_VERSION)
+    // Enforce TLS >= 1.3
+    #if defined(SSL_CTX_set_min_proto_version)
+    SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
+    #else
+        #ifdef SSL_OP_NO_TLSv1
+        SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
+        #endif
+        #ifdef SSL_OP_NO_TLSv1_1
+        SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
+        #endif
+    #endif
+#endif
     if (tp->verifyIssuer < 0) {
         tp->verifyIssuer = defaultVerifyIssuer;
     }
@@ -9344,11 +9538,6 @@ PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
     tp->engine = sclone(engine);
 }
 
-PUBLIC void *rGetTlsRng(void)
-{
-    return NULL;
-}
-
 #else
 void opensslDummy(void)
 {
@@ -9825,7 +10014,7 @@ static ssize innerSprintf(char **buf, ssize maxsize, cchar *spec, va_list args)
                 }
                 break;
 
-#if 0 && DEPRECATE    // SECURITY
+#if DEPRECATE         // SECURITY
             case 'n': /* Count of chars seen thus far */
                 if (ctx.flags & SPRINTF_SHORT) {
                     short *count = va_arg(args, short*);
@@ -10087,7 +10276,11 @@ static void outFloat(PContext *ctx, char specchar, double value)
         //  Remove trailing zeros and decimal point if precision is 0
         if (ctx->precision < 0) {
             for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--, ctx->len--) {
-                if (*last == '0' || *last == '.') {
+                if (*last == '.') {
+                    *last = '\0';
+                    ctx->end = last;
+                    break;
+                } else if (*last == '0') {
                     *last = '\0';
                 } else {
                     break;
@@ -10097,13 +10290,13 @@ static void outFloat(PContext *ctx, char specchar, double value)
     }
 }
 
-static double normalizeScientific(double x, int *exponent) 
+static double normalizeScientific(double x, int *exponent)
 {
     if (x == 0.0) {
         *exponent = 0;
         return 0.0;
     }
-    int exp = (int)floor(log10(fabs(x)));
+    int    exp = (int) floor(log10(fabs(x)));
     double mantissa = x / pow(10.0, exp);
 
     // Adjust if mantissa is not in the range [1.0, 10.0)
@@ -10141,7 +10334,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
 
     ipart = (int64) mantissa;
     outNum(ctx, 10, ipart);
- 
+
     if (precision > 0) {
         BPUT(ctx, '.');
     }
@@ -10158,7 +10351,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
     }
     if (ctx->format == 'g') {
         //  Remove trailing zeros and decimal point if precision is 0
-         if (ctx->precision < 0) {
+        if (ctx->precision < 0) {
             for (last = &ctx->end[-1]; ctx->end > ctx->buf; last--, ctx->end--) {
                 if (*last == '0' || *last == '.') {
                     *last = '\0';
@@ -10166,7 +10359,7 @@ static void outFloatE(PContext *ctx, char specchar, double value)
                     break;
                 }
             }
-         }
+        }
     }
     fexp = abs(exponent);
     BPUT(ctx, (ctx->format == 'E' || ctx->format == 'G') ? 'E' : 'e');
@@ -10315,13 +10508,13 @@ PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg)
 PUBLIC void rbFree(RbTree *rbt)
 {
     if (rbt) {
-        //  REVIEW Acceptable - This is recursive
+        //  SECURITY: Acceptable - This is recursive
         freeNode(rbt, RB_FIRST(rbt));
         rFree(rbt);
     }
 }
 
-//  REVIEW Acceptable - This is recursive
+//  SECURITY: Acceptable - This is recursive
 static void freeNode(RbTree *rbt, RbNode *n)
 {
     assert(rbt);
@@ -11176,6 +11369,11 @@ static int makeArgs(cchar *command, char ***argvp, bool argsOnly)
 
 #define ME_SOCKET_TIMEOUT    (30 * 1000)
 #define ME_HANDSHAKE_TIMEOUT (30 * 1000)
+#ifndef ME_SOCKET_MAX
+    #define ME_SOCKET_MAX    100
+#endif
+
+static int activeSockets = 0;
 
 /********************************** Forwards **********************************/
 
@@ -11201,6 +11399,9 @@ PUBLIC void rFreeSocket(RSocket *sp)
 {
     if (!sp) {
         return;
+    }
+    if (sp->flags & R_SOCKET_SERVER) {
+        activeSockets--;
     }
     if (sp->fd != INVALID_SOCKET) {
         rCloseSocket(sp);
@@ -11242,6 +11443,16 @@ PUBLIC void rCloseSocket(RSocket *sp)
         rResumeWait(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
     }
     sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
+}
+
+PUBLIC void rDisconnectSocket(RSocket *sp)
+{
+    if (!sp) {
+        return;
+    }
+    if (sp->fd != INVALID_SOCKET) {
+        shutdown(sp->fd, SHUT_RDWR);
+    }
 }
 
 PUBLIC void rResetSocket(RSocket *sp)
@@ -11399,6 +11610,11 @@ static void acceptSocket(RSocket *listen)
         return;
     }
     do {
+        if (++activeSockets >= ME_SOCKET_MAX) {
+            rSetSocketError(sp, "Too many active sockets");
+            rFreeSocket(sp);
+            return;
+        }
         if ((fd = accept(listen->fd, (struct sockaddr*) &addr, &addrLen)) == SOCKET_ERROR) {
             if (rGetOsError() != EAGAIN) {
                 rSetSocketError(sp, "Accept failed, errno %d", rGetOsError());
@@ -11496,6 +11712,9 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline)
 {
     ssize nbytes;
 
+    if (!sp || !buf || bufsize <= 0 || bufsize > SSIZE_MAX / 2) {
+        return R_ERR_BAD_ARGS;
+    }
     while (1) {
         nbytes = rReadSocketSync(sp, buf, bufsize);
         if (nbytes != 0) {
@@ -11721,6 +11940,7 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...)
         va_start(ap, fmt);
         sp->error = sfmtv(fmt, ap);
         va_end(ap);
+        // Debug build only
         rDebug("socket", "%s", sp->error);
     }
     return R_ERR_CANT_COMPLETE;
@@ -12209,7 +12429,11 @@ PUBLIC char *sfmtbuf(char *buf, ssize bufsize, cchar *fmt, ...)
         return 0;
     }
     va_start(ap, fmt);
-    rVsnprintf(buf, bufsize, fmt, ap);
+    if (rVsnprintf(buf, bufsize, fmt, ap) >= bufsize) {
+        //  Truncated
+        va_end(ap);
+        return NULL;
+    }
     va_end(ap);
     return buf;
 }
@@ -12814,7 +13038,9 @@ PUBLIC int64 stoix(cchar *str, char **end, int radix)
 {
     int64 result;
 
-    errno = 0;
+    if (!str || !*str) {
+        return 0;
+    }
     result = strtoll(str, end, radix);
     return result;
 }
@@ -13674,7 +13900,20 @@ PUBLIC Time rParseIsoDate(cchar *when)
 
     memset(&ctime, 0, sizeof(ctime));
     if (when) {
+#if MACOSX
+        /*
+            For platforms that don't support %f
+         */
+        char *cp;
+        int  ms = 0;
         strptime(when, "%FT%T%z", &ctime);
+        if ((cp = strrchr(when, '.')) != NULL) {
+            ms = atoi(cp + 1);
+        }
+        return timegm(&ctime) * TPS + ms;
+#else
+        strptime(when, "%FT%T.%f%z", &ctime);
+#endif
     }
     return timegm(&ctime) * TPS;
 }
@@ -14230,12 +14469,16 @@ PUBLIC RWait *rAllocWait(int fd)
 PUBLIC void rFreeWait(RWait *wp)
 {
     if (wp) {
+        rSetWaitMask(wp, 0, 0);
         rSetItem(waitMap, wp->fd, 0);
         rResumeWait(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
         rFree(wp);
     }
 }
 
+/*
+    Resume any waiting fiber when a wait is freed
+ */
 PUBLIC void rResumeWait(RWait *wp, int mask)
 {
     if (wp->fiber) {
@@ -14376,9 +14619,7 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
  */
 PUBLIC void rWakeup(void)
 {
-#if ME_WIN_LIKE
-    //  TODO
-#else
+#if !ME_WIN_LIKE
     if (waiting) {
         kill(getpid(), SIGCONT);
     }
@@ -14394,9 +14635,6 @@ PUBLIC int rWait(Ticks deadline)
     waiting = 1;
     rMemoryBarrier();
 
-    if (rHasDueEvents()) {
-        return 0;
-    }
     timeout = getTimeout(deadline);
 
 #if ME_EVENT_NOTIFIER == R_EVENT_EPOLL
@@ -14565,16 +14803,24 @@ static void invokeHandler(int fd, int mask)
  */
 PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline)
 {
-    void *value;
+    Ticks priorDeadline;
+    int   priorMask;
+    void  *value;
 
     assert(!rIsMain());
 
     if (deadline && deadline < rGetTicks()) {
         return 0;
     }
-    rSetWaitMask(wp, mask, deadline);
+    priorDeadline = wp->deadline;
+    priorMask = wp->mask;
     wp->fiber = rGetFiber();
+    rSetWaitMask(wp, mask, deadline);
+
     value = rYieldFiber(0);
+
+    wp->deadline = priorDeadline;
+    wp->mask = priorMask;
     wp->fiber = 0;
     return (int) (ssize) value;
 }
@@ -14589,7 +14835,7 @@ PUBLIC int rGetWaitFd(void)
  */
 static Ticks getTimeout(Ticks deadline)
 {
-    Ticks now, timeout;
+    Ticks nextEvent, now, timeout;
     RWait *wp;
     int   next;
 
@@ -14618,6 +14864,8 @@ static Ticks getTimeout(Ticks deadline)
         //  Reduce to MAXINT to permit callers to be able to do ticks arithmetic
         timeout = MAXINT;
     }
+    nextEvent = rGetNextDueEvent();
+    timeout = min(timeout, nextEvent - now);
     return timeout;
 }
 
