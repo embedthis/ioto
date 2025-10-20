@@ -97,7 +97,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          dir build\bin
           call bin\test-prep.bat
           tm -v test
 

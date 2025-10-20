@@ -27,7 +27,7 @@ if [ ! -f ./state/certs/test.crt ] ; then
 fi
 
 if [ ! -f state/site/1K.txt ] ; then
-    cat state/site/index.html <<!EOF
+    cat >state/site/index.html <<!EOF
 <html><head><title>index.html</title></head>
 <body>Hello /index.html</body>
 </html> 
