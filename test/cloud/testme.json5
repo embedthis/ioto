@@ -7,7 +7,14 @@
             PATH: '../../build/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
         },
     },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 180,
+    },
     services: {
+        environment: './env.sh',
         prep: './prep.sh',
+        skip: './skip.sh',
     },
 }

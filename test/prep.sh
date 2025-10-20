@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   prep.sh - TestMe prep script
 #
@@ -9,3 +9,6 @@ if [ "$app" != "unit" ] ; then
     echo "Ioto not configured for unit tests. Currently selected \"$app\" app, need \"unit\" app" >&2
     exit 1
 fi
+
+ID="TEST${TESTME_OS}"
+json id=${ID} ../state/config/device.json5

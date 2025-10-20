@@ -243,6 +243,19 @@ PUBLIC int main(int argc, char **argv, char **envp)
     ioto->cmdAIShow = show;
     ioto->cmdWebShow = show;
 
+    if (!ioto->cmdId) {
+        ioto->cmdId = scloneNull(getenv("IOTO_ID"));
+    }
+    if (!ioto->cmdProduct) {
+        ioto->cmdProduct = scloneNull(getenv("IOTO_PRODUCT"));
+    }
+    if (!ioto->cmdAccount) {
+        ioto->cmdAccount = scloneNull(getenv("IOTO_ACCOUNT"));
+    }
+    if (!ioto->cmdCloud) {
+        ioto->cmdCloud = scloneNull(getenv("IOTO_CLOUD"));
+    }
+
     setEvent(exitEvent);
 
     if (home && chdir(home) < 0) {

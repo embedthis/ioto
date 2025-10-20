@@ -41,12 +41,12 @@ jobs:
         if: runner.os == 'Windows'
 
       - name: Install TestMe
-        if: true
+        if: false
         run: |
           bun install -g --trust @embedthis/testme
 
       - name: Local TestMe
-        if: false
+        if: true
         run: |
           bun install --verbose -g --trust "${{ github.workspace }}/local/testme.tgz"
 
@@ -90,12 +90,22 @@ jobs:
 
       - name: Run test suite (Unix)
         if: runner.os != 'Windows'
+        env:
+          IOTO_PRODUCT: ${{ secrets.PRODUCT }}
+          IOTO_CLOUD: ${{ secrets.CLOUD }}
+          IOTO_ACCOUNT: ${{ secrets.ACCOUNT }}
+          IOTO_DEVICE: ${{ secrets.DEVICE }}
         run: |
           tm -v test
 
       - name: Run test suite (Windows)
         if: runner.os == 'Windows'
         shell: cmd
+        env:
+          IOTO_PRODUCT: ${{ secrets.PRODUCT }}
+          IOTO_CLOUD: ${{ secrets.CLOUD }}
+          IOTO_ACCOUNT: ${{ secrets.ACCOUNT }}
+          IOTO_DEVICE: ${{ secrets.DEVICE }}
         run: |
           call bin\test-prep.bat
           tm -v test

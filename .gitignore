@@ -89,6 +89,7 @@ site/size
 test/.test-prepared
 test/*/state/certs/*
 test/*/state/db
+test/*/state/site
 testme/
 tools/json
 typings

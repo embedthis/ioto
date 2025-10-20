@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #	make-certs - This script builds the following test certificates.
 #	

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   Copy the Ioto ESP32 Makefile to the top project directory
 #

@@ -43,3 +43,8 @@ fi
 #    ../../bin/make-files 210000 state/site/10M.txt
 
 rm -f ./log.txt
+
+echo LEAVINGPREP
+
+pwd
+find state

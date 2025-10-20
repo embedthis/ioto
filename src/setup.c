@@ -74,7 +74,6 @@ PUBLIC int ioInitConfig(void)
     if (ioto->cmdProfile) {
         jsonSet(json, 0, "profile", ioto->cmdProfile, JSON_STRING);
     }
-
 #if SERVICES_CLOUD
     ioto->account = jsonGetClone(json, 0, "provision.accountId", 0);
     ioto->cloud = jsonGetClone(json, 0, "provision.cloud", 0);

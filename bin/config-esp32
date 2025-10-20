@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   config-esp32 - Update the configuration based on the menuconfig sdkconfig
 #

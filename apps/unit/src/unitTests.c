@@ -82,8 +82,6 @@ PUBLIC void unitTest(cchar *suite)
 
     rInfo("test", "Running %d tests %s", count, parallel ? "in parallel" : "");
 
-    jsonPrint(json);
-
     for (i = 0; i < count; i++) {
         rInfo("test", "Iteration %d", i);
         //  Iterate over the "run" list of tests

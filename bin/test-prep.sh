@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   Test prerequisites for running tests on Unix/Linux/macOS
 #
