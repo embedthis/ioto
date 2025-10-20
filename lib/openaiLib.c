@@ -85,7 +85,7 @@ PUBLIC Json *openaiChatCompletion(Json *props)
 
     url = sfmt("%s/chat/completions", openai->endpoint);
     up = urlAlloc(0);
-    response = urlJson(up, "POST", url, data, -1, "%s", openai->headers);
+    response = urlJson(up, "POST", url, data, 0, "%s", openai->headers);
     if (!response) {
         rDebug("openai", "Failed to submit request to OpenAI: %s", urlGetError(up));
     } else {
@@ -131,7 +131,7 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
         }
         up = urlAlloc(0);
         url = sfmt("%s/responses", openai->endpoint);
-        response = urlJson(up, "POST", url, data, -1, openai->headers);
+        response = urlJson(up, "POST", url, data, 0, openai->headers);
         rFree(url);
         rFree(data);
 
@@ -261,7 +261,7 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
      */
     up = urlAlloc(0);
     url = sfmt("%s/responses", openai->endpoint);
-    status = urlFetch(up, "POST", url, data, -1, "%s", openai->headers);
+    status = urlFetch(up, "POST", url, data, 0, "%s", openai->headers);
     rFree(url);
     rFree(data);
     if (status != URL_CODE_OK) {

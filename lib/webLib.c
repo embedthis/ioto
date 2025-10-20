@@ -220,7 +220,7 @@ static int getFile(Web *web, cchar *path, FileInfo *info)
         return 0;
     }
     lpath = 0;
-    if (S_ISDIR(info->st_mode)) {
+    if ((info->st_mode & S_IFDIR) != 0) {
         //  Directory. If request does not end with "/", must do an external redirect.
         if (!sends(path, "/")) {
             return redirectToDir(web);
@@ -244,7 +244,7 @@ static int getFile(Web *web, cchar *path, FileInfo *info)
         web->txLen = info->st_size;
     }
     if (info->st_mtime > 0) {
-        webAddHeader(web, "Last-Modified", "%s", webDate(date, info->st_mtime));
+        webAddHeader(web, "Last-Modified", "%s", webDate(date, sizeof(date), info->st_mtime));
     }
 
     //  ETag is a hash of the file's inode, size and last modified time.
@@ -301,7 +301,7 @@ static int putFile(Web *web, cchar *path)
         return webError(web, 404, "Cannot open document");
     }
     while ((nbytes = webRead(web, buf, sizeof(buf))) > 0) {
-        if (write(fd, buf, nbytes) != nbytes) {
+        if (write(fd, buf, (uint) nbytes) != nbytes) {
             return webError(web, 500, "Cannot put document");
         }
     }
@@ -326,7 +326,7 @@ PUBLIC ssize webSendFile(Web *web, int fd)
         if ((nbytes = read(fd, buf, sizeof(buf))) < 0) {
             return webError(web, 404, "Cannot read document");
         }
-        if ((nbytes = webWrite(web, buf, nbytes)) < 0) {
+        if ((nbytes = webWrite(web, buf, (uint) nbytes)) < 0) {
             return webNetError(web, "Cannot send file");
         }
         written += nbytes;
@@ -436,13 +436,13 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->sessionTimeout = getTimeout(host, "web.timeouts.session", "30mins");
 
 #if ME_WEB_LIMITS
-    host->maxBuffer = svalue(jsonGet(host->config, 0, "web.limits.buffer", "64K"));
-    host->maxBody = svalue(jsonGet(host->config, 0, "web.limits.body", "100K"));
-    host->maxConnections = svalue(jsonGet(host->config, 0, "web.limits.connections", "100"));
-    host->maxHeader = svalue(jsonGet(host->config, 0, "web.limits.header", "10K"));
-    host->maxSessions = svalue(jsonGet(host->config, 0, "web.limits.sessions", "20"));
-    host->maxUpload = svalue(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
-    host->maxUploads = svalue(jsonGet(host->config, 0, "web.limits.uploads", "0"));
+    host->maxBuffer = svaluei(jsonGet(host->config, 0, "web.limits.buffer", "64K"));
+    host->maxBody = svaluei(jsonGet(host->config, 0, "web.limits.body", "100K"));
+    host->maxConnections = svaluei(jsonGet(host->config, 0, "web.limits.connections", "100"));
+    host->maxHeader = svaluei(jsonGet(host->config, 0, "web.limits.header", "10K"));
+    host->maxSessions = svaluei(jsonGet(host->config, 0, "web.limits.sessions", "20"));
+    host->maxUpload = svaluei(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
+    host->maxUploads = svaluei(jsonGet(host->config, 0, "web.limits.uploads", "0"));
 #endif
 
     host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
@@ -454,12 +454,12 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->roles = jsonGetId(host->config, 0, "web.auth.roles");
     host->headers = jsonGetId(host->config, 0, "web.headers");
 
-    host->webSocketsMaxMessage = svalue(jsonGet(host->config, 0, "web.limits.maxMessage", "100K"));
-    host->webSocketsMaxFrame = svalue(jsonGet(host->config, 0, "web.limits.maxFrame", "100K"));
-    host->webSocketsValidateUTF = jsonGetBool(host->config, 0, "web.webSockets.validateUTF", 0);
-    host->webSocketsPingPeriod = svalue(jsonGet(host->config, 0, "web.webSockets.ping", "never"));
+    host->webSocketsMaxMessage = svaluei(jsonGet(host->config, 0, "web.limits.maxMessage", "100K"));
+    host->webSocketsMaxFrame = svaluei(jsonGet(host->config, 0, "web.limits.maxFrame", "100K"));
+    host->webSocketsPingPeriod = svaluei(jsonGet(host->config, 0, "web.webSockets.ping", "never"));
     host->webSocketsProtocol = jsonGet(host->config, 0, "web.webSockets.protocol", "chat");
     host->webSocketsEnable = jsonGetBool(host->config, 0, "web.webSockets.enable", 1);
+    host->webSocketsValidateUTF = jsonGetBool(host->config, 0, "web.webSockets.validateUTF", 0);
 
     initMethods(host);
     initRoutes(host);
@@ -695,7 +695,7 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
  */
 static int getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
 {
-    uint64 value;
+    int64 value;
 
     value = svalue(jsonGet(host->config, 0, field, defaultValue));
     if (value > MAXINT / TPS) {
@@ -964,7 +964,7 @@ static void freeWebFields(Web *web, bool keepAlive);
 static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int close);
 static int handleRequest(Web *web);
 static bool matchFrom(Web *web, cchar *from);
-static int parseHeaders(Web *web, ssize headerSize);
+static int parseHeaders(Web *web, size_t headerSize);
 static void parseMethod(Web *web);
 static int processBody(Web *web);
 static void processOptions(Web *web);
@@ -1053,7 +1053,7 @@ static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int cl
     web->txRemaining = WEB_UNLIMITED;
     web->txLen = -1;
     web->rxLen = -1;
-    web->close = close;
+    web->close = (uint) close;
 }
 
 static void freeWebFields(Web *web, bool keepAlive)
@@ -1081,14 +1081,13 @@ static void freeWebFields(Web *web, bool keepAlive)
     rFree(web->path);
     rFree(web->redirect);
     rFree(web->securityToken);
-    // rFreeBuf(web->trace);
     rFreeBuf(web->rxHeaders);
     rFreeHash(web->txHeaders);
     jsonFree(web->qvars);
     jsonFree(web->vars);
     webFreeUpload(web);
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     if (web->webSocket) {
         webSocketFree(web->webSocket);
     }
@@ -1099,7 +1098,7 @@ static void freeWebFields(Web *web, bool keepAlive)
         web->listen = listen;
         web->rx = rx;
         web->sock = sock;
-        web->close = close;
+        web->close = (uint) close;
         web->conn = conn;
     }
 }
@@ -1146,10 +1145,10 @@ static int serveRequest(Web *web)
     /*
         Read until we have all the headers up to the limit
      */
-    if ((size = webBufferUntil(web, "\r\n\r\n", web->host->maxHeader, 0)) < 0) {
+    if ((size = webBufferUntil(web, "\r\n\r\n", (size_t) web->host->maxHeader, 0)) < 0) {
         return R_ERR_CANT_READ;
     }
-    if (parseHeaders(web, size) < 0) {
+    if (parseHeaders(web, (size_t) size) < 0) {
         return R_ERR_CANT_READ;
     }
     webAddStandardHeaders(web);
@@ -1195,7 +1194,7 @@ static int handleRequest(Web *web)
     if (web->query) {
         processQuery(web);
     }
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     if (scaselessmatch(web->upgrade, "websocket")) {
         if (webUpgradeSocket(web) < 0) {
             return R_ERR_CANT_COMPLETE;
@@ -1255,9 +1254,9 @@ static int handleRequest(Web *web)
 static bool validateRequest(Web *web)
 {
     WebHost *host;
-    char    path[WEB_MAX_SIG];
-    ssize   len, urlLen;
-    char    *cp;
+    char    *path, *cp;
+    size_t  len, urlLen;
+    bool    rc;
 
     assert(web);
     host = web->host;
@@ -1267,17 +1266,19 @@ static bool validateRequest(Web *web)
     if (urlLen < len) {
         return 0;
     }
-    sncopy(path, sizeof(path), &web->url[len], urlLen - len);
-    for (cp = path; cp < &path[sizeof(path)] && *cp; cp++) {
-        if (*cp == '/') *cp = '.';
-    }
+    rc = 1;
     if (host->signatures) {
+        path = sclone(&web->url[len]);
+        for (cp = path; *cp; cp++) {
+            if (*cp == '/') *cp = '.';
+        }
         web->signature = jsonGetId(host->signatures, 0, path);
         if (web->route->validate) {
-            return webValidateRequest(web, path);
+            rc = webValidateRequest(web, path);
         }
+        rFree(path);
     }
-    return 1;
+    return rc;
 }
 
 static int webActionHandler(Web *web)
@@ -1405,7 +1406,7 @@ static bool matchFrom(Web *web, cchar *from)
 /*
     Parse the request headers
  */
-static int parseHeaders(Web *web, ssize headerSize)
+static int parseHeaders(Web *web, size_t headerSize)
 {
     RBuf *buf;
     char *end, *tok;
@@ -1503,7 +1504,7 @@ static void parseMethod(Web *web)
 /*
     Parse a headers block. Used here and by file upload.
  */
-PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, bool upload)
+PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bool upload)
 {
     struct tm tm;
     cchar     *end;
@@ -1555,14 +1556,14 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
                 break;
             }
         }
-        /* 
+        /*
             From here, we've ensured the key and value are valid and do not contain any whitespace.
             This prevents CRLF injection attacks in header values.
-        */
+         */
 
         //  Validate header name
         for (t = key; t < endKey; t++) {
-            uc = (uchar) *t;
+            uc = (uchar) * t;
             if (uc >= sizeof(validHeaderChars) || !validHeaderChars[uc]) {
                 return 0;
             }
@@ -1618,7 +1619,11 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, boo
         } else if (c == 'i' && strcmp(key, "if-modified-since") == 0) {
 #if !defined(ESP32)
             if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
+                #if ME_WIN_LIKE
+                web->since = _mkgmtime(&tm);
+                #else
                 web->since = timegm(&tm);
+                #endif
             }
 #endif
         } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
@@ -1723,7 +1728,7 @@ PUBLIC int webReadBody(Web *web)
             return R_ERR_CANT_READ;
         }
         rAdjustBufEnd(buf, nbytes);
-        if (rGetBufLength(buf) > web->host->maxBody) {
+        if (rGetBufLength(buf) > (size_t) web->host->maxBody) {
             webNetError(web, "Request is too big");
             return R_ERR_CANT_READ;
         }
@@ -1813,12 +1818,12 @@ PUBLIC void webUpdateDeadline(Web *web)
 /*
     Enable response buffering
  */
-PUBLIC void webBuffer(Web *web, ssize size)
+PUBLIC void webBuffer(Web *web, size_t size)
 {
     if (size <= 0) {
         size = ME_BUFSIZE;
     }
-    size = max(size, web->host->maxBuffer);
+    size = max(size, (size_t) web->host->maxBuffer);
     if (web->buffer) {
         if (rGetBufSize(web->buffer) < size) {
             rGrowBuf(web->buffer, size);
@@ -1851,10 +1856,10 @@ PUBLIC void webBuffer(Web *web, ssize size)
 
 static char *findPattern(RBuf *buf, cchar *pattern);
 static RHash *getTxHeaders(Web *web);
-static bool isprintable(cchar *s, ssize len);
-static ssize readBlock(Web *web, char *buf, ssize bufsize);
-static ssize readChunk(Web *web, char *buf, ssize bufsize);
-static int writeChunkDivider(Web *web, ssize bufsize);
+static bool isprintable(cchar *s, size_t len);
+static ssize readBlock(Web *web, char *buf, size_t bufsize);
+static ssize readChunk(Web *web, char *buf, size_t bufsize);
+static int writeChunkDivider(Web *web, size_t bufsize);
 
 /************************************* Code ***********************************/
 /*
@@ -1863,14 +1868,14 @@ static int writeChunkDivider(Web *web, ssize bufsize);
     This reads through the web->rx low-level buffer.
     This will block the current fiber until some data is read.
  */
-PUBLIC ssize webRead(Web *web, char *buf, ssize bufsize)
+PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize)
 {
     ssize nbytes;
 
     if (web->chunked) {
         nbytes = readChunk(web, buf, bufsize);
     } else {
-        bufsize = min(bufsize, web->rxRemaining);
+        bufsize = min(bufsize, (size_t) web->rxRemaining);
         nbytes = readBlock(web, buf, bufsize);
     }
     if (nbytes < 0) {
@@ -1892,7 +1897,7 @@ PUBLIC ssize webRead(Web *web, char *buf, ssize bufsize)
 /*
     Read a chunk using transfer-chunk encoding
  */
-static ssize readChunk(Web *web, char *buf, ssize bufsize)
+static ssize readChunk(Web *web, char *buf, size_t bufsize)
 {
     ssize chunkSize, nbytes;
     char  cbuf[32];
@@ -1923,7 +1928,7 @@ static ssize readChunk(Web *web, char *buf, ssize bufsize)
         }
     }
     if (web->chunked == WEB_CHUNK_DATA) {
-        if ((nbytes = readBlock(web, buf, min(bufsize, web->chunkRemaining))) < 0) {
+        if ((nbytes = readBlock(web, buf, min(bufsize, (size_t) web->chunkRemaining))) < 0) {
             return webNetError(web, "Cannot read chunk data");
         }
         web->chunkRemaining -= nbytes;
@@ -1942,7 +1947,7 @@ static ssize readChunk(Web *web, char *buf, ssize bufsize)
     Read up to bufsize bytes from the socket into the web->rx buffer.
     Return the number of bytes read or a negative error code.
  */
-PUBLIC ssize webReadSocket(Web *web, ssize bufsize)
+PUBLIC ssize webReadSocket(Web *web, size_t bufsize)
 {
     RBuf  *bp;
     ssize nbytes;
@@ -1955,7 +1960,7 @@ PUBLIC ssize webReadSocket(Web *web, ssize bufsize)
         return webNetError(web, "Cannot read from socket");
     }
     rAdjustBufEnd(bp, nbytes);
-    return rGetBufLength(bp);
+    return (ssize) rGetBufLength(bp);
 }
 
 /*
@@ -1963,7 +1968,7 @@ PUBLIC ssize webReadSocket(Web *web, ssize bufsize)
     Return the number of bytes read or a negative error code.
     Will only block and read if the buffer is empty.
  */
-static ssize readBlock(Web *web, char *buf, ssize bufsize)
+static ssize readBlock(Web *web, char *buf, size_t bufsize)
 {
     RBuf  *bp;
     ssize nbytes;
@@ -1975,9 +1980,9 @@ static ssize readBlock(Web *web, char *buf, ssize bufsize)
     if (rGetBufLength(bp) == 0 && webReadSocket(web, bufsize) < 0) {
         return R_ERR_CANT_READ;
     }
-    nbytes = min(rGetBufLength(bp), bufsize);
+    nbytes = (ssize) min(rGetBufLength(bp), bufsize);
     if (nbytes > 0) {
-        memcpy(buf, bp->start, nbytes);
+        memcpy(buf, bp->start, (size_t) nbytes);
         rAdjustBufStart(bp, nbytes);
     }
     return nbytes;
@@ -1991,7 +1996,7 @@ static ssize readBlock(Web *web, char *buf, ssize bufsize)
     If the pattern is not found inside the limit, returns negative on errors.
     Note: this routine may over-read and data will be buffered for the next read.
  */
-PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, ssize limit)
+PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, size_t limit)
 {
     RBuf  *bp;
     ssize len, nbytes;
@@ -2007,7 +2012,7 @@ PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, ssize limit)
     }
     if (buf) {
         //  Copy data into the supplied buffer
-        len = min(nbytes, limit);
+        len = (ssize) min((size_t) nbytes, limit);
         memcpy(buf, bp->start, len);
         rAdjustBufStart(bp, len);
     }
@@ -2023,11 +2028,12 @@ PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, ssize limit)
     Return the total number of buffered bytes up to the requested pattern.
     Return zero if pattern not found before limit or negative on errors.
  */
-PUBLIC ssize webBufferUntil(Web *web, cchar *until, ssize limit, bool allowShort)
+PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit, bool allowShort)
 {
-    RBuf  *bp;
-    char  *end;
-    ssize nbytes, toRead, ulen;
+    RBuf   *bp;
+    char   *end;
+    size_t ulen, toRead;
+    ssize  nbytes;
 
     assert(web);
     assert(limit >= 0);
@@ -2056,7 +2062,7 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, ssize limit, bool allowShort
         rAdjustBufEnd(bp, nbytes);
         rAddNullToBuf(bp);
 
-        if (rGetBufLength(bp) > web->host->maxBody) {
+        if (rGetBufLength(bp) > (size_t) web->host->maxBody) {
             return webNetError(web, "Request is too big");
         }
     }
@@ -2076,8 +2082,8 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, ssize limit, bool allowShort
  */
 static char *findPattern(RBuf *buf, cchar *pattern)
 {
-    char  *cp, *endp, first;
-    ssize bufLen, patLen;
+    char   *cp, *endp, first;
+    size_t bufLen, patLen;
 
     assert(buf);
 
@@ -2090,7 +2096,7 @@ static char *findPattern(RBuf *buf, cchar *pattern)
     }
     endp = buf->start + (bufLen - patLen) + 1;
     for (cp = buf->start; cp < endp; cp++) {
-        if ((cp = (char*) memchr(cp, first, endp - cp)) == 0) {
+        if ((cp = (char*) memchr(cp, first, (size_t) (endp - cp))) == 0) {
             return 0;
         }
         if (memcmp(cp, pattern, patLen) == 0) {
@@ -2142,7 +2148,7 @@ PUBLIC ssize webWriteHeaders(Web *web)
         status = 500;
     }
     buf = rAllocBuf(1024);
-    webAddHeader(web, "Date", webDate(date, time(0)));
+    webAddHeader(web, "Date", webDate(date, sizeof(date), time(0)));
     if (web->upgrade) {
         connection = "Upgrade";
     } else if (web->close) {
@@ -2284,7 +2290,7 @@ PUBLIC void webAddAccessControlHeader(Web *web)
     if the content length is not defined.
     Will write headers if not alread written. Will close the socket on socket errors.
  */
-PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
+PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
 {
     ssize written;
 
@@ -2296,13 +2302,13 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
     }
     if (buf == NULL) {
         bufsize = 0;
-    } else if (bufsize < 0) {
+    } else if (bufsize == 0 || bufsize >= MAXINT) {
         bufsize = slen(buf);
     }
     if (web->buffer && !web->writingHeaders) {
         if (buf) {
             rPutBlockToBuf(web->buffer, buf, bufsize);
-            return bufsize;
+            return (ssize) bufsize;
         }
         buf = rGetBufStart(web->buffer);
         bufsize = rGetBufLength(web->buffer);
@@ -2326,9 +2332,9 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize)
             return R_ERR_CANT_WRITE;
         }
         if (web->wroteHeaders && web->host->flags & WEB_SHOW_RESP_BODY) {
-            if (isprintable(buf, written)) {
+            if (isprintable(buf, (size_t) written)) {
                 if (web->moreBody) {
-                    write(rGetLogFile(), (char*) buf, (int) written);
+                    write(rGetLogFile(), (char*) buf, (uint) written);
                 } else {
                     rLog("raw", "web", "Response Body >>>>\n\n%*s", (int) written, (char*) buf);
                     web->moreBody = 1;
@@ -2385,7 +2391,7 @@ PUBLIC ssize webWriteJson(Web *web, const Json *json)
     ssize rc;
 
     if ((str = jsonToString(json, 0, NULL, JSON_JSON)) != 0) {
-        rc = webWrite(web, str, -1);
+        rc = webWrite(web, str, 0);
         rFree(str);
         return rc;
     }
@@ -2395,7 +2401,7 @@ PUBLIC ssize webWriteJson(Web *web, const Json *json)
 /*
     Write a transfer-chunk encoded divider if required
  */
-static int writeChunkDivider(Web *web, ssize size)
+static int writeChunkDivider(Web *web, size_t size)
 {
     char chunk[24];
 
@@ -2418,7 +2424,7 @@ static int writeChunkDivider(Web *web, ssize size)
  */
 PUBLIC void webSetStatus(Web *web, int status)
 {
-    web->status = status;
+    web->status = (uint) status;
 }
 
 /*
@@ -2429,8 +2435,8 @@ PUBLIC void webSetStatus(Web *web, int status)
 PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
 {
     va_list ap;
-    char    *msg;
     ssize   rc;
+    char    *msg;
 
     if (!fmt) {
         fmt = "";
@@ -2439,7 +2445,7 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
         status = 400;
         web->close = 1;
     }
-    web->status = status;
+    web->status = (uint) status;
 
     if (rIsSocketClosed(web->sock)) {
         return R_ERR_CANT_WRITE;
@@ -2451,7 +2457,7 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
         msg = sfmtv(fmt, ap);
         va_end(ap);
     }
-    web->txLen = slen(msg);
+    web->txLen = (ssize) slen(msg);
 
     webAddHeaderStaticString(web, "Content-Type", "text/plain");
 
@@ -2459,7 +2465,7 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
         rc = R_ERR_CANT_WRITE;
     } else {
         if (web->status != 204 && !web->head && web->txLen > 0) {
-            (void) webWrite(web, msg, web->txLen);
+            (void) webWrite(web, msg, (size_t) web->txLen);
         }
         rc = webFinalize(web);
     }
@@ -2499,10 +2505,10 @@ PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...)
 /*
     Set the response content length.
  */
-PUBLIC void webSetContentLength(Web *web, ssize len)
+PUBLIC void webSetContentLength(Web *web, size_t len)
 {
     if (len >= 0) {
-        web->txLen = len;
+        web->txLen = (ssize) len;
     } else {
         webError(web, 500, "Invalid content length");
     }
@@ -2645,7 +2651,6 @@ PUBLIC int webNetError(Web *web, cchar *fmt, ...)
 
     va_start(args, fmt);
     if (!web->error && fmt) {
-        rFree(web->error);
         web->error = sfmtv(fmt, args);
         rTrace("web", "%s", web->error);
     }
@@ -2656,7 +2661,7 @@ PUBLIC int webNetError(Web *web, cchar *fmt, ...)
     return R_ERR_CANT_COMPLETE;
 }
 
-static bool isprintable(cchar *s, ssize len)
+static bool isprintable(cchar *s, size_t len)
 {
     cchar *cp;
     int   c;
@@ -2813,7 +2818,7 @@ static WebSession *createSession(Web *web)
 
     count = rGetHashLength(host->sessions);
     if (count >= host->maxSessions) {
-        rError("session", "Too many sessions %d/%lld", count, host->maxSessions);
+        rError("session", "Too many sessions %d/%d", count, host->maxSessions);
         return 0;
     }
     if ((session = webAllocSession(web, host->sessionTimeout)) == 0) {
@@ -2829,8 +2834,8 @@ PUBLIC char *webParseCookie(Web *web, cchar *name)
 
     assert(web);
 
-    //  Limit cookie size to 8192 bytes for security
-    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > 8192) {
+    //  Limit cookie size for security
+    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > WEB_MAX_COOKIE_SIZE) {
         return 0;
     }
     buf = sclone(web->cookie);
@@ -2921,18 +2926,27 @@ static void pruneSessions(WebHost *host)
     WebSession *sp;
     Ticks      when;
     RName      *np;
-    int        count, oldCount;
+    RList      *expired;
+    int        count, oldCount, next;
 
     when = rGetTicks();
     oldCount = rGetHashLength(host->sessions);
 
+    //  Collect expired sessions first to avoid modifying hash during iteration
+    expired = rAllocList(0, 0);
     for (ITERATE_NAMES(host->sessions, np)) {
         sp = (WebSession*) np->value;
         if (sp->expires <= when) {
-            rRemoveName(host->sessions, sp->id);
-            webFreeSession(sp);
+            rAddItem(expired, sp);
         }
     }
+    //  Now remove and free the expired sessions
+    for (ITERATE_ITEMS(expired, sp, next)) {
+        rRemoveName(host->sessions, sp->id);
+        webFreeSession(sp);
+    }
+    rFreeList(expired);
+
     count = rGetHashLength(host->sessions);
     if (oldCount != count || count) {
         rDebug("session", "Prune %d sessions. Remaining: %d", oldCount - count, count);
@@ -3024,8 +3038,8 @@ PUBLIC char *webGetCookie(Web *web, cchar *name)
 {
     char *buf, *cookie, *end, *key, *tok, *value, *vtok;
 
-    //  Limit cookie size to 8192 bytes for security (consistent with webParseCookie)
-    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > 8192) {
+    //  Limit cookie size for security (consistent with webParseCookie)
+    if (web->cookie == 0 || name == 0 || *name == '\0' || slen(web->cookie) > WEB_MAX_COOKIE_SIZE) {
         return 0;
     }
     buf = sclone(web->cookie);
@@ -3093,7 +3107,7 @@ PUBLIC void webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks
 
 
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
 /********************************** Forwards **********************************/
 
 static int addHeaders(Web *web);
@@ -3139,7 +3153,7 @@ PUBLIC int webUpgradeSocket(Web *web)
     }
     webSocketSetPingPeriod(ws, host->webSocketsPingPeriod);
     webSocketSetValidateUTF(ws, host->webSocketsValidateUTF);
-    webSocketSetLimits(ws, host->webSocketsMaxFrame, host->webSocketsMaxMessage);
+    webSocketSetLimits(ws, (size_t) host->webSocketsMaxFrame, (size_t) host->webSocketsMaxMessage);
 
     web->deadline = MAXINT64;
     web->rxRemaining = WEB_UNLIMITED;
@@ -3216,7 +3230,7 @@ static int addHeaders(Web *web)
     webAddHeader(web, "Upgrade", "WebSocket");
 
     sjoinbuf(keybuf, sizeof(keybuf), key, WS_MAGIC);
-    webAddHeaderDynamicString(web, "Sec-WebSocket-Accept", cryptGetSha1Base64(keybuf, -1));
+    webAddHeaderDynamicString(web, "Sec-WebSocket-Accept", cryptGetSha1Base64(keybuf, 0));
 
     protocol = webSocketGetProtocol(web->webSocket);
     if (protocol && *protocol) {
@@ -3237,7 +3251,7 @@ PUBLIC int webWait(Web *web)
 {
     return webSocketWait(web->webSocket, web->deadline);
 }
-#endif /* ME_COM_WEBSOCKETS */
+#endif /* ME_COM_WEBSOCK */
 
 /*
     Copyright (c) Embedthis Software. All Rights Reserved.
@@ -3258,7 +3272,6 @@ PUBLIC int webWait(Web *web)
 
 /********************************** Includes **********************************/
 
-#include "url.h"
 
 
 #if ME_DEBUG
@@ -3275,7 +3288,7 @@ static void showRequest(Web *web)
     JsonNode *node;
     char     *body, keybuf[80];
     cchar    *key, *value;
-    ssize    len;
+    size_t   len;
     bool     isPrintable;
     int      i;
 
@@ -3335,7 +3348,7 @@ static void showRequest(Web *web)
         body = rGetBufStart(web->body);
         jsonSetFmt(json, 0, "bodyLength", "%ld", len);
         isPrintable = 1;
-        for (i = 0; i < len; i++) {
+        for (i = 0; i < (int) len; i++) {
             if (!isprint((uchar) body[i]) && body[i] != '\n' && body[i] != '\r' && body[i] != '\t') {
                 isPrintable = 0;
                 break;
@@ -3465,7 +3478,7 @@ static void formAction(Web *web)
 
 static void errorAction(Web *web)
 {
-    webWriteResponse(web, URL_CODE_OK, "error\n");
+    webWriteResponse(web, 200, "error\n");
 }
 
 static void bulkOutput(Web *web)
@@ -3487,7 +3500,7 @@ static void showAction(Web *web)
 
 static void successAction(Web *web)
 {
-    webWriteResponse(web, URL_CODE_OK, "success\n");
+    webWriteResponse(web, 200, "success\n");
 }
 
 static void bufferAction(Web *web)
@@ -3519,6 +3532,9 @@ static void sigAction(Web *web)
 }
 
 #if ME_WEB_UPLOAD
+/*
+    Test upload action - assumes a ./tmp directory exists
+ */
 static void uploadAction(Web *web)
 {
     WebUpload *file;
@@ -3528,7 +3544,7 @@ static void uploadAction(Web *web)
     showRequest(web);
     if (web->uploads) {
         for (ITERATE_NAME_DATA(web->uploads, up, file)) {
-            path = rJoinFile("/tmp", file->clientFilename);
+            path = rJoinFile("./tmp", file->clientFilename);
             if (rCopyFile(file->filename, path, 0600) < 0) {
                 webError(web, 500, "Cant open output upload filename");
                 rFree(path);
@@ -3616,7 +3632,7 @@ static void streamAction(Web *web)
     webFinalize(web);
 }
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
 /*
     Echo back user provided message.
     On connected, buf will be null
@@ -3658,7 +3674,7 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 #if ME_WEB_UPLOAD
     webAddAction(host, SFMT(url, "%s/upload", prefix), uploadAction, NULL);
 #endif
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     webAddAction(host, SFMT(url, "%s/ws", prefix), webSocketAction, NULL);
 #endif
     webAddAction(host, SFMT(url, "%s/session", prefix), sessionAction, NULL);
@@ -3869,7 +3885,10 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *content
             return 0;
         }
         // Check for URL-encoded directory traversal attempts
-        if (strstr(path, "%2e") || strstr(path, "%2E") || strstr(path, "%2f") || strstr(path, "%2F") || strstr(path, "%5c") || strstr(path, "%5C")) {
+        if (strstr(path,
+                   "%2e") ||
+            strstr(path,
+                   "%2E") || strstr(path, "%2f") || strstr(path, "%2F") || strstr(path, "%5c") || strstr(path, "%5C")) {
             webError(web, 400, "Bad upload client filename");
             return 0;
         }
@@ -3895,8 +3914,9 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *content
 
 static int processUploadData(Web *web, WebUpload *upload)
 {
-    RBuf  *buf;
-    ssize nbytes, len, written;
+    RBuf   *buf;
+    size_t len;
+    ssize  nbytes, written;
 
     buf = web->rx;
 
@@ -3910,7 +3930,7 @@ static int processUploadData(Web *web, WebUpload *upload)
                 write the data and continue but preserve a possible partial boundary.
                 If a full boundary is found, preserve it (and the \r\n) to be consumed by webProcessUpload.
              */
-            len = nbytes ? nbytes : rGetBufLength(web->rx);
+            len = nbytes ? (size_t) nbytes : rGetBufLength(web->rx);
             if (nbytes) {
                 //  Preserve boundary and \r\n
                 len -= web->boundaryLen + 2;
@@ -3919,14 +3939,22 @@ static int processUploadData(Web *web, WebUpload *upload)
                 len -= web->boundaryLen - 1 + 2;
             }
             if (len > 0) {
-                if ((upload->size + len) > web->host->maxUpload) {
+                if ((upload->size + len) > (size_t) web->host->maxUpload) {
+                    if (upload->fd >= 0) {
+                        close(upload->fd);
+                        upload->fd = -1;
+                    }
                     return webError(web, 414, "Uploaded file exceeds maximum %lld", web->host->maxUpload);
                 }
-                if ((written = write(upload->fd, buf->start, len)) < 0) {
+                if ((written = write(upload->fd, buf->start, (uint) len)) < 0) {
+                    if (upload->fd >= 0) {
+                        close(upload->fd);
+                        upload->fd = -1;
+                    }
                     return webError(web, 500, "Cannot write uploaded file");
                 }
-                rAdjustBufStart(buf, len);
-                upload->size += written;
+                rAdjustBufStart(buf, (ssize) len);
+                upload->size += (size_t) written;
             }
 
         } else {
@@ -4045,17 +4073,29 @@ PUBLIC cchar *webGetStatusMsg(int status)
     return "Unknown";
 }
 
-PUBLIC char *webDate(char *buf, time_t when)
+PUBLIC char *webDate(char *buf, size_t size, time_t when)
 {
     struct tm tm;
 
+    if (!buf || size < 32) {
+        return NULL;
+    }
     buf[0] = '\0';
+#if ME_WIN_LIKE
+    if (gmtime_s(&tm, &when) != 0) {
+        return 0;
+    }
+    if (asctime_s(buf, size, &tm) != 0) {
+        return 0;
+    }
+#else
     if (gmtime_r(&when, &tm) == 0) {
         return 0;
     }
     if (asctime_r(&tm, buf) == 0) {
         return 0;
     }
+#endif
     buf[strlen(buf) - 1] = '\0';
     return buf;
 }
@@ -4070,9 +4110,9 @@ PUBLIC cchar *webGetDocs(WebHost *host)
  */
 PUBLIC char *webDecode(char *str)
 {
-    char  *ip,  *op;
-    ssize len;
-    int   num, i, c;
+    char   *ip,  *op;
+    size_t len;
+    int    num, i, c;
 
     if (str == 0) {
         return 0;
@@ -4223,9 +4263,9 @@ PUBLIC char *webParseUrl(cchar *uri,
  */
 PUBLIC char *webNormalizePath(cchar *pathArg)
 {
-    char  *dupPath, *path, *sp, *mark, **segments, **stack;
-    ssize len, nseg, i, j;
-    bool  isAbs, hasTrail;
+    char   *dupPath, *path, *sp, *mark, **segments, **stack;
+    size_t len, nseg, i, j;
+    bool   isAbs, hasTrail;
 
     if (pathArg == 0 || *pathArg == '\0') {
         return 0;
@@ -4363,7 +4403,7 @@ PUBLIC char *webEncode(cchar *uri)
     uchar        c;
     cchar        *ip;
     char         *result, *op;
-    int          len;
+    size_t       len;
 
     if (!uri) {
         return NULL;
@@ -4384,7 +4424,7 @@ PUBLIC char *webEncode(cchar *uri)
             *op++ = hexTable[c >> 4];
             *op++ = hexTable[c & 0xf];
         } else {
-            *op++ = c;
+            *op++ = (char) c;
         }
     }
     assert(op < &result[len]);
@@ -4554,9 +4594,6 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
 
 
 
-/************************************ Locals **********************************/
-
-#define WEB_MAX_SIG_DEPTH 8  /* Maximum depth of signature validation */
 
 /************************************ Forwards *********************************/
 
@@ -5026,7 +5063,7 @@ PUBLIC ssize webWriteValidatedData(Web *web, cchar *data, cchar *sigKey)
     if (!webValidateData(web, web->buffer, data, sigKey, "response")) {
         return R_ERR_BAD_ARGS;
     }
-    return rGetBufLength(web->buffer);
+    return (ssize) rGetBufLength(web->buffer);
 }
 
 /*
@@ -5040,7 +5077,7 @@ PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json, cchar *sigKey)
     if (!webValidateJson(web, web->buffer, json, 0, sigKey, "response")) {
         return R_ERR_BAD_ARGS;
     }
-    return rGetBufLength(web->buffer);
+    return (ssize) rGetBufLength(web->buffer);
 }
 
 /*
@@ -5048,7 +5085,7 @@ PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json, cchar *sigKey)
  */
 PUBLIC bool webValidatePath(cchar *path)
 {
-    ssize pos;
+    size_t pos;
 
     if (!path || *path == '\0') {
         return 0;

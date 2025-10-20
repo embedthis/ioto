@@ -82,7 +82,6 @@
         update: 'scripts/update',
     },
     tls: {
-        authority: '@certs/roots.crt',
         certificate: '@certs/test.crt',
         key: '@certs/test.key',
     },

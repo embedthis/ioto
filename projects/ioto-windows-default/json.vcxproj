@@ -3,7 +3,7 @@
 
       <ItemDefinitionGroup>
         <ClCompile>
-          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=/path/to/openssl;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=$(USERPROFILE)/vcpkg/installed/x64-windows;%(PreprocessorDefinitions)</PreprocessorDefinitions>
           <AdditionalIncludeDirectories>$(IncDir);$(ME_COM_OPENSSL_PATH)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -14,7 +14,7 @@
       </ItemDefinitionGroup>
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{f0fe9a82-d86d-4b94-91ba-38a0b6d07462}</ProjectGuid>
+        <ProjectGuid>{42d9833c-0f0b-4099-b141-b993106876aa}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -105,7 +105,7 @@
   </PropertyGroup>
   
       <ItemGroup>
-    <ClCompile Include="..\..\cmds\json.c" />
+    <ClCompile Include="..\..\src\cmds\json.c" />
   </ItemGroup>
 
       <ItemDefinitionGroup>
@@ -119,7 +119,7 @@
 
     <ItemGroup>
       <ProjectReference Include="libioto.vcxproj">
-      <Project>a85ee3bf-0ff5-41e0-a5ae-7d83fe17c68c</Project>
+      <Project>6b978110-6fff-4eaa-ba18-bc7f05215a88</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       </ProjectReference>
     </ItemGroup>
@@ -127,5 +127,6 @@
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
 
 </Project>

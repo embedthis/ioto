@@ -1,11 +1,10 @@
-/**
-    @file openai.h
-    @brief OpenAI API client library for embedded systems
-    @description This library provides a C interface to OpenAI's APIs including Chat Completion,
+/*
+    openai.h - OpenAI API client library for embedded systems
+
+    This library provides a C interface to OpenAI's APIs including Chat Completion,
     Responses API with agent callbacks, Real-Time API with WebSocket connections, and streaming
     responses with Server-Sent Events. Built on the EmbedThis Safe Runtime foundation with
     modular integration for JSON parsing, URL handling, and cryptographic functions.
-    @stability Evolving
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -49,7 +48,8 @@ typedef struct OpenAI {
     @param request Original JSON request object sent to OpenAI
     @param response JSON response object received from OpenAI
     @param arg User-defined argument passed through from the calling function
-    @return Allocated string to be added to the response. Caller must free using rFree. Return NULL if no additional content.
+    @return Allocated string to be added to the response. Caller must free using rFree. Return NULL if no additional
+       content.
     @stability Evolving
  */
 typedef char*(*OpenAIAgent)(cchar *name, Json *request, Json *response, void *arg);

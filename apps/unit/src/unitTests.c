@@ -182,7 +182,8 @@ static void metricTest(Json *json)
 {
     double value;
 
-    value = ((double) random() / RAND_MAX) * 10;
+    // SECURITY Acceptable: rand is used for the metric test
+    value = ((double) rand() / RAND_MAX) * 10;
     ioSetMetric("metric-test", value, "", 0);
 
     //  Allow metric set above to take
@@ -191,7 +192,8 @@ static void metricTest(Json *json)
     rInfo("test", "Got metric value %lf", value);
 
     //  Issue a metric with explicit dimensions that is aggregated for all devices
-    value = ((double) random() / RAND_MAX) * 10;
+    // SECURITY Acceptable: rand is used for the metric test
+    value = ((double) rand() / RAND_MAX) * 10;
     ioSetMetric("metric-test-fleet", value, "[{}]", 0);
 }
 
@@ -243,7 +245,7 @@ static void mqttWithMetrics(Json *json)
 static void mqttPingTest(Json *json)
 {
     rInfo("test", "Run test: mqttPing");
-    mqttPublish(ioto->mqtt, "", -1, 1, MQTT_WAIT_NONE, "ioto/service/%s/test/ping", ioto->id);
+    mqttPublish(ioto->mqtt, "", 0, 1, MQTT_WAIT_NONE, "ioto/service/%s/test/ping", ioto->id);
 }
 
 /*

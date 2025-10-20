@@ -11,17 +11,23 @@
 /********* Start of file ../../../src/jsonLib.c ************/
 
 /*
-    json.c - JSON parser and query engine.
+    jsonLib.c - JSON parser and query engine implementation
 
-    This modules provides APIs to load and save JSON to files. The query module provides a
-    high performance lookup of in-memory parsed JSON node trees.
+    This module provides the core implementation of JSON parsing, querying, and manipulation.
+    It supports loading and saving JSON to files with a high-performance query API for
+    in-memory JSON node trees.
 
-    JSON text is parsed and converted to a node tree with a query API to permit searching
-    and updating the in-memory JSON tree. The tree can then be serialized to send or save.
+    Architecture:
+    - JSON text is parsed into a flat array of JsonNode structures (not a pointer-based tree)
+    - Provides dot-notation query API for searching and updating the tree (e.g., "user.name")
+    - Trees can be serialized back to JSON/JSON5/JSON6 text with various formatting options
 
-    This file supports JSON and JSON 5/6 which roughly parallels Javascript object notation.
-    Specifically, keys to not always have to be quoted if they do not contain spaces. Trailing
-    commas are not required. Comments are supported and preserved.
+    JSON5/JSON6 Support:
+    - Unquoted object keys when they don't contain special characters
+    - Trailing commas allowed in objects and arrays
+    - Single-line (//) and multi-line comments (not preserved during serialization)
+    - Single quotes, double quotes, and backticks for strings
+    - JavaScript primitives: undefined, null, true, false
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
@@ -34,19 +40,19 @@
 /*********************************** Locals ***********************************/
 
 #ifndef ME_JSON_INC
-    #define ME_JSON_INC              64        /**< Increment size for node array */
+    #define ME_JSON_INC              64        /**< Node array growth increment when expanding */
 #endif
 
 #ifndef ME_JSON_MAX_RECURSION
-    #define ME_JSON_MAX_RECURSION    32        /**< Maximum depth of recursion */
+    #define ME_JSON_MAX_RECURSION    32        /**< Maximum recursion depth for jsonBlend operations */
 #endif
 
 #ifndef ME_JSON_DEFAULT_PROPERTY
-    #define ME_JSON_DEFAULT_PROPERTY 64        /**< Default property size */
+    #define ME_JSON_DEFAULT_PROPERTY 64        /**< Default property name buffer size in bytes */
 #endif
 
-static int maxLength = JSON_MAX_LINE_LENGTH;
-static int indentLevel = JSON_DEFAULT_INDENT;
+static int maxLength = JSON_MAX_LINE_LENGTH;   // Maximum line length for compact output
+static int indentLevel = JSON_DEFAULT_INDENT;  // Indentation spaces per level
 
 /********************************** Forwards **********************************/
 
@@ -56,13 +62,13 @@ static void compactProperties(RBuf *buf, char *sol, int indent);
 static char *copyProperty(Json *json, cchar *key);
 static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags);
 static void freeNode(JsonNode *node);
-static bool isfnumber(cchar *s, ssize len);
+static bool isfnumber(cchar *s, size_t len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
 static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf);
 static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent);
 static char *parseValue(Json *json, int parent, int type, char *name, char *value, int flags);
-static int sleuthValueType(cchar *value, ssize len, int flags);
+static int sleuthValueType(cchar *value, size_t len, int flags);
 static void spaces(RBuf *buf, int count);
 
 /************************************* Code ***********************************/
@@ -75,7 +81,7 @@ PUBLIC Json *jsonAlloc(void)
     json->lineNumber = 1;
     json->lock = 0;
     json->size = ME_JSON_INC;
-    json->nodes = rAlloc(sizeof(JsonNode) * json->size);
+    json->nodes = rAlloc(sizeof(JsonNode) * (size_t) json->size);
     return json;
 }
 
@@ -142,7 +148,7 @@ static bool growNodes(Json *json, int num)
             jerror(json, "Too many elements in json text");
             return 0;
         }
-        p = rRealloc(json->nodes, sizeof(JsonNode) * json->size);
+        p = rRealloc(json->nodes, sizeof(JsonNode) * (size_t) json->size);
         if (p == 0) {
             jerror(json, "Cannot allocate memory");
             return 0;
@@ -182,7 +188,7 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
         return;
     }
     node = &json->nodes[nid];
-    node->type = type;
+    node->type = (uint) type;
 
     if (name != node->name && !smatch(name, node->name)) {
         if (node->allocatedName) {
@@ -192,7 +198,7 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
         node->name = 0;
 
         if (name) {
-            node->allocatedName = allocatedName;
+            node->allocatedName = (uint) allocatedName;
             if (allocatedName) {
                 name = sclone(name);
             }
@@ -213,7 +219,7 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
         node->value = 0;
 
         if (value) {
-            node->allocatedValue = allocatedValue;
+            node->allocatedValue = (uint) allocatedValue;
             if (allocatedValue) {
                 value = sclone(value);
             }
@@ -236,9 +242,11 @@ static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value)
 }
 
 /*
-    Copy nodes for jsonBlend only
+    Copy nodes from source to destination for jsonBlend operation.
+    Creates deep copies of node names and values with proper memory allocation tracking.
+    Updates the 'last' index to maintain tree structure in the destination.
  */
-static void copyNodes(Json *dest, int did, Json *src, int sid, ssize slen)
+static void copyNodes(Json *dest, int did, Json *src, int sid, int slen)
 {
     JsonNode *dp, *sp;
     int      i;
@@ -268,7 +276,10 @@ static void copyNodes(Json *dest, int did, Json *src, int sid, ssize slen)
 }
 
 /*
-    Insert room for 'num' nodes at json-nodes[at]. This should always be at the end of an array or object.
+    Insert room for 'num' nodes at json->nodes[nid].
+    This creates space by shifting existing nodes and updating all 'last' indices.
+    Should be called at the end of an array or object to maintain tree structure.
+    Returns the node ID where insertion occurred, or negative error code on failure.
  */
 static int insertNodes(Json *json, int nid, int num, int parentId)
 {
@@ -283,7 +294,7 @@ static int insertNodes(Json *json, int nid, int num, int parentId)
     }
     node = &json->nodes[nid];
     if (nid < json->count) {
-        memmove(node + num, node, (json->count - nid) * sizeof(JsonNode));
+        memmove(node + num, node, (size_t) (json->count - nid) * sizeof(JsonNode));
     }
     json->count += num;
 
@@ -300,7 +311,7 @@ static int insertNodes(Json *json, int nid, int num, int parentId)
             node->last += num;
         }
     }
-    for (i = 0; i < num; i++) {
+    for (i = 0; i < (int) num; i++) {
         initNode(json, nid + i);
     }
     return nid;
@@ -314,9 +325,6 @@ static int removeNodes(Json *json, int nid, int num)
     if (!json || nid < 0 || nid >= json->count || num <= 0) {
         return R_ERR_BAD_ARGS;
     }
-    if (num <= 0) {
-        return 0;
-    }
     node = &json->nodes[nid];
     for (i = 0; i < num; i++) {
         freeNode(&json->nodes[nid + i]);
@@ -324,7 +332,7 @@ static int removeNodes(Json *json, int nid, int num)
     json->count -= num;
 
     if (nid < json->count) {
-        memmove(node, node + num, (json->count - nid) * sizeof(JsonNode));
+        memmove(node, node + num, (size_t) (json->count - nid) * sizeof(JsonNode));
     }
     for (i = 0; i < json->count; i++) {
         node = &json->nodes[i];
@@ -347,12 +355,12 @@ PUBLIC void jsonUnlock(Json *json)
 
 PUBLIC void jsonSetUserFlags(Json *json, int flags)
 {
-    json->userFlags = flags;
+    json->userFlags = (uint) flags;
 }
 
 PUBLIC int jsonGetUserFlags(Json *json)
 {
-    return json->userFlags;
+    return (int) json->userFlags;
 }
 
 /*
@@ -517,9 +525,9 @@ PUBLIC Json *jsonParseFile(cchar *path, char **error, int flags)
  */
 PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int flags)
 {
-    char  *text, *tmp;
-    int   fd;
-    ssize len;
+    char   *text, *tmp;
+    int    fd;
+    size_t len;
 
     if (!json || !path || *path == '\0') {
         return R_ERR_BAD_ARGS;
@@ -537,7 +545,7 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
         return R_ERR_CANT_OPEN;
     }
     len = slen(text);
-    if (write(fd, text, len) != len) {
+    if (write(fd, text, (uint) len) != (uint) len) {
         rFree(text);
         rFree(tmp);
         close(fd);
@@ -546,6 +554,9 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
     close(fd);
     rFree(text);
 
+#if ME_WIN_LIKE
+    unlink(path);
+#endif
     if (rename(tmp, path) < 0) {
         rFree(tmp);
         return R_ERR_CANT_WRITE;
@@ -589,7 +600,7 @@ static char *parsePrimitive(Json *json)
             return start;
 
         default:
-            if (*next != '_' && *next != '-' && *next != '.' && !isalnum((uchar) *next)) {
+            if (*next != '_' && *next != '-' && *next != '.' && !isalnum((uchar) * next)) {
                 json->next = next;
                 return start;
             }
@@ -621,7 +632,7 @@ static char *parseRegExp(Json *json)
 
     for (next = start; next < end && *next; next++) {
         c = *next;
-        if (c == '/' && next[-1] != '\\') {
+        if (c == '/' && (next == start || next[-1] != '\\')) {
             *next++ = '\0';
             json->next = next;
             return start;
@@ -753,7 +764,7 @@ static int parseComment(Json *json)
     Parse the text and assume ownership of the text.
     This is a fast, linear, insitu-parser. It does not use recursion or a parser stack.
     Because we parse in-situ, the text is modified as we parse it. This also means that
-    terminating values witih '\0' is somewhat delayed until we parse the next token -- 
+    terminating values witih '\0' is somewhat delayed until we parse the next token --
     otherwise we would erase the next token prematurely. This happens when parsing key
     names followed by a colon or a comma.
  */
@@ -776,7 +787,7 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
     flags &= ~JSON_EXPECT_KEY;
 
     while (json->next < json->end && !json->error) {
-        c = *json->next;
+        c = (uchar) * json->next;
         switch (c) {
         case '{':
         case '[':
@@ -872,7 +883,7 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             if (flags & JSON_STRICT_PARSE) {
                 return jerror(json, "Single and backtick quotes are not allowed in JSON mode");
             }
-            // Fall through
+        // Fall through
         case '"':
             name = parseValue(json, parent, JSON_STRING, name, parseString(json), flags);
             break;
@@ -919,7 +930,7 @@ static char *parseValue(Json *json, int parent, int type, char *name, char *valu
         return NULL;
     }
     /*
-        Object and expecting a key name. Use the value as the key name. Note: the value is not yet null 
+        Object and expecting a key name. Use the value as the key name. Note: the value is not yet null
         terminated here while we awaiting parsing the next colon, comma or closing brace/bracket.
      */
     if (!name && parent >= 0 && json->nodes[parent].type == JSON_OBJECT) {
@@ -932,7 +943,7 @@ static char *parseValue(Json *json, int parent, int type, char *name, char *valu
         Determine the type of the value.
      */
     if (type == 0) {
-        type = sleuthValueType(value, json->next - value - 1, flags);
+        type = sleuthValueType(value, (size_t) (json->next - value - 1), flags);
         if (flags & JSON_STRICT_PARSE && type != JSON_PRIMITIVE) {
             jerror(json, "Invalid primitive token");
             return NULL;
@@ -963,15 +974,15 @@ static char *parseValue(Json *json, int parent, int type, char *name, char *valu
     return name;
 }
 
-static int sleuthValueType(cchar *value, ssize len, int flags)
+static int sleuthValueType(cchar *value, size_t len, int flags)
 {
     uchar c;
-    int type;
+    int   type;
 
     if (!value) {
         return JSON_PRIMITIVE;
     }
-    c = value[0];
+    c = (uchar) value[0];
     if ((c == 't' && sncmp(value, "true", len) == 0) ||
         (c == 'f' && sncmp(value, "false", len) == 0) ||
         (c == 'n' && sncmp(value, "null", len) == 0) ||
@@ -1005,8 +1016,8 @@ PUBLIC int jsonGetType(Json *json, int nid, cchar *key)
 
 static char *getNextTerm(char *str, char **rest, int *type)
 {
-    char *start, *end, *seps;
-    ssize i;
+    char   *start, *end, *seps;
+    size_t i;
 
     seps = ".[]";
     start = str;
@@ -1062,8 +1073,8 @@ static char *getNextTerm(char *str, char **rest, int *type)
 static int findProperty(Json *json, int nid, cchar *property)
 {
     JsonNode *node, *np;
-    ssize index;
-    int id;
+    ssize    index;
+    int      id;
 
     if (!json || nid < 0 || nid >= json->count) {
         return R_ERR_BAD_ARGS;
@@ -1086,7 +1097,7 @@ static int findProperty(Json *json, int nid, cchar *property)
             return R_ERR_CANT_FIND;
 
         } else {
-            if (index >= SSIZE_MAX) {
+            if (index >= SSIZE_MAX || index >= (node->last - nid - 1)) {
                 return R_ERR_CANT_FIND;
             }
             for (id = nid + 1; index-- > 0 && id < node->last; id = np->last) {
@@ -1116,7 +1127,7 @@ static int findProperty(Json *json, int nid, cchar *property)
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 {
     char *property, *rest;
-    int cid, id, ntype, qtype;
+    int  cid, id, ntype, qtype;
 
     if (!json || nid < 0 || nid > json->count) {
         return R_ERR_BAD_ARGS;
@@ -1186,8 +1197,8 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 
 static char *copyProperty(Json *json, cchar *key)
 {
-    ssize len;
-    void *p;
+    size_t len;
+    void   *p;
 
     len = slen(key) + 1;
     if (len > json->propertyLength) {
@@ -1327,7 +1338,7 @@ PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue)
 PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
 {
     cchar *value;
-    char defbuf[16];
+    char  defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
@@ -1340,7 +1351,7 @@ PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue)
 {
     cchar *value;
-    char defbuf[16];
+    char  defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%d", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
@@ -1350,7 +1361,7 @@ PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue)
 PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key)
 {
     JsonNode *node, *child;
-    ssize length;
+    ssize    length;
 
     if ((node = jsonGetNode(json, nid, key)) == NULL) {
         return R_ERR_CANT_FIND;
@@ -1366,7 +1377,7 @@ PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key)
 PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue)
 {
     cchar *value;
-    char defbuf[16];
+    char  defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
@@ -1376,14 +1387,14 @@ PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue)
 PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue)
 {
     cchar *value;
-    char defbuf[16];
+    char  defbuf[16];
 
     sfmtbuf(defbuf, sizeof(defbuf), "%f", defaultValue);
     value = jsonGet(json, nid, key, defbuf);
     return atof(value);
 }
 
-PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
+PUBLIC int64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
 {
     cchar *value;
 
@@ -1415,8 +1426,8 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
 PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
 {
     va_list ap;
-    Json *jvalue;
-    char *value;
+    Json    *jvalue;
+    char    *value;
 
     if (fmt == 0) {
         return R_ERR_BAD_ARGS;
@@ -1452,7 +1463,7 @@ PUBLIC int jsonSetDouble(Json *json, int nid, cchar *key, double value)
 PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value)
 {
     char *date;
-    int rc;
+    int  rc;
 
     date = rGetIsoDate(value);
     rc = jsonSet(json, nid, key, date, JSON_STRING);
@@ -1463,8 +1474,8 @@ PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value)
 PUBLIC int jsonSetFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
 {
     va_list ap;
-    char *value;
-    int result;
+    char    *value;
+    int     result;
 
     if (fmt == 0) {
         return 0;
@@ -1505,12 +1516,12 @@ PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags)
         node->value = sclone(value);
     }
     node->allocatedValue = 1;
-    node->type = type;
+    node->type = (uint) type;
 }
 
 PUBLIC void jsonSetNodeType(JsonNode *node, int type)
 {
-    node->type = type;
+    node->type = (uint) type;
 }
 
 PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
@@ -1533,8 +1544,8 @@ PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent)
 {
     cchar *cp;
-    char *end, *key;
-    int bareFlags, encode, quotes, quoteKeys;
+    char  *end, *key;
+    int   bareFlags, encode, quotes, quoteKeys;
 
     if (!buf) {
         return;
@@ -1603,7 +1614,7 @@ static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, 
                 rPutToBuf(buf, "\\u%04x", *cp);
             } else if (*cp == '$' && cp[1] == '{' && (flags & JSON_EXPAND) && json) {
                 if ((end = strchr(cp + 2, '}')) != 0) {
-                    key = snclone(cp + 2, end - cp - 2);
+                    key = snclone(cp + 2, (size_t) (end - cp - 2));
                     bareFlags = flags | JSON_BARE;
                     if (expandValue(json, buf, key, indent, bareFlags) < 0) {
                         // Nothing to do - ${var} remains
@@ -1650,14 +1661,11 @@ static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int 
 static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf)
 {
     JsonNode *node;
-    char *end, *key, *key2, *sol, *start;
-    bool multiline;
-    int bareFlags, eid;
+    char     *end, *key, *key2, *sol, *start;
+    bool     multiline;
+    int      bareFlags, eid;
 
     if (!json || !buf || nid < 0 || nid > json->count || indent < 0) {
-        return R_ERR_BAD_ARGS;
-    }
-    if (nid < 0 || nid > json->count) {
         return R_ERR_BAD_ARGS;
     }
     if (json->count == 0) {
@@ -1733,7 +1741,7 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
             eid = -1;
             if (flags & JSON_EXPAND && *key == '$' && key[1] == '{') {
                 if ((end = strchr(key + 2, '}')) != 0) {
-                    key2 = snclone(key, end - key);
+                    key2 = snclone(key, (size_t) (end - key));
                     bareFlags = flags;
                     if ((eid = expandValue(json, buf, &key[2], indent + 1, bareFlags)) >= 0) {
                         nid++;
@@ -1771,7 +1779,7 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
 static void compactProperties(RBuf *buf, char *sol, int indent)
 {
     char *cp, *sp, *dp;
-    int spaces;
+    int  spaces;
 
     // Count redundant spaces to see how much the line can be shortened
     for (spaces = 0, cp = sol; cp < buf->end; cp++) {
@@ -1897,11 +1905,11 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *csrc, int sid
 
 static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth)
 {
-    Json *src, *tmpSrc;
+    Json     *src, *tmpSrc;
     JsonNode *dp, *sp, *spc, *dpc;
-    cchar *property;
-    char *srcData, *value;
-    int at, id, dlen, slen, didc, kind, pflags;
+    cchar    *property;
+    char     *srcData, *value;
+    int      at, slen, dlen, id, didc, kind, pflags;
 
     if (depth > ME_JSON_MAX_RECURSION) {
         return jerror(dest, "Blend recursion limit exceeded");
@@ -2035,14 +2043,14 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
 
         } else if (flags & JSON_APPEND) {
             at = dp->last;
-            slen = sp->last - sid - 1;
-            insertNodes(dest, at, slen, did);
+            slen = (int) (sp->last - sid - 1);
+            insertNodes(dest, at, (int) slen, did);
             copyNodes(dest, at, src, sid + 1, slen);
 
         } else {
             // Default is to JSON_OVERWRITE
-            slen = sp->last - sid;
-            dlen = dp->last - did;
+            slen = (int) (sp->last - sid);
+            dlen = (int) (dp->last - did);
             if (dlen > slen) {
                 removeNodes(dest, did + 1, dlen - slen);
             } else if (dlen < slen) {
@@ -2142,9 +2150,9 @@ PUBLIC void jsonSetIndent(int indent)
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
 {
-    RBuf *buf;
+    RBuf  *buf;
     cchar *value;
-    char *src, *cp, *start, *tok;
+    char  *src, *cp, *start, *tok;
 
     if (!str || schr(str, '$') == 0 || !json) {
         return sclone(str);
@@ -2158,7 +2166,7 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
                 // Unterminated token
                 return NULL;
             }
-            tok = snclone(start, cp - start);
+            tok = snclone(start, (size_t) (cp - start));
             value = jsonGet(json, 0, tok, 0);
             if (*tok && value) {
                 rPutStringToBuf(buf, value);
@@ -2185,10 +2193,10 @@ PUBLIC int jsonCheckIteration(struct Json *json, int count, int nid)
     return nid;
 }
 
-static bool isfnumber(cchar *s, ssize len)
+static bool isfnumber(cchar *s, size_t len)
 {
     cchar *cp;
-    int dots;
+    int   dots;
 
     if (!s || !*s) {
         return 0;
@@ -2225,7 +2233,7 @@ PUBLIC cchar *jsonGetError(Json *json)
 static int jerror(Json *json, cchar *fmt, ...)
 {
     va_list args;
-    char *msg;
+    char    *msg;
 
     if (!json || !fmt) {
         return R_ERR_BAD_ARGS;

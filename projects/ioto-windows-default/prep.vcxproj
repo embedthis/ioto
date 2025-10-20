@@ -2,7 +2,7 @@
     <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{fec5598a-7b6c-4a9f-b3de-3a20a402d538}</ProjectGuid>
+        <ProjectGuid>{db66374b-1578-448a-8953-fdee3cec348b}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -101,12 +101,11 @@ if not exist "$(ObjDir)" md "$(ObjDir)"
 if not exist "$(BinDir)" md "$(BinDir)"
 if not exist "$(IncDir)" md "$(IncDir)"
 if not exist "$(IncDir)\me.h" copy "..\ioto-windows-default-me.h" "$(IncDir)\me.h"
+copy /Y /B ..\..\include\config.h $(IncDir)
 copy /Y /B ..\..\include\crypt.h $(IncDir)
 copy /Y /B ..\..\include\db.h $(IncDir)
-copy /Y /B ..\..\include\ioto-config.h $(IncDir)
 copy /Y /B ..\..\include\ioto.h $(IncDir)
 copy /Y /B ..\..\include\json.h $(IncDir)
-copy /Y /B ..\..\include\me.h $(IncDir)
 copy /Y /B ..\..\include\mqtt.h $(IncDir)
 copy /Y /B ..\..\include\openai.h $(IncDir)
 copy /Y /B ..\..\include\osdep.h $(IncDir)
@@ -116,7 +115,7 @@ copy /Y /B ..\..\include\uctx-os.h $(IncDir)
 copy /Y /B ..\..\include\uctx.h $(IncDir)
 copy /Y /B ..\..\include\url.h $(IncDir)
 copy /Y /B ..\..\include\web.h $(IncDir)
-copy /Y /B ..\..\include\websockets.h $(IncDir)
+copy /Y /B ..\..\include\websock.h $(IncDir)
 cd .</Command>
         <Outputs>always</Outputs>
       </CustomBuildStep>
@@ -125,5 +124,6 @@ cd .</Command>
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
 
 </Project>

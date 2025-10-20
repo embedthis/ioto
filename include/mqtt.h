@@ -1,11 +1,10 @@
-/**
-    @file mqtt.h
-    MQTT client library for IoT publish/subscribe communications.
-    @description This module provides a complete MQTT 3.1.1 client implementation
+/*
+    mqtt.h - MQTT client library for IoT publish/subscribe communications.
+
+    This module provides a complete MQTT 3.1.1 client implementation
     for embedded IoT applications. Features include secure TLS connections,
     quality of service levels 0-2, retained messages, last will and testament,
     and efficient publish/subscribe operations with topic pattern matching.
-    @stability Evolving
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -222,9 +221,9 @@ typedef struct MqttRecv {
 
     //  Pub
     char *topic;           /**< Topic string */
-    int topicSize;         /**< Size of topic */
     char *data;            /**< Published message */
-    int dataSize;          /**< Size of data */
+    size_t topicSize;      /**< Size of topic */
+    size_t dataSize;       /**< Size of data */
     cuchar *start;         /**< Start of message */
     uchar dup;             /**< Set to 0 on first attempt to send packet */
     uchar qos;             /**< Quality of service */
@@ -281,12 +280,12 @@ typedef struct Mqtt {
     RList *masterTopics;    /**< List of master subscription topics */
     char *willTopic;        /**< Will and testament topic */
     char *willMsg;          /**< Will and testament message */
-    ssize willMsgSize;      /**< Size of will message */
+    size_t willMsgSize;     /**< Size of will message */
 
     int nextId;             /**< Next message ID */
     int mask;               /**< R library wait event mask */
     int msgTimeout;         /**< Message timeout for retransmit */
-    int maxMessage;         /**< Maximum message size */
+    size_t maxMessage;      /**< Maximum message size */
     int fiberCount;         /**< Number of fibers waiting for a message */
     Ticks keepAlive;        /**< Server side keep alive duration in seconds */
     Ticks timeout;          /**< Inactivity timeout for on-demand connections */
@@ -410,7 +409,7 @@ PUBLIC int mqttPing(Mqtt *mq);
     @return Zero if successful, negative on error.
     @stability Evolving
  */
-PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, ssize size, int qos, MqttWaitFlags waitFlags, cchar *topic, ...);
+PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, size_t size, int qos, MqttWaitFlags waitFlags, cchar *topic, ...);
 
 /**
     Publish a retained message to the MQTT broker.
@@ -428,7 +427,7 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, ssize size, int qos, MqttWaitFlags 
     @return Zero if successful, negative on error.
     @stability Evolving
  */
-PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, ssize size, int qos,
+PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, size_t size, int qos,
                                MqttWaitFlags waitFlags, cchar *topic, ...);
 
 /**
@@ -454,7 +453,7 @@ PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password);
     @param size The maximum message size in bytes. Must be positive and less than MQTT_MAX_MESSAGE_SIZE.
     @stability Evolving
  */
-PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
+PUBLIC void mqttSetMessageSize(Mqtt *mq, size_t size);
 
 /**
     Set the last will and testament message.
@@ -468,7 +467,7 @@ PUBLIC void mqttSetMessageSize(Mqtt *mq, int size);
     @return Zero if successful, negative on error.
     @stability Evolving
  */
-PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, ssize length);
+PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, size_t length);
 
 /**
     Subscribe to a topic pattern.

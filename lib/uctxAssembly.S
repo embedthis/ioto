@@ -3299,6 +3299,13 @@ END(uctx_swapcontext)
 
 
 
+#if UCTX_ARCH == UCTX_WINDOWS
+
+#endif // WINDOWS
+
+
+
+
 #if UCTX_ARCH == UCTX_X64
 
 #ifndef __ARCH_X86_64_DEFS_H
@@ -4050,4 +4057,8 @@ set_done:
 END(uctx_swapcontext)
 #endif // XTENSA
 
+
+#if defined(__ELF__) && !defined(__APPLE__)
+    .section .note.GNU-stack,"",@progbits
+#endif
 

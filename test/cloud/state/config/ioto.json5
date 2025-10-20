@@ -1,0 +1,53 @@
+{
+    version: '1.3.0',
+    profile: 'dev',
+    app: 'unit',
+    api: {
+        builder: 'https://api.admin-qa.embedthis.com/api',
+        serialize: 'http://localhost:4100/ioto/serialize',
+    },
+    services: {
+        database: true,
+        keys: false,
+        logs: false,
+        mqtt: false,
+        provision: true,
+        register: true,
+        serialize: 'auto',
+        shadow: false,
+        sync: true,
+        update: false,
+        url: true,
+        web: true,
+    },
+    log: {
+        path: 'stdout',
+        format: '%M',
+        types: 'error,info,trace',
+        sources: 'all,!mbedtls',
+    },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        certificate: 'auto',
+        key: 'auto',
+        client: 'auto',
+        endpoint: 'auto',
+        port: 443,
+        alpn: 'x-amzn-mqtt-ca',
+        schedule: '* * * * *',
+        delay: 0,
+        timeout: 0,
+    },
+    tls: {
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+    update: {
+        enable: true,
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
+}

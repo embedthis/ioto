@@ -1,0 +1,13 @@
+{
+    id: 'TEST000001',
+    //  QA "unit" product in unit@embedthis.com
+    product: '01J1SAXX9YCW40KGBJ0E612H0M',
+    name: 'Unit Test Router',
+    description: 'Unit Test Router',
+    model: 'Unit-Router',
+    test: false,
+    //  Manager account for unit@embedthis.com (get from Device Manager Settings)
+    account: '01JKW3C2XV04ABPKGHBQ1Y5838',
+    //  Cloud.id for unit.ioto-qa.me (hosted cloud in ap-southeast-1), (get from Device Manager Settings)
+    cloud: '01J1SB7VSBFA3GR1EMX4MGQRAD',
+}

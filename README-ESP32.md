@@ -106,7 +106,7 @@ The Ioto services are enabled via the Ioto menu config option. Navigate to:
     Ioto
     
 Then enable the desired Ioto services. This will update the **ioto.json5** and
-regenerate the **sdkconfig** and **include/ioto-config.h** files.
+regenerate the **sdkconfig** and **include/config.h** files.
 
 Check your **sdkconfig** that the following settings are defined:
 

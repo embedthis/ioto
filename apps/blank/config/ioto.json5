@@ -55,7 +55,6 @@
     services: {
         ai: true,
         database: true,
-        demo: false,
         keys: false,
         logs: false,
         mqtt: true,
@@ -72,7 +71,6 @@
         update: 'scripts/update',
     },
     tls: {
-        authority: '@certs/roots.crt',
         certificate: '@certs/test.crt',
         key: '@certs/test.key',
     },

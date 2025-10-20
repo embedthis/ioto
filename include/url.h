@@ -1,11 +1,9 @@
 
-/**
-    @file url.h
-    HTTP client library for embedded IoT applications.
-    @description The URL module provides a lightweight, streaming HTTP client optimized for embedded IoT devices.
-        Supports HTTP/HTTPS, WebSockets, and Server-Sent Events (SSE) with fiber-based concurrency.
-        Uses the R runtime for memory management and cross-platform compatibility.
-    @stability Evolving
+/*
+    url.h - HTTP client library for embedded IoT applications.
+    The URL module provides a lightweight, streaming HTTP client optimized for embedded IoT devices.
+    Supports HTTP/HTTPS, WebSockets, and Server-Sent Events (SSE) with fiber-based concurrency.
+    Uses the R runtime for memory management and cross-platform compatibility.
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -20,8 +18,8 @@
 #include "r.h"
 #include "json.h"
 
-#if ME_COM_WEBSOCKETS
-#include "websockets.h"
+#if ME_COM_WEBSOCK
+#include "websock.h"
 #endif
 
 /*********************************** Defines **********************************/
@@ -128,7 +126,7 @@ typedef struct Url {
     uint upgraded : 1;             /**< WebSocket upgrade has been completed */
     uint wroteHeaders : 1;         /**< Tx headers have been written */
 
-    uint flags;                    /**< Alloc flags */
+    int flags;                     /**< Alloc flags */
 
     char *url;                     /**< Request URL*/
     char *urlbuf;                  /**< Parsed and tokenized URL*/
@@ -142,8 +140,8 @@ typedef struct Url {
 
     // SECURITY Acceptable: Important to note that rxLen is ssize and overflow is checked
     ssize rxLen;                   /**< Length of rx body */
-    ssize rxRemaining;             /**< Remaining rx data to read from the socket */
-    ssize bufLimit;                /**< Maximum number of bytes to buffer from the response */
+    size_t rxRemaining;            /**< Remaining rx data to read from the socket */
+    size_t bufLimit;               /**< Maximum number of bytes to buffer from the response */
 
     RBuf *rxHeaders;               /**< Buffer for Rx headers */
     RBuf *txHeaders;               /**< Buffer for Tx headers */
@@ -165,7 +163,7 @@ typedef struct Url {
     REvent abortEvent;             /**< Abort event */
     void *sseArg;                  /**< SSE callback argument */
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     WebSocket *webSocket;          /**< WebSocket object */
 #endif
 #if URL_SSE
@@ -217,14 +215,14 @@ PUBLIC int urlError(Url *up, cchar *message, ...);
     @param method HTTP method verb.
     @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
-    @param size Size of body data for request. Set to 0 if none.
+    @param size Size of body data for request. Set to 0 if none. If set to zero and data is provided, it is assumed to be a string and the size is calculated.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.
     @return Response HTTP status code. Use urlGetResponse or urlRead to read the response.
     @stability Evolving
  */
-PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers, ...);
 
 /**
     Fetch a URL and return a JSON response if the HTTP request is successful.
@@ -245,7 +243,7 @@ PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, ssize size,
         Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers, ...);
 
 /**
     Finalize the request.
@@ -410,7 +408,7 @@ PUBLIC int urlParse(Url *up, cchar *url);
     @return Response body if successful, otherwise null. Caller must free.
     @stability Evolving
  */
-PUBLIC char *urlPost(cchar *url, cvoid *data, ssize size, cchar *headers, ...);
+PUBLIC char *urlPost(cchar *url, cvoid *data, size_t size, cchar *headers, ...);
 
 /**
     Issue a HTTP POST request and return parsed JSON.
@@ -425,7 +423,7 @@ PUBLIC char *urlPost(cchar *url, cvoid *data, ssize size, cchar *headers, ...);
         the request returns NULL. Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *urlPostJson(cchar *url, cvoid *data, ssize len, cchar *headers, ...);
+PUBLIC Json *urlPostJson(cchar *url, cvoid *data, size_t len, cchar *headers, ...);
 
 /**
     Low level read routine to read response data for a request.
@@ -438,7 +436,7 @@ PUBLIC Json *urlPostJson(cchar *url, cvoid *data, ssize len, cchar *headers, ...
     @return The number of bytes read. Returns < 0 on errors. Returns 0 when there is no more data to read.
     @stability Evolving
  */
-PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
+PUBLIC ssize urlRead(Url *up, char *buf, size_t bufsize);
 
 /**
     Set the maximum number of bytes to buffer from the response.
@@ -448,7 +446,7 @@ PUBLIC ssize urlRead(Url *up, char *buf, ssize bufsize);
     @param limit Maximum number of bytes to buffer. Set to 0 for unlimited buffering.
     @stability Evolving
  */
-PUBLIC void urlSetBufLimit(Url *up, ssize limit);
+PUBLIC void urlSetBufLimit(Url *up, size_t limit);
 
 /**
     Define the certificates to use with TLS connections.
@@ -562,11 +560,11 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...);
     @description This routine will block the current fiber. Other fibers continue to run.
     @param up URL object
     @param data Buffer of data to write. Set to NULL to finalize the request body.
-    @param size Length of data to write. Set to -1 to calculate the length of data as a null terminated string.
+    @param size Length of data to write. Set to 0 to calculate the length of data as a null terminated string.
     @return The number of bytes actually written. On errors, returns a negative status code.
     @stability Evolving
  */
-PUBLIC ssize urlWrite(Url *up, cvoid *data, ssize size);
+PUBLIC ssize urlWrite(Url *up, cvoid *data, size_t size);
 
 /**
     Write formatted body data for a request
@@ -601,13 +599,12 @@ PUBLIC ssize urlWriteFile(Url *up, cchar *path);
     @param up URL object
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
-    @param ... Optional header arguments.
     @return Zero if successful
     @stability Evolving
  */
 PUBLIC int urlWriteHeaders(Url *up, cchar *headers);
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
 /**
     Issue a simple WebSocket request.
     @description Establishes a WebSocket connection and processes messages until the connection closes.
@@ -641,7 +638,7 @@ PUBLIC WebSocket *urlGetWebSocket(Url *up);
     @stability Evolving
  */
 PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
-#endif /* ME_COM_WEBSOCKETS */
+#endif /* ME_COM_WEBSOCK */
 
 #if URL_SSE
 /**
@@ -690,7 +687,7 @@ PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, .
 PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
 #endif
 
-#if URL_SSE || ME_COM_WEBSOCKETS
+#if URL_SSE || ME_COM_WEBSOCK
 /**
     Wait for the connection to be closed.
     @description Block the current fiber until the connection closes. Used for SSE and WebSocket connections
@@ -700,7 +697,7 @@ PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
     @stability Evolving
  */
 PUBLIC int urlWait(Url *up);
-#endif /* URL_SSE || ME_COM_WEBSOCKETS */
+#endif /* URL_SSE || ME_COM_WEBSOCK */
 
 #ifdef __cplusplus
 }

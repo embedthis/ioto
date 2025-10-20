@@ -45,7 +45,7 @@
         "uctx": "~1",
         "url": "~1",
         "web": "~1",
-        "websockets": "~1"
+        "websock": "~1"
     },
     "override": {
         "manager": {
@@ -61,5 +61,11 @@
                 "overwrite": false
             }
         }
+    },
+    "directories": {
+        "export": "src"
+    },
+    "scripts": {
+        "hook": "./.pak-hook.sh"
     }
 }

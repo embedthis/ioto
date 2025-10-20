@@ -1,0 +1,255 @@
+{
+    "version": "latest",
+    "description": "Default database schema for local managememt",
+    "process": {
+        "Broadcast": {
+            "enable": "both",
+            "sync": "down",
+            "show": true
+        },
+        "Device": {
+            "enable": "both",
+            "sync": "up",
+            "show": false
+        },
+        "SyncState": {
+            "enable": "device",
+            "show": false
+        },
+        "Store": {
+            "enable": "both",
+            "sync": "up",
+            "notify": "default",
+            "metrics": [
+                {
+                    "namespace": "Embedthis/Device",
+                    "fields": [
+                        {
+                            "COUNTER": "value"
+                        }
+                    ],
+                    "where": "key == \"counter\"",
+                    "dimensions": [
+                        {
+                            "Device": "deviceId"
+                        }
+                    ],
+                    "buffer": {
+                        "count": 5,
+                        "elapsed": 10
+                    }
+                }
+            ],
+            "triggers": [
+                {
+                    "name": "Sync",
+                    "where": "key == \"counter\""
+                }
+            ],
+            "show": true
+        },
+        "Service": {
+            "enable": "both",
+            "sync": "up",
+            "show": true,
+            "triggers": [
+                {
+                    "name": "Sync"
+                }
+            ]
+        }
+    },
+    "models": {
+        "Broadcast": {
+            "pk": {
+                "type": "string",
+                "value": "bcast#${accountId}#${deviceId}",
+                "hidden": true
+            },
+            "sk": {
+                "type": "string",
+                "value": "bcast#${key}",
+                "hidden": true
+            },
+            "accountId": {
+                "type": "string",
+                "required": true,
+                "readonly": true
+            },
+            "deviceId": {
+                "type": "string",
+                "required": true,
+                "readonly": true
+            },
+            "key": {
+                "type": "string",
+                "required": true
+            },
+            "value": {
+                "type": "object",
+                "required": true
+            },
+            "type": {
+                "type": "string",
+                "required": true
+            },
+            "updated": {
+                "type": "date",
+                "readonly": true
+            },
+            "expires": {
+                "type": "date",
+                "ttl": true
+            },
+            "_source": {
+                "type": "string",
+                "hidden": true
+            }
+        },
+        "Device": {
+            "pk": {
+                "type": "string",
+                "value": "d#${accountId}",
+                "hidden": true
+            },
+            "sk": {
+                "type": "string",
+                "value": "d#${id}",
+                "hidden": true
+            },
+            "created": {
+                "type": "date"
+            },
+            "description": {
+                "type": "string"
+            },
+            "id": {
+                "type": "string",
+                "required": true,
+                "readonly": true
+            },
+            "model": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "product": {
+                "type": "string",
+                "notes": "Product Token"
+            },
+            "updated": {
+                "type": "date",
+                "readonly": true
+            },
+            "_source": {
+                "type": "string",
+                "hidden": true
+            }
+        },
+        "SyncState": {
+            "sk": {
+                "type": "string",
+                "value": "state#"
+            },
+            "lastSync": {
+                "type": "date"
+            },
+            "lastUpdate": {
+                "type": "date"
+            }
+        },
+        "Store": {
+            "pk": {
+                "type": "string",
+                "value": "s#${accountId}#${deviceId}",
+                "hidden": true
+            },
+            "sk": {
+                "type": "string",
+                "value": "s#${key}",
+                "hidden": true
+            },
+            "accountId": {
+                "type": "string",
+                "required": true,
+                "readonly": true
+            },
+            "created": {
+                "type": "date",
+                "readonly": true
+            },
+            "deviceId": {
+                "type": "string",
+                "required": true,
+                "readonly": true
+            },
+            "key": {
+                "type": "string",
+                "required": true
+            },
+            "value": {
+                "type": "object",
+                "required": true
+            },
+            "type": {
+                "type": "string",
+                "required": true
+            },
+            "updated": {
+                "type": "date",
+                "readonly": true
+            },
+            "expires": {
+                "type": "date",
+                "ttl": true
+            },
+            "_source": {
+                "type": "string",
+                "hidden": true
+            }
+        },
+        "Service": {
+            "pk": {
+                "type": "string",
+                "value": "service#",
+                "hidden": true
+            },
+            "sk": {
+                "type": "string",
+                "value": "service#",
+                "hidden": true
+            },
+            "value": {
+                "type": "number"
+            },
+            "updated": {
+                "type": "date",
+                "readonly": true
+            },
+            "_source": {
+                "type": "string",
+                "hidden": true
+            }
+        }
+    },
+    "format": "onetable:1.1.0",
+    "params": {
+        "isoDates": true,
+        "nulls": false,
+        "typeField": "_type",
+        "timestamps": "update"
+    },
+    "indexes": {
+        "primary": {
+            "hash": "pk",
+            "sort": "sk",
+            "description": "Primary index"
+        },
+        "gs1": {
+            "hash": "gs1pk",
+            "sort": "gs1sk",
+            "project": "all"
+        }
+    }
+}

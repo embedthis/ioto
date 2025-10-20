@@ -1,9 +1,9 @@
-/**
-    @file ioto.h
-    @brief Ioto Device Agent API
-    @description Complete IoT solution combining multiple embedded C libraries into a unified agent
-    for local and cloud-based device management. This header provides the main API for the Ioto Device Agent,
-    including cloud connectivity, database services, web server, MQTT client, and device provisioning.
+/*
+    ioto.h - Ioto Device Agent API
+
+    Complete IoT solution combining multiple embedded C libraries into a unified agent for local and cloud-based
+    device management. This header provides the main API for the Ioto Device Agent, including cloud connectivity,
+    database services, web server, MQTT client, and device provisioning.
 
     The Ioto Device Agent is designed for embedded IoT applications and provides:
     - Cloud connectivity and device management
@@ -16,7 +16,6 @@
     - AWS IoT Core integration
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
-    @stability Evolving
  */
 
 #ifndef _h_IOTO_H
@@ -27,7 +26,7 @@
 /*
     Configuration generated from ioto.json5 services
  */
-#include "ioto-config.h"
+#include "config.h"
 
 /********************************* Dependencies *******************************/
 /*
@@ -87,6 +86,10 @@
     #define ME_COM_URL   1
 #endif
 
+#if SERVICES_MQTT || SERVICES_UPDATE
+#define SERVICES_CRON    1
+#endif
+
 /*
     Enable required platform services
  */
@@ -108,7 +111,7 @@
 #include "mqtt.h"
 #include "url.h"
 #include "web.h"
-#include "websockets.h"
+#include "websock.h"
 #include "openai.h"
 
 /*********************************** Defines **********************************/
@@ -551,7 +554,7 @@ PUBLIC void ioSync(Time when, bool guarantee);
     @return 0 on success, -1 on failure
     @stability Evolving
  */
-PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len);
+PUBLIC int ioUpload(cchar *path, uchar *buf, size_t len);
 
 #if SERVICES_DATABASE
 /**
@@ -752,7 +755,7 @@ PUBLIC void ioTermAI(void);
     @see aws, awsPutToS3, awsPutFileToS3
  */
 PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method, cchar *path,
-                     cchar *query, cchar *body, ssize bodyLen, cchar *headers, ...);
+                     cchar *query, cchar *body, size_t bodyLen, cchar *headers, ...);
 
 /**
     Invoke an AWS API request
@@ -769,7 +772,7 @@ PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method
     @stability Evolving
     @see awsPutToS3, awsPutFileToS3, awsSign
  */
-PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *body, ssize bodyLen, cchar *headers, ...);
+PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *body, size_t bodyLen, cchar *headers, ...);
 
 /**
     Put a data block to AWS S3
@@ -781,7 +784,7 @@ PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *bod
     @stability Evolving
     @see aws, awsPutFileToS3, awsSign
  */
-PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, ssize dataLen);
+PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, size_t dataLen);
 
 /**
     Put a file to AWS S3

@@ -112,7 +112,7 @@ The default build configuration is defined via the sdkconfig.defaults file. You 
 
     idf.py menuconfig
 
-The Ioto services are enabled via the ESP menu config. Navigate to Components > Ioto, and then enable the desired services. This will update the **ioto.json5** and regenerate the **include/ioto-config.h**.
+The Ioto services are enabled via the ESP menu config. Navigate to Components > Ioto, and then enable the desired services. This will update the **ioto.json5** and regenerate the **include/config.h**.
 
 ### Building with idf.py
 

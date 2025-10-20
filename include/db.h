@@ -1,15 +1,12 @@
-/** 
-   @file db.h
-   Embedded NoSQL Document Database
-   @description High-performance embedded NoSQL document database for ANSI C applications.
+/* 
+   db.h - Embedded NoSQL Document Database
+
+   High-performance embedded NoSQL document database for ANSI C applications.
    Provides JSON5/JSON6 document storage with red/black tree indexing for efficient queries.
    Features include transaction journaling with crash recovery, schema validation and enforcement,
    time-based item expiration, result pagination for large datasets, and optional cloud
    synchronization via triggers. Designed for embedded IoT applications requiring fast,
    reliable local data storage with minimal memory footprint.
-   @stability Evolving
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 #pragma once
@@ -37,7 +34,7 @@ struct DbItem;
 struct DbModel;
 struct DbParams;
 
-#define DB_VERSION          1
+#define DB_VERSION          2
 
 #ifndef DB_MAX_LOG_AGE
     #define DB_MAX_LOG_AGE  (60 * TPS)                  /**< Maximum age of log file */
@@ -94,9 +91,9 @@ typedef struct Db {
     FILE *journal;          /**< Journal file descriptor */
     int flags;              /**< Database configuration flags (reserved for future use) */
     char *journalPath;      /**< On-disk journal filename */
-    ssize journalSize;      /**< Current size of journal file */
+    size_t journalSize;      /**< Current size of journal file */
     Ticks journalCreated;   /**< When journal file recreated */
-    ssize maxJournalSize;   /**< Maximum size of the journal before saving */
+    size_t maxJournalSize;   /**< Maximum size of the journal before saving */
     Ticks maxJournalAge;    /**< Maximum age of journal file before saving */
     REvent journalEvent;    /**< Timeout for journal save */
     REvent commitEvent;     /**< Timeout for commit event */
@@ -148,6 +145,7 @@ typedef int (*DbWhere)(Json *json, int nid, cvoid *arg);
     @stability Evolving
  */
 typedef struct DbParams {
+    bool zero : 1;           /**< Internal: force zero initialization */
     bool bypass : 1;         /**< Bypass changes */
     bool log : 1;            /**< Emit trace information to the log */
     bool mem : 1;            /**< Update in memory only */
@@ -183,7 +181,7 @@ typedef const DbItem CDbItem;
     Macro for supplying API parameters
     @stability Evolving
  */
-#define DB_PARAMS(...) ((DbParams[]){ { __VA_ARGS__ } })
+#define DB_PARAMS(...) ((DbParams[]){ { .zero = 0, __VA_ARGS__ } })
 
 /**
     Macro for supplying API properties as key/value pairs.
@@ -514,7 +512,7 @@ PUBLIC char *dbGetULID(Time when);
     @return Newly allocated UID string. Caller must free with rFree.
     @stability Evolving
  */
-PUBLIC char *dbGetUID(ssize size);
+PUBLIC char *dbGetUID(size_t size);
 
 /**
     Convert item list to JSON string representation
@@ -796,7 +794,7 @@ PUBLIC const DbItem *dbSetString(Db *db, cchar *model, cchar *fieldName, cchar *
     @param size Maximum journal file size in bytes before flushing to the persistent database file
     @stability Evolving
  */
-PUBLIC void dbSetJournalParams(Db *db, Ticks delay, ssize size);
+PUBLIC void dbSetJournalParams(Db *db, Ticks delay, size_t size);
 
 /**
     Add a database change trigger callback

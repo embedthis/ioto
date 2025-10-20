@@ -1,11 +1,11 @@
-/**
-    @file r.h
-    @brief Safe Runtime (R) - Foundational C Runtime for Embedded IoT Applications
-    @description The Safe Runtime (R) is a secure, high-performance C runtime library designed specifically for
-                 embedded IoT applications. It provides a complete replacement for standard C library functions
-                 with enhanced security, memory safety, and fiber-based concurrency.
+/*
+    Safe Runtime (R) - Foundational C Runtime for Embedded IoT Applications
 
-    ## Key Features
+    The Safe Runtime (R) is a secure, high-performance C runtime library designed specifically for
+    embedded IoT applications. It provides a complete replacement for standard C library functions
+    with enhanced security, memory safety, and fiber-based concurrency.
+
+ ## Key Features
     - Fiber-based coroutine concurrency instead of traditional threading
     - Centralized memory management with automatic failure detection
     - Safe string operations that prevent buffer overflows
@@ -13,7 +13,7 @@
     - Null-tolerant APIs for robust error handling
     - Event-driven I/O with non-blocking operations
 
-    ## Architecture
+ ## Architecture
     The Safe Runtime consists of several core components:
     - **Memory Management**: Centralized allocator with failure detection (`rAlloc`, `rFree`)
     - **String Operations**: Safe replacements for C string functions (`slen`, `scopy`, `scmp`)
@@ -22,18 +22,18 @@
     - **Event System**: I/O multiplexing and event-driven programming
     - **Platform Abstraction**: Cross-platform OS dependencies via osdep layer
 
-    ## Thread Safety
+ ## Thread Safety
     All functions in this API are designed for fiber-based concurrency. Unless explicitly documented otherwise,
     functions are fiber-safe but may not be thread-safe when called from different OS threads simultaneously.
     The runtime uses a single-threaded model with fiber coroutines for concurrency.
 
-    ## Memory Management Philosophy
+ ## Memory Management Philosophy
     - Use `rAlloc()` family instead of `malloc()`/`free()`
     - No need to check for NULL returns - centralized handler manages failures
     - Most functions are null-tolerant (e.g., `rFree(NULL)` is safe)
     - Memory ownership is clearly documented for each function
 
-    ## Error Handling
+ ## Error Handling
     Functions follow consistent error reporting patterns:
     - Return values indicate success/failure where applicable
     - Null tolerance prevents crashes from invalid inputs
@@ -302,7 +302,6 @@ PUBLIC_DATA int rState;
     Gracefully stop the app
     @description Queued events will be serviced before stopping. This function initiates
                  a graceful shutdown of the runtime, allowing pending operations to complete.
-                 This function is fiber-safe.
     @stability Evolving
     @see rStop
  */
@@ -321,7 +320,7 @@ PUBLIC void rStop(void);
 /**
     Get the current R state
     @description Retrieves the current state of the Safe Runtime system. This function
-                 is fiber-safe and can be called from any fiber context.
+                 can be called from any fiber context.
     @return Returns R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
     @stability Evolving
  */
@@ -370,7 +369,7 @@ PUBLIC void rassert(bool cond);
 #endif
 #define rassert(C)              if (C); else rAssert(R_LOC, #C)
 
-#define R_ALLOC_ALIGN(x, bytes) (((x) + bytes - 1) & ~(bytes - 1))
+#define R_ALLOC_ALIGN(x, bytes) (((x) + (size_t) bytes - 1) & ~((size_t) bytes - 1))
 
 #define R_MEM_WARNING 0x1                     /**< Memory use exceeds warnHeap level limit */
 #define R_MEM_LIMIT   0x2                     /**< Memory use exceeds memory limit - invoking policy */
@@ -404,7 +403,7 @@ PUBLIC void *rAllocType(RType type);
 /**
     Allocate a block of memory.
     @description This is the primary memory allocation routine. Memory is freed via rFree. This function
-                 is fiber-safe and uses the centralized Safe Runtime allocator.
+                 is THREAD SAFE and uses the centralized Safe Runtime allocator.
     @param size Size of the memory block to allocate in bytes. Must be > 0.
     @return Returns a pointer to the allocated block. If memory is not available the memory exhaustion
             handler will be invoked (typically causing program termination). Never returns NULL.
@@ -416,7 +415,7 @@ PUBLIC void *rAlloc(size_t size);
 /**
     Free a block of memory allocated via rAlloc.
     @description This releases a block of memory allocated via rAllocMem. This function is null-tolerant
-                 and safe to call with NULL pointers. This function is fiber-safe.
+                 and safe to call with NULL pointers. This function is THREAD SAFE.
     @param ptr Pointer to the block. If ptr is NULL, the call is safely skipped.
     @remarks The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.
     @stability Evolving
@@ -552,7 +551,14 @@ typedef struct RFiber {
     //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
+#if _MSC_VER
+    #pragma warning(push)
+    #pragma warning(disable: 4200)
+#endif
     uchar stack[];
+#if _MSC_VER
+    #pragma warning(pop)
+#endif
 } RFiber;
 
 /**
@@ -578,13 +584,12 @@ PUBLIC void rTermFibers(void);
 
 /**
     Spawn a fiber coroutine
-    @description This allocates a new fiber and resumes it. The resumed fiber is started via an event to the main fiber
-       to the current fiber will not block and will return from this call before the function
-    is called.
+    @description This allocates a new fiber and resumes it. The resumed fiber is started via an event to the main fiber,
+       so the current fiber will not block and will return from this call before the spawned function is called.
     @param name Fiber name.
     @param fn Fiber entry point.
     @param arg Entry point argument.
-    @return Zero if successful.
+    @return Zero if successful, otherwise a negative RT error code.
     @stability Evolving
  */
 PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg);
@@ -592,7 +597,8 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg);
 /**
     Spawn an O/S thread and wait until it completes.
     @description This creates a new thread and runs the given function. It then yields until the
-        thread function returns and returns the function result.
+        thread function returns and returns the function result. NOTE: the spawned thread must not call
+        any Safe Runtime APIs that are not explicitly maked as THREAD SAFE.
     @param fn Thread main function entry point.
     @param arg Argument provided to the thread.
     @return Value returned from spawned thread function.
@@ -616,9 +622,11 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
 
 /**
     Yield a fiber back to the main fiber
-    @description Pause a fiber until resumed by the main fiber.
-        the target fiber is resumed via an event to the main fiber.
+    @description Pause the current fiber and yield control back to the main fiber. The fiber will remain
+        paused until another fiber or the main fiber calls rResumeFiber on this fiber. The value parameter
+        will be returned to the caller of rResumeFiber.
     @param value Value to provide as a result to the fiber that called rResumeFiber.
+    @return Value passed by the fiber that calls rResumeFiber to resume this fiber.
     @stability Evolving
  */
 PUBLIC void *rYieldFiber(void *value);
@@ -669,15 +677,20 @@ PUBLIC int64 rGetStackUsage(void);
  */
 PUBLIC void *rGetFiberStack(void);
 
-//  ESP32 DOC
-PUBLIC ssize rGetFiberStackSize(void);
+/**
+    Get the current fiber stack size
+    @description Returns the configured fiber stack size in bytes.
+    @return The fiber stack size in bytes.
+    @stability Evolving
+ */
+PUBLIC size_t rGetFiberStackSize(void);
 
 /**
     Set the default fiber stack size
     @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
     @stability Evolving
  */
-PUBLIC void rSetFiberStack(ssize size);
+PUBLIC void rSetFiberStack(size_t size);
 
 /**
     Set the fiber limits
@@ -756,7 +769,7 @@ PUBLIC void rLeave(bool *access);
     @return Returns the CPU time in ticks. Will return the system time if CPU ticks are not available.
     @stability Internal
  */
-uint64 rGetHiResTicks(void);
+PUBLIC uint64 rGetHiResTicks(void);
 
 /**
     Convert a time value to local time and format as a string.
@@ -967,12 +980,13 @@ typedef int64 REvent;
 #define R_EVENT_EPOLL             2       /**< epoll_wait */
 #define R_EVENT_KQUEUE            3       /**< BSD kqueue */
 #define R_EVENT_SELECT            4       /**< traditional select() */
+#define R_EVENT_WSAPOLL           5       /**< Windows WSAPOLL */
 
 #ifndef ME_EVENT_NOTIFIER
     #if MACOSX || SOLARIS
         #define ME_EVENT_NOTIFIER R_EVENT_KQUEUE
     #elif WINDOWS
-        #define ME_EVENT_NOTIFIER R_EVENT_ASYNC
+        #define ME_EVENT_NOTIFIER R_EVENT_WSAPOLL
     #elif VXWORKS || ESP32
         #define ME_EVENT_NOTIFIER R_EVENT_SELECT
     #elif (LINUX || ME_BSD_LIKE) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
@@ -1252,6 +1266,13 @@ PUBLIC void rWakeup(void);
 /*
     This secure printf replacement uses very little stack and is tolerant of NULLs in arguments
     It also has a somewhat enhanced set of features, such as comma separated numbers and scientific notation.
+
+    IMPORTANT: This printf implementation is NOT designed to be 100% compatible with standard printf.
+    It provides a secure, embedded-friendly subset of printf functionality with the following differences:
+    - The %n format specifier is not supported (security)
+    - Floating point formatting may differ slightly from standard printf
+    - Some advanced format specifiers may not be supported
+    - Optimized for embedded systems with limited resources
  */
 
 /**
@@ -1268,7 +1289,7 @@ PUBLIC void rWakeup(void);
         stored if not limited by maxsize. Will be >= maxsize if the result is truncated.
     @stability Evolving
  */
-PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
+PUBLIC ssize rVsnprintf(char *buf, size_t maxsize, cchar *fmt, va_list args);
 
 /**
     Format a string into a buffer.
@@ -1284,7 +1305,7 @@ PUBLIC ssize rVsnprintf(char *buf, ssize maxsize, cchar *fmt, va_list args);
     @return Returns the count of characters stored in buf or a negative error code for memory errors.
     @stability Evolving
  */
-PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
+PUBLIC ssize rVsaprintf(char **buf, size_t maxsize, cchar *fmt, va_list args);
 
 /**
     Format a string into a buffer.
@@ -1299,7 +1320,7 @@ PUBLIC ssize rVsaprintf(char **buf, ssize maxsize, cchar *fmt, va_list args);
         limited by maxsize.
     @stability Evolving
  */
-PUBLIC ssize rSnprintf(char *buf, ssize maxsize, cchar *fmt, ...);
+PUBLIC ssize rSnprintf(char *buf, size_t maxsize, cchar *fmt, ...);
 
 /**
     Formatted print. This is a secure verion of printf that can handle null args.
@@ -1376,7 +1397,7 @@ PUBLIC char *sitosx(int64 value, int radix);
     @return Returns a reference to the string.
     @stability Evolving
  */
-PUBLIC char *sitosbuf(char *buf, ssize size, int64 value, int radix);
+PUBLIC char *sitosbuf(char *buf, size_t size, int64 value, int radix);
 
 /**
     Compare strings ignoring case. This is a r replacement for strcasecmp. It can handle NULL args.
@@ -1442,8 +1463,8 @@ PUBLIC char *scloneNull(cchar *str);
 
 /**
     Compare strings.
-    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant
-                 and fiber-safe. NULL strings are treated as empty strings for comparison purposes.
+    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant.
+       NULL strings are treated as empty strings for comparison purposes.
     @param s1 First string to compare. NULL is safely handled.
     @param s2 Second string to compare. NULL is safely handled.
     @return Returns zero if the strings are identical. Returns -1 if the first string is lexicographically
@@ -1466,14 +1487,14 @@ PUBLIC char *scontains(cchar *str, cchar *pattern);
     Copy a string.
     @description Safe replacement for strcpy. Copy a string and ensure the destination buffer is not overflowed.
                  This function enforces a maximum size for the copied string and ensures null-termination.
-                 This function is fiber-safe and null-tolerant.
+                 This funciton is null-tolerant.
     @param dest Destination buffer to receive the copied string. Must not be NULL.
     @param destMax Maximum size of the destination buffer in characters (including null terminator).
     @param src Source string to copy. NULL is safely handled (results in empty string).
     @return Returns the number of characters copied to the destination string, or -1 on error.
     @stability Evolving
  */
-PUBLIC ssize scopy(char *dest, ssize destMax, cchar *src);
+PUBLIC ssize scopy(char *dest, size_t destMax, cchar *src);
 
 /**
     Test if the string ends with a given pattern.
@@ -1514,7 +1535,7 @@ PUBLIC char *sfmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
     @return Returns the buffer.
     @stability Evolving
  */
-PUBLIC char *sfmtbuf(char *buf, ssize maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+PUBLIC char *sfmtbuf(char *buf, size_t maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Format a string into a statically allocated buffer.
@@ -1527,7 +1548,7 @@ PUBLIC char *sfmtbuf(char *buf, ssize maxSize, cchar *fmt, ...) PRINTF_ATTRIBUTE
     @return Returns the buffer;
     @stability Evolving
  */
-PUBLIC char *sfmtbufv(char *buf, ssize maxSize, cchar *fmt, va_list args);
+PUBLIC char *sfmtbufv(char *buf, size_t maxSize, cchar *fmt, va_list args);
 
 /**
     Format a string. This is a secure verion of printf that can handle null args.
@@ -1548,7 +1569,7 @@ PUBLIC char *sfmtv(cchar *fmt, va_list args);
     @return Returns an unsigned integer hash code
     @stability Evolving
  */
-PUBLIC uint shash(cchar *str, ssize len);
+PUBLIC uint shash(cchar *str, size_t len);
 
 /**
     Compute a hash code for a string after converting it to lower case.
@@ -1557,7 +1578,7 @@ PUBLIC uint shash(cchar *str, ssize len);
     @return Returns an unsigned integer hash code
     @stability Evolving
  */
-PUBLIC uint shashlower(cchar *str, ssize len);
+PUBLIC uint shashlower(cchar *str, size_t len);
 
 /**
     Catenate strings.
@@ -1605,12 +1626,12 @@ PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep);
 /**
     Return the length of a string.
     @description Safe replacement for strlen. This call returns the length of a string and is null-tolerant.
-                 This function is fiber-safe and does not modify the input string.
+                 This funciton does not modify the input string.
     @param str String to measure. NULL is safely handled and returns 0.
     @return Returns the length of the string in characters, or 0 if str is NULL.
     @stability Evolving
  */
-PUBLIC ssize slen(cchar *str);
+PUBLIC size_t slen(cchar *str);
 
 /**
     Convert a string to lower case.
@@ -1631,6 +1652,17 @@ PUBLIC char *slower(char *str);
 PUBLIC bool smatch(cchar *s1, cchar *s2);
 
 /**
+    Securely compare strings in constant time.
+    @description Compare two strings. This is similar to #scmp but it returns a boolean. This is a secure replacement
+       for strcmp.
+    @param s1 First string to compare.
+    @param s2 Second string to compare.
+    @return Returns true if the strings are equivalent, otherwise false.
+    @stability Evolving
+ */
+PUBLIC bool smatchsec(cchar *s1, cchar *s2);
+
+/**
     Compare strings ignoring case.
     @description Compare two strings ignoring case differences for a given string length. This call operates
         similarly to strncasecmp.
@@ -1641,7 +1673,7 @@ PUBLIC bool smatch(cchar *s1, cchar *s2);
         or > 0 if it sors higher.
     @stability Evolving
  */
-PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize len);
+PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, size_t len);
 
 /**
     Clone a substring.
@@ -1652,7 +1684,7 @@ PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, ssize len);
     @return Returns a newly allocated string.
     @stability Evolving
  */
-PUBLIC char *snclone(cchar *str, ssize len);
+PUBLIC char *snclone(cchar *str, size_t len);
 
 /**
     Compare strings.
@@ -1664,7 +1696,7 @@ PUBLIC char *snclone(cchar *str, ssize len);
         or > 0 if it sors higher.
     @stability Evolving
  */
-PUBLIC int sncmp(cchar *s1, cchar *s2, ssize len);
+PUBLIC int sncmp(cchar *s1, cchar *s2, size_t len);
 
 /**
     Find a pattern in a string with a limit.
@@ -1672,11 +1704,11 @@ PUBLIC int sncmp(cchar *s1, cchar *s2, ssize len);
        limit.
     @param str Pointer to the string to search.
     @param pattern String pattern to search for.
-    @param limit Count of characters in the string to search.
+    @param limit Count of characters in the string to search. If zero, the string length is used.
     @return Returns a reference to the start of the pattern in the string. If not found, returns NULL.
     @stability Evolving
  */
-PUBLIC char *sncontains(cchar *str, cchar *pattern, ssize limit);
+PUBLIC char *sncontains(cchar *str, cchar *pattern, size_t limit);
 
 /**
     Find a pattern in a string with a limit using a caseless comparison.
@@ -1685,11 +1717,11 @@ PUBLIC char *sncontains(cchar *str, cchar *pattern, ssize limit);
         Use a caseless comparison.
     @param str Pointer to the string to search.
     @param pattern String pattern to search for.
-    @param limit Count of characters in the string to search.
+    @param limit Count of characters in the string to search. If zero, the string length is used.
     @return Returns a reference to the start of the pattern in the string. If not found, returns NULL.
     @stability Evolving
  */
-PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, ssize limit);
+PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, size_t limit);
 
 /**
     Copy characters from a string.
@@ -1704,7 +1736,7 @@ PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, ssize limit);
     @return Returns a reference to the destination if successful or NULL if the string won't fit.
     @stability Evolving
  */
-PUBLIC ssize sncopy(char *dest, ssize destMax, cchar *src, ssize len);
+PUBLIC ssize sncopy(char *dest, size_t destMax, cchar *src, size_t len);
 
 /*
     Test if a string is a floating point number
@@ -1823,7 +1855,7 @@ PUBLIC char *ssplit(char *str, cchar *delim, char **last);
         first null.
     @stability Evolving
  */
-PUBLIC ssize sspn(cchar *str, cchar *set);
+PUBLIC size_t sspn(cchar *str, cchar *set);
 
 /**
     Test if the string starts with a given pattern.
@@ -1922,7 +1954,7 @@ PUBLIC struct RList *stolist(cchar *src);
     @return Returns a newly allocated substring
     @stability Evolving
  */
-PUBLIC char *ssub(cchar *str, ssize offset, ssize length);
+PUBLIC char *ssub(cchar *str, size_t offset, size_t length);
 
 /*
     String trim flags
@@ -1961,7 +1993,7 @@ PUBLIC char *supper(char *str);
     @return Number of bytes in the destination buffer
     @stability Evolving
  */
-PUBLIC ssize sjoinbuf(char *buf, ssize bufsize, cchar *str1, cchar *str2);
+PUBLIC ssize sjoinbuf(char *buf, size_t bufsize, cchar *str1, cchar *str2);
 
 /**
     Parse a value string
@@ -1975,10 +2007,29 @@ PUBLIC ssize sjoinbuf(char *buf, ssize bufsize, cchar *str1, cchar *str2);
         year, years,
         byte, bytes, k, kb, m, mb, g, gb.
         Also supports the strings: unlimited, infinite, never, forever.
-    @return A 64 bit unsigned number
+    @param value String to parse
+    @return A 64 bit signed integer number
     @stability Evolving
  */
-PUBLIC uint64 svalue(cchar *value);
+PUBLIC int64 svalue(cchar *value);
+
+/**
+    Parse a value string to an integer. This is the same as svalue but returns an integer instead of a 64 bit signed
+       integer.
+    @description Parse a textual number with unit suffixes. The following suffixes are supported:
+        sec, secs, second, seconds,
+        min, mins, minute, minutes,
+        hr, hrs, hour, hours,
+        day, days,
+        week, weeks,
+        month, months,
+        year, years,
+        byte, bytes, k, kb, m, mb, g, gb.
+    @param value String to parse
+    @return A 64 bit signed integer number
+    @stability Evolving
+ */
+PUBLIC int svaluei(cchar *value);
 #endif /* R_USE_STRING */
 
 /********************************* Buffering **********************************/
@@ -2005,7 +2056,7 @@ typedef struct RBuf {
     char *endbuf;                      /**< Pointer one past the end of buffer */
     char *start;                       /**< Pointer to next data char */
     char *end;                         /**< Pointer one past the last data chr */
-    ssize buflen;                      /**< Current size of buffer */
+    size_t buflen;                     /**< Current size of buffer */
 } RBuf;
 
 /**
@@ -2018,7 +2069,7 @@ typedef struct RBuf {
     @returns Zero if successful and otherwise a negative error code
     @stability Evolving
  */
-PUBLIC int rInitBuf(RBuf *buf, ssize size);
+PUBLIC int rInitBuf(RBuf *buf, size_t size);
 
 /**
     Terminate a buffer
@@ -2036,7 +2087,7 @@ PUBLIC void rTermBuf(RBuf *buf);
     @return a new buffer
     @stability Evolving
  */
-PUBLIC RBuf *rAllocBuf(ssize initialSize);
+PUBLIC RBuf *rAllocBuf(size_t initialSize);
 
 /**
     Free a buffer
@@ -2124,7 +2175,7 @@ PUBLIC void rFlushBuf(RBuf *buf);
     @return The count of bytes read into the block or -1 if the buffer is empty.
     @stability Evolving
  */
-PUBLIC ssize rGetBlockFromBuf(RBuf *buf, char *blk, ssize count);
+PUBLIC ssize rGetBlockFromBuf(RBuf *buf, char *blk, size_t count);
 
 /**
     Get a reference to the end of the buffer contents
@@ -2199,7 +2250,7 @@ PUBLIC int rGetCharFromBuf(RBuf *buf);
     @returns Zero if successful and otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC int rGrowBuf(RBuf *buf, ssize count);
+PUBLIC int rGrowBuf(RBuf *buf, size_t count);
 
 /**
     Grow the buffer so that there is at least the needed minimum space available.
@@ -2210,7 +2261,7 @@ PUBLIC int rGrowBuf(RBuf *buf, ssize count);
     @returns Zero if successful and otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC int rReserveBufSpace(RBuf *buf, ssize need);
+PUBLIC int rReserveBufSpace(RBuf *buf, size_t need);
 
 /**
     Inser a character into the buffer
@@ -2251,7 +2302,7 @@ PUBLIC int rLookAtLastCharInBuf(RBuf *buf);
     @returns Zero if successful and otherwise a negative error code
     @stability Evolving
  */
-PUBLIC ssize rPutBlockToBuf(RBuf *buf, cchar *ptr, ssize size);
+PUBLIC ssize rPutBlockToBuf(RBuf *buf, cchar *ptr, size_t size);
 
 /**
     Put a character to the buffer.
@@ -2303,7 +2354,7 @@ PUBLIC ssize rPutStringToBuf(RBuf *buf, cchar *str);
     @returns Zero if successful and otherwise a negative error code
     @stability Evolving
  */
-PUBLIC ssize rPutSubToBuf(RBuf *buf, cchar *str, ssize count);
+PUBLIC ssize rPutSubToBuf(RBuf *buf, cchar *str, size_t count);
 
 /**
     Reset the buffer
@@ -2316,9 +2367,9 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
 /*
     Macros for speed
  */
-#define rGetBufLength(bp) ((bp) ? (ssize) ((bp)->end - (bp)->start) : 0)
-#define rGetBufSize(bp)   ((bp) ? (bp)->buflen : 0)
-#define rGetBufSpace(bp)  ((bp) ? ((bp)->endbuf - (bp)->end) : 0)
+#define rGetBufLength(bp) ((bp) ? (size_t) ((bp)->end - (bp)->start) : 0)
+#define rGetBufSize(bp)   ((bp) ? (size_t) ((bp)->buflen) : 0)
+#define rGetBufSpace(bp)  ((bp) ? (size_t) ((bp)->endbuf - (bp)->end) : 0)
 #define rGetBuf(bp)       ((bp) ? (bp)->data : 0)
 #define rGetBufStart(bp)  ((bp) ? (bp)->start : 0)
 #define rGetBufEnd(bp)    ((bp) ? (bp)->end : 0)
@@ -2339,10 +2390,10 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
     @stability Internal.
  */
 typedef struct RList {
-    uint capacity;                      /**< Current list capacity */
-    uint length : 31;                   /**< Current length of the list contents */
-    uint flags : 1;                     /**< Items should be freed when list is freed */
-    void **items;                       /**< List item data */
+    int capacity;           /**< Current list capacity */
+    int length;             /**< Current length of the list contents */
+    int flags : 1;          /**< Items should be freed when list is freed */
+    void **items;           /**< List item data */
 } RList;
 
 /**
@@ -2393,6 +2444,9 @@ PUBLIC int rAddItem(RList *list, cvoid *item);
     Add a null item to the list.
     @description Add a null item to the list. This item does not count in the length returned by #rGetListLength
     and will not be visible when iterating using #rGetNextItem.
+    @param list List pointer returned from rAllocList.
+    @return Returns a list index for the null item. If the item cannot be added due to a memory allocation failure,
+        a negative RT error code is returned.
     @stability Evolving
  */
 PUBLIC int rAddNullItem(RList *list);
@@ -2540,7 +2594,7 @@ typedef int (*RSortProc)(cvoid *p1, cvoid *p2, void *ctx);
     @return The base array for chaining
     @stability Evolving
  */
-PUBLIC void *rSort(void *base, ssize num, ssize width, RSortProc compare, void *ctx);
+PUBLIC void *rSort(void *base, int num, int width, RSortProc compare, void *ctx);
 
 /**
     Sor a list
@@ -2556,7 +2610,8 @@ PUBLIC RList *rSortList(RList *list, RSortProc compare, void *ctx);
 /**
     Grow the list to be at least the requested size in elements.
     @param list List pointer returned from rAllocList.
-    @param size Required minimum size for the list.
+    @param size Required minimum number of elements for the list.
+    @return Zero if successful, otherwise a negative RT error code.
     @stability Evolving
  */
 PUBLIC int rGrowList(RList *list, int size);
@@ -2580,11 +2635,13 @@ PUBLIC void rPushItem(RList *list, void *item);
 PUBLIC void *rPopItem(RList *list);
 
 #define R_GET_ITEM(list, index) list->items[index]
+
+// NOTE - the index is incremented after the body executes
 #define ITERATE_ITEMS(list, item, index) \
         index = 0, item = 0; \
-        list && index < (int) list->length && ((item = list->items[index]) || 1); \
+        list && (uint) index < (uint) list->length && ((item = list->items[index]) || 1); \
         item = 0, index++
-#define rGetListLength(lp)      ((lp) ? (lp)->length : 0)
+#define rGetListLength(lp)      (int) ((lp) ? (lp)->length : 0)
 
 #endif /* R_USE_LIST */
 
@@ -2673,6 +2730,7 @@ PUBLIC bool rIsLogSet(void);
         environment variable is defined, it sepecifies the log message format. If these environment variables
         are defined, the "force" parameter must be used with rSetLog, rSetLogFilter and rSetLogFormat to
         override.
+    @return Zero if successful, otherwise a negative R error code.
     @stability Evolving
  */
 PUBLIC int rInitLog(void);
@@ -2909,13 +2967,12 @@ PUBLIC void print(cchar *fmt, ...);
 
 /**
     Dump the message and data block in hex to stdout
-    @param fmt Printf style format string. Variable number of arguments to print
+    @param msg Message to print
     @param block Data block to dump. Set to null if no data block
     @param len Size of data block
-    @param ... Variable number of arguments for printf data
     @stability Internal
  */
-PUBLIC void dump(cchar *msg, uchar *block, ssize len);
+PUBLIC void dump(cchar *msg, uchar *block, size_t len);
 #endif
 #endif /* R_USE_LOG */
 
@@ -2944,7 +3001,7 @@ PUBLIC void dump(cchar *msg, uchar *block, ssize len);
     @return An integer hash index
     @stability Internal.
  */
-typedef uint (*RHashProc)(cvoid *name, ssize len);
+typedef uint (*RHashProc)(cvoid *name, size_t len);
 
 /**
     Hash table structure.
@@ -2999,7 +3056,7 @@ typedef struct RName {
     @return Returns a pointer to the allocated hash table.
     @stability Evolving
  */
-PUBLIC RHash *rAllocHash(int size, int flags);
+PUBLIC RHash *rAllocHash(size_t size, int flags);
 
 /**
     Free a hash table
@@ -3060,7 +3117,7 @@ PUBLIC RName *rAddDuplicateName(RHash *hash, cchar *name, void *ptr, int flags);
     @return Added RName reference.
     @stability Evolving
  */
-PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, ssize nameSize, char *value, ssize valueSize);
+PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, size_t nameSize, char *value, size_t valueSize);
 
 /**
     Add a name and integer value.
@@ -3250,6 +3307,7 @@ PUBLIC char *rGetFilePath(cchar *path);
 /**
     Get a temp filename
     @description Create a temp file name in the given directory with the specified prefix.
+    Windows ignores dir and prefix.
     @param dir Directory to contain the temporary file. If null, use system default temp directory (/tmp).
     @param prefix Optional filename prefix.
     @return An allocated string containing the file name. Caller must free.
@@ -3269,7 +3327,7 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix);
             with rFree().
     @stability Evolving
  */
-PUBLIC char *rReadFile(cchar *path, ssize *lenp);
+PUBLIC char *rReadFile(cchar *path, size_t *lenp);
 
 /**
     Flush file buffers
@@ -3289,7 +3347,7 @@ PUBLIC int rFlushFile(int fd);
     @return The length of bytes written to the file. Should equal len.
     @stability Evolving
  */
-PUBLIC ssize rWriteFile(cchar *path, cchar *buf, ssize len, int mode);
+PUBLIC ssize rWriteFile(cchar *path, cchar *buf, size_t len, int mode);
 
 /**
     Join file paths
@@ -3311,7 +3369,7 @@ PUBLIC char *rJoinFile(cchar *base, cchar *other);
     @returns Allocated string containing the resolved filename.
     @stability Evolving
  */
-PUBLIC char *rJoinFileBuf(char *buf, ssize bufsize, cchar *base, cchar *other);
+PUBLIC char *rJoinFileBuf(char *buf, size_t bufsize, cchar *base, cchar *other);
 
 /**
     Determine if a file path is an absolute path
@@ -3633,6 +3691,16 @@ PUBLIC char *rReadRegistry(cchar *key, cchar *name);
     @stability Evolving
  */
 PUBLIC int rWriteRegistry(cchar *key, cchar *name, cchar *value);
+
+/**
+    Parse a time string into a tm structure
+    @param buf Time string to parse
+    @param format Format string
+    @param tm Time structure to fill
+    @return A pointer to the tm structure
+    @stability Evolving
+ */
+PUBLIC char *strptime(const char *buf, const char *format, struct tm *tm);
 #endif /* ME_WIN_LIKE || CYGWIN */
 
 /*
@@ -3681,7 +3749,7 @@ typedef void (*RSocketCustom)(struct RSocket *sp, int cmd, void *arg, int flags)
 typedef struct RSocket {
     Socket fd;                              /**< Actual socket file handle */
     struct Rtls *tls;
-    uint flags : 8;
+    int flags : 8;
     uint mask : 4;
     uint hasCert : 1;                       /**< TLS certificate defined */
     RSocketProc handler;
@@ -3753,7 +3821,7 @@ PUBLIC void rFreeSocket(RSocket *sp);
     @return Zero if successful.
     @stability Evolving
  */
-PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, int ipbufLen, int *port);
+PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port);
 
 /**
     Get the custom socket callback handler
@@ -3852,7 +3920,7 @@ PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler
         distinguision between EOF and errors.
     @stability Evolving
  */
-PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline);
+PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline);
 
 /**
     Read from a socket.
@@ -3868,7 +3936,7 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, ssize bufsize, Ticks deadline);
         distinguision between EOF and errors.
     @stability Evolving
  */
-PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, ssize bufsize);
+PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, size_t bufsize);
 
 /**
     Reset a socket
@@ -3988,7 +4056,7 @@ PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
         or EWOULDBLOCK.
     @stability Evolving
  */
-PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, ssize bufsize, Ticks deadline);
+PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadline);
 
 /**
     Write to a socket
@@ -4006,7 +4074,7 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, ssize bufsize, Ticks deadline
         or EWOULDBLOCK.
     @stability Evolving
  */
-PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, ssize len);
+PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t len);
 
 #endif /* R_USE_SOCKET */
 
@@ -4187,17 +4255,27 @@ PUBLIC RThread rGetMainThread(void);
 /************************************* Command ***********************************/
 #if R_USE_RUN
 
-#if ME_UNIX_LIKE
+#ifndef R_RUN_ARGS_MAX
+    #define R_RUN_ARGS_MAX   1024        /* Max args to parse */
+#endif
+
+#ifndef R_RUN_MAX_OUTPUT
+    #define R_RUN_MAX_OUTPUT 1024 * 1024 /* Max output to return */
+#endif
+
 /**
-    Run a command using the system shell
+    Run a command
     @description SECURITY: must only call with fully sanitized command input.
-    @param command Command string to run using popen()
+    @param command Command to invoke
     @param output Returns the command output. Caller must free.
     @return The command exit status or a negative error code.
     @stability Evolving.
  */
 PUBLIC int rRun(cchar *command, char **output);
-#endif
+
+/* Internal helpers for rRun implementation */
+PUBLIC ssize rMakeArgs(cchar *command, char ***argvp, bool argsOnly);
+
 #endif /* R_USE_RUN */
 
 /************************************** TLS **************************************/
@@ -4213,8 +4291,8 @@ PUBLIC void rSetTlsCiphers(struct Rtls *tls, cchar *ciphers);
 PUBLIC void rSetTlsVerify(struct Rtls *tls, int verifyPeer, int verifyIssuer);
 PUBLIC void rFreeTls(struct Rtls *tls);
 PUBLIC void rCloseTls(struct Rtls *tls);
-PUBLIC ssize rReadTls(struct Rtls *tls, void *buf, ssize len);
-PUBLIC ssize rWriteTls(struct Rtls *tls, cvoid *buf, ssize len);
+PUBLIC ssize rReadTls(struct Rtls *tls, void *buf, size_t len);
+PUBLIC ssize rWriteTls(struct Rtls *tls, cvoid *buf, size_t len);
 PUBLIC int rUpgradeTls(struct Rtls *tp, Socket fd, cchar *peer, Ticks deadline);
 PUBLIC int rConfigTls(struct Rtls *tp, bool server);
 PUBLIC struct Rtls *rAcceptTls(struct Rtls *tp, struct Rtls *listen);

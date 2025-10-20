@@ -1,0 +1,23 @@
+{
+    profile: 'dev',
+    version: '1.0.0',
+    app: 'unit',
+    services: {
+        database: true,
+        web: true,
+    },
+    log: {
+        path: '../log.txt',
+        format: '%M',
+        types: 'error,info,trace',
+        sources: 'all,!mbedtls',
+    },
+    api: {
+        builder: 'https://api.admin.embedthis.com/api',
+        serialize: 'http://localhost:4100/ioto/serialize',
+    },
+    tls: {
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+}

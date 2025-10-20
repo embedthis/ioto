@@ -4,16 +4,52 @@
 
 /* Settings */
 #ifndef ME_APP
-    #define ME_APP "demo"
+    #define ME_APP "unit"
 #endif
 #ifndef ME_AUTHOR
     #define ME_AUTHOR "Embedthis Software."
+#endif
+#ifndef ME_BUILD
+    #define ME_BUILD "build"
+#endif
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT 1
+#endif
+#ifndef ME_COM_DB
+    #define ME_COM_DB 1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON 1
+#endif
+#ifndef ME_COM_MQTT
+    #define ME_COM_MQTT 1
+#endif
+#ifndef ME_COM_OPENAI
+    #define ME_COM_OPENAI 1
+#endif
+#ifndef ME_COM_R
+    #define ME_COM_R 1
+#endif
+#ifndef ME_COM_UCTX
+    #define ME_COM_UCTX 1
+#endif
+#ifndef ME_COM_URL
+    #define ME_COM_URL 1
+#endif
+#ifndef ME_COM_WEB
+    #define ME_COM_WEB 1
+#endif
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1
 #endif
 #ifndef ME_COMPANY
     #define ME_COMPANY "embedthis"
 #endif
 #ifndef ME_COMPATIBLE
     #define ME_COMPATIBLE "3.0"
+#endif
+#ifndef ME_COMPILER_FORTIFY
+    #define ME_COMPILER_FORTIFY 1
 #endif
 #ifndef ME_COMPILER_HAS_ATOMIC
     #define ME_COMPILER_HAS_ATOMIC 1
@@ -93,6 +129,9 @@
 #ifndef ME_PREFIXES
     #define ME_PREFIXES "install-prefixes"
 #endif
+#ifndef ME_PROFILE
+    #define ME_PROFILE "dev"
+#endif
 #ifndef ME_STATIC
     #define ME_STATIC 1
 #endif
@@ -110,6 +149,18 @@
 #endif
 #ifndef ME_VERSION
     #define ME_VERSION "3.0.0"
+#endif
+#ifndef ME_WEB_AUTH
+    #define ME_WEB_AUTH 1
+#endif
+#ifndef ME_WEB_LIMITS
+    #define ME_WEB_LIMITS 1
+#endif
+#ifndef ME_WEB_SESSIONS
+    #define ME_WEB_SESSIONS 1
+#endif
+#ifndef ME_WEB_UPLOAD
+    #define ME_WEB_UPLOAD 1
 #endif
 #ifndef ME_WEB_GROUP
     #define ME_WEB_GROUP ""
@@ -220,35 +271,8 @@
 #endif
 
 /* Components */
-#ifndef ME_COM_AI
-    #define ME_COM_AI 0
-#endif
-#ifndef ME_COM_APPS
-    #define ME_COM_APPS 1
-#endif
-#ifndef ME_COM_AUTH
-    #define ME_COM_AUTH 0
-#endif
-#ifndef ME_COM_BLANK
-    #define ME_COM_BLANK 0
-#endif
-#ifndef ME_COM_BLINK
-    #define ME_COM_BLINK 0
-#endif
 #ifndef ME_COM_CC
     #define ME_COM_CC 1
-#endif
-#ifndef ME_COM_DB
-    #define ME_COM_DB 1
-#endif
-#ifndef ME_COM_DEMO
-    #define ME_COM_DEMO 0
-#endif
-#ifndef ME_COM_IOTO
-    #define ME_COM_IOTO 1
-#endif
-#ifndef ME_COM_JSON
-    #define ME_COM_JSON 1
 #endif
 #ifndef ME_COM_LIB
     #define ME_COM_LIB 1
@@ -256,39 +280,12 @@
 #ifndef ME_COM_MBEDTLS
     #define ME_COM_MBEDTLS 1
 #endif
-#ifndef ME_COM_MQTT
-    #define ME_COM_MQTT 1
-#endif
-#ifndef ME_COM_OPENAI
-    #define ME_COM_OPENAI 1
-#endif
 #ifndef ME_COM_OPENSSL
     #define ME_COM_OPENSSL 0
-#endif
-#ifndef ME_COM_OSDEP
-    #define ME_COM_OSDEP 1
-#endif
-#ifndef ME_COM_R
-    #define ME_COM_R 1
 #endif
 #ifndef ME_COM_SSL
     #define ME_COM_SSL 1
 #endif
-#ifndef ME_COM_UCTX
-    #define ME_COM_UCTX 1
-#endif
-#ifndef ME_COM_UNIT
-    #define ME_COM_UNIT 0
-#endif
-#ifndef ME_COM_URL
-    #define ME_COM_URL 1
-#endif
 #ifndef ME_COM_VXWORKS
     #define ME_COM_VXWORKS 0
-#endif
-#ifndef ME_COM_WEB
-    #define ME_COM_WEB 1
-#endif
-#ifndef ME_COM_WEBSOCKETS
-    #define ME_COM_WEBSOCKETS 1
 #endif

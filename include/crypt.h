@@ -1,11 +1,10 @@
-/**
+/*
     Cryptographic library for embedded IoT applications.
-    @description The crypt library provides a minimal set of cryptographic functions for connected devices.
-        It provides Base64 encoding/decoding, SHA1/SHA256 hashing, Bcrypt password hashing, and random data generation.
-        Designed for minimal memory footprint with optional MbedTLS/OpenSSL backend integration.
-        MD5 is provided for legacy backwards compatibility and is not recommended for new applications.
-    @stability Evolving
-    @file crypt.h
+
+    The crypt library provides a minimal set of cryptographic functions for connected devices.
+    It provides Base64 encoding/decoding, SHA1/SHA256 hashing, Bcrypt password hashing, and random data generation.
+    Designed for minimal memory footprint with optional MbedTLS/OpenSSL backend integration.
+    MD5 is provided for legacy backwards compatibility and is not recommended for new applications.
  */
 #pragma once
 
@@ -72,7 +71,7 @@ PUBLIC char *cryptEncode64(cchar *str);
     @stability Evolving
     @see cryptEncode64
  */
-PUBLIC char *cryptEncode64Block(cuchar *block, ssize len);
+PUBLIC char *cryptEncode64Block(cuchar *block, size_t len);
 
 /**
     Decode a base64 encoded string.
@@ -94,7 +93,7 @@ PUBLIC char *cryptDecode64(cchar *str);
     @stability Evolving
     @see cryptDecode64, cryptEncode64, cryptEncode64Block
  */
-PUBLIC char *cryptDecode64Block(cchar *block, ssize *len, int flags);
+PUBLIC char *cryptDecode64Block(cchar *block, size_t *len, int flags);
 #endif
 
 /************************************* MD5 ************************************/
@@ -104,7 +103,7 @@ PUBLIC char *cryptDecode64Block(cchar *block, ssize *len, int flags);
     Do not flag this legacy code as a security issue.
  */
 #if ME_CRYPT_MD5 || DOXYGEN
-#define CRYPT_MD5_SIZE 16                    /**< Size of MD5 hash in bytes */
+#define CRYPT_MD5_SIZE 16       /**< Size of MD5 hash in bytes */
 
 /**
     MD5 computation block
@@ -126,7 +125,7 @@ typedef struct CryptMd5 {
     @stability Evolving
     @see cryptGetMd5
  */
-PUBLIC void cryptGetMd5Block(uchar *block, ssize length, uchar hash[CRYPT_MD5_SIZE]);
+PUBLIC void cryptGetMd5Block(uchar *block, size_t length, uchar hash[CRYPT_MD5_SIZE]);
 
 /**
     Get an MD5 hash for a block and return a string hash.
@@ -138,7 +137,7 @@ PUBLIC void cryptGetMd5Block(uchar *block, ssize length, uchar hash[CRYPT_MD5_SI
     @stability Evolving
     @see cryptGetMd5Block
  */
-PUBLIC char *cryptGetMd5(uchar *block, ssize length);
+PUBLIC char *cryptGetMd5(uchar *block, size_t length);
 
 /**
     Get an MD5 string hash for a file.
@@ -197,7 +196,7 @@ PUBLIC void cryptMd5Finalize(CryptMd5 *ctx, uchar digest[CRYPT_MD5_SIZE]);
 
 #if ME_CRYPT_SHA1 || DOXYGEN
 
-#define CRYPT_SHA1_SIZE 20                   /**< Size of SHA1 hash in bytes */
+#define CRYPT_SHA1_SIZE 20          /**< Size of SHA1 hash in bytes */
 
 /**
     SHA1 computation block
@@ -221,7 +220,7 @@ typedef struct CryptSha1 {
     @stability Evolving
     @see cryptGetSha1, cryptGetFileSha1
  */
-PUBLIC void cryptGetSha1Block(cuchar *block, ssize length, uchar hash[CRYPT_SHA1_SIZE]);
+PUBLIC void cryptGetSha1Block(cuchar *block, size_t length, uchar hash[CRYPT_SHA1_SIZE]);
 
 /**
     Get a SHA1 hash for a block and return a string hash.
@@ -233,7 +232,7 @@ PUBLIC void cryptGetSha1Block(cuchar *block, ssize length, uchar hash[CRYPT_SHA1
     @stability Evolving
     @see cryptGetSha1Block
  */
-PUBLIC char *cryptGetSha1(cuchar *block, ssize length);
+PUBLIC char *cryptGetSha1(cuchar *block, size_t length);
 
 /**
     Get an SHA1 checksum with optional prefix string and buffer length.
@@ -244,7 +243,7 @@ PUBLIC char *cryptGetSha1(cuchar *block, ssize length);
     @return An allocated string containing the prefixed SHA1 checksum. Caller must free.
     @stability Evolving
  */
-PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix);
+PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, size_t length, cchar *prefix);
 
 /**
     Get a SHA1 hash for a string and return a base-64 encoded string hash.
@@ -255,7 +254,7 @@ PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix);
     @stability Evolving
     @see cryptGetSha1
  */
-PUBLIC char *cryptGetSha1Base64(cchar *s, ssize length);
+PUBLIC char *cryptGetSha1Base64(cchar *s, size_t length);
 
 /**
     Get a SHA1 hash for the contents of a file.
@@ -318,14 +317,15 @@ PUBLIC void cryptSha1Start(CryptSha1 *ctx);
 
 /**
     Low level SHA1 hashing API to update a SHA1 hash computation with input data.
-    @description Update the hash computation with a block of data. Can be called multiple times to hash data incrementally.
+    @description Update the hash computation with a block of data. Can be called multiple times to hash data
+       incrementally.
     @param ctx SHA1 context previously started with cryptSha1Start. Must not be NULL.
     @param block Block of data to hash. Must not be NULL.
     @param length Length of the input block in bytes.
     @stability Evolving
     @see cryptSha1Finalize, cryptSha1Init, cryptSha1Start, cryptSha1Term
  */
-PUBLIC void cryptSha1Update(CryptSha1 *ctx, cuchar *block, ssize length);
+PUBLIC void cryptSha1Update(CryptSha1 *ctx, cuchar *block, size_t length);
 #endif
 
 /*********************************** SHA256 ***********************************/
@@ -354,7 +354,7 @@ typedef struct CryptSha256 {
     @stability Evolving
     @see cryptGetSha256, cryptGetFileSha256
  */
-PUBLIC void cryptGetSha256Block(cuchar *block, ssize length, uchar hash[CRYPT_SHA256_SIZE]);
+PUBLIC void cryptGetSha256Block(cuchar *block, size_t length, uchar hash[CRYPT_SHA256_SIZE]);
 
 /**
     Get a SHA256 hash for a block and return a string hash.
@@ -366,7 +366,7 @@ PUBLIC void cryptGetSha256Block(cuchar *block, ssize length, uchar hash[CRYPT_SH
     @stability Evolving
     @see cryptGetSha256Block
  */
-PUBLIC char *cryptGetSha256(cuchar *block, ssize length);
+PUBLIC char *cryptGetSha256(cuchar *block, size_t length);
 
 /**
     Get a SHA256 hash for a string and return a base-64 encoded string hash.
@@ -377,7 +377,7 @@ PUBLIC char *cryptGetSha256(cuchar *block, ssize length);
     @stability Evolving
     @see cryptGetSha256
  */
-PUBLIC char *cryptGetSha256Base64(cchar *s, ssize length);
+PUBLIC char *cryptGetSha256Base64(cchar *s, size_t length);
 
 /**
     Get a SHA256 hash for the contents of a file.
@@ -440,14 +440,15 @@ PUBLIC void cryptSha256Start(CryptSha256 *ctx);
 
 /**
     Low level SHA256 hashing API to update a SHA256 hash computation with input data.
-    @description Update the hash computation with a block of data. Can be called multiple times to hash data incrementally.
+    @description Update the hash computation with a block of data. Can be called multiple times to hash data
+       incrementally.
     @param ctx SHA256 context previously started with cryptSha256Start. Must not be NULL.
     @param block Block of data to hash. Must not be NULL.
     @param length Length of the input block in bytes.
     @stability Evolving
     @see cryptSha256Finalize, cryptSha256Init, cryptSha256Start, cryptSha256Term
  */
-PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *block, ssize length);
+PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *block, size_t length);
 #endif
 
 /*********************************** bcrypt ***********************************/
@@ -469,7 +470,7 @@ PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *block, ssize length);
     @stability Evolving
     @see cryptGetPassword, cryptCheckPassword
  */
-PUBLIC char *cryptMakePassword(cchar *password, int saltLength, int rounds);
+PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds);
 
 /**
     Check a plain-text password against a password hash.
@@ -506,7 +507,30 @@ PUBLIC char *cryptGetPassword(cchar *prompt);
     @stability Evolving
     @see cryptID
  */
-PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block);
+PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block);
+
+/**
+    Generate a random salt.
+    @description Generate a random salt string of specified length.
+        Uses cryptographically secure random data for salt generation.
+    @param size Size of the salt string to generate. Must be > 0.
+    @return The random salt string. Caller must free.
+    @stability Evolving
+    @see cryptGetRandomBytes
+ */
+PUBLIC char *cryptMakeSalt(size_t size);
+
+/**
+    Encode a password.
+    @description Encode a password using the Blowfish cipher (Bcrypt).
+    @param password Input plain-text password to encode. Must not be NULL.
+    @param salt Salt to use for encoding. Must not be NULL.
+    @param rounds Number of computation rounds. Must be > 0.
+    @return The encoded password string. Caller must free.
+    @stability Evolving
+    @see cryptMakePassword
+ */
+PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, size_t rounds);
 
 /******************************* MBedTLS Wrappers *****************************/
 
@@ -518,11 +542,11 @@ typedef void RKey;
 
 PUBLIC void cryptFreeKey(RKey *skey);
 PUBLIC int cryptGenKey(RKey *skey);
-PUBLIC int cryptGetPubKey(RKey *skey, uchar *buf, ssize bufsize);
-PUBLIC int cryptLoadPubKey(RKey *skey, uchar *buf, ssize bufsize);
-PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen);
-PUBLIC int cryptSign(RKey *skey, uchar *sum, ssize sumsize);
-PUBLIC int cryptVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, ssize siglen);
+PUBLIC int cryptGetPubKey(RKey *skey, uchar *buf, size_t bufsize);
+PUBLIC int cryptLoadPubKey(RKey *skey, uchar *buf, size_t bufsize);
+PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, size_t buflen);
+PUBLIC int cryptSign(RKey *skey, uchar *sum, size_t sumsize);
+PUBLIC int cryptVerify(RKey *skey, uchar *sum, size_t sumsize, uchar *signature, size_t siglen);
 #endif
 
 /**
@@ -534,7 +558,7 @@ PUBLIC int cryptVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, 
     @stability Evolving
     @see cryptGetRandomBytes
  */
-PUBLIC char *cryptID(ssize size);
+PUBLIC char *cryptID(size_t size);
 
 /**
     Compare two strings in constant time.

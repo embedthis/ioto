@@ -1,0 +1,6 @@
+{
+
+    services: {
+        prep: './prep.sh',
+    },
+}

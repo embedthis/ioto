@@ -1,25 +1,24 @@
-/**
-    @file web.h
-    @brief Fast, secure, tiny web server for embedded applications
-    @description The Web Server Module provides a high-performance, secure web server designed
-        for embedded applications. Features include HTTP/1.0 and HTTP/1.1 support, TLS/SSL encryption,
-        WebSocket support, SSE (Server-Sent Events), file upload/download capabilities, session management
-        with XSRF protection, comprehensive input validation and sanitization, configurable request/response
-        limits, flexible routing system, and the ability to invoke C functions bound to URL routes.
+/*
+    web.h - Fast, secure, tiny web server for embedded applications
 
-        The web server is designed for embedded IoT applications and integrates tightly with the
-        Safe Runtime (r module) for memory management, fiber coroutines for concurrency, JSON5
-        configuration parsing, cryptographic functions, and WebSocket protocol support.
+    The Web Server Module provides a high-performance, secure web server designed
+    for embedded applications. Features include HTTP/1.0 and HTTP/1.1 support, TLS/SSL encryption,
+    WebSocket support, SSE (Server-Sent Events), file upload/download capabilities, session management
+    with XSRF protection, comprehensive input validation and sanitization, configurable request/response
+    limits, flexible routing system, and the ability to invoke C functions bound to URL routes.
 
-        Key architectural features:
-        - Single-threaded with fiber coroutines for concurrency
-        - Null-tolerant APIs that gracefully handle NULL arguments
-        - Cross-platform support (Linux, macOS, Windows/WSL, ESP32, FreeRTOS)
-        - Modular design with minimal interdependencies
-        - Professional HTML documentation generation via Doxygen
+    The web server is designed for embedded IoT applications and integrates tightly with the
+    Safe Runtime (r module) for memory management, fiber coroutines for concurrency, JSON5
+    configuration parsing, cryptographic functions, and WebSocket protocol support.
+
+    Key architectural features:
+    - Single-threaded with fiber coroutines for concurrency
+    - Null-tolerant APIs that gracefully handle NULL arguments
+    - Cross-platform support (Linux, macOS, Windows/WSL, ESP32, FreeRTOS)
+    - Modular design with minimal interdependencies
+    - Professional HTML documentation generation via Doxygen
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
-    @stability Evolving
  */
 
 #ifndef _h_WEB
@@ -32,7 +31,7 @@
 #include "r.h"
 #include "json.h"
 #include "crypt.h"
-#include "websockets.h"
+#include "websock.h"
 
 #if ME_COM_WEB
 /*********************************** Defines **********************************/
@@ -48,19 +47,19 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_AUTH
-    #define ME_WEB_AUTH        1        /**< Enable authentication and authorization support */
+    #define ME_WEB_AUTH       1         /**< Enable authentication and authorization support */
 #endif
 #ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS      1        /**< Enable resource limits and security constraints */
+    #define ME_WEB_LIMITS     1         /**< Enable resource limits and security constraints */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS    1        /**< Enable session management support */
+    #define ME_WEB_SESSIONS   1         /**< Enable session management support */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD      1        /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD     1         /**< Enable file upload functionality */
 #endif
-#ifndef ME_COM_WEBSOCKETS
-    #define ME_COM_WEBSOCKETS  1        /**< Enable WebSocket protocol support */
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1         /**< Enable WebSocket protocol support */
 #endif
 /** @} */
 
@@ -69,7 +68,9 @@ extern "C" {
  * @description Core constants used throughout the Web Server Module.
  * @{
  */
-#define WEB_MAX_SIG            160      /**< Maximum size of controller.method URL portion in API signatures */
+#define WEB_MAX_SIG         160         /**< Maximum size of controller.method URL portion in API signatures */
+#define WEB_MAX_COOKIE_SIZE 8192        /**< Maximum size of cookie header (security limit) */
+#define WEB_MAX_SIG_DEPTH   16          /**< Maximum recursion depth for signature validation */
 
 /*
     Dependencies
@@ -80,10 +81,10 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_CONFIG
-    #define ME_WEB_CONFIG      "web.json5"  /**< Default configuration file name */
+    #define ME_WEB_CONFIG      "web.json5"     /**< Default configuration file name */
 #endif
 #ifndef WEB_SESSION_COOKIE
-    #define WEB_SESSION_COOKIE "-web-session-"  /**< Default session cookie name */
+    #define WEB_SESSION_COOKIE "-web-session-" /**< Default session cookie name */
 #endif
 /** @} */
 
@@ -92,9 +93,9 @@ extern "C" {
  * @description Internal session variable names for storing authentication state.
  * @{
  */
-#define WEB_SESSION_USERNAME   "_:username:_"       /**< Session state username variable */
-#define WEB_SESSION_ROLE       "_:role:_"           /**< Session state role variable */
-#define WEB_SESSION_XSRF       "_:xsrf:_"           /**< Session state XSRF token variable */
+#define WEB_SESSION_USERNAME "_:username:_"         /**< Session state username variable */
+#define WEB_SESSION_ROLE     "_:role:_"             /**< Session state role variable */
+#define WEB_SESSION_XSRF     "_:xsrf:_"             /**< Session state XSRF token variable */
 /** @} */
 
 /**
@@ -103,26 +104,26 @@ extern "C" {
  * @{
  */
 #ifndef WEB_XSRF_HEADER
-    #define WEB_XSRF_HEADER    "X-XSRF-TOKEN"       /**< CSRF token name in HTTP headers */
+    #define WEB_XSRF_HEADER "X-XSRF-TOKEN" /**< CSRF token name in HTTP headers */
 #endif
 #ifndef WEB_XSRF_PARAM
-    #define WEB_XSRF_PARAM     "-xsrf-"             /**< CSRF parameter in form fields */
+    #define WEB_XSRF_PARAM  "-xsrf-"       /**< CSRF parameter in form fields */
 #endif
 /** @} */
 
-#define WEB_UNLIMITED          MAXINT64    /**< Value indicating unlimited resource usage */
+#define WEB_UNLIMITED       MAXINT64       /**< Value indicating unlimited resource usage */
 
 /**
  * @name HTTP Chunk Processing States
  * @description State flags for HTTP chunked transfer encoding processing.
  * @{
  */
-#define WEB_CHUNK_START        1        /**< Start of a new chunk */
-#define WEB_CHUNK_DATA         2        /**< Start of chunk data */
-#define WEB_CHUNK_EOF          4        /**< End of chunk data */
+#define WEB_CHUNK_START     1              /**< Start of a new chunk */
+#define WEB_CHUNK_DATA      2              /**< Start of chunk data */
+#define WEB_CHUNK_EOF       4              /**< End of chunk data */
 /** @} */
 
-#define WEB_HEADERS            16       /**< Initial number of header slots to allocate */
+#define WEB_HEADERS         16             /**< Initial number of header slots to allocate */
 /** @} */
 
 /*
@@ -278,27 +279,26 @@ typedef struct WebHost {
     int parseTimeout;           /**< Maximum seconds allowed for parsing HTTP request headers */
     int requestTimeout;         /**< Maximum seconds for complete request processing */
     int sessionTimeout;         /**< Maximum seconds of inactivity before session expires */
-
-    ssize connections;          /**< Current count of active client connections */
+    int connections;            /**< Current count of active client connections */
 
     //  Security and resource limits
 #if ME_WEB_LIMITS || DOXYGEN
-    int64 maxBuffer;            /**< Maximum response buffer size in bytes */
-    int64 maxHeader;            /**< Maximum HTTP header size in bytes */
-    int64 maxConnections;       /**< Maximum number of simultaneous connections */
-    int64 maxBody;              /**< Maximum HTTP request body size in bytes */
-    int64 maxSessions;          /**< Maximum number of concurrent user sessions */
-    int64 maxUpload;            /**< Maximum file upload size in bytes */
-    int64 maxUploads;           /**< Maximum number of files per upload request */
+    int maxBuffer;              /**< Maximum response buffer size in bytes */
+    int maxHeader;              /**< Maximum HTTP header size in bytes */
+    int maxConnections;         /**< Maximum number of simultaneous connections */
+    int maxBody;                /**< Maximum HTTP request body size in bytes */
+    int maxSessions;            /**< Maximum number of concurrent user sessions */
+    int maxUpload;              /**< Maximum file upload size in bytes */
+    int maxUploads;             /**< Maximum number of files per upload request */
 
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     cchar *webSocketsProtocol;  /**< WebSocket application sub-protocol identifier */
-    int64 webSocketsMaxMessage; /**< Maximum WebSocket message size in bytes */
-    int64 webSocketsMaxFrame;   /**< Maximum WebSocket frame size in bytes */
-    int64 webSocketsPingPeriod; /**< WebSocket ping period in milliseconds */
+    int webSocketsMaxMessage;   /**< Maximum WebSocket message size in bytes */
+    int webSocketsMaxFrame;     /**< Maximum WebSocket frame size in bytes */
+    int webSocketsPingPeriod;   /**< WebSocket ping period in milliseconds */
     bool webSocketsValidateUTF; /**< Validate UTF-8 encoding in WebSocket text frames */
     bool webSocketsEnable;      /**< Enable WebSocket protocol support */
-#endif /* ME_COM_WEBSOCKETS */
+#endif /* ME_COM_WEBSOCK */
 #endif /* ME_WEB_LIMITS */
 } WebHost;
 
@@ -411,7 +411,7 @@ typedef struct WebUpload {
     char *clientFilename; /**< Original filename as provided by the client */
     char *contentType;    /**< MIME content type of the uploaded file */
     char *name;           /**< Form field name associated with this upload */
-    ssize size;           /**< Total size of uploaded file in bytes */
+    size_t size;          /**< Total size of uploaded file in bytes */
     int fd;               /**< File descriptor for the temporary upload file (internal use) */
 } WebUpload;
 
@@ -545,9 +545,9 @@ typedef struct Web {
     int numUploads;             /**< Count of uploaded files */
     cchar *uploadDir;           /**< Directory to place uploaded files */
     char *boundary;             /**< Upload file boundary */
-    ssize boundaryLen;          /**< Length of the boundary */
+    size_t boundaryLen;         /**< Length of the boundary */
 #endif
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
     struct WebSocket *webSocket;/**< Web socket object */
 #endif
 } Web;
@@ -609,7 +609,7 @@ PUBLIC void webAddAccessControlHeader(Web *web);
     @param size Initial buffer size in bytes (will grow automatically if needed)
     @stability Evolving
  */
-PUBLIC void webBuffer(Web *web, ssize size);
+PUBLIC void webBuffer(Web *web, size_t size);
 
 /**
     Read data and buffer until a given pattern or limit is reached
@@ -623,7 +623,7 @@ PUBLIC void webBuffer(Web *web, ssize size);
     @return Number of bytes read into buffer, 0 if pattern not found (when allowShort=true), negative on error
     @stability Evolving
  */
-PUBLIC ssize webBufferUntil(Web *web, cchar *until, ssize limit, bool allowShort);
+PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit, bool allowShort);
 
 /**
     Respond to the request with an error
@@ -792,7 +792,7 @@ PUBLIC char *webParseUrl(cchar *url,
     @return Number of bytes read, 0 when all body data consumed, or negative on error
     @stability Evolving
  */
-PUBLIC ssize webRead(Web *web, char *buf, ssize bufsize);
+PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize);
 
 /**
     Read data from the socket into the receive buffer
@@ -803,7 +803,7 @@ PUBLIC ssize webRead(Web *web, char *buf, ssize bufsize);
     @return Number of bytes read from socket, or negative on error
     @stability Evolving
  */
-PUBLIC ssize webReadSocket(Web *web, ssize bufsize);
+PUBLIC ssize webReadSocket(Web *web, size_t bufsize);
 
 /**
     Read request body data until a given pattern is reached.
@@ -817,7 +817,7 @@ PUBLIC ssize webReadSocket(Web *web, ssize bufsize);
     @return The number of bytes read. Return < 0 for errors and 0 when all the body data has been read.
     @stability Internal
  */
-PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, ssize bufsize);
+PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, size_t bufsize);
 
 /**
     Redirect the client to a new URL
@@ -864,7 +864,7 @@ PUBLIC ssize webSendFile(Web *web, int fd);
     @param len Response body length in bytes
     @stability Evolving
  */
-PUBLIC void webSetContentLength(Web *web, ssize len);
+PUBLIC void webSetContentLength(Web *web, size_t len);
 
 /**
     Set the response HTTP status code
@@ -956,7 +956,7 @@ PUBLIC bool webValidateSignature(Web *web, RBuf *buf, const Json *cjson, int jid
     @return Number of bytes written, or negative on error
     @stability Evolving
  */
-PUBLIC ssize webWrite(Web *web, cvoid *buf, ssize bufsize);
+PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize);
 
 /**
     Write formatted string response data
@@ -1061,7 +1061,7 @@ PUBLIC void webParseForm(Web *web);
 PUBLIC void webParseQuery(Web *web);
 PUBLIC void webParseEncoded(Web *web, Json *vars, cchar *str);
 PUBLIC Json *webParseJson(Web *web);
-PUBLIC bool webParseHeadersBlock(Web *web, char *headers, ssize headersSize, bool upload);
+PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bool upload);
 PUBLIC int webReadBody(Web *web);
 PUBLIC void webTestInit(WebHost *host, cchar *prefix);
 PUBLIC void webUpdateDeadline(Web *web);
@@ -1256,7 +1256,7 @@ PUBLIC void webSetHook(WebHost *host, WebHook hook);
 PUBLIC int webHook(Web *web, int event);
 
 /********************************* Web Sockets ********************************/
-#if ME_COM_WEBSOCKETS
+#if ME_COM_WEBSOCK
 /**
     Upgrade a HTTP connection connection to use WebSockets
     @description This responds to a request to upgrade the connection use WebSockets.
@@ -1270,7 +1270,7 @@ PUBLIC int webHook(Web *web, int event);
 PUBLIC int webUpgradeSocket(Web *web);
 PUBLIC void webAsync(Web *web, WebSocketProc callback, void *arg);
 PUBLIC int webWait(Web *web);
-#endif /* ME_COM_WEBSOCKETS */
+#endif /* ME_COM_WEBSOCK */
 
 /************************************ Misc ************************************/
 
@@ -1280,11 +1280,12 @@ PUBLIC int webWait(Web *web);
         suitable for use in HTTP headers like Last-Modified or Expires. The format
         follows RFC 2822 specifications.
     @param buf Buffer to hold the generated date string (must be at least 64 bytes)
+    @param size Size of the buffer
     @param when Unix timestamp to convert
     @return Pointer to the buffer containing the formatted date string
     @stability Evolving
  */
-PUBLIC char *webDate(char *buf, time_t when);
+PUBLIC char *webDate(char *buf, size_t size, time_t when);
 
 /**
     Decode a URL-encoded string

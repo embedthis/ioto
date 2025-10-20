@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+#
+#	config-app APP
+#
+#	This exports the app's config files from the apps config directory to the 
+#	TOP/state/config directory.
+#
+
+APP=$1
+TOP=${PWD}
+CONFIG=${TOP}/state/config
+DB=${TOP}/state/db
+HDR=${TOP}/include/config.h
+JSON=${TOP}/bin/json
+SITE=${TOP}/state/site
+
+if [ ! -d src ] ; then
+    echo "Must run from the top directory"
+    exit 1
+fi
+
+if [ -z "${APP}" ] ; then
+	APP=unit
+fi
+
+echo "   [Prepare] Building with ${APP} app"
+
+if [ ! -f bin/json ] ; then
+    cc -DJSON_SOLO=1 -o bin/json bin/json.c -lm
+fi
+
+mkdir -p state/certs state/site state/config state/db state/site
+
+#
+#	Make certs if required and install
+#
+if [ "$(find build -name roots.crt)" = '' ] ; then
+    bin/make-certs
+	for d in build/* ; do
+		mkdir -p $d/bin
+		cp certs/roots.crt $d/bin/roots.crt
+	done
+fi
+
+if [ ! -f state/certs/roots.crt ] ; then
+	mkdir -p state/certs
+	cp certs/*.crt certs/*.key state/certs
+fi
+
+#
+#	Change to the app directory	
+#
+cd apps/${APP} >/dev/null
+changed=0
+
+#
+#	Detect APP changes
+#
+prior=`${JSON} -n --default "_" app ${CONFIG}/ioto.json5`
+if [ "${prior}" != "${APP}" ] ; then
+	rm -rf ${TOP}/build/*/bin/*
+	rm -rf ${TOP}/build/*/obj/*
+	rm -rf ${TOP}/include/config.h
+	changed=1
+fi
+
+#
+#	Export updated config files
+#
+for file in db.json5 device.json5 display.json5 ioto.json5 local.json5 schema.json5 web.json5
+do
+	#
+	# 	Check if this file exists in the source directory and process if present/relevant
+	#
+	if [ -f config/${file} ] ; then
+		${JSON} -q --check config/${file} || echo "Cannot parse `pwd`/config/${file}"
+		if [ ! -f ${CONFIG}/${file} -o ! -s ${CONFIG}/${file} -o config/${file} -nt ${CONFIG}/${file} ] ; then
+			echo "      [Copy] json --blend config/${file} >state/config/${file}"
+			${JSON} --blend config/${file} >${CONFIG}/${file}
+			if [ ! -s ${CONFIG}/${file} ] ; then
+				echo "Error blending config/${file}"
+				exit 255
+			fi
+			changed=1
+		fi
+	fi
+done
+
+#
+#	Update the config.h file if required
+#
+if [ ! -f ${HDR} -o config/ioto.json5 -nt ${HDR} ] ; then
+	echo "      [Create] ${HDR}"
+	${JSON} --header services ${CONFIG}/ioto.json5 >${HDR}
+	${JSON} --header app ${CONFIG}/ioto.json5 | sed 's/"//g' >>${HDR}
+	changed=1
+fi
+
+#
+#	Copy web site if it exists and if newer
+#
+if [ -d site ] ; then
+	if [ ! -d ${SITE} ] ; then
+		echo "      [Copy] Web site for ${APP}"
+		mkdir -p ${SITE}
+	fi
+	find ${SITE} -type f -print | xargs -r rm
+	cp -r site/* ${SITE}
+	changed=1
+fi
+
+#
+# 	Copy schema if it exists and if newer
+#
+if [ -f ui/src/schema.json5 ] ; then
+	if [ ui/src/schema.json5 -nt ${CONFIG}/schema.json5 ] ; then
+		echo "     [Copy] cp ui/src/schema.json5 ${CONFIG}/schema.json5"
+		cp ui/src/schema.json5 ${CONFIG}/schema.json5
+		rm -f ${DB}/*.jnl ${DB}/*.db
+		changed=1
+	fi
+fi
+
+#
+#	Copy signatures if it exists and if newer
+#
+if [ -f config/signatures.json5 ] ; then
+	if [ config/signatures.json5 -nt ${CONFIG}/signatures.json5 ] ; then
+		echo "       [Make] make-sig config/signatures.json5 ${CONFIG}/signatures.json5"
+		rm -f ${CONFIG}/signatures.json5
+		make-sig \
+			--blend Schema=${CONFIG}/schema.json5 \
+			--blend SupportQuery=${TOP}/paks/dev-schemas/parts/SupportQuery.json5 \
+			--blend Query=${TOP}/paks/dev-schemas/parts/Query.json5 \
+			--blend Match=${TOP}/paks/dev-schemas/parts/Match.json5 \
+			config/signatures.json5 ${CONFIG}/signatures.json5
+		changed=1
+	fi
+fi

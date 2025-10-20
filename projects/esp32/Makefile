@@ -65,7 +65,7 @@ install-app: \
 	$(TOP)/partitions.csv \
 	$(TOP)/sdkconfig.defaults \
 	$(CONFIG)/ioto.json5 \
-	$(BASE)/include/ioto-config.h \
+	$(BASE)/include/config.h \
 	$(CERTS)/test.crt \
 	$(BASE)/include/me.h \
 	$(BASE)/CMakeLists.txt \
@@ -111,8 +111,8 @@ $(CONFIG)/ioto.json5: $(BASE)/apps/$(APP)/config/ioto.json5 $(FORCE)
 	cp $(BASE)/apps/$(APP)/config/ioto.json5 $(CONFIG)
 
 
-$(BASE)/include/ioto-config.h: $(BASE)/state/config/ioto.json5
-	json --header services $(BASE)/state/config/ioto.json5 >$(BASE)/include/ioto-config.h
+$(BASE)/include/config.h: $(BASE)/state/config/ioto.json5
+	json --header services $(BASE)/state/config/ioto.json5 >$(BASE)/include/config.h
 
 $(CERTS)/test.crt: $(BASE)/certs/test.crt $(FORCE)
 	@echo "   [Install] Test Certificates"

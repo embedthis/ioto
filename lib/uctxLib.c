@@ -12,7 +12,7 @@
 
 int uctx_needstack(void)
 {
-#if FREERTOS
+#if FREERTOS || UCTX_ARCH == UCTX_WINDOWS || UCTX_ARCH == UCTX_PTHREADS
     return 0;
 #else
     return 1;
@@ -47,6 +47,21 @@ void *uctx_getstack(uctx_t *up)
     }
     return (char*) up->uc_stack.ss_sp + up->uc_stack.ss_size;
 }
+
+#if UCTX_ARCH != UCTX_WINDOWS
+/*
+    Default no-op implementations for platforms that don't need initialization.
+    Windows provides its own implementations in arch/windows/windows.c
+*/
+int uctx_init(uctx_t *ucp)
+{
+    return 0;
+}
+
+void uctx_term(void)
+{
+}
+#endif
 
 
 
@@ -101,7 +116,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	int i;
 
 	sp = (unsigned long *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
-	sp = (unsigned long *) (((uintptr_t) sp & -16L) - 8);
+	sp = (unsigned long *) (((uintptr_t) sp & ~15UL) - 8);
 
 	if (argc > 4)
 		sp -= (argc - 4);
@@ -223,7 +238,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	if (argc >= 8) {
 		sp -= argc - 8;
 	}
-	sp = (unsigned long *) (((uintptr_t) sp & -16L));
+	sp = (unsigned long *) (((uintptr_t) sp & ~15UL));
 
 	ucp->uc_mcontext.sp = (uintptr_t) sp;
 	ucp->uc_mcontext.pc = (uintptr_t) func;
@@ -1048,7 +1063,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(), int argc, ...)
 
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= stack_args + 2;
-	sp = (uctx_greg_t *) ((uintptr_t) sp & -16L);
+	sp = (uctx_greg_t *) ((uintptr_t) sp & ~15UL);
 
 	ucp->uc_mcontext.gregs[REG_NIP]  = (uintptr_t) func;
 	ucp->uc_mcontext.gregs[REG_LNK]  = (uintptr_t) &uctx_trampoline;
@@ -1207,7 +1222,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(), int argc, ...)
 
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= stack_args + 4;
-	sp = (uctx_greg_t *) ((uintptr_t) sp & -16L);
+	sp = (uctx_greg_t *) ((uintptr_t) sp & ~15UL);
 
 	ucp->uc_mcontext.gp_regs[REG_NIP]   = (uintptr_t) func;
 	ucp->uc_mcontext.gp_regs[REG_LNK]   = (uintptr_t) &uctx_trampoline;
@@ -1499,7 +1514,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	/* set up and align the stack. */
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= argc < 8 ? 0 : argc - 8;
-	sp = (uctx_greg_t *) (((uintptr_t) sp & -16L));
+	sp = (uctx_greg_t *) (((uintptr_t) sp & ~15UL));
 
 	/* set up the ucontext structure */
 	ucp->uc_mcontext.__gregs[REG_RA] = (uctx_greg_t) uctx_trampoline;
@@ -1643,7 +1658,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	/* set up and align the stack. */
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= argc < 8 ? 0 : argc - 8;
-	sp = (uctx_greg_t *) (((uintptr_t) sp & -16L));
+	sp = (uctx_greg_t *) (((uintptr_t) sp & ~15UL));
 
 	/* set up the ucontext structure */
 	ucp->uc_mcontext.__gregs[REG_RA] = (uctx_greg_t) uctx_trampoline;
@@ -1892,6 +1907,139 @@ void uctx_trampoline(void)
 
 
 
+#if UCTX_ARCH == UCTX_WINDOWS
+
+/*
+    windows.c - Windows Fiber-based context switching implementation
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+*/
+
+#include <windows.h>
+#include <stdarg.h>
+#include "uctx.h"
+
+static LPVOID mainWinFiber = NULL;
+
+/*
+    Initialize the UCTX subsystem - convert thread to fiber
+*/
+PUBLIC int uctx_init(uctx_t *ucp)
+{
+    if (mainWinFiber != NULL) {
+        return 0;
+    }
+    if ((mainWinFiber = ConvertThreadToFiber(NULL)) == NULL) {
+        return -1;
+    }
+    if (ucp) {
+        uctx_makecontext(ucp, NULL, 0);
+    }
+    return 0;
+}
+
+/*
+    Terminate the UCTX subsystem
+*/
+PUBLIC void uctx_term(void)
+{
+    mainWinFiber = NULL;
+}
+
+/*
+    Fiber wrapper function that calls user entry point and handles uc_link
+*/
+static VOID CALLBACK fiberWrapper(PVOID param)
+{
+    uctx_t *ucp = (uctx_t *) param;
+
+    if (ucp->entry) {
+        typedef void (*entry_func_t)(void*, void*, void*);
+        entry_func_t func = (entry_func_t) ucp->entry;
+        func(ucp->args[0], ucp->args[1], ucp->args[2]);
+    }
+    if (ucp->uc_link && ucp->uc_link->fiber) {
+        SwitchToFiber(ucp->uc_link->fiber);
+    }
+}
+
+/*
+    Get current context - stub implementation for compatibility
+*/
+PUBLIC int uctx_getcontext(uctx_t *ucp)
+{
+    return 0;
+}
+
+/*
+    Set context - stub implementation for compatibility
+*/
+PUBLIC int uctx_setcontext(uctx_t *ucp)
+{
+    return 0;
+}
+
+/*
+    Initialize the context to execute a function
+*/
+PUBLIC int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
+{
+    va_list args;
+    
+    if (entry) {
+        ucp->entry = entry;
+
+        // Extract and store variadic arguments
+        va_start(args, argc);
+        for (int i = 0; i < argc && i < UCTX_MAX_ARGS; i++) {
+            ucp->args[i] = va_arg(args, void*);
+        }
+        va_end(args);
+
+        ucp->fiber = CreateFiber(ucp->uc_stack.ss_size, fiberWrapper, ucp);
+        if (ucp->fiber == NULL) {
+            return -1;
+        }
+        ucp->main = 0;
+    } else {
+        ucp->fiber = GetCurrentFiber();
+        ucp->main = 1;
+    }
+    return 0;
+}
+
+/*
+    Swap contexts - save current and switch to another
+*/
+PUBLIC int uctx_swapcontext(uctx_t *from, uctx_t *to)
+{
+    if (to == NULL || to->fiber == NULL) {
+        return -1;
+    }
+    SwitchToFiber(to->fiber);
+    return 0;
+}
+
+/*
+    Free context resources
+*/
+PUBLIC void uctx_freecontext(uctx_t *ucp)
+{
+    if (ucp && ucp->fiber && !ucp->main) {
+        DeleteFiber(ucp->fiber);
+        ucp->fiber = NULL;
+    }
+}
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+*/
+#endif // WINDOWS
+
+
+
+
 #if UCTX_ARCH == UCTX_X64
 
 #ifndef __ARCH_X86_64_DEFS_H
@@ -2031,18 +2179,18 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	int i;
 	unsigned int uc_link;
 
-	uc_link = (argc > 6 ? argc - 6 : 0) + 1;
+	uc_link = (unsigned int)((argc > 6 ? argc - 6 : 0) + 1);
 
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= uc_link;
-	sp = (uctx_greg_t *) (((uintptr_t) sp & -16L) - 8);
+	sp = (uctx_greg_t *) (((uintptr_t) sp & ~15UL) - 8);
 
-	ucp->uc_mcontext.gregs[REG_RIP] = (uintptr_t) func;
-	ucp->uc_mcontext.gregs[REG_RBX] = (uintptr_t) &sp[uc_link];
-	ucp->uc_mcontext.gregs[REG_RSP] = (uintptr_t) sp;
+	ucp->uc_mcontext.gregs[REG_RIP] = (uctx_greg_t) func;
+	ucp->uc_mcontext.gregs[REG_RBX] = (uctx_greg_t) &sp[uc_link];
+	ucp->uc_mcontext.gregs[REG_RSP] = (uctx_greg_t) sp;
 
-	sp[0] = (uintptr_t) &uctx_trampoline;
-	sp[uc_link] = (uintptr_t) ucp->uc_link;
+	sp[0] = (uctx_greg_t) &uctx_trampoline;
+	sp[uc_link] = (uctx_greg_t) ucp->uc_link;
 
 	va_start(va, argc);
 
@@ -2202,18 +2350,18 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	int i;
 	unsigned int uc_link;
 
-	uc_link = (argc > 6 ? argc - 6 : 0) + 1;
+	uc_link = (unsigned int)((argc > 6 ? argc - 6 : 0) + 1);
 
 	sp = (uctx_greg_t *) ((uintptr_t) ucp->uc_stack.ss_sp + ucp->uc_stack.ss_size);
 	sp -= uc_link;
-	sp = (uctx_greg_t *) (((uintptr_t) sp & -16L) - 8);
+	sp = (uctx_greg_t *) (((uintptr_t) sp & ~15UL) - 8);
 
-	ucp->uc_mcontext.gregs[REG_EIP] = (uintptr_t) func;
-	ucp->uc_mcontext.gregs[REG_EBX] = (uintptr_t) argc;
-	ucp->uc_mcontext.gregs[REG_ESP] = (uintptr_t) sp;
+	ucp->uc_mcontext.gregs[REG_EIP] = (uctx_greg_t) func;
+	ucp->uc_mcontext.gregs[REG_EBX] = (uctx_greg_t) argc;
+	ucp->uc_mcontext.gregs[REG_ESP] = (uctx_greg_t) sp;
 
 	argp = sp;
-	*argp++ = (uintptr_t) &uctx_trampoline;
+	*argp++ = (uctx_greg_t) &uctx_trampoline;
 
 	va_start(va, argc);
 
@@ -2222,7 +2370,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 
 	va_end(va);
 
-	*argp++ = (uintptr_t) ucp->uc_link;
+	*argp++ = (uctx_greg_t) ucp->uc_link;
 	return 0;
 }
 

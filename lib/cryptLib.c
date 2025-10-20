@@ -68,12 +68,12 @@ PUBLIC char *cryptDecode64(cchar *s)
     return cryptDecode64Block(s, NULL, CRYPT_DECODE_TOKEQ);
 }
 
-char *cryptEncode64Block(cuchar *input, ssize len)
+char *cryptEncode64Block(cuchar *input, size_t len)
 {
     char   *encoded;
-    ssize  count, size;
+    size_t i, count, prior, size;
     uint32 a, b, c, combined;
-    int    i, j, prior;
+    int    j;
 
     if (input == NULL || len == 0) {
         return NULL;
@@ -88,7 +88,7 @@ char *cryptEncode64Block(cuchar *input, ssize len)
         b = i < len ? input[i++] : 0;
         c = i < len ? input[i++] : 0;
 
-        count = i - prior;
+        count = (size_t) (i - prior);
         combined = (a << 16) | (b << 8) | c;
 
         encoded[j++] = encodeMap[(combined >> 18) & 0x3F];
@@ -101,12 +101,12 @@ char *cryptEncode64Block(cuchar *input, ssize len)
 }
 
 
-PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
+PUBLIC char *cryptDecode64Block(cchar *input, size_t *outputLen, int flags)
 {
     char   *decoded;
-    ssize  len, size;
+    size_t i, j, len, size;
     uint32 a, b, c, d, combined;
-    int    i, j, pad;
+    int    pad;
 
     if (input == NULL) {
         return NULL;
@@ -127,7 +127,7 @@ PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
     if (input[len - 2] == '=') pad++;
 
     // Calculate the output length
-    size = len / 4 * 3 - pad;
+    size = len / 4 * 3 - (size_t) pad;
 
     if ((decoded = rAlloc(size + 1)) == NULL) {
         return NULL;
@@ -151,9 +151,9 @@ PUBLIC char *cryptDecode64Block(cchar *input, ssize *outputLen, int flags)
         }
         combined = (a << 18) | (b << 12) | (c << 6) | d;
 
-        if (j < size) decoded[j++] = (combined >> 16) & 0xFF;
-        if (j < size) decoded[j++] = (combined >> 8) & 0xFF;
-        if (j < size) decoded[j++] = combined & 0xFF;
+        if (j < size) decoded[j++] = (char) (combined >> 16) & 0xFF;
+        if (j < size) decoded[j++] = (char) (combined >> 8) & 0xFF;
+        if (j < size) decoded[j++] = (char) (combined & 0xFF);
 
         if (flags & CRYPT_DECODE_TOKEQ) {
             if (input[i] == '=' && (input[i + 1] == '=' || input[i + 1] == '\0')) {
@@ -420,7 +420,7 @@ static void decodeMd5(uint *output, uchar *input, uint len)
 }
 
 
-PUBLIC void cryptGetMd5Block(uchar *buf, ssize buflen, uchar hash[CRYPT_MD5_SIZE])
+PUBLIC void cryptGetMd5Block(uchar *buf, size_t buflen, uchar hash[CRYPT_MD5_SIZE])
 {
     RMd5 ctx;
 
@@ -434,7 +434,7 @@ PUBLIC void cryptGetMd5Block(uchar *buf, ssize buflen, uchar hash[CRYPT_MD5_SIZE
 }
 
 
-PUBLIC char *cryptGetMd5(uchar *buf, ssize buflen)
+PUBLIC char *cryptGetMd5(uchar *buf, size_t buflen)
 {
     RMd5  ctx;
     uchar hash[CRYPT_MD5_SIZE];
@@ -468,10 +468,10 @@ PUBLIC char *cryptMd5HashToString(uchar hash[CRYPT_MD5_SIZE])
 
 PUBLIC char *cryptGetFileMd5(cchar *path)
 {
-    RMd5  ctx;
-    uchar hash[CRYPT_MD5_SIZE], buf[ME_BUFSIZE];
-    ssize len;
-    int   fd;
+    RMd5   ctx;
+    uchar  hash[CRYPT_MD5_SIZE], buf[ME_BUFSIZE];
+    size_t len;
+    int    fd;
 
     memset(hash, 0, CRYPT_MD5_SIZE);
     if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
@@ -506,12 +506,12 @@ PUBLIC char *cryptGetFileMd5(cchar *path)
 
 #define sha1Shift(bits, word) (((word) << (bits)) | ((word) >> (32 - (bits))))
 
-PUBLIC char *cryptGetSha1(cuchar *s, ssize ilen)
+PUBLIC char *cryptGetSha1(cuchar *s, size_t ilen)
 {
     return cryptGetSha1WithPrefix(s, ilen, NULL);
 }
 
-PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen)
+PUBLIC char *cryptGetSha1Base64(cchar *s, size_t ilen)
 {
     CryptSha1 sha;
     uchar     hash[CRYPT_SHA1_SIZE + 1];
@@ -526,14 +526,14 @@ PUBLIC char *cryptGetSha1Base64(cchar *s, ssize ilen)
     return cryptEncode64Block((cuchar*) hash, CRYPT_SHA1_SIZE);
 }
 
-PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, ssize length, cchar *prefix)
+PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, size_t length, cchar *prefix)
 {
     CryptSha1 sha;
     uchar     hash[CRYPT_SHA1_SIZE];
     cchar     *hex = "0123456789abcdef";
     char      *r, *str;
     char      result[(CRYPT_SHA1_SIZE * 2) + 1];
-    ssize     len;
+    size_t    len;
     int       i;
 
     if (length <= 0) {
@@ -589,10 +589,10 @@ static void cryptSha1Process(CryptSha1 *sha)
     int  t;
 
     for (t = 0; t < 16; t++) {
-        W[t] = sha->block[t * 4] << 24;
-        W[t] |= sha->block[t * 4 + 1] << 16;
-        W[t] |= sha->block[t * 4 + 2] << 8;
-        W[t] |= sha->block[t * 4 + 3];
+        W[t] = (uint) (sha->block[t * 4] << 24);
+        W[t] |= (uint) (sha->block[t * 4 + 1] << 16);
+        W[t] |= (uint) (sha->block[t * 4 + 2] << 8);
+        W[t] |= (uint) (sha->block[t * 4 + 3]);
     }
     for (t = 16; t < 80; t++) {
         W[t] = sha1Shift(1, W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]);
@@ -643,7 +643,7 @@ static void cryptSha1Process(CryptSha1 *sha)
     sha->index = 0;
 }
 
-PUBLIC void cryptSha1Update(CryptSha1 *sha, cuchar *msg, ssize len)
+PUBLIC void cryptSha1Update(CryptSha1 *sha, cuchar *msg, size_t len)
 {
     while (len--) {
         sha->block[sha->index++] = (*msg & 0xFF);
@@ -817,16 +817,16 @@ static void sha256Process(CryptSha256 *ctx, cuchar data[64])
     }
 }
 
-PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *input, ssize ilen)
+PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *input, size_t ilen)
 {
     uint32 left;
-    int    fill;
+    size_t fill;
 
     if (ilen == 0) {
         return;
     }
     left = ctx->count[0] & 0x3F;
-    fill = 64 - left;
+    fill = 64 - (size_t) left;
 
     ctx->count[0] += (uint32) ilen;
     ctx->count[0] &= 0xFFFFFFFF;
@@ -885,18 +885,18 @@ PUBLIC void cryptSha256Finalize(CryptSha256 *ctx, uchar output[CRYPT_SHA256_SIZE
     PUT(ctx->state[7], output, 28);
 }
 
-PUBLIC void cryptGetSha256Block(cuchar *input, ssize ilen, uchar output[CRYPT_SHA256_SIZE])
+PUBLIC void cryptGetSha256Block(cuchar *input, size_t ilen, uchar output[CRYPT_SHA256_SIZE])
 {
     CryptSha256 ctx;
 
     cryptSha256Init(&ctx);
     cryptSha256Start(&ctx);
-    cryptSha256Update(&ctx, input, (int) ilen);
+    cryptSha256Update(&ctx, input, ilen);
     cryptSha256Finalize(&ctx, output);
     cryptSha256Term(&ctx);
 }
 
-PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
+PUBLIC char *cryptGetSha256(cuchar *input, size_t ilen)
 {
     CryptSha256 ctx;
     uchar       output[CRYPT_SHA256_SIZE];
@@ -906,13 +906,13 @@ PUBLIC char *cryptGetSha256(cuchar *input, ssize ilen)
     }
     cryptSha256Init(&ctx);
     cryptSha256Start(&ctx);
-    cryptSha256Update(&ctx, input, (int) ilen);
+    cryptSha256Update(&ctx, input, ilen);
     cryptSha256Finalize(&ctx, output);
     cryptSha256Term(&ctx);
     return cryptSha256HashToString(output);
 }
 
-PUBLIC char *cryptGetSha256Base64(cchar *s, ssize ilen)
+PUBLIC char *cryptGetSha256Base64(cchar *s, size_t ilen)
 {
     char *hash, *result;
 
@@ -941,7 +941,7 @@ PUBLIC char *cryptGetFileSha256(cchar *path)
     cryptSha256Init(&ctx);
     cryptSha256Start(&ctx);
     while ((len = read(fd, buf, ME_BUFSIZE)) > 0) {
-        cryptSha256Update(&ctx, buf, (int) len);
+        cryptSha256Update(&ctx, buf, (size_t) len);
     }
     if (len < 0) {
         memset(&ctx, 0, sizeof(CryptSha256));
@@ -1278,7 +1278,7 @@ static const uint ORIG_S[4][256] = {
 };
 
 static void bencrypt(Blowfish *bp, uint *xl, uint *xr);
-static void binit(Blowfish *bp, uchar *key, ssize keylen);
+static void binit(Blowfish *bp, uchar *key, size_t keylen);
 
 static uint BF(Blowfish *bp, uint x)
 {
@@ -1299,10 +1299,10 @@ static uint BF(Blowfish *bp, uint x)
     return y;
 }
 
-static void binit(Blowfish *bp, uchar *key, ssize keylen)
+static void binit(Blowfish *bp, uchar *key, size_t keylen)
 {
-    uint data, datal, datar;
-    int  i, j, k;
+    uint   data, datal, datar;
+    size_t i, j, k;
 
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 256; j++) {
@@ -1385,13 +1385,12 @@ static void bdecrypt(Blowfish *bp, uint *xl, uint *xr)
 }
 #endif
 
-PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, int rounds)
+PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, size_t rounds)
 {
     Blowfish bf;
     char     *result, *key;
     uint     *text;
-    ssize    len, limit;
-    int      i, j;
+    size_t   i, j, len, limit;
 
     if (slen(password) > ME_CRYPT_MAX_PASSWORD) {
         return 0;
@@ -1413,12 +1412,12 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, int rounds)
     return result;
 }
 
-PUBLIC char *cryptMakeSalt(ssize size)
+PUBLIC char *cryptMakeSalt(size_t size)
 {
-    char  *chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    uchar *random;
-    char  *rp, *result;
-    ssize clen, i;
+    char   *chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    uchar  *random;
+    char   *rp, *result;
+    size_t clen, i;
 
     size = (size + sizeof(int) - 1) & ~(sizeof(int) - 1);
     random = rAlloc(size + 1);
@@ -1439,7 +1438,7 @@ PUBLIC char *cryptMakeSalt(ssize size)
 
     Algorithm: Rounds: Salt: Hash
  */
-PUBLIC char *cryptMakePassword(cchar *password, int saltLength, int rounds)
+PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds)
 {
     cchar *salt;
 
@@ -1453,7 +1452,7 @@ PUBLIC char *cryptMakePassword(cchar *password, int saltLength, int rounds)
         rounds = CRYPT_BLOWFISH_ROUNDS;
     }
     salt = cryptMakeSalt(saltLength);
-    return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, rounds, salt, cryptEncodePassword(password, salt, rounds));
+    return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, (int) rounds, salt, cryptEncodePassword(password, salt, rounds));
 }
 
 PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
@@ -1478,7 +1477,7 @@ PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
     if (!rounds || !salt || !hash) {
         return 0;
     }
-    given = cryptEncodePassword(plainTextPassword, salt, atoi(rounds));
+    given = cryptEncodePassword(plainTextPassword, salt, (size_t) atoi(rounds));
     result = cryptMatch(given, hash);
     if (given) {
         rFree(given);
@@ -1511,10 +1510,10 @@ PUBLIC int rGenKey(RKey *skey)
     return 0;
 }
 
-PUBLIC int rGetPubKey(RKey *skey, uchar *buf, ssize bufsize)
+PUBLIC int rGetPubKey(RKey *skey, uchar *buf, size_t bufsize)
 {
     AsyKey *key = skey;
-    ssize  len;
+    size_t len;
     uchar  pubkey[MBEDTLS_MPI_MAX_SIZE];
 
     memset(pubkey, 0, sizeof(pubkey));
@@ -1526,7 +1525,7 @@ PUBLIC int rGetPubKey(RKey *skey, uchar *buf, ssize bufsize)
     return (int) len;
 }
 
-PUBLIC int rLoadPubKey(RKey *skey, uchar *buf, ssize bufsize)
+PUBLIC int rLoadPubKey(RKey *skey, uchar *buf, size_t bufsize)
 {
     AsyKey *key = skey;
 
@@ -1537,7 +1536,7 @@ PUBLIC int rLoadPubKey(RKey *skey, uchar *buf, ssize bufsize)
     return 0;
 }
 
-PUBLIC int rSign(RKey *skey, uchar *sum, ssize sumsize)
+PUBLIC int rSign(RKey *skey, uchar *sum, size_t sumsize)
 {
     AsyKey *key = skey;
     uchar  signature[MBEDTLS_MPI_MAX_SIZE];
@@ -1555,7 +1554,7 @@ PUBLIC int rSign(RKey *skey, uchar *sum, ssize sumsize)
     Parse a PEM encoded string from "buf" into skey.
     If skey is NULL, then allocate a key and return it.
  */
-PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen)
+PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, size_t buflen)
 {
     AsyKey *key = skey;
 
@@ -1573,7 +1572,7 @@ PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, ssize buflen)
     return (RKey*) key;
 }
 
-PUBLIC int rVerify(RKey *skey, uchar *sum, ssize sumsize, uchar *signature, ssize siglen)
+PUBLIC int rVerify(RKey *skey, uchar *sum, size_t sumsize, uchar *signature, size_t siglen)
 {
     AsyKey *key = skey;
 
@@ -1592,7 +1591,7 @@ PUBLIC void rFreeKey(RKey *skey)
     }
 }
 
-PUBLIC ssize rBase64Encode(cuchar *buf, ssize bufsize, char *dest, ssize destLen)
+PUBLIC ssize rBase64Encode(cuchar *buf, size_t bufsize, char *dest, size_t destLen)
 {
     size_t len;
 
@@ -1600,7 +1599,7 @@ PUBLIC ssize rBase64Encode(cuchar *buf, ssize bufsize, char *dest, ssize destLen
     return len;
 }
 
-PUBLIC ssize rBase64Decode(cchar *buf, ssize bufsize, uchar *dest, ssize destLen)
+PUBLIC ssize rBase64Decode(cchar *buf, size_t bufsize, uchar *dest, size_t destLen)
 {
     size_t len;
 
@@ -1618,14 +1617,15 @@ PUBLIC ssize rBase64Decode(cchar *buf, ssize bufsize, uchar *dest, ssize destLen
     Get random bytes from the system.
     If block is true, use /dev/random, otherwise use /dev/urandom.
     If the system does not have a secure random number generator, return -1.
-    SECURITY Acceptable: it is the callers responsibility to ensure that the random number generator is secure 
+    SECURITY Acceptable: it is the callers responsibility to ensure that the random number generator is secure
     and to manage the risk of using non-blocking random number generators that may have insufficient entropy.
  */
-PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
+PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
 {
 #if ME_UNIX_LIKE
-    ssize sofar, rc;
-    int   fd;
+    size_t sofar;
+    ssize  rc;
+    int    fd;
 
     if (!buf || length <= 0) {
         return R_ERR_BAD_ARGS;
@@ -1641,8 +1641,8 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
             close(fd);
             return -1;
         }
-        length -= rc;
-        sofar += rc;
+        length -= (size_t) rc;
+        sofar += (size_t) rc;
     } while (length > 0);
     close(fd);
 
@@ -1650,6 +1650,9 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
     HCRYPTPROV prov;
     int        rc;
 
+    if (!buf || length <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     rc = 0;
     if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | 0x40)) {
         return -1;
@@ -1664,6 +1667,9 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, ssize length, bool block)
     /*
         Fallback: use MbedTLS CTR-DRBG if available; otherwise, fail securely.
      */
+    if (!buf || length <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
     /* Local forward declaration to avoid header ordering issues */
     if (mbedtls_ctr_drbg_random(rGetTlsRng(), (uchar*) buf, (size_t) length) != 0) {
         rError("security", "MbedTLS RNG failed");
@@ -1755,10 +1761,11 @@ PUBLIC char *cryptGetPassword(cchar *prompt)
  */
 static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
 
-PUBLIC char *cryptID(ssize size)
+PUBLIC char *cryptID(size_t size)
 {
-    char *bytes;
-    int  i, index, lettersLen;
+    char   *bytes;
+    size_t i;
+    int    index, lettersLen;
 
     if (size <= 0) {
         return NULL;
@@ -1786,24 +1793,24 @@ PUBLIC char *cryptID(ssize size)
  */
 PUBLIC bool cryptMatch(cchar *s1, cchar *s2)
 {
-    ssize   i, len1, len2, maxLen;
-    uchar   c, lengthDiff;
+    size_t i, len1, len2, maxLen;
+    uchar  c, lengthDiff;
 
     len1 = slen(s1);
     len2 = slen(s2);
-    
+
     lengthDiff = (uchar) (len1 != len2);
-    
-    /* 
-        Always compare the maximum length to ensure constant time 
-    */
+
+    /*
+        Always compare the maximum length to ensure constant time
+     */
     maxLen = (len1 > len2) ? len1 : len2;
     for (i = 0, c = 0; i < maxLen; i++) {
-        uchar c1 = (i < len1) ? (uchar)s1[i] : 0;
-        uchar c2 = (i < len2) ? (uchar)s2[i] : 0;
+        uchar c1 = (i < len1) ? (uchar) s1[i] : 0;
+        uchar c2 = (i < len2) ? (uchar) s2[i] : 0;
         c |= c1 ^ c2;
     }
-    // Include length difference in the final result 
+    // Include length difference in the final result
     c |= lengthDiff;
     return !c;
 }

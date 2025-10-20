@@ -1,0 +1,32 @@
+{
+    auth: {
+        roles: ['user', 'admin', 'owner', 'super'],
+    },
+    documents: '@site',
+    limits: {
+        maxFrame: '100K',
+        maxMessage: '100K',
+    },
+    listen: ['http://:9090', 'https://:9091'],
+    redirect: [{status: 302, from: 'http://:9090', to: 'https://:9091'}],
+    routes: [
+        {match: '/api/admin/', handler: 'action', role: 'admin'},
+        {match: '/api/user/', handler: 'action', role: 'user'},
+        {match: '/api/', handler: 'action'},
+        {match: '/admin/', handler: 'file', role: 'admin'},
+        {match: '/user/', handler: 'file', role: 'user'},
+        {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
+    ],
+    signatures: {
+        enable: false,
+    },
+    upload: {
+        dir: 'tmp',
+        remove: true,
+    },
+    webSockets: {
+        ping: 'never',
+        protocol: 'chat',
+        validateUTF: false,
+    },
+}

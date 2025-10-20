@@ -1,0 +1,64 @@
+{
+    version: '1.0.1',
+    profile: 'dev',
+    app: 'http',
+    conditional: {
+        profile: {
+            dev: {
+                directories: {
+                    log: '.',
+                    state: 'state',
+                },
+                optimize: 'debug',
+                log: {
+                    path: 'stdout',
+                    format: '%S: %M',
+                    types: 'error,info',
+                    sources: 'all,!mbedtls',
+                    show: '',
+                },
+            },
+            prod: {
+                directories: {
+                    log: '/var/log',
+                    state: '/var/lib/ioto',
+                },
+                optimize: 'release',
+            },
+        },
+    },
+    database: {
+        path: '@db/device.db',
+        schema: '@config/schema.json5',
+        maxJournalSize: '50k',
+        maxJournalAge: '15secs',
+        maxSyncSize: '10k',
+        service: '1hr',
+    },
+    log: {
+        path: 'stdout',
+        format: '%D %H %A[%P] (%T, %S): %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+        show: '',
+    },
+    services: {
+        ai: false,
+        database: true,
+        keys: false,
+        logs: false,
+        mqtt: false,
+        provision: false,
+        register: true,
+        serialize: 'auto',
+        shadow: false,
+        sync: false,
+        update: false,
+        url: true,
+        web: true,
+    },
+    tls: {
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+}

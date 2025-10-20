@@ -159,6 +159,6 @@
 #ifndef ME_COM_WEB
     #define ME_COM_WEB 1
 #endif
-#ifndef ME_COM_WEBSOCKETS
-    #define ME_COM_WEBSOCKETS 1
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1
 #endif

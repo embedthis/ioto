@@ -1,6 +1,7 @@
-/**
+/*
     JSON5/JSON6 Parser and Manipulation Library
-    @description High-performance JSON parser and manipulation library for embedded IoT applications.
+
+    High-performance JSON parser and manipulation library for embedded IoT applications.
     Supports both traditional JSON and relaxed JSON5/JSON6 syntax with extended features for ease of use.
 
     This library provides a complete JSON processing solution including:
@@ -19,6 +20,7 @@
     - Multi-line strings using backtick quotes
     - JavaScript-style primitives (undefined, null)
     - Keyword 'undefined' support
+    - Compacted output mode with minimal whitespace
 
     The library is designed for embedded developers who need efficient JSON processing
     with minimal memory overhead and high performance characteristics.
@@ -28,9 +30,9 @@
     - An empty string is allowed and returns an empty JSON instance.
     - Similarly a top level whitespace string is allowed and returns an empty JSON instance.
 
-    Use another tool if you need strict JSON validation.
+    Use another tool if you need strict JSON validation of input text.
 
-    @stability Evolving
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
  */
 
 #pragma once
@@ -39,6 +41,7 @@
 #define _h_JSON 1
 
 /********************************** Includes **********************************/
+
 
 #include "r.h"
 
@@ -74,23 +77,27 @@ struct JsonNode;
     JSON node type constants
     @description These constants define the different types of nodes in the JSON tree.
     Each node has exactly one type that determines how its value should be interpreted.
+    The type is stored in the JsonNode.type field and can be tested using bitwise AND operations.
     @stability Evolving
  */
-#define JSON_OBJECT              0x1                  /**< Object node containing key-value pairs */
-#define JSON_ARRAY               0x2                  /**< Array node containing indexed elements */
-#define JSON_COMMENT             0x4                  /**< Comment node (JSON5 feature) */
-#define JSON_STRING              0x8                  /**< String value including ISO date strings */
+#define JSON_OBJECT              0x1                  /**< Object node containing key-value pairs as children */
+#define JSON_ARRAY               0x2                  /**< Array node containing indexed elements as children */
+#define JSON_COMMENT             0x4                  /**< Comment node (JSON5 feature, not preserved in output) */
+#define JSON_STRING              0x8                  /**< String value (including ISO date strings stored as strings)
+                                                       */
 #define JSON_PRIMITIVE           0x10                 /**< Primitive values: true, false, null, undefined, numbers */
-#define JSON_REGEXP              0x20                 /**< Regular expression literal (JSON6 feature) */
+#define JSON_REGEXP              0x20                 /**< Regular expression literal /pattern/flags (JSON6 feature) */
 
 /**
     JSON parsing flags
     @description Flags that control the behavior of JSON parsing operations.
     These can be combined using bitwise OR to enable multiple options.
+    Pass these flags to jsonParse(), jsonParseText(), or jsonParseFile().
     @stability Evolving
  */
-#define JSON_STRICT_PARSE        0x1                  /**< Parse in strict JSON format (no JSON5 extensions) */
-#define JSON_PASS_VALUE          0x2                  /**< Transfer string ownership to JSON object during parsing */
+#define JSON_STRICT_PARSE        0x1                  /**< Parse in strict RFC 7159 JSON format (no JSON5 extensions) */
+#define JSON_PASS_VALUE          0x2                  /**< Transfer string ownership to JSON object (avoids memory copy)
+                                                       */
 
 /**
     JSON rendering flags
@@ -152,12 +159,19 @@ struct JsonNode;
 #define JSON_STRICT              (JSON_STRICT_PARSE | JSON_JSON)
 
 /**
-    These macros iterates over the children under the "parent" id. The child->last points to one past the end of the
-    Property value and parent->last points to one past the end of the parent object.
-    WARNING: this macro requires a stable JSON collection. I.e. the collection must not be modified in the loop body.
-    Insertions and removals in prior nodes in the JSON tree will change the values pointed to by the child pointer and
-    will impact further iterations.
-    The jsonCheckIteration function will catch some (but not all) modifications to the JSON tree.
+    Iteration macros for traversing JSON tree children
+    @description These macros iterate over child nodes under a parent node. The child->last field points to one past
+    the end of the property's value subtree, and parent->last points to one past the end of the parent object/array.
+
+    WARNING: These macros require a stable JSON tree. Do not modify the tree during iteration (no jsonSet, jsonRemove,
+    or jsonBlend calls). Insertions and removals will invalidate the child pointer and corruption iteration state.
+    The jsonCheckIteration() function will detect some (but not all) tree modifications during iteration.
+
+    Example usage:
+        JsonNode *child;
+        for (ITERATE_JSON(json, parentNode, child, nid)) {
+            printf("Child: %s\\n", child->name);
+        }
  */
 
 /**
@@ -231,27 +245,27 @@ struct JsonNode;
     @stability Evolving
  */
 typedef struct Json {
-    struct JsonNode *nodes;              /**< Array of JSON nodes forming the tree structure */
+    struct JsonNode *nodes;          /**< Array of JSON nodes forming the tree structure */
 #if R_USE_EVENT
-    REvent event;                        /**< Event structure for asynchronous saving operations */
+    REvent event;                    /**< Event structure for asynchronous saving operations */
 #endif
-    char *text;                          /**< Original JSON text being parsed (will be modified during parsing) */
-char *end;                           /**< Pointer to one byte past the end of the text buffer */
-char *next;                          /**< Current parsing position in the text buffer */
-char *path;                          /**< File path if JSON was loaded from a file (for error reporting) */
-char *error;                         /**< Detailed error message from parsing failures */
-char *property;                      /**< Internal buffer for building property names during parsing */
-ssize propertyLength;                /**< Current allocated size of the property buffer */
-    char *value;                         /**< Cached serialized string result from jsonString() calls */
-    uint size;                           /**< Total allocated capacity of the nodes array */
-    uint count;                          /**< Number of nodes currently used in the tree */
-    uint lineNumber : 16;                /**< Current line number during parsing (for error reporting) */
-    uint lock : 1;                       /**< Lock flag preventing modifications when set */
-    uint flags : 7;                      /**< Internal parser flags (reserved for library use) */
-    uint userFlags : 8;                  /**< Application-specific flags available for user use */
+    char *text;                      /**< Original JSON text being parsed (will be modified during parsing) */
+    char *end;                       /**< Pointer to one byte past the end of the text buffer */
+    char *next;                      /**< Current parsing position in the text buffer */
+    char *path;                      /**< File path if JSON was loaded from a file (for error reporting) */
+    char *error;                     /**< Detailed error message from parsing failures */
+    char *property;                  /**< Internal buffer for building property names during parsing */
+    size_t propertyLength;           /**< Current allocated size of the property buffer */
+    char *value;                     /**< Cached serialized string result from jsonString() calls */
+    int size;                        /**< Total allocated capacity of the nodes array */
+    int count;                       /**< Number of nodes currently used in the tree */
+    int lineNumber : 16;             /**< Current line number during parsing (for error reporting) */
+    uint lock : 1;                   /**< Lock flag preventing modifications when set */
+    uint flags : 7;                  /**< Internal parser flags (reserved for library use) */
+    uint userFlags : 8;              /**< Application-specific flags available for user use */
 #if JSON_TRIGGER
-    JsonTrigger trigger;                 /**< Optional callback function for monitoring changes */
-    void *triggerArg;                    /**< User argument passed to the trigger callback */
+    JsonTrigger trigger;             /**< Optional callback function for monitoring changes */
+    void *triggerArg;                /**< User argument passed to the trigger callback */
 #endif
 } Json;
 
@@ -529,10 +543,10 @@ PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue);
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
-    @return The key value as a uint64 or defaultValue if not defined
+    @return The key value as a int64 or defaultValue if not defined
     @stability Evolving
  */
-PUBLIC uint64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue);
+PUBLIC int64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue);
 
 /**
     Get a json node ID

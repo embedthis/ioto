@@ -1,13 +1,14 @@
-/**
-    Operating system dependent abstraction layer.
-    @description This header provides a comprehensive cross-platform abstraction layer for embedded IoT applications.
+/*
+    osdep.h - Operating system dependent abstraction layer.
+
+    This header provides a comprehensive cross-platform abstraction layer for embedded IoT applications.
     It defines standard types, platform detection constants, compiler abstractions, and operating system compatibility
     macros to enable portability across diverse embedded and desktop systems. This is the foundational module consumed
     by all other EmbedThis modules and must be included first in any source file. The module automatically detects
     the target platform's CPU architecture, operating system, compiler, and endianness to provide consistent behavior
     across ARM, x86, MIPS, PowerPC, SPARC, RISC-V, Xtensa, and other architectures running on Linux, macOS, Windows,
     VxWorks, FreeRTOS, ESP32, and other operating systems.
-    @stability Evolving
+
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
@@ -413,6 +414,7 @@
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
     #define HAS_USHORT 1
+    #define PTHREADS 1
 
 #elif defined(ECOS)
     /* ECOS may not have a pre-defined symbol */
@@ -662,9 +664,8 @@
     #include    <setjmp.h>
     #include    <signal.h>
     #include    <stdarg.h>
-#if ME_UNIX_LIKE
+    #include    <stddef.h>
     #include    <stdint.h>
-#endif
     #include    <stdio.h>
     #include    <stdlib.h>
     #include    <string.h>
@@ -770,7 +771,6 @@
 #endif
 
 #if FREERTOS
-    #include <stddef.h>
     #include <string.h>
     #include "time.h"
 #if ESP32
@@ -993,17 +993,16 @@
 
 #ifndef HAS_SSIZE
     #define HAS_SSIZE 1
-    #if ME_UNIX_LIKE || VXWORKS || DOXYGEN
+    #if ME_WIN_LIKE
+        typedef SSIZE_T ssize;
+        typedef SSIZE_T ssize_t;
+    #else
         /**
             Signed size type for memory and I/O operations.
             @description Platform-appropriate signed integer type large enough to hold array indices, memory sizes,
             and I/O transfer counts. Can represent negative values for error conditions. Equivalent to size_t but signed.
             @stability Stable
          */
-        typedef ssize_t ssize;
-    #elif ME_WIN_LIKE
-        typedef SSIZE_T ssize;
-    #else
         typedef ssize_t ssize;
     #endif
 #endif
@@ -1156,8 +1155,14 @@ typedef int64 Ticks;
         #undef isnan
         #define isnan(n)  ((n) != (n))
         #define isnanf(n) ((n) != (n))
-        #define isinf(n)  ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
-        #define isinff(n) ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
+        #if defined(__GNUC__)
+            #define isinf(n)  __builtin_isinf(n)
+            #define isinff(n) __builtin_isinff(n)
+        #else
+            #include <math.h>
+            #define isinf(n)  ((n) == HUGE_VAL || (n) == -HUGE_VAL)
+            #define isinff(n) ((n) == HUGE_VALF || (n) == -HUGE_VALF)
+        #endif
     #endif
     #if ME_WIN_LIKE
         #define isNan(f) (_isnan(f))
@@ -1199,20 +1204,16 @@ typedef int64 Ticks;
     #define MAXUINT64   INT64(0xffffffffffffffff)
 #endif
 
-#if SIZE_T_MAX
-    #define MAXSIZE     SIZE_T_MAX
-#elif ME_64
-    #define MAXSIZE     INT64(0xffffffffffffffff)
-#else
-    #define MAXSIZE     MAXINT
-#endif
-
-#if SSIZE_T_MAX
-    #define MAXSSIZE     SSIZE_T_MAX
+#if SSIZE_MAX
+    #define MAXSSIZE     ((ssize) SSIZE_MAX)
 #elif ME_64
     #define MAXSSIZE     INT64(0x7fffffffffffffff)
 #else
     #define MAXSSIZE     MAXINT
+#endif
+
+#ifndef SSIZE_MAX
+    #define SSIZE_MAX    MAXSSIZE
 #endif
 
 #if OFF_T_MAX
@@ -1373,9 +1374,9 @@ typedef int64 Ticks;
     #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
-#if VXWORKS
+#if VXWORKS || WINDOWS
     /*
-        Old VxWorks cannot do array[]
+        Use in arra[ARRAY_FLEX] to avoid compiler warnings
      */
     #define ARRAY_FLEX 0
 #else
@@ -1655,6 +1656,7 @@ typedef int64 Ticks;
     #define MSG_NOSIGNAL    0
     #define FILE_BINARY     "b"
     #define FILE_TEXT       "t"
+    #define O_CLOEXEC       0
 
     /*
         Error codes
@@ -1722,6 +1724,7 @@ typedef int64 Ticks;
     #endif
 
     #if !WINCE
+    #ifndef access
     #define access      _access
     #define chdir       _chdir
     #define chmod       _chmod
@@ -1746,8 +1749,15 @@ typedef int64 Ticks;
     #define write       _write
     PUBLIC void         sleep(int secs);
     #endif
+    #endif
+
+    #ifndef strcasecmp
     #define strcasecmp scaselesscmp
     #define strncasecmp sncaselesscmp
+    #endif
+    #ifndef strncasecmp
+        #define strncasecmp sncaselesscmp
+    #endif
     #pragma comment( lib, "ws2_32.lib" )
 #endif /* WIN_LIKE */
 

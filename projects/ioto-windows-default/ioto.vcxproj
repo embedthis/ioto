@@ -3,7 +3,7 @@
 
       <ItemDefinitionGroup>
         <ClCompile>
-          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=/path/to/openssl;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=$(USERPROFILE)/vcpkg/installed/x64-windows;%(PreprocessorDefinitions)</PreprocessorDefinitions>
           <AdditionalIncludeDirectories>$(IncDir);$(ME_COM_OPENSSL_PATH)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -14,7 +14,7 @@
       </ItemDefinitionGroup>
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{3b639c9a-71c2-4574-891b-e948e47977de}</ProjectGuid>
+        <ProjectGuid>{fd2ee647-b8cc-449f-9b09-21410e9f6adb}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -105,21 +105,21 @@
   </PropertyGroup>
   
       <ItemGroup>
-    <ClCompile Include="..\..\cmds\main.c" />
+    <ClCompile Include="..\..\src\cmds\ioto.c" />
   </ItemGroup>
 
       <ItemDefinitionGroup>
         
 
       <Link>
-        <AdditionalDependencies>app;libioto.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
+        <AdditionalDependencies>libioto.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
         <AdditionalLibraryDirectories>$(OutDir);build\$(Cfg)\bin;$(ME_COM_OPENSSL_PATH);$(ME_COM_OPENSSL_PATH)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       </Link>
   </ItemDefinitionGroup>
 
     <ItemGroup>
       <ProjectReference Include="libioto.vcxproj">
-      <Project>a85ee3bf-0ff5-41e0-a5ae-7d83fe17c68c</Project>
+      <Project>6b978110-6fff-4eaa-ba18-bc7f05215a88</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       </ProjectReference>
     </ItemGroup>
@@ -127,5 +127,6 @@
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
 
 </Project>

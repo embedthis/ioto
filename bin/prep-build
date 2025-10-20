@@ -1,41 +1,19 @@
 #!/bin/bash
 #
-#   prep-build - Make the required build tools
+#   prep-build - Make the required build directories, files and tools
 #
-#   Usage: prep-build
-#
-#   This builds the awesome "json" converter tool that can edit, query and convert JSON and JSON5 files.
-#
+
 if [ ! -d bin ] ; then
     echo "Must run from the top directory"
     exit 1
 fi
 
-mkdir -p state/certs state/config state/db state/site
+mkdir -p state/certs state/site state/config state/db state/site
 
-cc -I tools \
-    -DOSDEP_USE_ME=0 \
-    -DR_USE_ME=0 \
-    -DR_USE_EVENT=0 \
-    -DR_USE_FIBER=0 \
-    -DR_USE_RB=0 \
-    -DR_USE_RUN=0 \
-    -DR_USE_SOCKET=0 \
-    -DR_USE_THREAD=0 \
-    -DR_USE_TLS=0 \
-    -DR_USE_WAIT=0 \
-    -DR_USE_BUF=1 \
-    -DR_USE_FILE=1 \
-    -DR_USE_HASH=1 \
-    -DR_USE_LIST=1 \
-    -DR_USE_STRING=1 \
-    -DR_OWN_PRINTF=1 \
-    -DME_COM_R=1 \
-    -DME_COM_JSON=1 \
-    -DME_NAME="\"json\"" \
-    -DME_TITLE="\"Json parsing and query\"" \
-    -DME_VERSION="\"1.0.0\"" \
-    -DME_CONFIG_CMD="\"\"" \
-    -o bin/json bin/json.c -lm
+if [ ! -f bin/json ] ; then
+    cc -DJSON_SOLO=1 -o bin/json bin/json.c -lm
+fi
 
-bin/make-certs
+if [ ! -f "${BUILD}/bin/test.crt" ] ; then
+    bin/make-certs
+fi

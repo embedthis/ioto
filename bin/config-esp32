@@ -2,7 +2,7 @@
 #
 #   config-esp32 - Update the configuration based on the menuconfig sdkconfig
 #
-#   The ioto.json5 is updated and the ioto-config.h is regenerated.
+#   The ioto.json5 is updated and the config.h is regenerated.
 #
 SERVICES="database keys logs mqtt provision register serialize shadow sync update url web"
 CONFIG=../../state/config
@@ -12,15 +12,16 @@ for service in ${SERVICES} ; do
     value=`grep -i CONFIG_IOTO_${service} ../../sdkconfig | grep -v '^# ' | \
         sed 's/.*=//' | sed 's/"//g'`
     if [ "${value}" = "y" ] ; then
-        ./bin/json services.${service}=true ${CONFIG}/ioto.json5
+        ./bin/json --overwrite services.${service}=true ${CONFIG}/ioto.json5
     elif [ "${value}" != "" ] ; then
-        ./bin/json services.${service}=${value} ${CONFIG}/ioto.json5
+        ./bin/json --overwrite services.${service}=${value} ${CONFIG}/ioto.json5
     else
-        ./bin/json services.${service}=false ${CONFIG}/ioto.json5
+        ./bin/json --overwrite services.${service}=false ${CONFIG}/ioto.json5
     fi
 done
 
-rm -f include/ioto-config.h
-./bin/json --header services ${CONFIG}/ioto.json5 >include/ioto-config.h
+rm -f include/config.h
+./bin/json --header services ${CONFIG}/ioto.json5 >include/config.h
+./bin/json --header app ${CONFIG}/ioto.json5 >>include/config.h
 
 exit 0

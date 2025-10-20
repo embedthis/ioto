@@ -3,7 +3,7 @@
 
       <ItemDefinitionGroup>
         <ClCompile>
-          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=/path/to/openssl;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+          <PreprocessorDefinitions>ME_DEBUG=1;_CRT_SECURE_NO_WARNINGS=1;ME_COM_OPENSSL_PATH=$(USERPROFILE)/vcpkg/installed/x64-windows;%(PreprocessorDefinitions)</PreprocessorDefinitions>
           <AdditionalIncludeDirectories>$(IncDir);$(ME_COM_OPENSSL_PATH)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -14,7 +14,7 @@
       </ItemDefinitionGroup>
 
       <PropertyGroup Label="Globals">
-        <ProjectGuid>{a85ee3bf-0ff5-41e0-a5ae-7d83fe17c68c}</ProjectGuid>
+        <ProjectGuid>{6b978110-6fff-4eaa-ba18-bc7f05215a88}</ProjectGuid>
         <RootNamespace />
         <Keyword>Win32Proj</Keyword>
       </PropertyGroup>
@@ -107,16 +107,38 @@
       <ItemGroup>
     <ClCompile Include="..\..\lib\cryptLib.c" />
     <ClCompile Include="..\..\lib\dbLib.c" />
-    <ClCompile Include="..\..\lib\iotoLib.c" />
     <ClCompile Include="..\..\lib\jsonLib.c" />
     <ClCompile Include="..\..\lib\mqttLib.c" />
     <ClCompile Include="..\..\lib\openaiLib.c" />
     <ClCompile Include="..\..\lib\rLib.c" />
-    <ClCompile Include="..\..\lib\uctxAssembly.S" />
     <ClCompile Include="..\..\lib\uctxLib.c" />
     <ClCompile Include="..\..\lib\urlLib.c" />
     <ClCompile Include="..\..\lib\webLib.c" />
-    <ClCompile Include="..\..\lib\websocketsLib.c" />
+    <ClCompile Include="..\..\lib\websockLib.c" />
+    <ClCompile Include="..\..\src\agent.c" />
+    <ClCompile Include="..\..\src\ai.c" />
+    <ClCompile Include="..\..\src\app.c" />
+    <ClCompile Include="..\..\src\cloud\cloud.c" />
+    <ClCompile Include="..\..\src\cloud\cloudwatch.c" />
+    <ClCompile Include="..\..\src\cloud\helpers.c" />
+    <ClCompile Include="..\..\src\cloud\logs.c" />
+    <ClCompile Include="..\..\src\cloud\provision.c" />
+    <ClCompile Include="..\..\src\cloud\shadow.c" />
+    <ClCompile Include="..\..\src\cloud\sync.c" />
+    <ClCompile Include="..\..\src\cloud\update.c" />
+    <ClCompile Include="..\..\src\config.c" />
+    <ClCompile Include="..\..\src\cron.c" />
+    <ClCompile Include="..\..\src\database.c" />
+    <ClCompile Include="..\..\src\esp32.c" />
+    <ClCompile Include="..\..\src\mqtt.c" />
+    <ClCompile Include="..\..\src\register.c" />
+    <ClCompile Include="..\..\src\serialize.c" />
+    <ClCompile Include="..\..\src\setup.c" />
+    <ClCompile Include="..\..\src\webserver.c" />
+  </ItemGroup>
+
+      <ItemGroup>
+    <ClInclude Include="$(IncDir)\config.h" />
   </ItemGroup>
 
       <ItemGroup>
@@ -128,19 +150,11 @@
   </ItemGroup>
 
       <ItemGroup>
-    <ClInclude Include="$(IncDir)\ioto-config.h" />
-  </ItemGroup>
-
-      <ItemGroup>
     <ClInclude Include="$(IncDir)\ioto.h" />
   </ItemGroup>
 
       <ItemGroup>
     <ClInclude Include="$(IncDir)\json.h" />
-  </ItemGroup>
-
-      <ItemGroup>
-    <ClInclude Include="$(IncDir)\me.h" />
   </ItemGroup>
 
       <ItemGroup>
@@ -180,7 +194,7 @@
   </ItemGroup>
 
       <ItemGroup>
-    <ClInclude Include="$(IncDir)\websockets.h" />
+    <ClInclude Include="$(IncDir)\websock.h" />
   </ItemGroup>
 
       <ItemDefinitionGroup>
@@ -193,12 +207,11 @@
 
       <CustomBuildStep>
         <Command>cd ..\..
+copy /Y /B include\config.h $(IncDir)
 copy /Y /B include\crypt.h $(IncDir)
 copy /Y /B include\db.h $(IncDir)
-copy /Y /B include\ioto-config.h $(IncDir)
 copy /Y /B include\ioto.h $(IncDir)
 copy /Y /B include\json.h $(IncDir)
-copy /Y /B include\me.h $(IncDir)
 copy /Y /B include\mqtt.h $(IncDir)
 copy /Y /B include\openai.h $(IncDir)
 copy /Y /B include\osdep.h $(IncDir)
@@ -208,7 +221,7 @@ copy /Y /B include\uctx-os.h $(IncDir)
 copy /Y /B include\uctx.h $(IncDir)
 copy /Y /B include\url.h $(IncDir)
 copy /Y /B include\web.h $(IncDir)
-copy /Y /B include\websockets.h $(IncDir)
+copy /Y /B include\websock.h $(IncDir)
 cd projects\ioto-windows-default</Command>
         <Outputs>$(BinDir)\libioto.lib</Outputs>
       </CustomBuildStep>
@@ -217,5 +230,6 @@ cd projects\ioto-windows-default</Command>
   <Import Project="$(VCTargetsPath)Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+
 
 </Project>

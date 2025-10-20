@@ -6,6 +6,325 @@
 
 
 
+/********* Start of file ../../../src/agent.c ************/
+
+/*
+    ioto.c - Primary Ioto control
+
+    This code runs on a fiber and can block, yield and create fibers.
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/********************************** Includes **********************************/
+
+
+
+/*********************************** Globals **********************************/
+
+PUBLIC Ioto *ioto = NULL;
+
+/*********************************** Defines **********************************/
+
+#define TRACE_FILTER         "stderr:raw,error,info,!debug:all,!mbedtls"
+#define TRACE_VERBOSE_FILTER "stdout:raw,error,info,trace,!debug:all,!mbedtls"
+#define TRACE_DEBUG_FILTER   "stdout:all:all,!mbedtls"
+#define TRACE_FORMAT         "%A: %M"
+
+/*********************************** Forwards *********************************/
+
+static int initServices(void);
+
+/************************************* Code ***********************************/
+/*
+    Allocate the global Ioto singleton
+ */
+PUBLIC Ioto *ioAlloc(void)
+{
+    ioto = rAllocType(Ioto);
+    return ioto;
+}
+
+PUBLIC void ioFree(void)
+{
+    if (ioto) {
+        //  ioto members freed in ioTerm and ioTermConfig
+        rFree(ioto);
+    }
+    ioto = NULL;
+}
+
+/*
+    Initialize after ioInitSetup
+ */
+PUBLIC void ioInit(void)
+{
+    assert(!rIsMain());
+
+    if (initServices() < 0) {
+        rStop();
+        return;
+    }
+    if (rGetState() != R_INITIALIZED) {
+        return;
+    }
+    ioto->ready = 1;
+    rSetState(R_READY);
+    rInfo("ioto", "Ioto ready");
+    rSignal("app:ready");
+    if (ioStart() < 0) {
+        rError("ioto", "Cannot start Ioto, ioStart() failed");
+        rStop();
+    }
+}
+
+/*
+    Terminate Ioto.
+    If doing a reset, run the script "scripts/reset" before leaving.
+ */
+PUBLIC void ioTerm(void)
+{
+#if ME_UNIX_LIKE
+    char *output, *script;
+    int  status;
+
+    if (rGetState() == R_RESTART) {
+        //  TermServices will release ioto->config. Get persistent reference to script.
+        script = jsonGetClone(ioto->config, 0, "scripts.reset", 0);
+    } else {
+        script = 0;
+    }
+#endif
+    ioto->ready = 0;
+    ioStop();
+#if SERVICES_WEB
+    ioTermWeb();
+#endif
+#if SERVICES_CLOUD
+    ioTermCloud();
+#endif
+#if SERVICES_DATABASE
+    ioTermDb();
+#endif
+    ioTermConfig();
+
+#if ME_UNIX_LIKE
+    if (script && *script) {
+        /*
+            Security: The reset script is configured via a config file. Ensure the config files
+            have permissions that prevent modification by unauthorized users.
+            SECURITY Acceptable: - the script is provided by the developer configuration scripts.reset and is secure.
+         */
+        status = rRun(script, &output);
+        if (status != 0) {
+            rError("ioto", "Reset script failure: %d, %s", status, output);
+        }
+        rFree(output);
+    }
+    rFree(script);
+#endif
+}
+
+/*
+    Start the Ioto runtime
+ */
+PUBLIC int ioStartRuntime(int verbose)
+{
+    cchar *filter;
+
+    if (rInit((RFiberProc) NULL, NULL) < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if (verbose == 1) {
+        filter = TRACE_VERBOSE_FILTER;
+    } else if (verbose >= 2) {
+        filter = TRACE_DEBUG_FILTER;
+    } else {
+        filter = NULL;
+    }
+    if (filter && rSetLog(filter, NULL, 1) < 0) {
+        rTerm();
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if (ioAlloc() == NULL) {
+        return R_ERR_MEMORY;
+    }
+    return 0;
+}
+
+PUBLIC void ioStopRuntime(void)
+{
+    rTerm();
+}
+
+/*
+    Run Ioto. This will block and service events forever (or till instructed to stop)
+    Should be called from main()
+    The fn argument is not used, but helps build systems to ensure it is included in the build.
+ */
+PUBLIC int ioRun(void *fn)
+{
+    rSleep(0);
+
+    while (rGetState() < R_STOPPING) {
+        if (ioInitConfig() < 0) {
+            rFatal("ioto", "Cannot initialize Ioto\n");
+        }
+        if (rSpawnFiber("ioInit", (RFiberProc) ioInit, NULL) < 0) {
+            rFatal("ioto", "Cannot initialize runtime");
+        }
+        if (rGetState() < R_STOPPING) {
+            //  Service events until instructed to exit
+            rServiceEvents();
+        }
+        ioTerm();
+        if (rGetState() == R_RESTART) {
+            rTerm();
+            rInit(NULL, NULL);
+        }
+    }
+    ioFree();
+    rInfo("ioto", "Ioto exiting");
+    return 0;
+}
+
+/*
+    Start services. Order of initialization matters.
+    We initialize MQTT early so that on-demand connections and provisioning may take place.
+    Return false if initialization failed. Note: some services may trigger a R_RESTART.
+ */
+static int initServices(void)
+{
+#ifdef SERVICES_SERIALIZE
+    if (ioto->serializeService) {
+        ioSerialize();
+    }
+#endif
+#if SERVICES_REGISTER
+    /*
+        One-time device registration during manufacturer or first connect.
+        NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and
+        maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a current
+        contract agreement with Embedthis to use an alternate method.
+     */
+    if (ioto->registerService) {
+        if (!ioto->registered && ioRegister() < 0) {
+            return R_ERR_BAD_ARGS;
+        }
+    } else
+#endif
+    rTrace("ioto", "The LICENSE requires that you declare device volumes at https://admin.embedthis.com");
+
+#if SERVICES_DATABASE
+    if (ioto->dbService && ioInitDb() < 0) {
+        return R_ERR_CANT_READ;
+    }
+#endif
+#if SERVICES_WEB
+    if (ioto->webService && ioInitWeb() < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
+#if SERVICES_CLOUD
+    if (ioto->cloudService && ioInitCloud() < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
+#if SERVICES_AI
+    ioto->aiService = 1;
+    if (ioto->aiService && ioInitAI() < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
+#if SERVICES_UPDATE
+    if (ioto->updateService) {
+        //  Delay to allow provisioning to complete
+        rStartEvent((RFiberProc) ioUpdate, 0, 15 * TPS);
+    }
+#endif
+#if ME_DEBUG
+    //  Used to test memory leaks after running for a period of time
+    if (getenv("VALGRIND")) {
+        rStartEvent((REventProc) rStop, 0, 60 * TPS);
+    }
+#endif
+    return 0;
+}
+
+/*
+    Update the log output configuration. This may be called at startup and after cloud provisioning to
+    redirect the device log to the cloud.
+ */
+PUBLIC int ioUpdateLog(bool force)
+{
+    Json  *json;
+    cchar *dir, *format, *path, *source, *types;
+    char  *fullPath;
+
+    json = ioto->config;
+    types = source = 0;
+
+    format = jsonGet(json, 0, "log.format", "%T %S: %M");
+    path = jsonGet(json, 0, "log.path", "stdout");
+    source = jsonGet(json, 0, "log.sources", "all,!mbedtls");
+    types = jsonGet(json, 0, "log.types", "error,info");
+    dir = jsonGet(json, 0, "directories.log", ".");
+
+    rSetLogFormat(format, force);
+    rSetLogFilter(types, source, force);
+
+    if (smatch(path, "default")) {
+        path = IO_LOG_FILE;
+
+#if SERVICES_CLOUD
+    } else if (smatch(path, "cloud")) {
+        if (ioto->awsAccess) {
+            //  This will register a new log handler
+            ioEnableCloudLog();
+        }
+        return 0;
+#endif
+    }
+    /*
+        SECURITY Acceptable: - the log path is provided by the developer log.path and is deemed secure
+     */
+    fullPath = rJoinFile(dir, path);
+    if (rSetLogPath(fullPath, force) < 0) {
+        rError("ioto", "Cannot open log %s", fullPath);
+        rFree(fullPath);
+        return R_ERR_CANT_OPEN;
+    }
+    rFree(fullPath);
+    return 0;
+}
+
+/*
+    Convenience routine over jsonGet.
+ */
+PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue)
+{
+    return jsonGet(ioto->config, 0, key, defaultValue);
+}
+
+PUBLIC int ioGetConfigInt(cchar *key, int defaultValue)
+{
+    return jsonGetInt(ioto->config, 0, key, defaultValue);
+}
+
+/*
+    Expand ${references} in the "str" using properties variables in ioto->properties
+ */
+ PUBLIC char *ioExpand(cchar *str)
+ {
+     return jsonTemplate(ioto->properties, str, 1);
+ }
+ 
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
 /********* Start of file ../../../src/ai.c ************/
 
 /*
@@ -64,6 +383,35 @@ PUBLIC void ioTermAI(void)
  */
 
 
+/********* Start of file ../../../src/app.c ************/
+
+/*
+    app.c - Include the selected app
+ */
+
+/********************************** Includes **********************************/
+
+
+#include "config.h"
+
+#define STRINGIFY(x) #x
+#define HEADER(x)    STRINGIFY(x)
+
+/* choose one: -DAPP=demo  (no quotes) */
+#ifndef APP
+#define APP demo
+#endif
+
+/* *INDENT-OFF* */
+#include HEADER(../apps/APP/src/APP.c)
+/* *INDENT-ON* */
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
 /********* Start of file ../../../src/config.c ************/
 
 /*
@@ -108,6 +456,7 @@ PUBLIC int ioConfig(Json *config)
 
 
 
+#if SERVICES_CRON
 /********************************* Defines ************************************/
 
 #define MINUTE  60L
@@ -560,6 +909,11 @@ static int daysPerMonth(int m, int y)
                           ((m == 1) && (y % 400 == 0)) ? 1 : 0);
 }
 
+#else
+PUBLIC void dummyCron(void)
+{
+}
+#endif /* SERVICES_CRON */
 
 /********* Start of file ../../../src/database.c ************/
 
@@ -586,9 +940,9 @@ PUBLIC int ioInitDb(void)
     RList  *devices;
     DbItem *device;
     Ticks  maxAge, service;
+    size_t maxSize;
     cchar  *id;
     char   *path, *schema;
-    ssize  maxSize;
     int    flags, index;
 
     schema = rGetFilePath(jsonGet(ioto->config, 0, "database.schema", "@config/schema.json5"));
@@ -605,8 +959,8 @@ PUBLIC int ioInitDb(void)
     rFree(schema);
 
     maxAge = svalue(jsonGet(ioto->config, 0, "database.maxJournalAge", "1min")) * TPS;
-    maxSize = svalue(jsonGet(ioto->config, 0, "database.maxJournalSize", "1mb"));
     service = svalue(jsonGet(ioto->config, 0, "database.service", "1hour")) * TPS;
+    maxSize = (size_t) svalue(jsonGet(ioto->config, 0, "database.maxJournalSize", "1mb"));
     dbSetJournalParams(ioto->db, maxAge, maxSize);
 
     dbAddContext(ioto->db, "deviceId", ioto->id);
@@ -814,449 +1168,6 @@ PUBLIC int ioSetTime(bool wait)
  */
 
 
-/********* Start of file ../../../src/ioto.c ************/
-
-/*
-    ioto.c - Primary Ioto control
-
-    This code runs on a fiber and can block, yield and create fibers.
-
-    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
- */
-
-/********************************** Includes **********************************/
-
-
-
-/*********************************** Globals **********************************/
-
-PUBLIC Ioto *ioto = NULL;
-
-/*********************************** Defines **********************************/
-
-#define TRACE_FILTER         "stderr:raw,error,info,!debug:all,!mbedtls"
-#define TRACE_VERBOSE_FILTER "stdout:raw,error,info,trace,!debug:all,!mbedtls"
-#define TRACE_DEBUG_FILTER   "stdout:all:all,!mbedtls"
-#define TRACE_FORMAT         "%A: %M"
-
-/*********************************** Forwards *********************************/
-
-static int initServices(void);
-
-/************************************* Code ***********************************/
-/*
-    Allocate the global Ioto singleton
- */
-PUBLIC Ioto *ioAlloc(void)
-{
-    ioto = rAllocType(Ioto);
-    return ioto;
-}
-
-PUBLIC void ioFree(void)
-{
-    if (ioto) {
-        //  ioto members freed in ioTerm and ioTermConfig
-        rFree(ioto);
-    }
-    ioto = NULL;
-}
-
-/*
-    Initialize after ioInitSetup
- */
-PUBLIC void ioInit(void)
-{
-    assert(!rIsMain());
-
-    if (initServices() < 0) {
-        rError("ioto", "Exiting ...");
-        rStop();
-        return;
-    }
-    if (rGetState() != R_INITIALIZED) {
-        return;
-    }
-    ioto->ready = 1;
-    rSetState(R_READY);
-    rInfo("ioto", "Ioto ready");
-    rSignal("app:ready");
-    if (ioStart() < 0) {
-        rError("ioto", "Cannot start Ioto, ioStart() failed");
-        rStop();
-    }
-}
-
-/*
-    Terminate Ioto.
-    If doing a reset, run the script "scripts/reset" before leaving.
- */
-PUBLIC void ioTerm(void)
-{
-#if ME_UNIX_LIKE
-    char *output, *script;
-    int  status;
-
-    if (rGetState() == R_RESTART) {
-        //  TermServices will release ioto->config. Get persistent reference to script.
-        script = jsonGetClone(ioto->config, 0, "scripts.reset", 0);
-    } else {
-        script = 0;
-    }
-#endif
-    ioto->ready = 0;
-    ioStop();
-#if SERVICES_WEB
-    ioTermWeb();
-#endif
-#if SERVICES_CLOUD
-    ioTermCloud();
-#endif
-#if SERVICES_DATABASE
-    ioTermDb();
-#endif
-    ioTermConfig();
-
-#if ME_UNIX_LIKE
-    if (script && *script) {
-        /*
-            Security: The reset script is configured via a config file. Ensure the config files
-            have permissions that prevent modification by unauthorized users.
-            SECURITY Acceptable: - the script is provided by the developer configuration scripts.reset and is secure.
-         */
-        status = rRun(script, &output);
-        if (status != 0) {
-            rError("ioto", "Reset script failure: %d, %s", status, output);
-        }
-        rFree(output);
-    }
-    rFree(script);
-#endif
-}
-
-/*
-    Start the Ioto runtime
- */
-PUBLIC int ioStartRuntime(int verbose)
-{
-    cchar *filter;
-
-    if (rInit((RFiberProc) NULL, NULL) < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if (verbose == 1) {
-        filter = TRACE_VERBOSE_FILTER;
-    } else if (verbose >= 2) {
-        filter = TRACE_DEBUG_FILTER;
-    } else {
-        filter = NULL;
-    }
-    if (filter && rSetLog(filter, NULL, 1) < 0) {
-        rTerm();
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if (ioAlloc() == NULL) {
-        return R_ERR_MEMORY;
-    }
-    return 0;
-}
-
-PUBLIC void ioStopRuntime(void)
-{
-    rTerm();
-}
-
-/*
-    Run Ioto. This will block and service events forever (or till instructed to stop)
-    Should be called from main()
-    The fn argument is not used, but helps build systems to ensure it is included in the build.
- */
-PUBLIC int ioRun(void *fn)
-{
-    rSleep(0);
-
-    while (rGetState() < R_STOPPING) {
-        if (ioInitConfig() < 0) {
-            rFatal("ioto", "Cannot initialize Ioto\n");
-        }
-        if (rSpawnFiber("ioInit", (RFiberProc) ioInit, NULL) < 0) {
-            rFatal("ioto", "Cannot initialize runtime");
-        }
-        if (rGetState() < R_STOPPING) {
-            //  Service events until instructed to exit
-            rServiceEvents();
-        }
-        ioTerm();
-        if (rGetState() == R_RESTART) {
-            rTerm();
-            rInit(NULL, NULL);
-        }
-    }
-    ioFree();
-    rInfo("ioto", "Ioto exiting");
-    return 0;
-}
-
-/*
-    Start services. Order of initialization matters.
-    We initialize MQTT early so that on-demand connections and provisioning may take place.
-    Return false if initialization failed. Note: some services may trigger a R_RESTART.
- */
-static int initServices(void)
-{
-#ifdef SERVICES_SERIALIZE
-    if (ioto->serializeService) {
-        ioSerialize();
-    }
-#endif
-#if SERVICES_REGISTER
-    /*
-        One-time device registration during manufacturer or first connect.
-        NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
-        maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a current 
-        contract agreement with Embedthis to use an alternate method.
-     */
-    if (ioto->registerService) {
-        if (!ioto->registered && ioRegister() < 0) {
-            return R_ERR_BAD_ARGS;
-        }
-    } else
-#endif
-    rInfo("ioto", "The LICENSE requires that you declare device volumes at https://admin.embedthis.com");
-
-#if SERVICES_DATABASE
-    if (ioto->dbService && ioInitDb() < 0) {
-        return R_ERR_CANT_READ;
-    }
-#endif
-#if SERVICES_WEB
-    if (ioto->webService && ioInitWeb() < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-#endif
-#if SERVICES_CLOUD
-    if (ioto->cloudService && ioInitCloud() < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-#endif
-#if SERVICES_AI
-    ioto->aiService = 1;
-    if (ioto->aiService && ioInitAI() < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-#endif
-#if SERVICES_UPDATE
-    if (ioto->updateService) {
-        //  Delay to allow provisioning to complete
-        rStartEvent((RFiberProc) ioUpdate, 0, 15 * TPS);
-    }
-#endif
-#if ME_DEBUG
-    //  Used to test memory leaks after running for a period of time
-    if (getenv("VALGRIND")) {
-        rStartEvent((REventProc) rStop, 0, 60 * TPS);
-    }
-#endif
-    return 0;
-}
-
-/*
-    Update the log output configuration. This may be called at startup and after cloud provisioning to
-    redirect the device log to the cloud.
- */
-PUBLIC int ioUpdateLog(bool force)
-{
-    Json  *json;
-    cchar *dir, *format, *path, *source, *types;
-    char  *fullPath;
-
-    json = ioto->config;
-    types = source = 0;
-
-    format = jsonGet(json, 0, "log.format", "%T %S: %M");
-    path = jsonGet(json, 0, "log.path", NULL);
-    source = jsonGet(json, 0, "log.sources", "all,!mbedtls");
-    types = jsonGet(json, 0, "log.types", "error,info");
-    dir = jsonGet(json, 0, "directories.log", "");
-
-    rSetLogFormat(format, force);
-    rSetLogFilter(types, source, force);
-
-    if (smatch(path, "default")) {
-        path = IO_LOG_FILE;
-
-#if SERVICES_CLOUD
-    } else if (smatch(path, "cloud")) {
-        if (ioto->awsAccess) {
-            //  This will register a new log handler
-            ioEnableCloudLog();
-        }
-        return 0;
-#endif
-    }
-    // SECURITY Acceptable: - the log path is provided by the developer configuration log.path and is secure
-    fullPath = rJoinFile(dir, path);
-    if (rSetLogPath(fullPath, force) < 0) {
-        rError("ioto", "Cannot open log %s", fullPath);
-        rFree(fullPath);
-        return R_ERR_CANT_OPEN;
-    }
-    rFree(fullPath);
-    return 0;
-}
-
-#if SERVICES_CLOUD
-/*
-    Invoke an Ioto REST API on the device cloud.
-
-    url POST https://xxxxxxxxxx.execute-api.ap-southeast-1.amazonaws.com/tok/action/invoke \
-        'Authorization: xxxxxxxxxxxxxxxxxxxxxxxxxx' \
-        'Content-Type: application/json' \
-        '{name:"AutomationName",context:{propertyName:42}}'
- */
-PUBLIC Json *ioAPI(cchar *url, cchar *data)
-{
-    Json *response;
-    char *api;
-
-    // SECURITY Acceptable: - the ioto-api is provided by the cloud service and is secure
-    api = sfmt("%s/%s", ioto->api, url);
-    response = urlPostJson(api, data, -1,
-                           "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
-    rFree(api);
-    if (!response) {
-        rError("ai", "Cannot invoke automation");
-        return 0;
-    }
-    return response;
-}
-
-/**
-    Invoke an Ioto automation on the device cloud.
-    data is a string representation of a json object
-    Context {...properties} in strict JSON. Use JSON or JFMT to create the context.
- */
-PUBLIC int ioAutomation(cchar *name, cchar *context)
-{
-    Json  *response, *jsonContext, *data;
-    cchar *args;
-    int   rc;
-
-    data = jsonAlloc();
-    jsonSet(data, 0, "name", name, JSON_STRING);
-
-    if ((jsonContext = jsonParse(context, 0)) == 0) {
-        rError("ai", "Invalid JSON context provided to ioAutomation");
-        jsonFree(data);
-        return R_ERR_BAD_ARGS;
-    }
-    jsonBlend(data, 0, "context", jsonContext, 0, 0, 0);
-    jsonFree(jsonContext);
-
-    args = jsonString(data, 0);
-    response = ioAPI("tok/action/invoke", args);
-    jsonFree(data);
-
-    rc = R_ERR_CANT_COMPLETE;
-    if (response) {
-        if (jsonGet(response, 0, "error", 0) == 0) {
-            rc = 0;
-        }
-        jsonFree(response);
-    }
-    if (rc != 0) {
-        rError("ai", "Cannot invoke automation");
-    }
-    return rc;
-}
-
-/*
-    Upload a file to the device cloud.
- */
-PUBLIC int ioUpload(cchar *path, uchar *buf, ssize len)
-{
-    Url   *up;
-    cchar *response;
-    char  *api, *data, *url;
-    int   rc;
-
-    up = urlAlloc(0);
-    api = sfmt("%s/tok/file/getSignedUrl", ioto->api);
-    data = sfmt(SDEF({
-        "id" : "%s",
-        "command" : "put",
-        "filename" : "%s",
-        "mimeType" : "image/jpeg",
-        "size" : "%ld"
-    }), ioto->id, path, len);
-
-    rc = R_ERR_CANT_COMPLETE;
-    if (urlFetch(up, "POST", api, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
-                 ioto->apiToken) != URL_CODE_OK) {
-        rError("nature", "Error: %s", urlGetResponse(up));
-
-    } else if ((response = urlGetResponse(up)) == NULL) {
-        rError("nature", "Empty signed URL response");
-
-    } else {
-        url = sclone(response);
-        if (urlFetch(up, "PUT", strim(url, "\"", R_TRIM_BOTH), (char*) buf, len,
-                     "Content-Type: image/jpeg\r\n") != URL_CODE_OK) {
-            rError("nature", "Cannot upload to signed URL");
-        } else {
-            rc = 0;
-        }
-        rFree(url);
-    }
-    rFree(data);
-    rFree(api);
-    urlFree(up);
-    return rc;
-}
-
-/*
-    Exponential backoff. This can be awakened via ioResumeBackoff()
- */
-PUBLIC Ticks ioBackoff(Ticks delay, REvent *event)
-{
-    assert(event);
-
-    if (delay == 0) {
-        delay = TPS * 10;
-    }
-    delay += TPS / 4;
-    if (delay > 3660 * TPS) {
-        delay = 3660 * TPS;
-    }
-    if (ioto->blockedUntil > rGetTime()) {
-        delay = max(delay, ioto->blockedUntil - rGetTime());
-    }
-    if (*event) {
-        rStopEvent(*event);
-    }
-    *event = rStartEvent(NULL, 0, delay);
-    rYieldFiber(0);
-    *event = 0;
-    return delay;
-}
-
-/*
-    Resume a backoff event
- */
-PUBLIC void ioResumeBackoff(REvent *event)
-{
-    if (event && *event) {
-        rRunEvent(*event);
-    }
-}
-#endif /* SERVICES_CLOUD */
-
-/*
-    Copyright (c) Embedthis Software. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
-
 /********* Start of file ../../../src/mqtt.c ************/
 
 /*
@@ -1270,7 +1181,6 @@ PUBLIC void ioResumeBackoff(REvent *event)
 
 
 #if SERVICES_MQTT
-
 /*********************************** Locals **********************************/
 
 #define RR_DEFAULT_TIMEOUT  (30 * TPS);
@@ -1366,7 +1276,7 @@ static void startMqtt(Time lastConnect)
         jitter = svalue(jsonGet(ioto->config, 0, "mqtt.jitter", "0")) * TPS;
         if (jitter) {
             /*
-                SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the 
+                SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the
                 mqtt schedule jitter and is not a security risk.
              */
             jitter = rand() % jitter;
@@ -1771,7 +1681,7 @@ PUBLIC char *mqttRequest(Mqtt *mq, cchar *body, Ticks timeout, cchar *topicFmt, 
     rr->timeout = rStartEvent((REventProc) rrTimeout, rr, timeout);
 
     SFMT(publish, "ioto/service/%s/%s/%d", ioto->id, topic, rr->seq);
-    if (mqttPublish(ioto->mqtt, body, -1, 1, MQTT_WAIT_NONE, publish) < 0) {
+    if (mqttPublish(ioto->mqtt, body, 0, 1, MQTT_WAIT_NONE, publish) < 0) {
         return NULL;
     }
     //  Returns null on a timeout. Caller must free result.
@@ -1832,7 +1742,7 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
     }
     msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
                metric, value, dimensions, elapsed);
-    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
+    mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
     rFree(msg);
 }
@@ -1984,7 +1894,7 @@ void dummyMqttImport(void)
 /*
     register.c - One-time device registration during manufacturer or first connect.
 
-    NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
+    NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and
     maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a current
     contract agreement with Embedthis to use an alternate method.
 
@@ -2075,7 +1985,7 @@ PUBLIC int ioRegister(void)
 
     // SECURITY Acceptable: - the ioto-api is provided by the developer configuration and is secure
     sfmtbuf(url, sizeof(url), "%s/device/register", ioto->builder);
-    response = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
+    response = urlPostJson(url, data, 0, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
                            ioto->product);
     rFree(data);
 
@@ -2175,8 +2085,8 @@ static int parseRegisterResponse(Json *json)
 
 
 
-/*********************************** Locals ***********************************/
 #ifdef SERVICES_SERIALIZE
+/*********************************** Locals ***********************************/
 
 #define SERIALIZE_TIMEOUT 30 * 1000
 
@@ -2242,7 +2152,7 @@ static bool getSerial(void)
             //  Ask manufacturing controller for device ID
             def = jsonToString(config, did, 0, JSON_JSON);
             urlSetTimeout(up, SERIALIZE_TIMEOUT);
-            result = urlJson(up, "POST", serialize, def, -1, 0);
+            result = urlJson(up, "POST", serialize, def, 0, 0);
             if (result == 0) {
                 rError("serialize", "Cannot fetch device ID from %s: %s", serialize, urlGetError(up));
             } else {
@@ -2353,9 +2263,9 @@ static void reset(void);
  */
 PUBLIC int ioInitConfig(void)
 {
-    Json  *json;
-    ssize stackSize;
-    int   maxFibers;
+    Json   *json;
+    size_t stackSize;
+    int    maxFibers;
 
     assert(rIsMain());
 
@@ -2374,11 +2284,11 @@ PUBLIC int ioInitConfig(void)
     json = ioto->config;
     ioConfig(json);
 
-    stackSize = svalue(jsonGet(json, 0, "limits.stack", "0"));
+    stackSize = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
     if (stackSize) {
         rSetFiberStack(stackSize);
     }
-    maxFibers = (int) svalue(jsonGet(json, 0, "limits.fibers", "0"));
+    maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "0"));
     if (maxFibers) {
         rSetFiberLimits(maxFibers);
     }
@@ -2398,7 +2308,6 @@ PUBLIC int ioInitConfig(void)
         jsonSet(json, 0, "device.product", ioto->cmdProduct, JSON_STRING);
     }
     if (ioto->cmdProfile) {
-        rInfo("ioto", "Using environment IOTO_PROFILE %s", ioto->cmdProfile);
         jsonSet(json, 0, "profile", ioto->cmdProfile, JSON_STRING);
     }
 
@@ -2461,7 +2370,7 @@ PUBLIC int ioInitConfig(void)
 #endif
     ioUpdateLog(0);
     rInfo("ioto", "Starting Ioto %s, with \"%s\" app %s, using \"%s\" profile",
-          ME_VERSION, ioto->app, ioto->version, ioto->profile);
+            ME_VERSION, ioto->app, ioto->version, ioto->profile);
     enableServices();
     return 0;
 }
@@ -2470,6 +2379,7 @@ PUBLIC void ioTermConfig(void)
 {
     jsonFree(ioto->config);
     jsonFree(ioto->properties);
+
 #if SERVICES_SHADOW
     jsonFree(ioto->shadow);
 #endif
@@ -2577,11 +2487,13 @@ PUBLIC int ioLoadConfig(void)
     if (loadJson(json, "device", IO_DEVICE_FILE, 1) < 0) {
         return R_ERR_CANT_READ;
     }
+#if SERVICES_PROVISION
     if (!ioto->cmdReset) {
         if (loadJson(json, "provision", IO_PROVISION_FILE, 1) < 0) {
             return R_ERR_CANT_READ;
         }
     }
+#endif
     //  Last chance local overrides
     if (loadJson(json, NULL, IO_LOCAL_FILE, 1) < 0) {
         return R_ERR_CANT_READ;
@@ -2592,7 +2504,6 @@ PUBLIC int ioLoadConfig(void)
     }
 #if !ESP32 && !FREERTOS
     cchar *stateDir;
-    //  Override state directory with ioto.json5
     if ((stateDir = jsonGet(json, 0, "directories.state", 0)) != 0) {
         rAddDirectory("state", stateDir);
     }
@@ -2616,19 +2527,6 @@ PUBLIC int ioLoadConfig(void)
         rDebug("ioto", "%s", jsonString(json, JSON_HUMAN));
     }
     return 0;
-}
-
-/*
-    Convenience routine over jsonGet.
- */
-PUBLIC cchar *ioGetConfig(cchar *key, cchar *defaultValue)
-{
-    return jsonGet(ioto->config, 0, key, defaultValue);
-}
-
-PUBLIC int ioGetConfigInt(cchar *key, int defaultValue)
-{
-    return jsonGetInt(ioto->config, 0, key, defaultValue);
 }
 
 /*
@@ -2677,26 +2575,26 @@ static void enableServices(void)
         ioto->testService = jsonGetBool(config, sid, "test", 0);
 
         /*
-            NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and 
-            maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a 
+            NOTE: The Ioto license requires that if this code is removed or disabled, you must manually enter and
+            maintain device volumes using Embedthis Builder (https://admin.embedthis.com) or you must have a
             current contract agreement with Embedthis to use an alternate method.
          */
         ioto->registerService = jsonGetBool(config, sid, "register", ioto->provisionService ? 1 : 0);
     }
-    rInfo("ioto", "Enabling services: %s%s%s%s%s%s%s%s%s%s%s%s",
-          ioto->aiService ? "ai " : "",
-          ioto->dbService ? "db " : "",
-          ioto->logService ? "log " : "",
-          ioto->mqttService ? "mqtt " : "",
-          ioto->provisionService ? "provision " : "",
-          ioto->registerService ? "register " : "",
-          ioto->shadowService ? "shadow " : "",
-          ioto->syncService ? "sync " : "",
-          ioto->serializeService ? "serialize " : "",
-          ioto->testService ? "test " : "",
-          ioto->updateService ? "update " : "",
-          ioto->webService ? "web" : ""
-          );
+        rInfo("ioto", "Enabling services: %s%s%s%s%s%s%s%s%s%s%s%s",
+              ioto->aiService ? "ai " : "",
+              ioto->dbService ? "db " : "",
+              ioto->logService ? "log " : "",
+              ioto->mqttService ? "mqtt " : "",
+              ioto->provisionService ? "provision " : "",
+              ioto->registerService ? "register " : "",
+              ioto->shadowService ? "shadow " : "",
+              ioto->syncService ? "sync " : "",
+              ioto->serializeService ? "serialize " : "",
+              ioto->testService ? "test " : "",
+              ioto->updateService ? "update " : "",
+              ioto->webService ? "web" : ""
+              );
 }
 
 /*
@@ -2718,7 +2616,6 @@ static int loadJson(Json *json, cchar *property, cchar *filename, bool optional)
         return 0;
     }
     if ((extra = jsonParseFile(path, NULL, 0)) == 0) {
-        // Emit error even if optional is specified
         rError("ioto", "Cannot parse %s", path);
         rFree(path);
         return R_ERR_CANT_READ;
@@ -2790,14 +2687,6 @@ static int blendConditional(Json *json, cchar *property)
 }
 
 /*
-    Expand ${references} in the "str" using properties variables in ioto->properties
- */
-PUBLIC char *ioExpand(cchar *str)
-{
-    return jsonTemplate(ioto->properties, str, 1);
-}
-
-/*
     Make a JSON collection of properties to be used with iotoExpand
  */
 static Json *makeTemplate(void)
@@ -2865,6 +2754,23 @@ static void reset(void)
 }
 
 /*
+    Help some older linkers with references to libraries
+    MakeMe struggles with order of libraries and Windows depends on a set order.
+ */
+#if ME_COM_WEBSOCK
+PUBLIC void *WebSocketsRef = webSocketAlloc;
+#endif
+#if ME_COM_WEB
+PUBLIC void *WebRef = webAlloc;
+#endif
+#if ME_COM_URL
+PUBLIC void *UrlRef = urlAlloc;
+#endif
+#if ME_COM_JSON
+PUBLIC void *JsonRef = jsonAlloc;
+#endif
+
+/*
     Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
@@ -2882,8 +2788,8 @@ static void reset(void)
 
 
 
-/*********************************** Forwards *********************************/
 #if SERVICES_WEB
+/*********************************** Forwards *********************************/
 
 static int parseShow(cchar *arg);
 
@@ -2988,7 +2894,7 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item)
     if (!item) {
         return 0;
     }
-    return webWrite(web, dbString(item, JSON_JSON), -1);
+    return webWrite(web, dbString(item, JSON_JSON), 0);
 }
 
 /*
@@ -3011,7 +2917,7 @@ PUBLIC ssize webWriteItems(Web *web, RList *items)
             continue;
         }
         if (prior) {
-            rc += webWrite(web, ",", -1);
+            rc += webWrite(web, ",", 0);
         }
         if ((wrote = webWriteItem(web, item)) <= 0) {
             continue;
@@ -3084,7 +2990,7 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey)
     }
     rPutCharToBuf(web->buffer, ']');
     webFinalize(web);
-    return rGetBufLength(web->buffer);
+    return (ssize) rGetBufLength(web->buffer);
 }
 
 /*
@@ -3198,6 +3104,151 @@ PUBLIC void ioTermCloud(void)
 #endif
     ioto->instance = 0;
 }
+#if SERVICES_CLOUD
+/*
+    Invoke an Ioto REST API on the device cloud.
+
+    url POST https://xxxxxxxxxx.execute-api.ap-southeast-1.amazonaws.com/tok/action/invoke \
+        'Authorization: xxxxxxxxxxxxxxxxxxxxxxxxxx' \
+        'Content-Type: application/json' \
+        '{name:"AutomationName",context:{propertyName:42}}'
+ */
+PUBLIC Json *ioAPI(cchar *url, cchar *data)
+{
+    Json *response;
+    char *api;
+
+    // SECURITY Acceptable: - the ioto-api is provided by the cloud service and is secure
+    api = sfmt("%s/%s", ioto->api, url);
+    response = urlPostJson(api, data, 0,
+                           "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
+    rFree(api);
+    if (!response) {
+        rError("ai", "Cannot invoke automation");
+        return 0;
+    }
+    return response;
+}
+
+/**
+    Invoke an Ioto automation on the device cloud.
+    data is a string representation of a json object
+    Context {...properties} in strict JSON. Use JSON or JFMT to create the context.
+ */
+PUBLIC int ioAutomation(cchar *name, cchar *context)
+{
+    Json  *response, *jsonContext, *data;
+    cchar *args;
+    int   rc;
+
+    data = jsonAlloc();
+    jsonSet(data, 0, "name", name, JSON_STRING);
+
+    if ((jsonContext = jsonParse(context, 0)) == 0) {
+        rError("ai", "Invalid JSON context provided to ioAutomation");
+        jsonFree(data);
+        return R_ERR_BAD_ARGS;
+    }
+    jsonBlend(data, 0, "context", jsonContext, 0, 0, 0);
+    jsonFree(jsonContext);
+
+    args = jsonString(data, 0);
+    response = ioAPI("tok/action/invoke", args);
+    jsonFree(data);
+
+    rc = R_ERR_CANT_COMPLETE;
+    if (response) {
+        if (jsonGet(response, 0, "error", 0) == 0) {
+            rc = 0;
+        }
+        jsonFree(response);
+    }
+    if (rc != 0) {
+        rError("ai", "Cannot invoke automation");
+    }
+    return rc;
+}
+
+/*
+    Upload a file to the device cloud.
+ */
+PUBLIC int ioUpload(cchar *path, uchar *buf, size_t len)
+{
+    Url   *up;
+    cchar *response;
+    char  *api, *data, *url;
+    int   rc;
+
+    up = urlAlloc(0);
+    api = sfmt("%s/tok/file/getSignedUrl", ioto->api);
+    data = sfmt(SDEF({
+        "id" : "%s",
+        "command" : "put",
+        "filename" : "%s",
+        "mimeType" : "image/jpeg",
+        "size" : "%ld"
+    }), ioto->id, path, len);
+
+    rc = R_ERR_CANT_COMPLETE;
+    if (urlFetch(up, "POST", api, data, 0, "Authorization: bearer %s\r\nContent-Type: application/json\r\n",
+                 ioto->apiToken) != URL_CODE_OK) {
+        rError("nature", "Error: %s", urlGetResponse(up));
+
+    } else if ((response = urlGetResponse(up)) == NULL) {
+        rError("nature", "Empty signed URL response");
+
+    } else {
+        url = sclone(response);
+        if (urlFetch(up, "PUT", strim(url, "\"", R_TRIM_BOTH), (char*) buf, len,
+                     "Content-Type: image/jpeg\r\n") != URL_CODE_OK) {
+            rError("nature", "Cannot upload to signed URL");
+        } else {
+            rc = 0;
+        }
+        rFree(url);
+    }
+    rFree(data);
+    rFree(api);
+    urlFree(up);
+    return rc;
+}
+
+/*
+    Exponential backoff. This can be awakened via ioResumeBackoff()
+ */
+PUBLIC Ticks ioBackoff(Ticks delay, REvent *event)
+{
+    assert(event);
+
+    if (delay == 0) {
+        delay = TPS * 10;
+    }
+    delay += TPS / 4;
+    if (delay > 3660 * TPS) {
+        delay = 3660 * TPS;
+    }
+    if (ioto->blockedUntil > rGetTime()) {
+        delay = max(delay, ioto->blockedUntil - rGetTime());
+    }
+    if (*event) {
+        rStopEvent(*event);
+    }
+    *event = rStartEvent(NULL, 0, delay);
+    rYieldFiber(0);
+    *event = 0;
+    return delay;
+}
+
+/*
+    Resume a backoff event
+ */
+PUBLIC void ioResumeBackoff(REvent *event)
+{
+    if (event && *event) {
+        rRunEvent(*event);
+    }
+}
+#endif /* SERVICES_CLOUD */
 
 #else
 void dummyCloud(void)
@@ -3354,7 +3405,7 @@ static void logHandler(cchar *type, cchar *source, cchar *msg)
         if (ioto->log) {
             ioLogMessage(ioto->log, 0, msg);
         } else {
-            write(rGetLogFile(), str, (int) rGetBufLength(logBuf));
+            write(rGetLogFile(), str, (uint) rGetBufLength(logBuf));
         }
     }
 }
@@ -3439,7 +3490,7 @@ static int commitMessage(IotoLog *log)
     if (!log || !log->buf) {
         return R_ERR_BAD_STATE;
     }
-    if (log->events >= log->eventsHiw || rGetBufLength(log->buf) >= log->hiw) {
+    if (log->events >= log->eventsHiw || (int) rGetBufLength(log->buf) >= log->hiw) {
         flushBuf(log);
         return 0;
     }
@@ -3503,12 +3554,12 @@ static void queueBuf(IotoLog *log)
 
 static void serviceQueue(IotoLog *log, int count)
 {
-    RBuf  *buf;
-    Url   *up;
-    Json  *json;
-    cchar *data;
-    ssize len;
-    int   status;
+    RBuf   *buf;
+    Url    *up;
+    Json   *json;
+    cchar  *data;
+    size_t len;
+    int    status;
 
     assert(log);
 
@@ -3595,7 +3646,7 @@ static int createLogGroup(IotoLog *log)
     up = urlAlloc(0);
     data = sfmt("{\"logGroupName\":\"%s\"}", log->group);
 
-    status = aws(up, log->region, "logs", "Logs_20140328.CreateLogGroup", data, -1, NULL);
+    status = aws(up, log->region, "logs", "Logs_20140328.CreateLogGroup", data, 0, NULL);
 
     rFree(data);
 
@@ -3628,7 +3679,7 @@ static int describeLogGroup(IotoLog *log)
         } else {
             data = sfmt("{\"logGroupNamePrefix\":\"%s\"}", log->group);
         }
-        status = aws(up, log->region, "logs", "Logs_20140328.DescribeLogGroups", data, -1, 0);
+        status = aws(up, log->region, "logs", "Logs_20140328.DescribeLogGroups", data, 0, 0);
         rFree(data);
 
         if (status != URL_CODE_OK) {
@@ -3693,7 +3744,7 @@ static int createLogStream(IotoLog *log)
     up = urlAlloc(0);
     data = sfmt("{\"logGroupName\":\"%s\",\"logStreamName\":\"%s\"}", log->group, log->stream);
 
-    status = aws(up, log->region, "logs", "Logs_20140328.CreateLogStream", data, -1, 0);
+    status = aws(up, log->region, "logs", "Logs_20140328.CreateLogStream", data, 0, 0);
     rFree(data);
 
     if (status != URL_CODE_OK) {
@@ -3725,7 +3776,7 @@ static int describeStream(IotoLog *log)
         } else {
             data = sfmt("{\"logGroupName\":\"%s\",\"logStreamNamePrefix\":\"%s\"}", log->group, log->stream);
         }
-        status = aws(up, log->region, "logs", "Logs_20140328.DescribeLogStreams", data, -1, 0);
+        status = aws(up, log->region, "logs", "Logs_20140328.DescribeLogStreams", data, 0, 0);
         rFree(data);
 
         if (status != URL_CODE_OK) {
@@ -3838,12 +3889,12 @@ static char *getHeader(cchar *headers, cchar *header, cchar *defaultValue);
 
 /************************************* Code ***********************************/
 
-static void sign(char hash[CRYPT_SHA256_SIZE], cchar *key, ssize keyLen, cchar *payload, ssize payloadLen)
+static void sign(char hash[CRYPT_SHA256_SIZE], cchar *key, size_t keyLen, cchar *payload, size_t payloadLen)
 {
-    if (payloadLen < 0) {
+    if (payloadLen == 0) {
         payloadLen = slen(payload);
     }
-    if (keyLen < 0) {
+    if (keyLen == 0) {
         keyLen = slen(key);
     }
 #if ME_COM_MBEDTLS
@@ -3858,7 +3909,7 @@ static void sign(char hash[CRYPT_SHA256_SIZE], cchar *key, ssize keyLen, cchar *
 
 #elif ME_COM_OPENSSL
     uint len;
-    HMAC(EVP_sha256(), (uchar*) key, (int) keyLen, (uchar*) payload, (int) payloadLen, (uchar*) hash, &len);
+    HMAC(EVP_sha256(), (uchar*) key, (int) keyLen, (uchar*) payload, (size_t) payloadLen, (uchar*) hash, &len);
 #endif
 }
 
@@ -3875,10 +3926,10 @@ static void genKey(char result[CRYPT_SHA256_SIZE], cchar *secret, cchar *date, c
     }
 #endif
     asecret = sfmt("AWS4%s", secret);
-    sign(kDate, asecret, -1, date, -1);
-    sign(kRegion, (cchar*) kDate, CRYPT_SHA256_SIZE, region, -1);
-    sign(kService, (cchar*) kRegion, CRYPT_SHA256_SIZE, service, -1);
-    sign(result, (cchar*) kService, CRYPT_SHA256_SIZE, "aws4_request", -1);
+    sign(kDate, asecret, 0, date, 0);
+    sign(kRegion, (cchar*) kDate, CRYPT_SHA256_SIZE, region, 0);
+    sign(kService, (cchar*) kRegion, CRYPT_SHA256_SIZE, service, 0);
+    sign(result, (cchar*) kService, CRYPT_SHA256_SIZE, "aws4_request", 0);
     rFree(asecret);
 
 #if FUTURE
@@ -3888,9 +3939,9 @@ static void genKey(char result[CRYPT_SHA256_SIZE], cchar *secret, cchar *date, c
 #endif
 }
 
-static void getHash(cchar *buf, ssize buflen, char hash[CRYPT_SHA256_SIZE])
+static void getHash(cchar *buf, size_t buflen, char hash[CRYPT_SHA256_SIZE])
 {
-    if (buflen < 0) {
+    if (buflen == 0) {
         buflen = slen(buf);
     }
     cryptGetSha256Block((cuchar*) buf, buflen, (uchar*) hash);
@@ -3902,7 +3953,7 @@ static char *hashToString(char hash[CRYPT_SHA256_SIZE])
 }
 
 PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method, cchar *path, cchar *query,
-                     cchar *body, ssize bodyLen, cchar *headersFmt, ...)
+                     cchar *body, size_t bodyLen, cchar *headersFmt, ...)
 {
     va_list args;
     Ticks   now;
@@ -4005,7 +4056,7 @@ PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method
     rDebug("aws", "Canonical Headers\n%s\n", canonicalHeaders);
     rDebug("aws", "Canonical Request\n%s\n\n", canonicalRequest);
 
-    getHash(canonicalRequest, -1, shabuf);
+    getHash(canonicalRequest, 0, shabuf);
     hash = hashToString(shabuf);
 
     algorithm = "AWS4-HMAC-SHA256";
@@ -4016,7 +4067,7 @@ PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method
 
     genKey(key, ioto->awsSecret, date, region, service);
 
-    sign(shabuf, key, CRYPT_SHA256_SIZE, toSign, -1);
+    sign(shabuf, key, CRYPT_SHA256_SIZE, toSign, 0);
     signature = hashToString(shabuf);
 
     authorization = sfmt("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
@@ -4066,7 +4117,7 @@ PUBLIC char *awsSign(cchar *region, cchar *service, cchar *target, cchar *method
 /*
     Convenience routine to issue an AWS API request
  */
-PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *body, ssize bodyLen, cchar *headersFmt,
+PUBLIC int aws(Url *up, cchar *region, cchar *service, cchar *target, cchar *body, size_t bodyLen, cchar *headersFmt,
                ...)
 {
     va_list args;
@@ -4105,11 +4156,11 @@ static char *getHeader(cchar *headers, cchar *header, cchar *defaultValue)
     cchar *end, *start, *value;
 
     if (headers && header) {
-        if ((start = sncaselesscontains(headers, header, -1)) != 0) {
+        if ((start = sncaselesscontains(headers, header, 0)) != 0) {
             if ((value = schr(start, ':')) != 0) {
                 while (*value++ == ' ') value++;
                 if ((end = schr(value, '\r')) != 0) {
-                    return snclone(value, end - value);
+                    return snclone(value, (size_t) (end - value));
                 }
             }
         }
@@ -4128,9 +4179,9 @@ static char *getHeader(cchar *headers, cchar *header, cchar *defaultValue)
  */
 PUBLIC int awsPutFileToS3(cchar *region, cchar *bucket, cchar *key, cchar *file)
 {
-    char  *data;
-    ssize length;
-    int   rc;
+    char   *data;
+    size_t length;
+    int    rc;
 
     if (!ioto->awsToken || !ioto->awsAccess) {
         rError("cloud.aws", "AWS access keys not defined");
@@ -4145,7 +4196,7 @@ PUBLIC int awsPutFileToS3(cchar *region, cchar *bucket, cchar *key, cchar *file)
     return rc;
 }
 
-PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, ssize dataLen)
+PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, size_t dataLen)
 {
     Url   *up;
     cchar *error;
@@ -4156,7 +4207,7 @@ PUBLIC int awsPutToS3(cchar *region, cchar *bucket, cchar *key, cchar *data, ssi
         rError("cloud.aws", "AWS access keys not defined");
         return R_ERR_BAD_STATE;
     }
-    if (dataLen < 0) {
+    if (data && dataLen == 0) {
         dataLen = slen(data);
     }
     up = urlAlloc(0);
@@ -4763,8 +4814,8 @@ static int startProvision(void)
  */
 static bool provisionDevice(void)
 {
-    Json  *json;
-    char  data[80], url[512];
+    Json *json;
+    char data[80], url[512];
 
     /*
         Talk to the device cloud to get certificates
@@ -4773,7 +4824,7 @@ static bool provisionDevice(void)
     SFMT(url, "%s/tok/device/provision", ioto->api);
     SFMT(data, "{\"id\":\"%s\"}", ioto->id);
 
-    json = urlPostJson(url, data, -1, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
+    json = urlPostJson(url, data, 0, "Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
 
     if (json == 0 || json->count == 0) {
         rError("ioto", "Error provisioning device");
@@ -4828,7 +4879,7 @@ static bool parseProvisioningResponse(Json *json)
 
     } else {
         path = rGetFilePath(IO_CERTIFICATE);
-        if (rWriteFile(path, certificate, -1, 0600) < 0) {
+        if (rWriteFile(path, certificate, slen(certificate), 0600) < 0) {
             rError("ioto", "Cannot save certificate to %s", path);
         } else {
             jsonSet(json, 0, "certificate", path, JSON_STRING);
@@ -4836,7 +4887,7 @@ static bool parseProvisioningResponse(Json *json)
         rFree(path);
 
         path = rGetFilePath(IO_KEY);
-        if (rWriteFile(path, key, -1, 0600) < 0) {
+        if (rWriteFile(path, key, slen(key), 0600) < 0) {
             rError("ioto", "Cannot save key to %s", path);
         } else {
             jsonSet(json, 0, "key", path, JSON_STRING);
@@ -5285,6 +5336,26 @@ void dummyShadow(void)
  */
 #define SYNC_DELAY (5 * TPS)
 
+/*
+    Sync Log On-Disk Format
+
+    The sync log stores database changes to disk for crash recovery. Each log entry contains:
+    - Total size (uint32_t): Sum of all string lengths + 4 null terminators
+    - Command string (uint32_t length + data): Database command ("create", "update", "remove")
+    - Data string (uint32_t length + data): JSON representation of item data
+    - Key string (uint32_t length + data): Database item key
+    - Updated timestamp (uint32_t length + data): ISO 8601 timestamp string
+
+    All 32-bit size fields are stored in host byte order.
+    String lengths include the trailing null terminator.
+
+    Note: Sync logs are local-only files and do not move between systems.
+          No cross-platform compatibility or endianness conversion is required.
+ */
+typedef uint32_t SyncSize;
+
+#define SYNC_MAX_SIZE 0x7FFFFFFF   // Maximum safe size for any field
+
 /**
     Database sync change record. One allocated for each mutation to the database.
     Changes implement a buffer cache for database changes. The ioto.json5 provides a maxSyncSize.
@@ -5319,7 +5390,7 @@ static void initSyncConnection(void);
 static void logChange(Change *change);
 static void processDeviceCommand(DbItem *item);
 static cchar *readBlock(FILE *fp, RBuf *buf);
-static int readSize(FILE *fp);
+static size_t readSize(FILE *fp);
 static void receiveSync(const MqttRecv *rp);
 static void recreateSyncLog(void);
 static void scheduleSync(Change *change);
@@ -5335,12 +5406,13 @@ PUBLIC int ioInitSync(void)
     cchar *lastSync;
 
     /*
-        SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the sync sequence number and is not a security risk.
+        SECURITY Acceptable: - the use of rand here is acceptable as it is only used for the sync sequence number and is
+           not a security risk.
      */
     nextSeq = rand();
     ioto->syncDue = MAXINT64;
     ioto->syncHash = rAllocHash(0, 0);
-    ioto->maxSyncSize = (int) svalue(jsonGet(ioto->config, 0, "database.maxSyncSize", "1k"));
+    ioto->maxSyncSize = svaluei(jsonGet(ioto->config, 0, "database.maxSyncSize", "1k"));
     if ((lastSync = dbGetField(ioto->db, "SyncState", "lastSync", NULL, DB_PARAMS())) != NULL) {
         ioto->lastSync = sclone(lastSync);
     } else {
@@ -5428,7 +5500,7 @@ PUBLIC void ioSyncDown(Time when)
     } else {
         SFMT(msg, "{\"timestamp\":\"%s\"}", ioto->lastSync);
     }
-    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE, "$aws/rules/IotoDevice/ioto/service/%s/db/syncDown", ioto->id);
+    mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE, "$aws/rules/IotoDevice/ioto/service/%s/db/syncDown", ioto->id);
 }
 
 PUBLIC void ioSync(Time when, bool guarantee)
@@ -5450,7 +5522,7 @@ static void applySyncLog(void)
     Ticks  now;
     char   path[ME_MAX_FNAME];
     cchar  *cmd, *data, *key, *updated;
-    int    bufsize;
+    size_t bufsize;
 
     if (ioto->nosave) return;
 
@@ -5528,43 +5600,59 @@ static void updateChange(Change *change, cchar *cmd, char *data, cchar *updated,
 }
 
 /*
-    Read the size of a sync log item
- */
-static int readSize(FILE *fp)
-{
-    int len;
+    Read a 32-bit size field from the sync log.
+    Size is stored in host byte order (local files only).
 
-    if (fread(&len, sizeof(len), 1, fp) != 1) {
+    @param fp File pointer to read from
+    @return Size value, or 0 on EOF/error
+ */
+static size_t readSize(FILE *fp)
+{
+    uint32_t size32;
+
+    if (fread(&size32, sizeof(uint32_t), 1, fp) != 1) {
         //  EOF
         return 0;
     }
-    return len;
+    return (size_t) size32;
 }
 
+/*
+    Read a string block from the sync log.
+    Format: [32-bit length][string data including null terminator]
+
+    @param fp File pointer to read from
+    @param buf Buffer to read into
+    @return Pointer to string data, or NULL on error
+ */
 static cchar *readBlock(FILE *fp, RBuf *buf)
 {
-    cchar *result;
-    int   len;
+    cchar    *result;
+    uint32_t size32;
+    size_t   len;
 
     if (!buf) {
         return NULL;
     }
-    //  The length includes a trailing null
-    if (fread(&len, sizeof(len), 1, fp) != 1) {
-        rError("sync", "Corrupt sync log");
+    //  Read 32-bit length field
+    if (fread(&size32, sizeof(uint32_t), 1, fp) != 1) {
+        rError("sync", "Corrupt sync log - cannot read size");
         return 0;
     }
-    if (len < 0 || len > DB_MAX_ITEM) {
-        rError("sync", "Corrupt sync log");
+    len = (size_t) size32;
+
+    if (len > DB_MAX_ITEM) {
+        rError("sync", "Corrupt sync log - block too large: %zu", len);
         return 0;
     }
+    //  Read string data (includes null terminator)
     if (fread(rGetBufStart(buf), len, 1, fp) != 1) {
-        rError("sync", "Corrupt sync log");
+        rError("sync", "Corrupt sync log - cannot read data");
         return 0;
     }
     result = rGetBufStart(buf);
-    rAdjustBufEnd(buf, len);
-    rAdjustBufStart(buf, rGetBufLength(buf));
+    rAdjustBufEnd(buf, (ssize) len);
+    rAdjustBufStart(buf, (ssize) rGetBufLength(buf));
     rAddNullToBuf(buf);
     return result;
 }
@@ -5646,6 +5734,11 @@ static void logChange(Change *change)
     if (!ioto->syncLog || ioto->nosave) {
         return;
     }
+    /*
+        Calculate total size for sync log entry.
+        Total = sum of string lengths + 4 null terminators (one per string).
+        Safe to cast to int since DB_MAX_ITEM limit ensures no overflow.
+     */
     len = (int) (slen(change->cmd) + slen(change->data) + slen(change->key) + slen(change->updated) + 4);
 
     writeSize(len);
@@ -5660,28 +5753,53 @@ static void logChange(Change *change)
 }
 
 /*
-    Write a string including the trailing null
+    Write a string block to the sync log.
+    Format: [32-bit length][string data including null terminator]
+
+    @param buf String to write (must include null terminator in length calculation)
+    @return 0 on success, error code otherwise
  */
 static int writeBlock(cchar *buf)
 {
-    int len;
+    ssize    len;
+    uint32_t size32;
 
-    len = (int) slen(buf) + 1;
+    len = (ssize) slen(buf) + 1;  // +1 for null terminator
 
-    if (fwrite(&len, sizeof(len), 1, ioto->syncLog) != 1) {
+    if (len < 0 || len > SYNC_MAX_SIZE) {
+        rError("sync", "String too large for sync log: %lld bytes", (long long) len);
+        return R_ERR_BAD_ARGS;
+    }
+    size32 = (uint32_t) len;
+
+    if (fwrite(&size32, sizeof(uint32_t), 1, ioto->syncLog) != 1) {
         rError("sync", "Cannot write to sync log");
         return R_ERR_CANT_WRITE;
     }
-    if (fwrite(buf, len, 1, ioto->syncLog) != 1) {
+    if (fwrite(buf, (size_t) len, 1, ioto->syncLog) != 1) {
         rError("sync", "Cannot write to sync log");
         return R_ERR_CANT_WRITE;
     }
     return 0;
 }
 
+/*
+    Write a 32-bit size field to the sync log.
+    Size is written in host byte order (local files only).
+
+    @param len The size value to write (must be <= SYNC_MAX_SIZE)
+    @return 0 on success, error code otherwise
+ */
 static int writeSize(int len)
 {
-    if (fwrite(&len, sizeof(len), 1, ioto->syncLog) != 1) {
+    uint32_t size32;
+
+    if (len < 0 || len > SYNC_MAX_SIZE) {
+        rError("sync", "Invalid sync log size: %d", len);
+        return R_ERR_BAD_ARGS;
+    }
+    size32 = (uint32_t) len;
+    if (fwrite(&size32, sizeof(uint32_t), 1, ioto->syncLog) != 1) {
         rError("sync", "Cannot write to sync log");
         return R_ERR_CANT_WRITE;
     }
@@ -5730,7 +5848,7 @@ PUBLIC void ioFlushSync(bool force)
     RBuf   *buf;
     Ticks  now, nextDue;
     Change *change;
-    ssize  len;
+    size_t len;
     int    count, pending, seq;
 
     if (!ioto->connected) {
@@ -5781,7 +5899,7 @@ PUBLIC void ioFlushSync(bool force)
     //  Pending changes are buffered and not yet due to be sent
     rTrace("sync", "Sending %d sync changes to the cloud, %d changes pending", count, pending);
 
-    mqttPublish(ioto->mqtt, rBufToString(buf), -1, 1, force ? MQTT_WAIT_ACK : MQTT_WAIT_NONE,
+    mqttPublish(ioto->mqtt, rBufToString(buf), 0, 1, force ? MQTT_WAIT_ACK : MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/db/syncToDynamo", ioto->id);
     rFreeBuf(buf);
 
@@ -6116,8 +6234,8 @@ PUBLIC bool ioUpdate(void)
 
     headers = sfmt("Authorization: bearer %s\r\nContent-Type: application/json\r\n", ioto->apiToken);
     rDebug("update", "Request \n%s\n%s\n%s\n\n", url, headers, body);
-    
-    if ((json = urlJson(up, "POST", url, body, -1, headers)) == 0) {
+
+    if ((json = urlJson(up, "POST", url, body, 0, headers)) == 0) {
         response = urlGetResponse(up);
         rError("ioto", "%s", response);
         if (smatch(response, "Cannot find device") || smatch(response, "Authentication failed")) {
@@ -6137,7 +6255,7 @@ PUBLIC bool ioUpdate(void)
     if (json) {
         /*
             Got an update response with checksum, version and image url
-            SECURITY Acceptable:: The update url is provided by the device cloud and is secure. So an 
+            SECURITY Acceptable:: The update url is provided by the device cloud and is secure. So an
             additional signature is not required.
          */
         image = jsonGet(json, 0, "url", 0);
@@ -6254,7 +6372,7 @@ static int download(cchar *url, cchar *path)
             rFree(buf);
             return R_ERR_CANT_READ;
         }
-        if (write(fd, buf, nbytes) < nbytes) {
+        if (write(fd, buf, (size_t) nbytes) < nbytes) {
             rError("update", "Cannot save response");
             urlFree(up);
             rFree(buf);

@@ -75,7 +75,7 @@ Several build environments are supported:
 
 -   **Linux** &mdash; Linux 4 with GNU C/C++ including Raspberry PI
 -   **Mac OS X** &mdash; Mac OS X 11 or later
--   **Windows** &mdash; Windows 11 with WSL v2
+-   **Windows** &mdash; Windows 11, Native or with WSL v2
 -   **ESP-32** &mdash; Using the [ESP
 IDF](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/index.html)
 
@@ -144,6 +144,18 @@ To build, nominate your selected app via the "APP=NAME" makefile option:
 
 ## Building on Windows
 
+For Windows, you can build one of three ways:
+
+* Natively with Windows Visual Studio
+* Using Windows Command Prompt using nmake
+* Using Windows WSL using make
+
+The easiest way to build is to use Windows WSL and make, but this yields a
+lower performing executable. We recommend building with WSL initially to test
+the Ioto agent.
+
+### Building with Windows WSL
+
 Building on Windows utilizes the [Windows SubSystem for Linux
 (WSL)](https://learn.microsoft.com/en-us/windows/wsl/about). Using WSL, you get
 a tightly integrated Linux environment from which you can build and debug using
@@ -182,6 +194,77 @@ extentension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remo
 
 This will open a remote WSL project for the Ioto distribution.
 
+### Building Natively on Windows
+
+To build natively on Windows, you will need to install the compiler from the
+Visual Studio Community Edition. You can download the installer from the
+[Visual Studio website](https://visualstudio.microsoft.com/downloads/). 
+
+You will also need to install `vcpkg` to manage the dependencies and install
+the required SSL libraries.
+
+To install `vcpkg`, download Vcpkg and install at the top of your home
+directory.
+
+```bash
+    > git clone https://github.com/microsoft/vcpkg.git
+    > cd vcpkg
+    > .\bootstrap-vcpkg.bat
+    > .\vcpkg integrate install
+```
+
+Once installed, you can install the required Ioto OpenSSL dependency:
+
+```bash
+$ vcpkg install openssl
+```
+
+OpenSSL will be installed to:
+
+* -I<vcpkg-root>\installed\x64-windows\include
+* -L<vcpkg-root>\installed\x64-windows\lib
+
+
+Vcpkg is automatically configured for building with Visual Studio. For `nmake`
+you will need to set the ME_COM_OPENSSL_PATH 
+environment variable to the path to the OpenSSL installation.
+
+### Building with Windows Visual Studio
+
+To build with Visual Studio, open the Ioto solution file:
+
+    projects/ioto-windows-default/ioto.sln
+
+To debug, set the "Debug" configuration and build the project. Then select
+`ioto` as the startup project.
+Edit the `ioto` properties and set the working directory to the
+`${ProjectDir}\..\..` which is the Ioto root directory.
+
+You can change the included Ioto demo application by editing the `APP` property
+for the `app` project. It is set to `demo` by default.
+After changing, do a clean rebuild of the project.
+
+### Building with Nmake and Windows Command Prompt
+
+First set the environment variables for the Visual Studio version you are using:
+
+```bash
+c:\Program Files\Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat
+```
+
+Next, install the Vcpkg and OpenSSL dependencies as described above in the
+[Building Natively](#building-natively) section.
+
+Once the dependencies are installed, define the path to the OpenSSL
+installation so the build can find the headers and libraries. 
+
+Then build the Ioto project with `make`. This will run the `make.bat` script
+which will invoke `nmake` to build the Ioto project.
+
+```bash
+SET ME_COM_OPENSSL_PATH=C:\vcpkg\installed\x64-windows
+make
+```
 
 ## Running the Ioto Command
 

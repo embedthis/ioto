@@ -1,5 +1,5 @@
 /*
-    main.c - Library stub for start()
+    blank.c - Library stub for start()
 
     This is where you can add or hook your custom code.
  */

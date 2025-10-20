@@ -29,11 +29,21 @@
 #define UCTX_XTENSA   15             /**< Xtensa ESP32 */
 #define UCTX_PTHREADS 16             /**< Generic pthreads */
 #define UCTX_FREERTOS 17             /**< FreeRTOS tasks */
+#define UCTX_WINDOWS  18             /**< Windows Fibers */
 
 /*
     Use compiler definitions to determine the CPU type and select the relevant fiber module.
+
+    Note: VxWorks does not require special handling as it runs on standard CPU architectures
+    (ARM, x86, PowerPC, MIPS) and the compiler provides appropriate CPU detection macros.
+    The architecture-specific assembly implementations are OS-agnostic and work correctly on
+    VxWorks. VxWorks-specific concerns (task management, stack allocation) are handled by the
+    application layer (e.g., Safe Runtime).
  */
-#if defined(__alpha__)
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+    #define UCTX_ARCH UCTX_WINDOWS
+
+#elif defined(__alpha__)
     #define UCTX_ARCH UCTX_ALPHA
 
 #elif defined(__arm64__) || defined(__aarch64__)
