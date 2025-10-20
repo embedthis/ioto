@@ -61,6 +61,7 @@ clean:
 	rm -f $(CONFIG)/db/*.jnl $(CONFIG)/db/*.db 
 	rm -f $(CONFIG)/db.json5 $(CONFIG)/display.json5 $(CONFIG)/local.json5
 	rm -f $(CONFIG)/signature.json5 $(CONFIG)/web.json5 $(CONFIG)/schema.json5
+	rm -fr projects/ioto-macosx-mine.xcodeproj
 	rm -fr ./state
 	rm -fr ./bin/json
 
