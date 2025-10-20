@@ -1,5 +1,12 @@
 {
-
+    environment: {
+        default: {
+            PATH: '../../build/bin:${PATH}',
+        },
+        windows: {
+            PATH: '../../build/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
+        },
+    },
     services: {
         prep: './prep.sh',
     },

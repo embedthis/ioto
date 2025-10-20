@@ -29,7 +29,7 @@
             },
         },
     },
-    env: {
+    environment: {
         default: {
             PATH: '../build/bin:${PATH}',
         },
