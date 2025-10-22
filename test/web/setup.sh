@@ -13,12 +13,13 @@ if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
     PID=$!
 else
     echo "Starting web"
-    web &
+    web --trace log.txt:all:all &
     PID=$!
 fi
 
 cleanup() {
     kill $PID
+    cat log.txt >&2
     exit 0
 }
 
