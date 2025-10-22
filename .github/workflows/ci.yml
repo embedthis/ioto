@@ -108,7 +108,7 @@ jobs:
           IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
           call bin\test-prep.bat
-          tm test
+          tm -v test/web/tls.tst
 
       - name: Upload test results
         if: failure()

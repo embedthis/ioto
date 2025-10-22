@@ -8,7 +8,7 @@ set -m
 echo @@@@@@ BUILD @@@@@@ >&2
 find ../../build >&2
 
-ENDPOINT=`json 'listen[0]' ./state/config/web.json5`
+ENDPOINT=`json 'listen[0]' web.json5`
 
 if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
     echo "Web is already running on port 4100"
