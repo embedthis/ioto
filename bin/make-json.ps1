@@ -24,31 +24,33 @@ New-Item -ItemType Directory -Force -Path "state\site" | Out-Null
 $compiler = $null
 $compilerArgs = @()
 
-# Try to find MSVC compiler
-$clFound = Get-Command cl -ErrorAction SilentlyContinue
-if (-not $clFound) {
-    # Try to locate and initialize Visual Studio environment
-    $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-    if (Test-Path $vsWhere) {
-        Write-Host "Detecting Visual Studio installation..."
-        $vsPath = & $vsWhere -latest -property installationPath
-        if ($vsPath) {
-            $vcvarsPath = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
-            if (Test-Path $vcvarsPath) {
-                Write-Host "Initializing Visual Studio environment..."
-                # Run vcvars and capture environment changes
-                $tempFile = [System.IO.Path]::GetTempFileName()
-                cmd /c "`"$vcvarsPath`" > nul && set" | Out-File -FilePath $tempFile -Encoding ascii
-                Get-Content $tempFile | ForEach-Object {
-                    if ($_ -match '^([^=]+)=(.*)$') {
-                        [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-                    }
+# Always try to initialize 64-bit Visual Studio environment to ensure we get the x64 compiler
+$vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path $vsWhere) {
+    Write-Host "Detecting Visual Studio installation..."
+    $vsPath = & $vsWhere -latest -property installationPath
+    if ($vsPath) {
+        Write-Host "Found Visual Studio at: $vsPath"
+        $vcvarsPath = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+        if (Test-Path $vcvarsPath) {
+            Write-Host "Initializing 64-bit Visual Studio environment from: $vcvarsPath"
+            # Run vcvars64 with x64 architecture explicitly and capture environment changes
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            cmd /c "`"$vcvarsPath`" x64 > nul && set" | Out-File -FilePath $tempFile -Encoding ascii
+            Get-Content $tempFile | ForEach-Object {
+                if ($_ -match '^([^=]+)=(.*)$') {
+                    [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
                 }
-                Remove-Item $tempFile
-                $clFound = Get-Command cl -ErrorAction SilentlyContinue
             }
+            Remove-Item $tempFile
         }
     }
+}
+
+# Now check for MSVC compiler (should be 64-bit after vcvars64)
+$clFound = Get-Command cl -ErrorAction SilentlyContinue
+if ($clFound) {
+    Write-Host "Compiler found at: $($clFound.Source)"
 }
 
 if ($clFound) {

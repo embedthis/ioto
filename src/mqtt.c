@@ -561,18 +561,20 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
     Dimensions is a JSON array of objects. Each object contains the properties of that dimension.
     The {} object, means no dimensions.
  */
-PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
+PUBLIC int ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
 {
     char *msg;
+    int rc;
 
     if (dimensions == NULL || *dimensions == '\0') {
         dimensions = "[{\"Device\":\"${deviceId}\"}]";
     }
     msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
                metric, value, dimensions, elapsed);
-    mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
+    rc = mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
     rFree(msg);
+    return rc;
 }
 
 /*
@@ -598,19 +600,25 @@ PUBLIC void ioSet(cchar *key, cchar *value)
     Set a number in the Store key/value database.
     Uses db sync if available, otherwise uses MQTT.
  */
-PUBLIC void ioSetNum(cchar *key, double value)
+PUBLIC int ioSetNum(cchar *key, double value)
 {
+    int rc;
+
+    rc = 0;
 #if SERVICES_SYNC
-    dbUpdate(ioto->db, "Store",
+    if (dbUpdate(ioto->db, "Store",
              DB_JSON("{key: '%s', value: '%g', type: 'number'}", key, value),
-             DB_PARAMS(.upsert = 1));
+             DB_PARAMS(.upsert = 1)) == NULL) {
+        return R_ERR_CANT_WRITE;
+    }
 #else
     //  Optimize by using AWS basic ingest topic
     char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
-    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
+    rc = mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
     rFree(msg);
 #endif
+    return rc;
 }
 
 /*
@@ -673,6 +681,9 @@ PUBLIC double ioGetNum(cchar *key)
     msg = sfmt("{\"key\":\"%s\"}", key);
     //  Must not use basic-ingest for mqttRequest
     result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    if (result == NULL) {
+        return 0;
+    }
     num = stod(result);
     rFree(msg);
     rFree(result);

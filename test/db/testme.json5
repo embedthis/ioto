@@ -1,0 +1,11 @@
+{
+    inherit: ['compiler', 'environment'],
+    execution: {
+        workers: 1,
+        parallel: false,
+    },
+    services: {
+        prep: './prep.sh',
+        cleanup: './cleanup.sh',
+    },
+}

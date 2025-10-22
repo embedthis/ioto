@@ -340,7 +340,7 @@ TARGETS               = $(TARGETS) $(BUILD)/bin/ioto.exe
 TARGETS               = $(TARGETS) $(BUILD)/bin/json.exe
 TARGETS               = $(TARGETS) $(BUILD)/bin/password.exe
 TARGETS               = $(TARGETS) $(BUILD)/bin/url.exe
-TARGETS               = $(TARGETS) $(BUILD)/bin/webserver.exe
+TARGETS               = $(TARGETS) $(BUILD)/bin/web.exe
 
 !IFNDEF SHOW
 .SILENT:
@@ -433,10 +433,10 @@ clean:
 	powershell -Command "if (Test-Path '$(BUILD)/bin/url.lib') { Remove-Item '$(BUILD)/bin/url.lib' }"
 	powershell -Command "if (Test-Path '$(BUILD)/bin/url.pdb') { Remove-Item '$(BUILD)/bin/url.pdb' }"
 	powershell -Command "if (Test-Path '$(BUILD)/bin/url.exp') { Remove-Item '$(BUILD)/bin/url.exp' }"
-	powershell -Command "if (Test-Path '$(BUILD)/bin/webserver.exe') { Remove-Item '$(BUILD)/bin/webserver.exe' }"
-	powershell -Command "if (Test-Path '$(BUILD)/bin/webserver.lib') { Remove-Item '$(BUILD)/bin/webserver.lib' }"
-	powershell -Command "if (Test-Path '$(BUILD)/bin/webserver.pdb') { Remove-Item '$(BUILD)/bin/webserver.pdb' }"
-	powershell -Command "if (Test-Path '$(BUILD)/bin/webserver.exp') { Remove-Item '$(BUILD)/bin/webserver.exp' }"
+	powershell -Command "if (Test-Path '$(BUILD)/bin/web.exe') { Remove-Item '$(BUILD)/bin/web.exe' }"
+	powershell -Command "if (Test-Path '$(BUILD)/bin/web.lib') { Remove-Item '$(BUILD)/bin/web.lib' }"
+	powershell -Command "if (Test-Path '$(BUILD)/bin/web.pdb') { Remove-Item '$(BUILD)/bin/web.pdb' }"
+	powershell -Command "if (Test-Path '$(BUILD)/bin/web.exp') { Remove-Item '$(BUILD)/bin/web.exp' }"
 	if exist state/config rmdir /s /q state/config
 	if exist include/config.h del include/config.h
 
@@ -1260,7 +1260,7 @@ $(BUILD)/bin/url.exe: $(DEPS_59)
 	"$(LD)" -nologo -out:"$(BUILD)/bin/url.exe" -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/url.obj" $(LIBPATHS_59) $(LIBS_59) $(LIBS)  $(LOG)
 
 #
-#   webserver
+#   web
 #
 DEPS_60 = $(DEPS_60) $(BUILD)/bin/libioto.lib
 DEPS_60 = $(DEPS_60) $(BUILD)/obj/web.obj
@@ -1294,9 +1294,9 @@ LIBPATHS_60 = $(LIBPATHS_60) "-libpath:$(ME_COM_OPENSSL_PATH)"
 LIBPATHS_60 = $(LIBPATHS_60) "-libpath:$(ME_COM_OPENSSL_PATH)/lib"
 !ENDIF
 
-$(BUILD)/bin/webserver.exe: $(DEPS_60)
-	@echo ..... [Link] $(BUILD)/bin/webserver.exe
-	"$(LD)" -nologo -out:"$(BUILD)/bin/webserver.exe" -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.obj" $(LIBPATHS_60) $(LIBS_60) $(LIBS)  $(LOG)
+$(BUILD)/bin/web.exe: $(DEPS_60)
+	@echo ..... [Link] $(BUILD)/bin/web.exe
+	"$(LD)" -nologo -out:"$(BUILD)/bin/web.exe" -entry:mainCRTStartup -subsystem:console $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.obj" $(LIBPATHS_60) $(LIBS_60) $(LIBS)  $(LOG)
 
 #
 #   stop

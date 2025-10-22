@@ -6094,6 +6094,8 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
                 SSL_CTX_set_client_CA_list(ctx, certNames);
             }
         } else if (!SSL_CTX_set_default_verify_paths(ctx)) {
+            // OpenSSL listens to the env vars: SSL_CERT_DIR and SSL_CERT_FILE to override the default certificate
+            // locations
             return rSetSocketError(tp->sock, "Unable to set default certificate locations");
         }
         store = SSL_CTX_get_cert_store(ctx);
@@ -8455,6 +8457,7 @@ static int activeSockets = 0;
 /********************************** Forwards **********************************/
 
 static void acceptSocket(RSocket *listen);
+static int getOsError(RSocket *sp);
 static int getSocketError(RSocket *sp);
 
 static RSocketCustom socketCustom;
@@ -8577,52 +8580,54 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         return R_ERR_BAD_ARGS;
     }
     for (r = res; r; r = r->ai_next) {
+        if (sp->fd != INVALID_SOCKET) {
+            closesocket(sp->fd);
+            sp->fd = INVALID_SOCKET;
+        }
+        if (sp->wait) {
+            rFreeWait(sp->wait);
+            sp->wait = NULL;
+        }
         if ((sp->fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == SOCKET_ERROR) {
             rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
             continue;
         }
+
         rSetSocketBlocking(sp, 0);
+        sp->wait = rAllocWait((int) sp->fd);
+
         do {
             rc = connect(sp->fd, r->ai_addr, (socklen_t) r->ai_addrlen);
         } while (rc < 0 && rGetOsError() == EINTR);
 
         if (rc == 0 || (rc < 0 && (rGetOsError() == EINPROGRESS || rGetOsError() == EAGAIN))) {
-            break;
+ #if ME_UNIX_LIKE
+            fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
+ #endif
+            sp->activity = rGetTime();
+
+            if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
+                continue;
+            }
+            if (getSocketError(sp) == 0) {
+                // Successfully connected
+                break;
+            }
+            continue;
         }
-        closesocket(sp->fd);
-        sp->fd = INVALID_SOCKET;
     }
     freeaddrinfo(res);
     if (!r) {
+        if (sp->fd != INVALID_SOCKET) {
+            closesocket(sp->fd);
+            sp->fd = INVALID_SOCKET;
+        }
+        if (sp->wait) {
+            rFreeWait(sp->wait);
+            sp->wait = NULL;
+        }
         rSetSocketError(sp, "Cannot connect socket for %s:%d", host, port);
         return R_ERR_CANT_CONNECT;
-    }
- #if ME_UNIX_LIKE
-    fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
- #endif
-    sp->activity = rGetTime();
-    sp->wait = rAllocWait((int) sp->fd);
-
-    if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
-        return R_ERR_TIMEOUT;
-    }
-    //  Verify the connection actually succeeded by checking SO_ERROR
-    {
-        int     error = 0;
-        Socklen len = sizeof(error);
-        if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &len) < 0) {
-            return rSetSocketError(sp, "Cannot get socket error status");
-        }
-        if (error != 0) {
- #if ME_WIN_LIKE
-            //  On Windows, SO_ERROR returns WSA error codes, set it directly
-            WSASetLastError(error);
- #else
-            //  On Unix, SO_ERROR returns errno values
-            errno = error;
- #endif
-            return rSetSocketError(sp, "Connection failed, errno %d", error);
-        }
     }
  #if ME_COM_SSL
     if (sp->tls && rUpgradeTls(sp->tls, sp->fd, host, deadline) < 0) {
@@ -8654,13 +8659,13 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     hints.ai_flags = AI_PASSIVE;     // Use wildcard address if host is NULL
 
     /*
-        When host is NULL, prefer IPv6 with dual-stack to accept both IPv4 and IPv6
-        When host is "localhost" or "127.0.0.1", use IPv4 for maximum compatibility
+        When host is NULL or "localhost", prefer IPv6 with dual-stack to accept both IPv4 and IPv6
+        When host is a specific IPv4 address like "127.0.0.1", use IPv4 only
      */
-    if (!host) {
-        hints.ai_family = AF_INET6;  // Dual-stack wildcard
-    } else if (smatch(host, "localhost") || smatch(host, "127.0.0.1")) {
-        hints.ai_family = AF_INET;   // IPv4 loopback
+    if (!host || smatch(host, "localhost")) {
+        hints.ai_family = AF_INET6;  // Dual-stack for wildcard and localhost
+    } else if (smatch(host, "127.0.0.1")) {
+        hints.ai_family = AF_INET;   // Explicit IPv4 loopback
     } else {
         hints.ai_family = AF_UNSPEC; // Use resolved address family
     }
@@ -8826,7 +8831,7 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, size_t bufsize)
     while (1) {
         bytes = recv(sp->fd, buf, (uint) bufsize, MSG_NOSIGNAL);
         if (bytes < 0) {
-            error = getSocketError(sp);
+            error = getOsError(sp);
             if (error == EINTR) {
                 continue;
             } else if (error == EAGAIN || error == EWOULDBLOCK) {
@@ -8913,7 +8918,7 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
         for (len = bufsize, bytes = 0; len > 0; ) {
             written = send(sp->fd, &((char*) buf)[bytes], (uint) len, MSG_NOSIGNAL);
             if (written < 0) {
-                error = getSocketError(sp);
+                error = getOsError(sp);
                 if (error == EINTR) {
                     continue;
                 } else if (error == EAGAIN || error == EWOULDBLOCK) {
@@ -8951,7 +8956,7 @@ PUBLIC void rSetSocketBlocking(RSocket *sp, bool on)
 #endif
 }
 
-static int getSocketError(RSocket *sp)
+static int getOsError(RSocket *sp)
 {
 #if ME_WIN_LIKE
     int rc;
@@ -9179,6 +9184,33 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port)
     *port = ntohs(sa->sin_port);
 #endif
     return 0;
+}
+
+/*
+    Return the socket error code for the socket
+    This is necessary because the socket may be writable by have a connection error
+ */
+static int getSocketError(RSocket *sp)
+{
+    Socklen len;
+    int error;
+
+    len = sizeof(error);
+    error = 0;
+    if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &len) < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    if (error == 0) {
+        return 0;
+    }
+#if ME_WIN_LIKE
+    //  On Windows, SO_ERROR returns WSA error codes, set it directly
+    WSASetLastError(error);
+#else
+    //  On Unix, SO_ERROR returns errno values
+    errno = error;
+#endif
+    return error;
 }
 
 #endif /* R_USE_SOCKET */
@@ -9414,9 +9446,21 @@ PUBLIC char *sclone(cchar *str)
     return ptr;
 }
 
+/*
+    Preserve NULLs
+ */
 PUBLIC char *scloneNull(cchar *str)
 {
     if (str == NULL) return NULL;
+    return sclone(str);
+}
+
+/*
+    Only clone if the string is defined and not empty
+ */
+PUBLIC char *scloneDefined(cchar *str)
+{
+    if (str == NULL || *str == '\0') return NULL;
     return sclone(str);
 }
 
@@ -11046,7 +11090,6 @@ PUBLIC Ticks rGetTicks(void)
      */
     static Time  lastTicks = 0;
     static Time  adjustTicks = 0;
-    static RSpin ticksSpin;
     Time         result, diff;
 
     if (lastTicks == 0) {
@@ -11056,9 +11099,7 @@ PUBLIC Ticks rGetTicks(void)
 #else
         lastTicks = rGetTime();
 #endif
-        rInitSpinLock(&ticksSpin);
     }
-    rSpinLock(&ticksSpin);
 #if ME_WIN_LIKE
     /*
         GetTickCount will wrap in 49.7 days
@@ -11076,7 +11117,6 @@ PUBLIC Ticks rGetTicks(void)
         result -= diff;
     }
     lastTicks = result;
-    rSpinUnlock(&ticksSpin);
     return result;
 #endif
 }

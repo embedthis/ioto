@@ -190,11 +190,9 @@ typedef struct Ioto {
     cchar *cmdIotoFile;        /**< Command line override path for the ioto.json5 config file */
     cchar *cmdProfile;         /**< Command line override profile */
     cchar *cmdProduct;         /**< Command line override Product ID Token */
-    cchar *cmdTest;            /**< Command line override for services.test */
     cchar *cmdAIShow;          /**< Command line override for AI request/response trace */
     cchar *cmdWebShow;         /**< Command line override for web request/response trace */
     bool cmdReset : 1;         /** Command line reset */
-    int cmdCount;              /** Test iterations */
 
     bool aiService : 1;        /** AI service */
     bool cloudService : 1;     /** Cloud meta-service */
@@ -205,6 +203,7 @@ typedef struct Ioto {
     bool logService : 1;       /** Log file ingest to CloudWatch logs */
     bool mqttService : 1;      /** MQTT service */
     bool nosave : 1;           /** Do not save. i.e. run in-memory */
+    bool noSaveDevice : 1;     /** Do not save device registration when sourced from environment variables*/
     bool registered : 1;       /** Device has been registered */
     bool provisioned : 1;      /** Provisioned with the cloud */
     bool provisionService : 1; /** Cloud provisioning service */
@@ -468,9 +467,10 @@ PUBLIC void ioSetBool(cchar *key, bool value);
         the properties of that dimension. The empty object {} denotes no dimensions.
     @param elapsed Number of seconds to buffer metric updates in the cloud before committing to the database.
         This is an optimization. Set to zero for no buffering.
+    @return 0 on success, negative on error
     @stability Evolving
  */
-PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
+PUBLIC int ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed);
 
 /**
     Set a numeric value in the Ioto cloud key/value store.
@@ -478,9 +478,10 @@ PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elap
         Uses database sync if available, otherwise uses MQTT messaging.
     @param key String key to assign in the store.
     @param value Numeric value to assign to the key.
+    @return 0 on success, negative on error
     @stability Evolving
  */
-PUBLIC void ioSetNum(cchar *key, double value);
+PUBLIC int ioSetNum(cchar *key, double value);
 
 /**
     Schedule a cloud connection based on the MQTT schedule.
@@ -614,7 +615,7 @@ PUBLIC void ioSaveShadow(void);
     @param topic Printf style topic format string. The supplied topic is appended to 'ioto/device/DEVICE_ID'
         before sending.
     @param ... Topic string arguments
-    @return Response message or NULL if the request times out. Caller must free.
+    @return Response message or NULL if the request fails or times out. Caller must free.
     @stability Evolving
  */
 PUBLIC char *mqttRequest(Mqtt *mq, cchar *data, Ticks timeout, cchar *topic, ...);

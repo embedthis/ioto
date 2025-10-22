@@ -1,0 +1,14 @@
+{
+    inherit: ['compiler', 'environment'],
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 180,
+    },
+    services: {
+        prep: './prep.sh',
+        setup: './setup.sh',
+        cleanup: './cleanup.sh',
+        healthcheck: { url: 'http://localhost:4150/index.html' },
+    },
+}

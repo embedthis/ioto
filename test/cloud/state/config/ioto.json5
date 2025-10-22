@@ -10,7 +10,7 @@
         database: true,
         keys: false,
         logs: false,
-        mqtt: false,
+        mqtt: true,
         provision: true,
         register: true,
         serialize: 'auto',

@@ -51,6 +51,9 @@ PUBLIC void ioInit(void)
 {
     assert(!rIsMain());
 
+    if (!ioto) {
+        ioAlloc();
+    }
     if (initServices() < 0) {
         rStop();
         return;

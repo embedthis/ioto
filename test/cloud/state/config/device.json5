@@ -1,0 +1,9 @@
+{
+    product: 'PUT-YOUR-PRODUCT-ID-HERE',
+    name: 'Unit Test Router',
+    description: 'Unit Test Router',
+    model: 'Unit-Router',
+    account: 'PUT-YOUR-ACCOUNT-ID-HERE',
+    cloud: 'PUT-YOUR-CLOUD-ID-HERE',
+    test: false,
+}

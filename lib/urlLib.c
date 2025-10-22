@@ -916,8 +916,8 @@ static ssize readUntil(Url *up, cchar *until, char *buf, size_t bufsize)
 {
     RBuf   *bp;
     char   *end;
-    size_t toRead;
-    ssize  len, nbytes;
+    size_t len, toRead;
+    ssize  nbytes;
 
     bp = up->rx;
     rAddNullToBuf(bp);
@@ -943,9 +943,9 @@ static ssize readUntil(Url *up, cchar *until, char *buf, size_t bufsize)
      */
     nbytes = (ssize) (((size_t) (end - bp->start) + slen(until)));
     if (buf && nbytes > 0) {
-        len = min(nbytes, (ssize) bufsize);
+        len = min((size_t) nbytes, bufsize);
         memcpy(buf, bp->start, len);
-        rAdjustBufStart(bp, len);
+        rAdjustBufStart(bp, (ssize) len);
     }
     //  Special case for reading headers. Don't transfer data if bufsize is zero, but do return nbytes.
     return nbytes;
@@ -1006,7 +1006,7 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     up->scheme = "http";
     up->host = "localhost";
     up->port = 80;
-    up->path = "/";
+    up->path = "";
     up->hash = 0;
     up->query = 0;
     hasScheme = 0;

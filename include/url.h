@@ -215,7 +215,8 @@ PUBLIC int urlError(Url *up, cchar *message, ...);
     @param method HTTP method verb.
     @param url HTTP URL to fetch
     @param data Body data for request. Set to NULL if none.
-    @param size Size of body data for request. Set to 0 if none. If set to zero and data is provided, it is assumed to be a string and the size is calculated.
+    @param size Size of body data for request. Set to 0 if none. If set to zero and data is provided, it is assumed to
+       be a string and the size is calculated.
     @param headers Optional request headers. This parameter is a printf style formatted pattern with following
         arguments. Individual header lines must be terminated with "\r\n".
     @param ... Optional header arguments.

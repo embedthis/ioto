@@ -1,0 +1,147 @@
+/*
+    Test API signatures
+*/
+
+{
+    controller: {
+        _meta: {
+            role: 'user',
+        },
+        test_0: {
+            // No request, no response
+            request: null,
+            response: null,
+        },
+        test_1: {
+            // Test primitive types
+            request: {
+                type: 'string',
+            },
+            response: {
+                type: 'string',
+            }
+        },
+        test_2: {
+            //  Test request, response fields and required and drop
+            request: {
+                type: 'object',
+                hasRequired: true,
+                fields: {
+                    email: {type: 'string', required: true},
+                    name: {type: 'string'},
+                    zip: {type: 'number'},
+                    age: {type: 'number'},
+                }
+            },
+            response: {
+                type: 'object',
+                hasDrop: true,
+                fields: {
+                    name: {type: 'string'},
+                    email: {type: 'string'},
+                    zip: {type: 'number'},
+                    age: {type: 'number', drop: true}
+                }
+            }
+        },
+        test_3: {
+            //  Test array of objects nested in an object    
+            request: {
+                type: 'object',
+                fields: {
+                    users: {type: 'array', of: {
+                        type: 'object',
+                        fields: {
+                            name: {type: 'string'},
+                        }
+                    }},
+                }
+            },
+            response: {
+                type: 'object',
+                fields: {
+                    //  Test without "of" to be untyped
+                    users: {type: 'array'},
+                }
+            }       
+        },
+
+        test_4: {
+            //  Test top level array of strings   
+            request: {
+                type: 'array',
+                of: {
+                    type: 'string',
+                }
+            },
+            response: {
+                //  Test with untyped array
+                type: 'array',
+            }       
+        },
+
+        test_5: {
+            //  Test default 
+            request: {
+                //  type defaults to 'object'
+                hasRequired: true,
+                fields: {
+                    color: {type: 'string', default: 'red', required: true}
+                }
+            },
+            // No response signature allows all fields
+        },
+
+        test_6: {
+            //  Test nested objects
+            request: {
+                fields: {
+                    name: {type: 'string'},
+                    address: {type: 'object', fields: {
+                        street: {type: 'string'},
+                        zip: {type: 'string'},
+                    }},
+                }
+            },
+            response: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    address: {type: 'object', fields: {
+                        street: {type: 'string'},
+                        zip: {type: 'string'},
+                    }}
+                }
+            }
+        },
+
+        test_7: {
+            //  Test strict signatures with missing fields
+            request: {
+                type: 'object', 
+                hasRequired: true,
+                fields: {
+                    name: {type: 'string', required: true},
+                }
+            },
+            response: {
+                type: 'object',
+                hasRequired: true,
+                fields: {
+                    name: {type: 'string', required: true},
+                    other: {type: 'string', required: true},
+                }
+            }
+        },
+
+        test_8: {
+            //  Test strict signatures without "fields" property collection
+            request: {
+                type: 'object', 
+            },
+            response: {
+                type: 'object',
+            }
+        },
+    }
+}

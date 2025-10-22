@@ -47,7 +47,7 @@ PUBLIC int ioInitConfig(void)
      */
     json = ioto->config;
     ioConfig(json);
-
+    
     stackSize = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
     if (stackSize) {
         rSetFiberStack(stackSize);

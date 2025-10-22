@@ -10,5 +10,4 @@ if [ "$app" != "unit" ] ; then
     exit 1
 fi
 
-ID="TEST${TESTME_OS}"
-json id=${ID} ../state/config/device.json5
+exit 0

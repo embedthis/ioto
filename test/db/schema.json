@@ -1,0 +1,91 @@
+{
+    "version": "latest",
+    "format": "onetable:1.1.0",
+    "params": {
+        "isoDate": true,
+        "nulls": false,
+        "timestamps": "update",
+        "typeField": "_type"
+    },
+    "indexes": {
+        "primary": { "sort": "sk" }
+    },
+    "models": {
+        "Event": {
+            "sk":             { "type": "string", "value": "event#${id}" },
+            "id":             { "type": "string", "generate": "ulid" },
+            "message":        { "type": "string", "required": true },
+            "expires":        { "type": "date", "ttl": true },
+            "source":         { "type": "string", "required": true },
+            "severity":       { "type": "string", "required": true, "enum": ["info", "warn", "error", "critical", "fatal"] },
+            "subject":        { "type": "string", "required": true },
+            "updated":        { "type": "date", "required": true }
+        },
+        "Mapping": {
+            "sk":             { "type": "string", "value": "mapping#${id}" },
+            "id":             { "type": "string", "generate": "ulid" },
+            "portId":         { "type": "string", "required": true },
+            "vlanId":         { "type": "string", "required": true }
+        },
+        "Port": {
+            "sk":             { "type": "string", "value": "port#${id}" },
+            "id":             { "type": "string", "generate": "ulid" },
+            "enable":         { "type": "boolean", "default": true },
+            "duplex":         { "type": "string", "default": "full" },
+            "flowControl":    { "type": "boolean", "default": true },
+            "jumbo":          { "type": "boolean", "default": true },
+            "name":           { "type": "string" },
+            "negotiate":      { "type": "boolean", "default": true },
+            "speed":          { "type": "number", "default": 1000 },
+            "status":         { "type": "string", "enum": ["online", "offline"], "default": "online" },
+            "rxBytes":        { "type": "number", "default": 0 },
+            "rxPackets":      { "type": "number", "default": 0 },
+            "txBytes":        { "type": "number", "default": 0 },
+            "txPackets":      { "type": "number", "default": 0 }
+        },
+        "State": {
+            "sk":             { "type": "string", "value": "state#" },
+            "lastSync":       { "type": "date", "required": true }
+        },
+        "Settings": {
+            "sk":             { "type": "string", "value": "settings#" },
+            "numeric":        { "type": "number", "default": 42 },
+            "literal":        { "type": "string", "default": "hello" },
+            "truthy":         { "type": "boolean", "default": true },
+            "timestamp":      { "type": "date", "default": 0 }
+        },
+        "System": {
+            "sk":             { "type": "string", "value": "system#" },
+            "status":         { "type": "string", "required": true, "enum": ["online", "offline"], "default": "offline" },
+            "mode":           { "type": "string", "required": true, "enum": ["normal"], "default": "normal" },
+            "rxBytes":        { "type": "number", "default": 0 },
+            "rxPackets":      { "type": "number", "default": 0 },
+            "txBytes":        { "type": "number", "default": 0 },
+            "txPackets":      { "type": "number", "default": 0 }
+        },
+        "User": {
+            "sk":             { "type": "string", "value": "user#${id}" },
+            "id":             { "type": "string", "generate": "ulid" },
+            "email":          { "type": "string", "required": true },
+            "username":       { "type": "string", "required": true, "unique": true },
+            "password":       { "type": "string", "sync": "none" },
+            "role":           { "type": "string", "required": true, "enum": ["user", "guest", "admin", "super"], "default": "admin" }
+        },
+        "Item": {
+            "sk":             { "type": "string", "value": "item#${id}" },
+            "id":             { "type": "string", "required": true }
+        },
+        "Vlan": {
+            "sk":             { "type": "string", "value": "vlan#${id}" },
+            "id":             { "type": "string", "generate": "ulid" },
+            "name":           { "type": "string", "required": true, "unique": true },
+            "description":    { "type": "string" },
+            "status":         { "type": "string", "required": true, "enum": ["online", "offline"], "default": "online" },
+            "mode":           { "type": "string", "required": true, "enum": ["normal"], "default": "normal" },
+            "rxBytes":        { "type": "number", "default": 0},
+            "rxPackets":      { "type": "number", "default": 0},
+            "txBytes":        { "type": "number", "default": 0},
+            "txPackets":      { "type": "number", "default": 0}
+        }
+    }
+}

@@ -1,0 +1,75 @@
+/*
+    web.json5 - Web server configuration file for testing
+*/
+{
+    log: {
+        path: 'log.txt',
+        format: '%S: %T: %M',
+        types: 'error,info,trace',
+        sources: 'all,!mbedtls',
+        _show: '',
+    },
+    tls: {
+        authority: 'certs/ca.crt',
+        certificate: 'certs/test.crt',
+        key: 'certs/test.key',
+        renegotiate: true,
+        ticket: true,
+        verify: {
+            client: true,
+            issuer: true,
+        },
+    },
+    web: {
+        documents: './site',
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST',
+            'Access-Control-Allow-Headers': 'content-type, authorization',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Max-Age': '86400',
+            'X-Content-Type-Options': 'nosniff',
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-XSS-Protection': '1; mode=black',
+            'Referrer-Policy': 'same-origin',
+        },
+        limits: {
+            body: '100K',
+            connections: '100',
+            header: '10K',
+            sessions: '20',
+            upload: '20MB',
+            maxFrame: '100K',
+            maxMessage: '100K',
+        },
+        listen: ['http://localhost:4150', 'https://localhost:4151'],
+        index: 'index.html',
+        auth: {
+            roles: ['user', 'admin', 'owner', 'super'],
+            login: '/api/public/login',
+            logout: '/api/public/logout',
+        },
+        routes: [
+            //  Trailing "/" matches prefix only
+            { match: '/test/', handler: 'action', methods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'PATCH'] },
+            { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
+            { match: '/trace/', methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
+            { match: '/stream/', trim: '/stream', stream: true, handler: 'action' },
+            { /* Catch all */ },
+        ],
+        timeouts: {
+            parse: '60 secs',
+            inactivity: '300 secs',
+            request: '10 mins',
+            session: '30 mins'
+        },
+        webSockets: {
+            ping: 'never',
+            protocol: 'chat',
+            validateUTF: false,
+        },
+        upload: {
+            dir: '/tmp',
+        },
+    },
+}

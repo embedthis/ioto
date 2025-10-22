@@ -1687,6 +1687,7 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
     parent = -1;
     level = 0;
     flags &= ~JSON_EXPECT_KEY;
+    type = 0;
 
     while (json->next < json->end && !json->error) {
         c = (uchar) * json->next;
@@ -4613,9 +4614,9 @@ static RFiber mainFiberState;
 static RFiber *mainFiber;
 static RFiber *currentFiber;
 static size_t stackSize = FIBER_DEFAULT_STACK;
-static int fiberPeak = 0;
-static int fiberCount = 0;
-static int fiberLimit = 0;
+static int    fiberPeak = 0;
+static int    fiberCount = 0;
+static int    fiberLimit = 0;
 
 /************************************ Code ************************************/
 
@@ -5017,8 +5018,8 @@ PUBLIC int64 rGetStackUsage(void)
     #define SEPS "\\/"
     #define issep(c)       (SEPS[0] == c || SEPS[1] == c)
     #define isAbs(path)    (path && \
-                                ((path[0] == SEPS[0]  || path[0] == SEPS[1]) || \
-                                (path[1] == ':' && (path[2] == SEPS[0] || path[2] == SEPS[1]))))
+                            ((path[0] == SEPS[0]  || path[0] == SEPS[1]) || \
+                             (path[1] == ':' && (path[2] == SEPS[0] || path[2] == SEPS[1]))))
     #define firstSep(path) srpbrk(path, SEPS);
 #else
     #define SEPS "/"
@@ -5237,8 +5238,8 @@ PUBLIC char *rJoinFileBuf(char *buf, size_t bufsize, cchar *path, cchar *other)
 
 PUBLIC bool rMatchFile(cchar *path, cchar *pattern)
 {
-    char  pbuf[ME_MAX_PATH];
-    char  *canonical;
+    char pbuf[ME_MAX_PATH];
+    char *canonical;
 
     if (!path || !pattern) {
         return 0;
@@ -5470,7 +5471,7 @@ static void getNextPattern(cchar *pattern, char *thisPat, size_t thisPatLen, cch
 /*
     Convert pattern to canonical form:
     abc** => abc* / **
-    **abc => ** / *abc
+ **abc => ** / *abc
 
     Worst case expansion is "a**" becomes a* / ** which adds 2 characters per ** found.
     Returns NULL if buffer is too small.
@@ -5897,20 +5898,53 @@ PUBLIC RList *rGetFiles(cchar *path, cchar *pattern, int flags)
 
 PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
 {
-    int  fd;
+    int fd;
+
 #if ME_WIN_LIKE
-    char path[] = "rtXXXXXX";
-    /* 
-        Windows ignores dir and prefix
-    */
-    if (_mktemp_s(path, sizeof(path)) != 0) {
-        rError("runtime", "Cannot create temporary filename");
-        return NULL;
+    char        path[ME_MAX_PATH];
+    uint        attempts;
+    Ticks       ticks;
+    uint        pid, uniqueId;
+    static uint counter = 0;
+
+    if (!dir || *dir == '\0') {
+        dir = ".";
     }
-    if ((fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_BINARY | O_CLOEXEC, 0600)) < 0) {
-        rError("runtime", "Cannot create temporary file %s", path);
-        return NULL;
+    if (!prefix) {
+        prefix = "tmp";
     }
+    /*
+        Windows _mktemp_s doesn't work with directory paths in the template.
+        Use a secure approach: generate unique filenames using PID, ticks, and counter,
+        then create with O_EXCL which ensures atomic exclusive creation.
+     */
+    pid = (uint) getpid();
+
+    for (attempts = 0; attempts < 100; attempts++) {
+        //  Generate unique ID from high-resolution ticks, PID, and counter
+        ticks = rGetTicks();
+        uniqueId = (uint) ((ticks & 0xFFFFFFFF) ^ ((ticks >> 32) & 0xFFFFFFFF) ^ (pid << 16) ^ (++counter));
+
+        if (sfmtbuf(path, sizeof(path), "%s\\%s-%08x.tmp", dir, prefix, uniqueId) == NULL) {
+            rError("runtime", "Temporary filename too long");
+            return NULL;
+        }
+        //  Try to create the file exclusively - will fail if it already exists
+        fd = open(path, O_CREAT | O_EXCL | O_RDWR | O_BINARY | O_CLOEXEC, 0600);
+        if (fd >= 0) {
+            //  Success - file created exclusively
+            close(fd);
+            return sclone(path);
+        }
+        if (errno != EEXIST) {
+            //  Real error, not just file exists
+            rError("runtime", "Cannot create temporary file %s: %s", path, strerror(errno));
+            return NULL;
+        }
+        //  File exists, try again with new unique ID
+    }
+    rError("runtime", "Cannot create unique temporary file after %d attempts", attempts);
+    return NULL;
 #else
     char path[ME_MAX_PATH], sep;
     sep = '/';
@@ -5933,9 +5967,9 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
         return NULL;
     }
     fchmod(fd, 0600);
-#endif
     close(fd);
     return sclone(path);
+#endif
 }
 
 PUBLIC void rAddDirectory(cchar *token, cchar *path)
@@ -9196,10 +9230,6 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
     tp->revokeFile = tp->revokeFile ? tp->revokeFile : scloneNull(defaultRevokeFile);
     tp->ciphers = tp->ciphers ? tp->ciphers : scloneNull(defaultCiphers);
 
-    if (tp->verifyPeer == 1 && !tp->caFile) {
-        return rSetSocketError(tp->sock, "Cannot verify peer due to undefined CA certificates");
-    }
-
     /*
         Configure the certificates
      */
@@ -9223,20 +9253,24 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         }
     }
     if (tp->verifyPeer == 1) {
-        if (!tp->caFile) {
-            return rSetSocketError(tp->sock, "No defined certificate authority file");
-        }
-        if ((!SSL_CTX_load_verify_locations(ctx, (char*) tp->caFile, NULL)) ||
-            (!SSL_CTX_set_default_verify_paths(ctx))) {
-            return rSetSocketError(tp->sock, "Unable to set certificate locations: %s", tp->caFile);
-        }
+        /*
+            Use either the authority file or the default verify paths
+            OpenSSL currently has issues where loading additional paths may (may not) invalidate the default paths
+         */
         if (tp->caFile) {
+            if (!SSL_CTX_load_verify_locations(ctx, (char*) tp->caFile, NULL)) {
+                return rSetSocketError(tp->sock, "Unable to set certificate locations: %s", tp->caFile);
+            }
             certNames = SSL_load_client_CA_file(tp->caFile);
             if (certNames) {
                 // Define the list of CA certificates to send to the client before they send their client certificate
                 // for validation
                 SSL_CTX_set_client_CA_list(ctx, certNames);
             }
+        } else if (!SSL_CTX_set_default_verify_paths(ctx)) {
+            // OpenSSL listens to the env vars: SSL_CERT_DIR and SSL_CERT_FILE to override the default certificate
+            // locations
+            return rSetSocketError(tp->sock, "Unable to set default certificate locations");
         }
         store = SSL_CTX_get_cert_store(ctx);
         if (tp->revokeFile && !X509_STORE_load_locations(store, tp->revokeFile, 0)) {
@@ -9261,8 +9295,16 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         if (tp->server) {
             SSL_CTX_set_alpn_select_cb(ctx, selectAlpn, (void*) tp);
         } else {
+            size_t alpnLen = slen(tp->alpn);
             // NOTE: This ALPN protocol string format only supports one protocol
-            SFMT(abuf, "%c%s", (uchar) slen(tp->alpn), tp->alpn);
+            // ALPN length is limited to 255 bytes by protocol and buffer is 128 bytes
+            if (alpnLen > 255) {
+                return rSetSocketError(tp->sock, "ALPN protocol name exceeds 255 bytes");
+            }
+            if (alpnLen > 126) {
+                return rSetSocketError(tp->sock, "ALPN protocol name too long: %zu bytes", alpnLen);
+            }
+            SFMT(abuf, "%c%s", (uchar) alpnLen, tp->alpn);
             SSL_CTX_set_alpn_protos(ctx, (cuchar*) abuf, (uint) slen(abuf));
         }
     }
@@ -9339,6 +9381,8 @@ PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
         Create a socket bio. We don't use the BIO except as storage for the fd
      */
     if ((tp->bio = BIO_new_socket((int) tp->fd, BIO_NOCLOSE)) == 0) {
+        SSL_free(tp->handle);
+        tp->handle = NULL;
         return R_ERR_BAD_STATE;
     }
     SSL_set_bio(tp->handle, tp->bio, tp->bio);
@@ -9352,8 +9396,8 @@ PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
             X509_VERIFY_PARAM *param = SSL_get0_param(tp->handle);
             X509_VERIFY_PARAM_set_hostflags(param, 0);
             X509_VERIFY_PARAM_set1_host(param, peer, 0);
+            SSL_set_tlsext_host_name(tp->handle, peer);
         }
-        SSL_set_tlsext_host_name(tp->handle, peer);
 
         ERR_clear_error();
         if ((rc = SSL_connect(tp->handle)) < 1) {
@@ -9633,14 +9677,23 @@ static int verifyPeerCertificate(int ok, X509_STORE_CTX *xctx)
     X509 *cert;
     SSL  *handle;
     Rtls *tp;
-    char subject[512], issuer[512], peerName[512];
+    char subject[1024], issuer[1024], peerName[1024];
     int  error;
 
     subject[0] = issuer[0] = '\0';
     handle = (SSL*) X509_STORE_CTX_get_ex_data(xctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+    if (!handle) {
+        return 0;
+    }
     tp = (Rtls*) SSL_get_app_data(handle);
-
+    if (!tp) {
+        return 0;
+    }
     cert = X509_STORE_CTX_get_current_cert(xctx);
+    if (!cert) {
+        rSetSocketError(tp->sock, "No certificate provided");
+        return 0;
+    }
     error = X509_STORE_CTX_get_error(xctx);
 
     ok = 1;
@@ -11578,6 +11631,7 @@ static int activeSockets = 0;
 /********************************** Forwards **********************************/
 
 static void acceptSocket(RSocket *listen);
+static int getOsError(RSocket *sp);
 static int getSocketError(RSocket *sp);
 
 static RSocketCustom socketCustom;
@@ -11700,52 +11754,54 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         return R_ERR_BAD_ARGS;
     }
     for (r = res; r; r = r->ai_next) {
+        if (sp->fd != INVALID_SOCKET) {
+            closesocket(sp->fd);
+            sp->fd = INVALID_SOCKET;
+        }
+        if (sp->wait) {
+            rFreeWait(sp->wait);
+            sp->wait = NULL;
+        }
         if ((sp->fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == SOCKET_ERROR) {
             rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
             continue;
         }
+
         rSetSocketBlocking(sp, 0);
+        sp->wait = rAllocWait((int) sp->fd);
+
         do {
             rc = connect(sp->fd, r->ai_addr, (socklen_t) r->ai_addrlen);
         } while (rc < 0 && rGetOsError() == EINTR);
 
         if (rc == 0 || (rc < 0 && (rGetOsError() == EINPROGRESS || rGetOsError() == EAGAIN))) {
-            break;
+ #if ME_UNIX_LIKE
+            fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
+ #endif
+            sp->activity = rGetTime();
+
+            if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
+                continue;
+            }
+            if (getSocketError(sp) == 0) {
+                // Successfully connected
+                break;
+            }
+            continue;
         }
-        closesocket(sp->fd);
-        sp->fd = INVALID_SOCKET;
     }
     freeaddrinfo(res);
     if (!r) {
+        if (sp->fd != INVALID_SOCKET) {
+            closesocket(sp->fd);
+            sp->fd = INVALID_SOCKET;
+        }
+        if (sp->wait) {
+            rFreeWait(sp->wait);
+            sp->wait = NULL;
+        }
         rSetSocketError(sp, "Cannot connect socket for %s:%d", host, port);
         return R_ERR_CANT_CONNECT;
-    }
- #if ME_UNIX_LIKE
-    fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
- #endif
-    sp->activity = rGetTime();
-    sp->wait = rAllocWait((int) sp->fd);
-
-    if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
-        return R_ERR_TIMEOUT;
-    }
-    //  Verify the connection actually succeeded by checking SO_ERROR
-    {
-        int     error = 0;
-        Socklen len = sizeof(error);
-        if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &len) < 0) {
-            return rSetSocketError(sp, "Cannot get socket error status");
-        }
-        if (error != 0) {
- #if ME_WIN_LIKE
-            //  On Windows, SO_ERROR returns WSA error codes, set it directly
-            WSASetLastError(error);
- #else
-            //  On Unix, SO_ERROR returns errno values
-            errno = error;
- #endif
-            return rSetSocketError(sp, "Connection failed, errno %d", error);
-        }
     }
  #if ME_COM_SSL
     if (sp->tls && rUpgradeTls(sp->tls, sp->fd, host, deadline) < 0) {
@@ -11777,13 +11833,13 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     hints.ai_flags = AI_PASSIVE;     // Use wildcard address if host is NULL
 
     /*
-        When host is NULL, prefer IPv6 with dual-stack to accept both IPv4 and IPv6
-        When host is "localhost" or "127.0.0.1", use IPv4 for maximum compatibility
+        When host is NULL or "localhost", prefer IPv6 with dual-stack to accept both IPv4 and IPv6
+        When host is a specific IPv4 address like "127.0.0.1", use IPv4 only
      */
-    if (!host) {
-        hints.ai_family = AF_INET6;  // Dual-stack wildcard
-    } else if (smatch(host, "localhost") || smatch(host, "127.0.0.1")) {
-        hints.ai_family = AF_INET;   // IPv4 loopback
+    if (!host || smatch(host, "localhost")) {
+        hints.ai_family = AF_INET6;  // Dual-stack for wildcard and localhost
+    } else if (smatch(host, "127.0.0.1")) {
+        hints.ai_family = AF_INET;   // Explicit IPv4 loopback
     } else {
         hints.ai_family = AF_UNSPEC; // Use resolved address family
     }
@@ -11949,7 +12005,7 @@ PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, size_t bufsize)
     while (1) {
         bytes = recv(sp->fd, buf, (uint) bufsize, MSG_NOSIGNAL);
         if (bytes < 0) {
-            error = getSocketError(sp);
+            error = getOsError(sp);
             if (error == EINTR) {
                 continue;
             } else if (error == EAGAIN || error == EWOULDBLOCK) {
@@ -12036,7 +12092,7 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
         for (len = bufsize, bytes = 0; len > 0; ) {
             written = send(sp->fd, &((char*) buf)[bytes], (uint) len, MSG_NOSIGNAL);
             if (written < 0) {
-                error = getSocketError(sp);
+                error = getOsError(sp);
                 if (error == EINTR) {
                     continue;
                 } else if (error == EAGAIN || error == EWOULDBLOCK) {
@@ -12074,7 +12130,7 @@ PUBLIC void rSetSocketBlocking(RSocket *sp, bool on)
 #endif
 }
 
-static int getSocketError(RSocket *sp)
+static int getOsError(RSocket *sp)
 {
 #if ME_WIN_LIKE
     int rc;
@@ -12302,6 +12358,33 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port)
     *port = ntohs(sa->sin_port);
 #endif
     return 0;
+}
+
+/*
+    Return the socket error code for the socket
+    This is necessary because the socket may be writable by have a connection error
+ */
+static int getSocketError(RSocket *sp)
+{
+    Socklen len;
+    int error;
+
+    len = sizeof(error);
+    error = 0;
+    if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &len) < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    if (error == 0) {
+        return 0;
+    }
+#if ME_WIN_LIKE
+    //  On Windows, SO_ERROR returns WSA error codes, set it directly
+    WSASetLastError(error);
+#else
+    //  On Unix, SO_ERROR returns errno values
+    errno = error;
+#endif
+    return error;
 }
 
 #endif /* R_USE_SOCKET */
@@ -12537,9 +12620,21 @@ PUBLIC char *sclone(cchar *str)
     return ptr;
 }
 
+/*
+    Preserve NULLs
+ */
 PUBLIC char *scloneNull(cchar *str)
 {
     if (str == NULL) return NULL;
+    return sclone(str);
+}
+
+/*
+    Only clone if the string is defined and not empty
+ */
+PUBLIC char *scloneDefined(cchar *str)
+{
+    if (str == NULL || *str == '\0') return NULL;
     return sclone(str);
 }
 
@@ -13068,8 +13163,8 @@ PUBLIC char *srchr(cchar *s, int c)
  */
 PUBLIC int64 svalue(cchar *str)
 {
-    char   value[80];
-    char   *tok;
+    char  value[80];
+    char  *tok;
     int64 factor, number;
 
     if (slen(str) >= sizeof(value)) {
@@ -13656,7 +13751,7 @@ PUBLIC RThread rGetCurrentThread(void)
 
 /*
     Spawn a thread and yield to it and then return with the result of the called function.
-    WARNING: 
+    WARNING:
  */
 PUBLIC void *rSpawnThread(RThreadProc fn, void *arg)
 {
@@ -13881,7 +13976,7 @@ PUBLIC void rMemoryBarrier(void)
 #if R_USE_TIME
 /********************************** Defines ***********************************/
 
-#define ME_MAX_DATE 128
+#define ME_MAX_DATE      128
 #ifndef R_HIGH_RES_TIMER
 #define R_HIGH_RES_TIMER 1
 #endif
@@ -14048,25 +14143,22 @@ PUBLIC Time rParseIsoDate(cchar *when)
 PUBLIC Time rParseIsoDate(cchar *when)
 {
     struct tm ctime;
+    char      *cp;
+    int       ms = 0;
 
     memset(&ctime, 0, sizeof(ctime));
     if (when) {
-#if MACOSX
         /*
-            For platforms that don't support %f
+            Parse date/time without fractional seconds, then manually extract milliseconds.
+            The %f specifier is not reliable across platforms and struct tm doesn't store fractional seconds.
          */
-        char *cp;
-        int  ms = 0;
         strptime(when, "%FT%T%z", &ctime);
         if ((cp = strrchr(when, '.')) != NULL) {
             ms = atoi(cp + 1);
         }
         return timegm(&ctime) * TPS + ms;
-#else
-        strptime(when, "%FT%T.%f%z", &ctime);
-#endif
     }
-    return timegm(&ctime) * TPS;
+    return 0;
 }
 #endif
 
@@ -14083,7 +14175,7 @@ PUBLIC uint64 rGetHiResTicks(void)
     return now;
 }
 #elif (LINUX || MACOSX) && ME_CPU_ARCH == ME_CPU_X64
-PUBLIC  uint64 rGetHiResTicks(void)
+PUBLIC uint64 rGetHiResTicks(void)
 {
     uint32 low, high;
 
@@ -14172,7 +14264,6 @@ PUBLIC Ticks rGetTicks(void)
      */
     static Time  lastTicks = 0;
     static Time  adjustTicks = 0;
-    static RSpin ticksSpin;
     Time         result, diff;
 
     if (lastTicks == 0) {
@@ -14182,9 +14273,7 @@ PUBLIC Ticks rGetTicks(void)
 #else
         lastTicks = rGetTime();
 #endif
-        rInitSpinLock(&ticksSpin);
     }
-    rSpinLock(&ticksSpin);
 #if ME_WIN_LIKE
     /*
         GetTickCount will wrap in 49.7 days
@@ -14202,7 +14291,6 @@ PUBLIC Ticks rGetTicks(void)
         result -= diff;
     }
     lastTicks = result;
-    rSpinUnlock(&ticksSpin);
     return result;
 #endif
 }
@@ -15141,8 +15229,8 @@ PUBLIC int rWait(Ticks deadline)
     }
 #elif ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
     SOCKET fd;
-    int  event, i, numEvents;
-    char buf[64];
+    int    event, i, numEvents;
+    char   buf[64];
 
     timeout = min(timeout, 1000);
     if ((numEvents = WSAPoll(pollFds, pollCount, (int) timeout)) < 0) {
@@ -15694,7 +15782,7 @@ PUBLIC int rWriteRegistry(cchar *key, cchar *name, cchar *value)
 }
 
 /*
-    Parse the command line args and return the count of args. 
+    Parse the command line args and return the count of args.
     If argv is NULL, the args are parsed read-only. If argv is set, then the args will be extracted,
     back-quotes removed and argv will be set to point to all the args.
     NOTE: this routine does not allocate.

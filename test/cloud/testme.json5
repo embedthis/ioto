@@ -1,12 +1,5 @@
 {
-    environment: {
-        default: {
-            PATH: '../../build/bin:${PATH}',
-        },
-        windows: {
-            PATH: '../../build/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
-        },
-    },
+    inherit: ['environment'],
     execution: {
         workers: 1,
         parallel: false,
@@ -15,6 +8,8 @@
     services: {
         environment: './env.sh',
         prep: './prep.sh',
+        setup: './setup.sh',
         skip: './skip.sh',
+        healthcheck: { url: 'http://localhost:9030/api/test?name=health' },
     },
 }

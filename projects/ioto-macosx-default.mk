@@ -146,7 +146,7 @@ TARGETS               += $(BUILD)/bin/ioto
 TARGETS               += $(BUILD)/bin/json
 TARGETS               += $(BUILD)/bin/password
 TARGETS               += $(BUILD)/bin/url
-TARGETS               += $(BUILD)/bin/webserver
+TARGETS               += $(BUILD)/bin/web
 
 
 DEPEND := $(strip $(wildcard ./projects/depend.mk))
@@ -219,7 +219,7 @@ clean:
 	rm -f "$(BUILD)/bin/libioto.a"
 	rm -f "$(BUILD)/bin/password"
 	rm -f "$(BUILD)/bin/url"
-	rm -f "$(BUILD)/bin/webserver"
+	rm -f "$(BUILD)/bin/web"
 	rm -rf state; rm -f include/config.h
 
 clobber: clean
@@ -1067,7 +1067,7 @@ $(BUILD)/bin/url: $(DEPS_60)
 	$(CC) -o "$(BUILD)/bin/url" -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/url.o" $(LIBPATHS_60) $(LIBS_60) $(LIBS_60) $(LIBS) 
 
 #
-#   webserver
+#   web
 #
 DEPS_61 += $(BUILD)/bin/libioto.a
 DEPS_61 += $(BUILD)/obj/web.o
@@ -1103,9 +1103,9 @@ ifeq ($(ME_COM_OPENSSL),1)
     LIBPATHS_61 += -L"$(ME_COM_OPENSSL_PATH)"
 endif
 
-$(BUILD)/bin/webserver: $(DEPS_61)
-	@echo '      [Link] $(BUILD)/bin/webserver'
-	$(CC) -o "$(BUILD)/bin/webserver" -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.o" $(LIBPATHS_61) $(LIBS_61) $(LIBS_61) $(LIBS) 
+$(BUILD)/bin/web: $(DEPS_61)
+	@echo '      [Link] $(BUILD)/bin/web'
+	$(CC) -o "$(BUILD)/bin/web" -arch $(CC_ARCH) $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.o" $(LIBPATHS_61) $(LIBS_61) $(LIBS_61) $(LIBS) 
 
 #
 #   stop

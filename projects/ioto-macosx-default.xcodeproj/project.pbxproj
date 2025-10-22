@@ -33,7 +33,7 @@
 				45CFBD4245CFBD420000000F /* PBXTargetDependency libioto */,
 				45CFBD4245CFBD4200000010 /* PBXTargetDependency password */,
 				45CFBD4245CFBD4200000011 /* PBXTargetDependency url */,
-				45CFBD4245CFBD4200000012 /* PBXTargetDependency webserver */,
+				45CFBD4245CFBD4200000012 /* PBXTargetDependency web */,
 				45CFBD4245CFBD4200000013 /* PBXTargetDependency All */,
 				45CFBD4245CFBD4200000014 /* PBXTargetDependency Prep */,
 			);
@@ -96,7 +96,7 @@
 		45CFBD4245CFBD4200000065 /* libioto.a for json */ = {isa = PBXBuildFile; fileRef = 45CFBD4245CFBD4200000063; };
 		45CFBD4245CFBD4200000066 /* libioto.a for password */ = {isa = PBXBuildFile; fileRef = 45CFBD4245CFBD4200000063; };
 		45CFBD4245CFBD4200000067 /* libioto.a for url */ = {isa = PBXBuildFile; fileRef = 45CFBD4245CFBD4200000063; };
-		45CFBD4245CFBD4200000068 /* libioto.a for webserver */ = {isa = PBXBuildFile; fileRef = 45CFBD4245CFBD4200000063; };
+		45CFBD4245CFBD4200000068 /* libioto.a for web */ = {isa = PBXBuildFile; fileRef = 45CFBD4245CFBD4200000063; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -184,14 +184,14 @@
     			remoteGlobalIDString = 45CFBD4245CFBD420000006C;
     			remoteInfo = libioto;
     		};
-		45CFBD4245CFBD4200000076 /* PBXContainerItemProxy Prep from webserver */ = {
+		45CFBD4245CFBD4200000076 /* PBXContainerItemProxy Prep from web */ = {
     			isa = PBXContainerItemProxy;
     			containerPortal = 45CFBD4245CFBD4200000001 /* Project object */;
     			proxyType = 1;
     			remoteGlobalIDString = 45CFBD4245CFBD4200000016;
     			remoteInfo = Prep;
     		};
-		45CFBD4245CFBD4200000077 /* PBXContainerItemProxy libioto from webserver */ = {
+		45CFBD4245CFBD4200000077 /* PBXContainerItemProxy libioto from web */ = {
     			isa = PBXContainerItemProxy;
     			containerPortal = 45CFBD4245CFBD4200000001 /* Project object */;
     			proxyType = 1;
@@ -254,12 +254,12 @@
     			remoteGlobalIDString = 45CFBD4245CFBD4200000084;
     			remoteInfo = url;
     		};
-		45CFBD4245CFBD4200000085 /* PBXContainerItemProxy webserver from All */ = {
+		45CFBD4245CFBD4200000085 /* PBXContainerItemProxy web from All */ = {
     			isa = PBXContainerItemProxy;
     			containerPortal = 45CFBD4245CFBD4200000001 /* Project object */;
     			proxyType = 1;
     			remoteGlobalIDString = 45CFBD4245CFBD4200000086;
-    			remoteInfo = webserver;
+    			remoteInfo = web;
     		};
 /* End PBXContainerItemProxy section */
 
@@ -322,7 +322,7 @@
 		45CFBD4245CFBD420000005F /* url.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = url.c; path = src/cmds/url.c; sourceTree = "<group>"; };
 		45CFBD4245CFBD420000009A /* url */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = url; sourceTree = BUILT_PRODUCTS_DIR; };
 		45CFBD4245CFBD4200000061 /* web.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = web.c; path = src/cmds/web.c; sourceTree = "<group>"; };
-		45CFBD4245CFBD420000009B /* webserver */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = webserver; sourceTree = BUILT_PRODUCTS_DIR; };
+		45CFBD4245CFBD420000009B /* web */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = web; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -374,7 +374,7 @@
                 );
                 runOnlyForDeploymentPostprocessing = 0;
             };
-		45CFBD4245CFBD42000000A2 /* Frameworks and Libraries for webserver */ = {
+		45CFBD4245CFBD42000000A2 /* Frameworks and Libraries for web */ = {
                 isa = PBXFrameworksBuildPhase;
                 buildActionMask = 2147483647;
                 files = (
@@ -394,7 +394,7 @@
 				45CFBD4245CFBD42000000A7 /* json */,
 				45CFBD4245CFBD42000000A8 /* password */,
 				45CFBD4245CFBD42000000A9 /* url */,
-				45CFBD4245CFBD42000000AA /* webserver */,
+				45CFBD4245CFBD42000000AA /* web */,
 				45CFBD4245CFBD42000000AB /* Products */,
 			);
                 sourceTree = "<group>";
@@ -497,12 +497,12 @@
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
-		45CFBD4245CFBD42000000AA /* webserver */ = {
+		45CFBD4245CFBD42000000AA /* web */ = {
                 isa = PBXGroup;
                 children = (
 				45CFBD4245CFBD4200000061 /* web.c */,
 			);
-                name = "webserver";
+                name = "web";
                 path = ..;
                 sourceTree = SOURCE_ROOT;
             };
@@ -515,7 +515,7 @@
 				45CFBD4245CFBD4200000063 /* libioto */,
 				45CFBD4245CFBD4200000099 /* password */,
 				45CFBD4245CFBD420000009A /* url */,
-				45CFBD4245CFBD420000009B /* webserver */,
+				45CFBD4245CFBD420000009B /* web */,
 			);
                 name = "Products";
                 path = ..;
@@ -631,9 +631,9 @@
     			productReference = 45CFBD4245CFBD420000009A /* url */;
     			productType = "com.apple.product-type.tool";
     		};
-		45CFBD4245CFBD4200000086 /* webserver */ = {
+		45CFBD4245CFBD4200000086 /* web */ = {
     			isa = PBXNativeTarget;
-    			buildConfigurationList = 45CFBD4245CFBD42000000C4 /* Build configuration list for PBXNativeTarget "webserver" */;
+    			buildConfigurationList = 45CFBD4245CFBD42000000C4 /* Build configuration list for PBXNativeTarget "web" */;
     			buildPhases = (
     				45CFBD4245CFBD42000000C3 /* Sources */,
     				45CFBD4245CFBD42000000A2 /* Frameworks */,
@@ -644,9 +644,9 @@
     				45CFBD4245CFBD42000000C5 /* Prep */,
 				45CFBD4245CFBD42000000C6 /* libioto */,				
     			);
-    			name = webserver;
+    			name = web;
     			productName = ioto;
-    			productReference = 45CFBD4245CFBD420000009B /* webserver */;
+    			productReference = 45CFBD4245CFBD420000009B /* web */;
     			productType = "com.apple.product-type.tool";
     		};
 /* End PBXNativeTarget section */
@@ -812,7 +812,7 @@ fi
 				45CFBD4245CFBD4200000080 /* json */,
 				45CFBD4245CFBD4200000082 /* password */,
 				45CFBD4245CFBD4200000084 /* url */,
-				45CFBD4245CFBD4200000086 /* webserver */,
+				45CFBD4245CFBD4200000086 /* web */,
 				45CFBD4245CFBD4200000006 /* app */,
 			);
     		};
@@ -897,7 +897,7 @@ fi
     			);
     			runOnlyForDeploymentPostprocessing = 0;
     		};
-		45CFBD4245CFBD42000000C3 /* webserver Sources */ = {
+		45CFBD4245CFBD42000000C3 /* web Sources */ = {
     			isa = PBXSourcesBuildPhase;
     			buildActionMask = 2147483647;
     			files = (
@@ -968,12 +968,12 @@ fi
     			target = 45CFBD4245CFBD420000006C /* libioto */;
     			targetProxy = 45CFBD4245CFBD4200000075 /* PBXContainerItemProxy */;
     		};
-		45CFBD4245CFBD42000000C5 /* PBXTargetDependency webserver depends on Prep */ = {
+		45CFBD4245CFBD42000000C5 /* PBXTargetDependency web depends on Prep */ = {
     			isa = PBXTargetDependency;
     			target = 45CFBD4245CFBD4200000016 /* Prep */;
     			targetProxy = 45CFBD4245CFBD4200000076 /* PBXContainerItemProxy */;
     		};
-		45CFBD4245CFBD42000000C6 /* PBXTargetDependency webserver depends on libioto */ = {
+		45CFBD4245CFBD42000000C6 /* PBXTargetDependency web depends on libioto */ = {
     			isa = PBXTargetDependency;
     			target = 45CFBD4245CFBD420000006C /* libioto */;
     			targetProxy = 45CFBD4245CFBD4200000077 /* PBXContainerItemProxy */;
@@ -1018,9 +1018,9 @@ fi
     			target = 45CFBD4245CFBD4200000084 /* url */;
     			targetProxy = 45CFBD4245CFBD4200000083 /* PBXContainerItemProxy */;
     		};
-		45CFBD4245CFBD4200000012 /* PBXTargetDependency All depends on webserver */ = {
+		45CFBD4245CFBD4200000012 /* PBXTargetDependency All depends on web */ = {
     			isa = PBXTargetDependency;
-    			target = 45CFBD4245CFBD4200000086 /* webserver */;
+    			target = 45CFBD4245CFBD4200000086 /* web */;
     			targetProxy = 45CFBD4245CFBD4200000085 /* PBXContainerItemProxy */;
     		};
 /* End PBXTargetDependency section */
@@ -1588,7 +1588,7 @@ ENABLE_TESTABILITY = YES;
 		45CFBD4245CFBD42000000D5 /* Debug */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
-    				PRODUCT_NAME = webserver;
+    				PRODUCT_NAME = web;
     
     				HEADER_SEARCH_PATHS = (
 					"$(ME_COM_OPENSSL_PATH)/include",
@@ -1617,7 +1617,7 @@ ENABLE_TESTABILITY = YES;
     		45CFBD4245CFBD42000000D6 /* Release */ = {
     			isa = XCBuildConfiguration;
     			buildSettings = {
-    				PRODUCT_NAME = webserver;
+    				PRODUCT_NAME = web;
     
     				HEADER_SEARCH_PATHS = (
 					"$(ME_COM_OPENSSL_PATH)/include",
@@ -1782,7 +1782,7 @@ ENABLE_TESTABILITY = YES;
     			defaultConfigurationIsVisible = 0;
     			defaultConfigurationName = Release;
     		};
-		45CFBD4245CFBD42000000C4 /* Build configuration list for PBXNativeTarget "webserver" */ = {
+		45CFBD4245CFBD42000000C4 /* Build configuration list for PBXNativeTarget "web" */ = {
     			isa = XCConfigurationList;
     			buildConfigurations = (
     				45CFBD4245CFBD42000000D5 /* Debug */,

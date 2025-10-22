@@ -1,0 +1,23 @@
+GET / HTTP/1.1
+Host: localhost
+
+POST /api HTTP/1.1
+Host: localhost
+Content-Type: application/json
+Content-Length: 13
+
+{"key":"value"}
+HEAD /index.html HTTP/1.1
+Host: localhost
+
+PUT /upload HTTP/1.1
+Host: localhost
+Content-Length: 4
+
+test
+DELETE /resource HTTP/1.1
+Host: localhost
+
+OPTIONS * HTTP/1.1
+Host: localhost
+

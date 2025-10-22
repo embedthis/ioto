@@ -47,19 +47,19 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_AUTH
-    #define ME_WEB_AUTH       1         /**< Enable authentication and authorization support */
+    #define ME_WEB_AUTH     1        /**< Enable authentication and authorization support */
 #endif
 #ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS     1         /**< Enable resource limits and security constraints */
+    #define ME_WEB_LIMITS   1        /**< Enable resource limits and security constraints */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS   1         /**< Enable session management support */
+    #define ME_WEB_SESSIONS 1        /**< Enable session management support */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD     1         /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD   1        /**< Enable file upload functionality */
 #endif
 #ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK 1         /**< Enable WebSocket protocol support */
+    #define ME_COM_WEBSOCK  1        /**< Enable WebSocket protocol support */
 #endif
 /** @} */
 
@@ -721,8 +721,8 @@ PUBLIC cchar *webGetRole(Web *web);
 
 /**
     Get a request variable value from the request form/body
-    @description Retrieve a form variable from the parsed request body or query string.
-        Variables are parsed from URL-encoded form data (POST) or query parameters (GET).
+    @description Retrieve a form variable from the parsed request body
+        Variables are parsed from URL-encoded form data (POST).
         JSON request bodies are also parsed and made available as variables.
     @param web Web request object
     @param name Variable name to look up
@@ -731,6 +731,18 @@ PUBLIC cchar *webGetRole(Web *web);
     @stability Evolving
  */
 PUBLIC cchar *webGetVar(Web *web, cchar *name, cchar *defaultValue);
+
+/**
+    Get a request variable value from the request URI query
+    @description Retrieve a form variable from the parsed request query string.
+        Variables are parsed from URL-encoded or query parameters (GET).
+    @param web Web request object
+    @param name Variable name to look up
+    @param defaultValue Default value to return if variable is not defined
+    @return Variable value string, or defaultValue if not found
+    @stability Evolving
+ */
+PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue);
 
 /**
     Close the current request and issue no response
@@ -887,6 +899,8 @@ PUBLIC void webSetStatus(Web *web, int status);
     @stability Evolving
  */
 PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
+
+
 
 /**
     Validate a request body and query with the API signature.
@@ -1172,6 +1186,7 @@ PUBLIC void webRemoveSessionVar(Web *web, cchar *name);
 
 /**
     Set a response cookie
+    @description Cookies must be less than 4096 bytes in length.
     @param web Web request object
     @param name Session variable name
     @param value Session variable value
@@ -1179,9 +1194,10 @@ PUBLIC void webRemoveSessionVar(Web *web, cchar *name);
     @param lifespan Session variable lifespan
     @param flags Flags to override the default cookie settings. Use WEB_COOKIE_OVERRIDE in combination with:
        WEB_COOKIE_HTTP_ONLY, WEB_COOKIE_SECURE, WEB_COOKIE_SAME_SITE.
+    @return 0 if successful, otherwise a negative error code.
     @stability Prototype
  */
-PUBLIC void webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags);
+PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags);
 
 /**
     Set a session variable name value

@@ -10,6 +10,8 @@
 
     url [Flags] [Method] URL [items, ...]
 
+    By default, url will show the response body which is equivalent to --show b
+
     Examples:
 
     url PUT /toFile.txt @< .
@@ -198,7 +200,7 @@ int main(int argc, char **argv, char **envp)
     report(start);
     cleanup();
     rTerm();
-    return success ? 0 : 2;
+    return success ? 0 : 1;
 }
 
 static void cleanup(void)
@@ -590,7 +592,7 @@ static int parseArgs(int argc, char **argv)
             return R_ERR_BAD_ARGS;
         }
     }
-    if (show & URL_SHOW_RESP_BODY && saveFd < 0) {
+    if ((show == 0 || (show & URL_SHOW_RESP_BODY)) && saveFd < 0) {
         //  Stdout for body
         saveFd = 1;
     }
@@ -611,13 +613,6 @@ static int parseArgs(int argc, char **argv)
             path = rJoinFile(dir, CA_FILE);
             if (rFileExists(path)) {
                 caFile = caPath = path;
-            } else {
-                if (sstarts(url, "https://")) {
-                    rError("url", "Cannot find root certificates \"%s\", continuing, but unable to verify site", CA_FILE);
-                }
-                caFile = NULL;
-                rFree(path);
-                path = NULL;
             }
             rFree(dir);
         }
@@ -767,24 +762,30 @@ static void fiberMain(void *data)
             }
 #endif /* URL_SSE */
         }
+        if (!up->error && 301 <= up->status && up->status <= 308 && redirects < maxRedirects) {
+            location = urlGetHeader(up, "Location");
+            if (location) {
+                rFree(url);
+                if (scontains(location, "://")) {
+                    url = sclone(location);
+                } else {
+                    url = sfmt("%s://%s%s", up->scheme, up->host, location);
+                }
+                redirects++;
+            }
+            continue;
+        }
         if (up->error || !(webSockets || sse)) {
             if ((buf = urlGetResponseBuf(up)) == NULL) {
                 urlError(up, "Cannot read response body");
-
-            } else if (show & URL_SHOW_RESP_BODY) {
+            } else if (show & URL_SHOW_RESP_BODY || show == 0) {
                 showResponse(up, buf);
             }
-            if (!up->error && 301 <= up->status && up->status <= 308 && redirects < maxRedirects) {
-                location = urlGetHeader(up, "Location");
-                if (location) {
-                    rFree(url);
-                    if (scontains(location, "://")) {
-                        url = sclone(location);
-                    } else {
-                        url = sfmt("%s://%s%s", up->scheme, up->host, location);
-                    }
-                    redirects++;
-                }
+        }
+        if (!zero && 400 <= up->status && up->status < 600) {
+            success = 0;
+            if (!continueOnErrors) {
+                break;
             }
         }
         if (benchmark) {

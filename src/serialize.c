@@ -137,12 +137,12 @@ static bool getSerial(void)
         rFree(ioto->id);
         ioto->id = jsonGetClone(ioto->config, 0, "device.id", 0);
     }
-    if (saveId) {
+    if (saveId && !ioto->noSaveDevice && !ioto->nosave) {
         path = rGetFilePath(IO_DEVICE_FILE);
         if (jsonSave(config, did, 0, path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("serialize", "Cannot save serialization to %s", path);
             rFree(path);
-            return R_ERR_CANT_WRITE;
+            return 0;
         }
         rFree(path);
         rFree(saveId);

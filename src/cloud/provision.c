@@ -254,7 +254,7 @@ static void releaseProvisioning(const MqttRecv *rp)
     cchar *cmd;
 
     cmd = rBasename(rp->topic);
-    if (smatch(cmd, "release") && !ioto->cmdTest) {
+    if (smatch(cmd, "release")) {
         timestamp = stoi(rp->data);
         if (timestamp == 0) {
             timestamp = rGetTime();

@@ -13,6 +13,6 @@
 
 /********************************** Forwards **********************************/
 
-PUBLIC void unitTest(cchar *suite);
+PUBLIC void unitTestAction(Web *web);
 
 #endif /* _h_UNIT_h */

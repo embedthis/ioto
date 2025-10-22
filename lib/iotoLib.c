@@ -61,6 +61,9 @@ PUBLIC void ioInit(void)
 {
     assert(!rIsMain());
 
+    if (!ioto) {
+        ioAlloc();
+    }
     if (initServices() < 0) {
         rStop();
         return;
@@ -1733,18 +1736,20 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
     Dimensions is a JSON array of objects. Each object contains the properties of that dimension.
     The {} object, means no dimensions.
  */
-PUBLIC void ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
+PUBLIC int ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
 {
     char *msg;
+    int rc;
 
     if (dimensions == NULL || *dimensions == '\0') {
         dimensions = "[{\"Device\":\"${deviceId}\"}]";
     }
     msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
                metric, value, dimensions, elapsed);
-    mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
+    rc = mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
     rFree(msg);
+    return rc;
 }
 
 /*
@@ -1770,19 +1775,25 @@ PUBLIC void ioSet(cchar *key, cchar *value)
     Set a number in the Store key/value database.
     Uses db sync if available, otherwise uses MQTT.
  */
-PUBLIC void ioSetNum(cchar *key, double value)
+PUBLIC int ioSetNum(cchar *key, double value)
 {
+    int rc;
+
+    rc = 0;
 #if SERVICES_SYNC
-    dbUpdate(ioto->db, "Store",
+    if (dbUpdate(ioto->db, "Store",
              DB_JSON("{key: '%s', value: '%g', type: 'number'}", key, value),
-             DB_PARAMS(.upsert = 1));
+             DB_PARAMS(.upsert = 1)) == NULL) {
+        return R_ERR_CANT_WRITE;
+    }
 #else
     //  Optimize by using AWS basic ingest topic
     char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
-    mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
+    rc = mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
                 "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
     rFree(msg);
 #endif
+    return rc;
 }
 
 /*
@@ -1845,6 +1856,9 @@ PUBLIC double ioGetNum(cchar *key)
     msg = sfmt("{\"key\":\"%s\"}", key);
     //  Must not use basic-ingest for mqttRequest
     result = mqttRequest(ioto->mqtt, msg, 0, "store/get");
+    if (result == NULL) {
+        return 0;
+    }
     num = stod(result);
     rFree(msg);
     rFree(result);
@@ -1950,7 +1964,7 @@ PUBLIC int ioRegister(void)
         rInfo("ioto", "Generated device claim ID %s", ioto->id);
         jsonSet(ioto->config, 0, "device.id", ioto->id, JSON_STRING);
 
-        if (!ioto->nosave) {
+        if (!ioto->nosave && !ioto->noSaveDevice) {
             path = rGetFilePath(IO_DEVICE_FILE);
             if (jsonSave(ioto->config, 0, "device", path, 0600, JSON_HUMAN) < 0) {
                 rError("ioto", "Cannot save device registration to %s", path);
@@ -2020,9 +2034,9 @@ static int parseRegisterResponse(Json *json)
         return 0;
     } else if (json->count == 2) {
         if (ioto->provisionService) {
-            //  Registered but not yet claimed
-            if (once++ == 0) {
-                rInfo("ioto", "Device not claimed. Claim %s with the product device app.", ioto->id);
+            //  Registered but not yet claimed and not auto claiming
+            if (once++ == 0 && !ioto->account && !ioto->cloud) {
+                rInfo("ioto", "Device not yet claimed. Claim %s with the product device app.", ioto->id);
             }
         }
     }
@@ -2037,7 +2051,7 @@ static int parseRegisterResponse(Json *json)
         rDebug("ioto", "Provisioning: %s", jsonString(json, JSON_HUMAN));
     }
 
-    if (!ioto->nosave) {
+    if (!ioto->nosave && !ioto->noSaveDevice) {
         path = rGetFilePath(IO_PROVISION_FILE);
         if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("ioto", "Cannot save device provisioning to %s", path);
@@ -2207,12 +2221,12 @@ static bool getSerial(void)
         rFree(ioto->id);
         ioto->id = jsonGetClone(ioto->config, 0, "device.id", 0);
     }
-    if (saveId) {
+    if (saveId && !ioto->noSaveDevice && !ioto->nosave) {
         path = rGetFilePath(IO_DEVICE_FILE);
         if (jsonSave(config, did, 0, path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("serialize", "Cannot save serialization to %s", path);
             rFree(path);
-            return R_ERR_CANT_WRITE;
+            return 0;
         }
         rFree(path);
         rFree(saveId);
@@ -2283,7 +2297,7 @@ PUBLIC int ioInitConfig(void)
      */
     json = ioto->config;
     ioConfig(json);
-
+    
     stackSize = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
     if (stackSize) {
         rSetFiberStack(stackSize);
@@ -4963,7 +4977,7 @@ static void releaseProvisioning(const MqttRecv *rp)
     cchar *cmd;
 
     cmd = rBasename(rp->topic);
-    if (smatch(cmd, "release") && !ioto->cmdTest) {
+    if (smatch(cmd, "release")) {
         timestamp = stoi(rp->data);
         if (timestamp == 0) {
             timestamp = rGetTime();

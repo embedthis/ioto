@@ -1,0 +1,79 @@
+{
+    Port: [
+        { name: 'tty00', id: 0 },
+        { name: 'tty01', id: 1 },
+        { name: 'tty02', id: 2 },
+        { name: 'tty03', id: 3 },
+        { name: 'tty04', id: 4 },
+        { name: 'tty05', id: 5 },
+        { name: 'tty06', id: 6 },
+        { name: 'tty07', id: 7 },
+        { name: 'tty08', id: 8 },
+        { name: 'tty09', id: 9 },
+        { name: 'tty10', id: 10 },
+        { name: 'tty11', id: 11 },
+        { name: 'tty12', id: 12 },
+        { name: 'tty13', id: 13 },
+        { name: 'tty14', id: 14 },
+        { name: 'tty15', id: 15 },
+    },
+    User: [
+        {
+            username: 'admin',
+            password: 'BF1:00128:4oMqal5QuyBIslkR:9tvve3CPB8LoINq2ce6SWZLsdX5tQoLy',
+            role: 'admin',
+            email: 'admin@example.com',
+        }, {
+            username: 'guest',
+            password: 'BF1:00016:9bK672CWJNqRGK7T:vOcsA3B5PIz5eQoxZJ7kXlxbuvl3IVXJ',
+            role: 'user',
+            email: 'guest@example.com',
+        }, {
+            username: 'super',
+            password: 'BF1:00016:BYVWyfEQCG0Ypdwf:Pgqz3q1hIqRIu7R63Egx6V6zadINvwZk',
+            role: 'super',
+            email: 'super@example.com',
+        }
+    ],
+    System: [
+        { status: 'online' },
+    ],
+    Vlan: [
+        { id: 0, name: 'vlan00', description: 'General VLAN-0' },
+        { id: 1, name: 'vlan01', description: 'General VLAN-1' },
+        { id: 2, name: 'vlan02', description: 'General VLAN-2' },
+        { id: 3, name: 'vlan03', description: 'General VLAN-3' },
+    ],
+    Mapping: [
+        { portId: 1, vlanId: 1 }
+    ],
+    Event: [
+        {
+            timestamp: 1581636633399,
+            source: 'network',
+            severity: 'warn',
+            subject: 'Port limit exceeded',
+            message: 'Port 14 has exceeded maximum sustained transfer limit'
+        }, {
+            timestamp: 1581636633399,
+            source: 'network',
+            severity: 'error',
+            subject: 'Port Cycle',
+            message: 'The device unexpectedly powered down',
+        }, {
+            timestamp: 1581636633399,
+            source: 'network',
+            severity: 'info',
+            subject: 'Port enabled',
+            message: 'Port tty05 was enabled',
+        }
+    ],
+    Settings: [
+        {
+            numeric:   42,
+            literal:   'hello',
+            truthy:    true,
+            timestamp: 1581636633399,
+        }
+    ],
+}

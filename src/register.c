@@ -57,7 +57,7 @@ PUBLIC int ioRegister(void)
         rInfo("ioto", "Generated device claim ID %s", ioto->id);
         jsonSet(ioto->config, 0, "device.id", ioto->id, JSON_STRING);
 
-        if (!ioto->nosave) {
+        if (!ioto->nosave && !ioto->noSaveDevice) {
             path = rGetFilePath(IO_DEVICE_FILE);
             if (jsonSave(ioto->config, 0, "device", path, 0600, JSON_HUMAN) < 0) {
                 rError("ioto", "Cannot save device registration to %s", path);
@@ -127,9 +127,9 @@ static int parseRegisterResponse(Json *json)
         return 0;
     } else if (json->count == 2) {
         if (ioto->provisionService) {
-            //  Registered but not yet claimed
-            if (once++ == 0) {
-                rInfo("ioto", "Device not claimed. Claim %s with the product device app.", ioto->id);
+            //  Registered but not yet claimed and not auto claiming
+            if (once++ == 0 && !ioto->account && !ioto->cloud) {
+                rInfo("ioto", "Device not yet claimed. Claim %s with the product device app.", ioto->id);
             }
         }
     }
@@ -144,7 +144,7 @@ static int parseRegisterResponse(Json *json)
         rDebug("ioto", "Provisioning: %s", jsonString(json, JSON_HUMAN));
     }
 
-    if (!ioto->nosave) {
+    if (!ioto->nosave && !ioto->noSaveDevice) {
         path = rGetFilePath(IO_PROVISION_FILE);
         if (jsonSave(ioto->config, 0, "provision", path, 0600, JSON_JSON5 | JSON_MULTILINE) < 0) {
             rError("ioto", "Cannot save device provisioning to %s", path);

@@ -1,0 +1,12 @@
+{
+    enable: 'manual',
+    inherit: ['compiler', 'environment'],
+    execution: {
+        workers: 1,
+        parallel: false,
+    },
+    services: {
+        cleanup: './cleanup.sh',
+        setup: './setup.sh',
+    },
+}

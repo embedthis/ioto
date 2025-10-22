@@ -1,0 +1,7 @@
+{
+    inherit: ['compiler', 'environment'],
+    services: {
+        prep: './prep.sh',
+        cleanup: './cleanup.sh',
+    }
+}

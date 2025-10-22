@@ -616,7 +616,7 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     }
     //  Must be after find trims templates
     env->searchLen = slen(env->search.key);
-
+    
     if (env->params->log) {
         rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props, JSON_HUMAN));
     }
@@ -1135,7 +1135,7 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
 
     if (item) {
         if (env.params->upsert) {
-            env.props->userFlags &= ~USER_ALLOC;
+            env.props->userFlags &= (uchar) ~USER_ALLOC;
             clearItem(item);
             item->json = env.props;
         } else {
@@ -1684,7 +1684,7 @@ static DbItem *allocItem(cchar *key, Json *json, char *value)
     if (json) {
         if (json->userFlags & USER_ALLOC) {
             //  Cleanup before insertion into the RB tree
-            json->userFlags &= ~USER_ALLOC;
+            json->userFlags &= (uchar) ~USER_ALLOC;
         } else {
             /*
                 Not allocated as part of the DB_PROPS() API in dbCreate(), so we must clone

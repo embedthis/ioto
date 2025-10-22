@@ -417,6 +417,7 @@
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
     #define HAS_USHORT 1
+    #define PTHREADS 1
 
 #elif defined(ECOS)
     /* ECOS may not have a pre-defined symbol */
@@ -1157,8 +1158,14 @@ typedef int64 Ticks;
         #undef isnan
         #define isnan(n)  ((n) != (n))
         #define isnanf(n) ((n) != (n))
-        #define isinf(n)  ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
-        #define isinff(n) ((n) == (1.0 / 0.0) || (n) == (-1.0 / 0.0))
+        #if defined(__GNUC__)
+            #define isinf(n)  __builtin_isinf(n)
+            #define isinff(n) __builtin_isinff(n)
+        #else
+            #include <math.h>
+            #define isinf(n)  ((n) == HUGE_VAL || (n) == -HUGE_VAL)
+            #define isinff(n) ((n) == HUGE_VALF || (n) == -HUGE_VALF)
+        #endif
     #endif
     #if ME_WIN_LIKE
         #define isNan(f) (_isnan(f))
@@ -1370,9 +1377,9 @@ typedef int64 Ticks;
     #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
-#if VXWORKS
+#if VXWORKS || WINDOWS
     /*
-        Old VxWorks cannot do array[]
+        Use in arra[ARRAY_FLEX] to avoid compiler warnings
      */
     #define ARRAY_FLEX 0
 #else
@@ -1754,6 +1761,24 @@ typedef int64 Ticks;
     #ifndef strncasecmp
         #define strncasecmp sncaselesscmp
     #endif
+
+    /*
+        Define S_ISREG and S_ISDIR macros for Windows if not already defined
+     */
+    #ifndef S_ISDIR
+        #define S_ISDIR(m) (((m) & _S_IFMT) == _S_IFDIR)
+    #endif
+    #ifndef S_ISREG
+        #define S_ISREG(m) (((m) & _S_IFMT) == _S_IFREG)
+    #endif
+
+    /*
+        Define strtok_r for Windows if not already defined
+    */
+    #ifndef strtok_r
+        #define strtok_r strtok_s
+    #endif
+
     #pragma comment( lib, "ws2_32.lib" )
 #endif /* WIN_LIKE */
 
@@ -1792,6 +1817,13 @@ typedef int64 Ticks;
     #endif
     #ifndef S_ISREG
         #define S_ISREG(X) (((X) & S_IFMT) == S_IFREG)
+    #endif
+
+    /*
+        Windows uses strtok_s instead of strtok_r
+     */
+    #ifndef strtok_r
+        #define strtok_r strtok_s
     #endif
 
     #define STARTF_USESHOWWINDOW 0
@@ -2594,7 +2626,7 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg);
     Spawn an O/S thread and wait until it completes.
     @description This creates a new thread and runs the given function. It then yields until the
         thread function returns and returns the function result. NOTE: the spawned thread must not call
-        any Safe Runtime APIs that are not explicitly maked as THREAD SAFE. 
+        any Safe Runtime APIs that are not explicitly maked as THREAD SAFE.
     @param fn Thread main function entry point.
     @param arg Argument provided to the thread.
     @return Value returned from spawned thread function.
@@ -3458,8 +3490,19 @@ PUBLIC char *sclone(cchar *str);
 PUBLIC char *scloneNull(cchar *str);
 
 /**
+    Clone a string and only clone if the string is defined and not empty.
+    @description Copy a string into a newly allocated block.
+    If passed a NULL or an empty string, this will return a NULL.
+    @param str Pointer to the block to duplicate.
+    @return Returns a newly allocated string or NULL. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *scloneDefined(cchar *str);
+
+/**
     Compare strings.
-    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant. NULL strings are treated as empty strings for comparison purposes.
+    @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant.
+       NULL strings are treated as empty strings for comparison purposes.
     @param s1 First string to compare. NULL is safely handled.
     @param s2 Second string to compare. NULL is safely handled.
     @return Returns zero if the strings are identical. Returns -1 if the first string is lexicographically
@@ -4009,7 +4052,8 @@ PUBLIC ssize sjoinbuf(char *buf, size_t bufsize, cchar *str1, cchar *str2);
 PUBLIC int64 svalue(cchar *value);
 
 /**
-    Parse a value string to an integer. This is the same as svalue but returns an integer instead of a 64 bit signed integer.
+    Parse a value string to an integer. This is the same as svalue but returns an integer instead of a 64 bit signed
+       integer.
     @description Parse a textual number with unit suffixes. The following suffixes are supported:
         sec, secs, second, seconds,
         min, mins, minute, minutes,

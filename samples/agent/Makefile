@@ -23,12 +23,10 @@ all: build
 
 build:
 	@for sample in $(SAMPLES) ; do \
-		echo make -C $$sample ; \
 		make -C $$sample ; \
 	done
 
 clean:
 	@for sample in $(SAMPLES) ; do \
-		echo make -C $$sample clean ; \
 		make -C $$sample clean ; \
 	done

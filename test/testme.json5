@@ -12,7 +12,7 @@
                 macosx: {
                     flags: ['-Wl,-rpath,@executable_path/${CONFIGDIR}/../build/bin'],
                 },
-                libraries: ['openai', 'db', 'web', 'url', 'websock', 'json', 'crypt', 'r', 'uctx', 'm', 'crypto', 'ssl'],
+                libraries: ['ioto', 'm', 'crypto', 'ssl'],
             },
             msvc: {
                 flags: [
@@ -24,17 +24,17 @@
                     '/I${USERPROFILE}/vcpkg/installed/x64-windows/include',
                     '/LIBPATH:${USERPROFILE}/vcpkg/installed/x64-windows/lib',
                 ],
-                libraries: ['libopenai', 'libdb', 'libweb', 'liburl', 'libwebsock', 'libcrypt', 'libjson', 'libr', 'libuctx', 'libcrypto', 'libssl',
+                libraries: ['libioto', 'libcrypto', 'libssl',
                 'ws2_32.lib', 'advapi32.lib', 'user32.lib', 'kernel32.lib', 'oldnames.lib', 'shell32.lib'],
             },
         },
     },
     environment: {
         default: {
-            PATH: '../build/bin:${PATH}',
+            PATH: '../build/bin:../bin:${PATH}',
         },
         windows: {
-            PATH: '../build/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
+            PATH: '../build/bin;../bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
         },
     },
     execution: {
@@ -43,7 +43,6 @@
         timeout: 180,
     },
     services: {
-        cleanup: './cleanup.sh',
-        prep: './prep.sh',
+        globalPrep: './prep.sh',
     },
 }

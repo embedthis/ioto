@@ -96,3 +96,4 @@ typings
 valgrind.out
 xcode-sample
 *K.txt
+.creds.sh

@@ -90,7 +90,7 @@ static void demo(void)
         Get demo control parameters (delay, count)
      */
     delay = svalue(ioGetConfig("demo.delay", "30sec")) * TPS;
-    count = ioto->cmdCount ? ioto->cmdCount : ioGetConfigInt("demo.count", 30);
+    count = ioGetConfigInt("demo.count", 30);
     rInfo("demo", "Running demo with %d iterations and delay of %d", count, (int) delay);
 
 #if ESP32

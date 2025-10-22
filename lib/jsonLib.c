@@ -785,6 +785,7 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
     parent = -1;
     level = 0;
     flags &= ~JSON_EXPECT_KEY;
+    type = 0;
 
     while (json->next < json->end && !json->error) {
         c = (uchar) * json->next;

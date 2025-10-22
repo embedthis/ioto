@@ -58,12 +58,21 @@ compile:
 clean:
 	@echo '       [Run] $@'
 	@$(MAKE) -f $(PROJECT) TOP=$(TOP) APP=$(APP) PROFILE=$(PROFILE) $@
+	make -C samples/agent clean
 	rm -f $(CONFIG)/db/*.jnl $(CONFIG)/db/*.db 
 	rm -f $(CONFIG)/db.json5 $(CONFIG)/display.json5 $(CONFIG)/local.json5
 	rm -f $(CONFIG)/signature.json5 $(CONFIG)/web.json5 $(CONFIG)/schema.json5
 	rm -fr projects/ioto-macosx-mine.xcodeproj
-	rm -fr ./state ./test/state ./test/*/state/certs
 	rm -fr ./bin/json
+	rm -fr ./state ./test/state ./test/*/state/certs
+	rm -fr test/.testme test/*/.testme test/*/certs test/scale/*/certs
+	rm -f .DS_Store */.DS_Store */*/.DS_Store */*/*/.DS_Store
+	rm -fr test/web/fuzz/crashes-archive/*
+	find . -name provision.json5 | xargs rm -f
+	find . -name ioto.key | xargs rm -f
+	find . -name ioto.crt | xargs rm -f
+	find . -name .testme | xargs rm -fr
+	find . -name '*K.txt' | xargs rm -f
 
 config-esp32:
 	@./bin/config-esp32 $(APP)

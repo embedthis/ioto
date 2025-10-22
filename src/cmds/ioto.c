@@ -41,7 +41,6 @@ static void showUsage(int line)
             "    --background              # Daemonize and run in the background\n"
             "    --cloud ID                # Cloud ID for self-claiming\n"
             "    --config dir              # Set the directory for config files and ioto.json5\n"
-            "    --count Num               # Count of unit test iterations\n"
             "    --debug                   # Emit debug tracing\n"
             "    --exit event|seconds      # Exit on event or after 'seconds'\n"
             "    --gen                     # Generate a UID \n"
@@ -104,12 +103,6 @@ PUBLIC int main(int argc, char **argv, char **envp)
                 usage();
             }
             ioto->cmdConfigDir = sclone(argv[++argind]);
-
-        } else if (smatch(argp, "--count") || smatch(argp, "-c")) {
-            if (argind + 1 >= argc) {
-                usage();
-            }
-            ioto->cmdCount = (int) stoi(argv[++argind]);
 
         } else if (smatch(argp, "--debug") || smatch(argp, "-d")) {
             trace = TRACE_DEBUG_FILTER;
@@ -192,15 +185,6 @@ PUBLIC int main(int argc, char **argv, char **envp)
             }
             ioto->cmdSync = argv[++argind];
 
-        } else if (smatch(argp, "--test")) {
-            if (argind + 1 >= argc) {
-                usage();
-            }
-            ioto->cmdTest = argv[++argind];
-            if (!exitEvent) {
-                exitEvent = IOTO_TEST_DURATION;
-            }
-
         } else if (smatch(argp, "--timeouts") || smatch(argp, "-T")) {
             //  Disable timeouts for debugging
             rSetTimeouts(0);
@@ -244,16 +228,20 @@ PUBLIC int main(int argc, char **argv, char **envp)
     ioto->cmdWebShow = show;
 
     if (!ioto->cmdId) {
-        ioto->cmdId = scloneNull(getenv("IOTO_ID"));
+        ioto->cmdId = scloneDefined(getenv("IOTO_ID"));
+        ioto->noSaveDevice = 1;
     }
     if (!ioto->cmdProduct) {
-        ioto->cmdProduct = scloneNull(getenv("IOTO_PRODUCT"));
+        ioto->cmdProduct = scloneDefined(getenv("IOTO_PRODUCT"));
+        ioto->noSaveDevice = 1;
     }
     if (!ioto->cmdAccount) {
-        ioto->cmdAccount = scloneNull(getenv("IOTO_ACCOUNT"));
+        ioto->cmdAccount = scloneDefined(getenv("IOTO_ACCOUNT"));
+        ioto->noSaveDevice = 1;
     }
     if (!ioto->cmdCloud) {
-        ioto->cmdCloud = scloneNull(getenv("IOTO_CLOUD"));
+        ioto->cmdCloud = scloneDefined(getenv("IOTO_CLOUD"));
+        ioto->noSaveDevice = 1;
     }
 
     setEvent(exitEvent);

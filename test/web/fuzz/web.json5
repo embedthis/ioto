@@ -1,0 +1,26 @@
+{
+    log: {
+        path: 'fuzz-log.txt',
+        types: 'error',
+        sources: 'all,!mbedtls',
+    },
+    tls: {
+        authority: '../../certs/ca.crt',
+        certificate: '../../certs/test.crt',
+        key: '../../certs/test.key',
+    },
+    web: {
+        documents: '../site',
+        listen: ['http://:4200', 'https://:4243'],
+        limits: {
+            connections: 1000,
+            sessions: 1000,
+            buffer: '1MB',
+            body: '10MB',
+        },
+        routes: [
+            { match: '/test/', handler: 'action' },
+            { match: '' }
+        ],
+    }
+}

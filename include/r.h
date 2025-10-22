@@ -1462,6 +1462,16 @@ PUBLIC char *sclone(cchar *str);
 PUBLIC char *scloneNull(cchar *str);
 
 /**
+    Clone a string and only clone if the string is defined and not empty.
+    @description Copy a string into a newly allocated block.
+    If passed a NULL or an empty string, this will return a NULL.
+    @param str Pointer to the block to duplicate.
+    @return Returns a newly allocated string or NULL. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *scloneDefined(cchar *str);
+
+/**
     Compare strings.
     @description Safe replacement for strcmp. Compare two strings lexicographically. This function is null-tolerant.
        NULL strings are treated as empty strings for comparison purposes.

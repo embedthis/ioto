@@ -91,24 +91,24 @@ jobs:
       - name: Run test suite (Unix)
         if: runner.os != 'Windows'
         env:
-          IOTO_PRODUCT: ${{ secrets.PRODUCT }}
-          IOTO_CLOUD: ${{ secrets.CLOUD }}
-          IOTO_ACCOUNT: ${{ secrets.ACCOUNT }}
-          IOTO_DEVICE: ${{ secrets.DEVICE }}
+          IOTO_PRODUCT: ${{ secrets.IOTO_PRODUCT }}
+          IOTO_CLOUD: ${{ secrets.IOTO_CLOUD }}
+          IOTO_ACCOUNT: ${{ secrets.IOTO_ACCOUNT }}
+          IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
-          tm -v test
+          tm test
 
       - name: Run test suite (Windows)
         if: runner.os == 'Windows'
         shell: cmd
         env:
-          IOTO_PRODUCT: ${{ secrets.PRODUCT }}
-          IOTO_CLOUD: ${{ secrets.CLOUD }}
-          IOTO_ACCOUNT: ${{ secrets.ACCOUNT }}
-          IOTO_DEVICE: ${{ secrets.DEVICE }}
+          IOTO_PRODUCT: ${{ secrets.IOTO_PRODUCT }}
+          IOTO_CLOUD: ${{ secrets.IOTO_CLOUD }}
+          IOTO_ACCOUNT: ${{ secrets.IOTO_ACCOUNT }}
+          IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
           call bin\test-prep.bat
-          tm -v test
+          tm test
 
       - name: Upload test results
         if: failure()

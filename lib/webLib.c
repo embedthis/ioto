@@ -944,6 +944,10 @@ static int64 conn = 0;      /* Connection sequence number */
 
 #define isWhite(c) ((c) == ' ' || (c) == '\t')
 
+/*
+    Valid characters for HTTP header field names per RFC 7230.
+    Allows: A-Z, a-z, 0-9, and special characters: ! # $ % & ' * + - . ^ _ ` | ~
+ */
 static cchar validHeaderChars[128] = {
     ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
     ['H'] = 1, ['I'] = 1, ['J'] = 1, ['K'] = 1, ['L'] = 1, ['M'] = 1, ['N'] = 1,
@@ -953,7 +957,8 @@ static cchar validHeaderChars[128] = {
     ['h'] = 1, ['i'] = 1, ['j'] = 1, ['k'] = 1, ['l'] = 1, ['m'] = 1, ['n'] = 1,
     ['o'] = 1, ['p'] = 1, ['q'] = 1, ['r'] = 1, ['s'] = 1, ['t'] = 1, ['u'] = 1,
     ['v'] = 1, ['w'] = 1, ['x'] = 1, ['y'] = 1, ['z'] = 1,
-    ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, ['5'] = 1, ['6'] = 1, ['7'] = 1, ['8'] = 1, ['9'] = 1,
+    ['0'] = 1, ['1'] = 1, ['2'] = 1, ['3'] = 1, ['4'] = 1, ['5'] = 1, ['6'] = 1,
+    ['7'] = 1, ['8'] = 1, ['9'] = 1,
     ['!'] = 1, ['#'] = 1, ['$'] = 1, ['%'] = 1, ['&'] = 1, ['\''] = 1, ['*'] = 1,
     ['+'] = 1, ['-'] = 1, ['.'] = 1, ['^'] = 1, ['_'] = 1, ['`'] = 1, ['|'] = 1, ['~'] = 1
 };
@@ -2013,7 +2018,7 @@ PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, size_t limit)
     if (buf) {
         //  Copy data into the supplied buffer
         len = (ssize) min((size_t) nbytes, limit);
-        memcpy(buf, bp->start, len);
+        memcpy(buf, bp->start, (size_t) len);
         rAdjustBufStart(bp, len);
     }
     return nbytes;
@@ -3061,14 +3066,48 @@ PUBLIC char *webGetCookie(Web *web, cchar *name)
 }
 
 /*
+    Valid cookie name characters per RFC 6265 (token characters).
+    Allows: A-Z, a-z, 0-9, and special characters: ! # $ % & ' * + - . ^ _ ` | ~
+ */
+static bool isValidCookieName(cchar *name)
+{
+    return sspn(name, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-.^_`|~") == slen(name);
+}
+
+/*
+    Valid cookie value characters per RFC 6265 (cookie-value).
+    Allows: A-Z, a-z, 0-9, and safe special characters excluding control chars, whitespace, quotes, comma, semicolon,
+       and backslash.
+    Safe subset: ! # $ % & ' ( ) * + - . / : = ? @ [ ] ^ _ ` { | } ~
+ */
+static bool isValidCookieValue(cchar *value)
+{
+    return sspn(value,
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'()*+-./:=?@[]^_`{|}~") == slen(
+        value);
+}
+
+/*
     Set a response cookie
  */
-PUBLIC void webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags)
+PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags)
 {
     WebHost *host;
     cchar   *httpOnly, *secure, *sameSite;
     Ticks   maxAge;
 
+    if (slen(name) > 4096) {
+        return R_ERR_WONT_FIT;
+    }
+    if (slen(value) > 4096) {
+        return R_ERR_WONT_FIT;
+    }
+    if (!isValidCookieName(name)) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (!isValidCookieValue(value)) {
+        return R_ERR_BAD_ARGS;
+    }
     host = web->host;
     if (flags & WEB_COOKIE_OVERRIDE) {
         httpOnly = flags & WEB_COOKIE_HTTP_ONLY ? "HttpOnly; " : "";
@@ -3085,6 +3124,7 @@ PUBLIC void webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks
     maxAge = (lifespan ? lifespan: host->sessionTimeout) / TPS;
     webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=%s; %s%sSameSite=%s",
                  name, value, maxAge, path, secure, httpOnly, sameSite);
+    return 0;
 }
 #endif /* ME_WEB_SESSION */
 
@@ -3557,6 +3597,26 @@ static void uploadAction(Web *web)
 }
 #endif
 
+static void cookieAction(Web *web)
+{
+    cchar *name, *path, *value;
+
+    name = webGetQueryVar(web, "name", 0);
+    value = webGetQueryVar(web, "value", 0);
+    path = webGetQueryVar(web, "path", "/path");
+
+    if (!name || !value || !path) {
+        webError(web, 400, "Missing name or value");
+        return;
+    }
+    if (webSetCookie(web, name, value, path, 0, 0) < 0) {
+        webError(web, 404, "Invalid cookie");
+        return;
+    }
+    webWriteResponse(web, 200, "success");
+}
+
+
 static void sessionAction(Web *web)
 {
     cchar *sessionToken;
@@ -3678,6 +3738,7 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
     webAddAction(host, SFMT(url, "%s/ws", prefix), webSocketAction, NULL);
 #endif
     webAddAction(host, SFMT(url, "%s/session", prefix), sessionAction, NULL);
+    webAddAction(host, SFMT(url, "%s/cookie", prefix), cookieAction, NULL);
     webAddAction(host, SFMT(url, "%s/xsrf", prefix), xsrfAction, NULL);
     webAddAction(host, SFMT(url, "%s/sig", prefix), sigAction, NULL);
     webAddAction(host, SFMT(url, "%s/buffer", prefix), bufferAction, NULL);
@@ -3962,7 +4023,7 @@ static int processUploadData(Web *web, WebUpload *upload)
                 return webError(web, 414, "Uploaded form header is too big");
             }
             //  Strip \r\n. Keep boundary in data to be consumed by webProcessUpload.
-            nbytes -= web->boundaryLen;
+            nbytes -= (ssize) web->boundaryLen;
             buf->start[nbytes - 2] = '\0';
             webSetVar(web, upload->name, webDecode(buf->start));
             rAdjustBufStart(buf, nbytes);
@@ -4503,6 +4564,14 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
 }
 
 /*
+    Get a request query variable from the request URL.
+ */
+PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue)
+{
+    return jsonGet(web->qvars, 0, name, defaultValue);
+}
+
+/*
     Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
@@ -4566,7 +4635,6 @@ PUBLIC void webRemoveVar(Web *web, cchar *name)
                             required    - Must be present (for request)
                             role        - Discard if role not posessed
                             type        - Type (object, array, string, number, boolean)
-                            validate    - Regexp
                         },
                     }
                     array: {            - If array

@@ -1,0 +1,10 @@
+{
+    inherit: ['compiler', 'environment'],
+    services: {
+        environment: './env.sh',
+        prep: './prep.sh',
+        setup: './setup.sh',
+        cleanup: './cleanup.sh',
+        healthcheck: { url: 'http://localhost:7090' },
+    },
+}
