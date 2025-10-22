@@ -94,7 +94,7 @@
             maxFrame: '100K',
             maxMessage: '100K',
         },
-        listen: ['http://:3150', 'https://:3151'],
+        listen: ['http://localhost:3150', 'https://localhost:3151'],
         __redirect: [
             { status: 302, to: 'https://:3151' },
             { status: 302, from: 'http', to: '?redirected' },
