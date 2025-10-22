@@ -5,6 +5,9 @@
 
 set -m
 
+echo @@@@@@ BUILD @@@@@@ >&2
+find ../../build >&2
+
 ENDPOINT=`json 'listen[0]' ./state/config/web.json5`
 
 if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
@@ -18,6 +21,8 @@ else
 fi
 
 cleanup() {
+    echo "@@@@ Cleaning up" >&2
+    ls -l log.txt >&2
     kill $PID
     cat log.txt >&2
     exit 0
