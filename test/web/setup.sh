@@ -5,10 +5,6 @@
 
 set -m
 
-echo @@@@@ BUILD BIN @@@@@ >&2
-echo PATH $PATH >&2
-find ../../build >&2
-
 ENDPOINT=`json 'listen[0]' web.json5`
 
 if url -q ${ENDPOINT}/ >/dev/null 2>&1; then

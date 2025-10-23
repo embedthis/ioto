@@ -28,9 +28,6 @@ fi
 
 ENDPOINT=`json 'listen[0]' ./state/config/web.json5`/api/test
 
-echo @@ ENV.SH ENDPOINT=${ENDPOINT}
-echo @@ STDERR ENV.SH ENDPOINT=${ENDPOINT} >&2
-
 export ENDPOINT IOTO_ACCOUNT IOTO_CLOUD IOTO_ID IOTO_PRODUCT
 
 echo "ENDPOINT=${ENDPOINT}"
