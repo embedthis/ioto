@@ -5,6 +5,7 @@
 #
 
 if [ "${GITHUB_ACTIONS}" != "true" ] ; then
+
     if [ -f .creds.sh ] ; then
         . .creds.sh
     else

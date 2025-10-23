@@ -3,7 +3,7 @@
     profile: 'dev',
     app: 'unit',
     api: {
-        builder: 'https://api.admin-qa.embedthis.com/api',
+        builder: 'https://api.admin.embedthis.com/api',
         serialize: 'http://localhost:4100/ioto/serialize',
     },
     directories: {

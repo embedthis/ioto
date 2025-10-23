@@ -150,7 +150,7 @@ static int usage(void)
             "    --key file                 # Private key file.\n"
             "    --printable                # Make binary output printable.\n"
             "    --protocol 0|1             # Set HTTP protocol to HTTP/1.0 or HTTP/1.1 (default HTTP/1.1).\n"
-            "    --quiet                    # Don't output headers. Alias for --show ''\n"
+            "    --quiet                    # No output. Alias for --show ''\n"
             "    --range byteRanges         # Request a subset range of the document.\n"
             "    --redirects count          # Number of times to follow redirects (default 5).\n"
             "    --save file                # Save output to file.\n"
