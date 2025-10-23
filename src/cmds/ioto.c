@@ -84,7 +84,9 @@ PUBLIC int main(int argc, char **argv, char **envp)
      */
     ioAlloc();
 
-    ioto->cmdProfile = getenv("PROFILE");
+    if ((ioto->cmdProfile = getenv("IOTO_PROFILE")) == NULL) {
+        ioto->cmdProfile = getenv("PROFILE");
+    }
     show = getenv("IOTO_SHOW");
 
     /*
@@ -206,6 +208,12 @@ PUBLIC int main(int argc, char **argv, char **envp)
             exit(0);
 
 #if SERVICES_CLOUD
+        } else if (smatch(argp, "--builder")) {
+            if (argind + 1 >= argc) {
+                usage();
+            }
+            ioto->cmdBuilder = argv[++argind];
+            
         } else if (smatch(argp, "--account")) {
             //  Define a manager account to auto-register the device with
             if (argind + 1 >= argc) {
@@ -242,6 +250,9 @@ PUBLIC int main(int argc, char **argv, char **envp)
     if (!ioto->cmdCloud) {
         ioto->cmdCloud = scloneDefined(getenv("IOTO_CLOUD"));
         ioto->noSaveDevice = 1;
+    }
+    if (!ioto->cmdBuilder) {
+        ioto->cmdBuilder = scloneDefined(getenv("IOTO_BUILDER"));
     }
 
     setEvent(exitEvent);

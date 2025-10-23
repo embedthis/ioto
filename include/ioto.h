@@ -227,6 +227,7 @@ typedef struct Ioto {
     Time blockedUntil;         /**< Time to wait before reprovisioning after blocked connection */
 
     cchar *cmdAccount;         /**< Command line override owning manager account for self-claiming */
+    cchar *cmdBuilder;         /**< Command line override builder API endpoint */
     cchar *cmdCloud;           /**< Command line override builder cloud for self-claiming */
 
     char *account;             /**< Owning manager accountId (provision.json5) */

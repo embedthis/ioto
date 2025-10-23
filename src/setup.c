@@ -92,7 +92,6 @@ PUBLIC int ioInitConfig(void)
     }
 #endif
 
-    ioto->builder = jsonGetClone(json, 0, "api.builder", "https://api.admin.embedthis.com/api");
     ioto->id = jsonGetClone(json, 0, "device.id", ioto->id);
     ioto->logDir = jsonGetClone(json, 0, "directories.log", ".");
     ioto->profile = jsonGetClone(json, 0, "profile", "dev");
@@ -101,6 +100,12 @@ PUBLIC int ioInitConfig(void)
     ioto->registered = jsonGetBool(json, 0, "provision.registered", 0);
     ioto->version = jsonGetClone(json, 0, "version", "1.0.0");
     ioto->properties = makeTemplate();
+
+    if (ioto->builder) {
+        ioto->builder = sclone(ioto->cmdBuilder);
+    } else {
+        ioto->builder = jsonGetClone(json, 0, "api.builder", "https://api.admin.embedthis.com/api");
+    }
 
 #if SERVICES_PROVISION
     cchar *id = jsonGet(json, 0, "provision.id", 0);
