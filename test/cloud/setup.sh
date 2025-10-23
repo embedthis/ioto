@@ -5,6 +5,9 @@
 
 # set -m
 
+echo @@@@ BUILDER ${IOTO_BUILDER} >&2
+env | grep IOTO_ >&2
+
 ENDPOINT=`json 'listen[0]' ./state/config/web.json5`
 
 if url -q ${ENDPOINT}/ >/dev/null 2>&1; then

@@ -97,7 +97,7 @@ jobs:
           IOTO_PRODUCT: ${{ secrets.IOTO_PRODUCT }}
           IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
-          tm test
+          tm -v test/cloud
 
       - name: Run test suite (Windows)
         if: runner.os == 'Windows'

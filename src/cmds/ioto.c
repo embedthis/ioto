@@ -253,6 +253,7 @@ PUBLIC int main(int argc, char **argv, char **envp)
     }
     if (!ioto->cmdBuilder) {
         ioto->cmdBuilder = scloneDefined(getenv("IOTO_BUILDER"));
+        printf("IOTO_BUILDER=%s\n", ioto->cmdBuilder);
     }
 
     setEvent(exitEvent);
