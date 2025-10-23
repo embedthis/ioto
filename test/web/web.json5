@@ -70,7 +70,7 @@
             logout: '/api/public/logout',
         },
         documents: './site',
-        __headers: {
+        _headers: {
             'Access-Control-Allow-Origin': 'https://www.example.com',
             'Access-Control-Allow-Methods': 'GET, POST',
             'Access-Control-Allow-Headers': 'content-type, authorization',
@@ -95,7 +95,7 @@
             maxMessage: '100K',
         },
         listen: ['http://localhost:3150', 'https://localhost:3151'],
-        __redirect: [
+        _redirect: [
             { status: 302, to: 'https://:3151' },
             { status: 302, from: 'http', to: '?redirected' },
             { status: 302, to: 'https://hostname:3151' },

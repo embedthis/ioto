@@ -235,11 +235,11 @@ static int storeMqttSetTest(void)
 
 static int storeMqttGetTest(void)
 {
-    int64 num;
+    double num;
 
     rSleep(500);
     num = ioGetNum("counter");
-    rInfo("test", "store-mqtt: get result %lld", num);
+    rInfo("test", "store-mqtt: get result %lf", num);
     return R_ERR_OK;
 }
 

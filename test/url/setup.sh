@@ -5,7 +5,7 @@
 
 set -m
 
-ENDPOINT=`json 'listen[0]' ./state/config/web.json5`
+ENDPOINT=`json 'listen[0]' web.json5`
 
 if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
     echo "Web is already running on port 4100"
@@ -13,13 +13,15 @@ if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
     PID=$!
 else
     echo "Starting web"
-    web --show hH --trace log.txt:all:all &
+    web --trace log.txt:all:all &
     PID=$!
 fi
 
 cleanup() {
+    if [ "${TESTME_SUCCESS}" = "0" ] ; then
+        cat log.txt >&2
+    fi
     kill $PID 2>/dev/null
-    cat log.txt >&2
     exit 0
 }
 

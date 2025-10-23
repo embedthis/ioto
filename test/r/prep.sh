@@ -8,5 +8,4 @@
 #
 touch data/.hidden
 
-echo @@@@ FILES @@@@
-ls -l data
+exit 0

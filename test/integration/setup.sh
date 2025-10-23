@@ -5,13 +5,6 @@
 
 set -m
 
-echo PATH ${PATH}
-pwd
-ls ../../bin
-echo BUILD BIN
-find ../../build
-env
-
 ENDPOINT=`json 'listen[0]' ./state/config/web.json5`
 
 if curl -s "${ENDPOINT}" >/dev/null 2>&1; then
@@ -19,11 +12,14 @@ if curl -s "${ENDPOINT}" >/dev/null 2>&1; then
     sleep 999999 &
     PID=$!
 else
-    ioto -v &
+    ioto --trace log.txt:all:all &
     PID=$!
 fi
 
 cleanup() {
+    if [ "${TESTME_SUCCESS}" = "0" ] ; then
+        cat log.txt >&2
+    fi
     kill $PID >/dev/null 2>&1
     exit 0
 }

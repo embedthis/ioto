@@ -5,7 +5,8 @@
 
 set -m
 
-echo @@@@@@ BUILD @@@@@@ >&2
+echo @@@@@ BUILD BIN @@@@@ >&2
+echo PATH $PATH >&2
 find ../../build >&2
 
 ENDPOINT=`json 'listen[0]' web.json5`
@@ -21,10 +22,10 @@ else
 fi
 
 cleanup() {
-    echo "@@@@ Cleaning up" >&2
-    ls -l log.txt >&2
-    kill $PID
-    cat log.txt >&2
+    if [ "${TESTME_SUCCESS}" = "0" ] ; then
+        cat log.txt >&2
+    fi
+    kill $PID 2>/dev/null
     exit 0
 }
 
