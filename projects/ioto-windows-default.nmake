@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 3.0.0
+VERSION               = 1.0.0
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -149,7 +149,7 @@ ME_COM_WEBSOCK        = 1
 ME_COMPANY            = \"embedthis\"
 !ENDIF
 !IFNDEF ME_COMPATIBLE
-ME_COMPATIBLE         = \"3.0\"
+ME_COMPATIBLE         = \"1.0\"
 !ENDIF
 !IFNDEF ME_COMPILER_FORTIFY
 ME_COMPILER_FORTIFY   = 1
@@ -239,7 +239,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IFNDEF ME_VERSION
-ME_VERSION            = \"3.0.0\"
+ME_VERSION            = \"1.0.0\"
 !ENDIF
 !IFNDEF ME_WEB_AUTH
 ME_WEB_AUTH           = 1

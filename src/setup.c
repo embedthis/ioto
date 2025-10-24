@@ -109,9 +109,15 @@ PUBLIC int ioInitConfig(void)
 
 #if SERVICES_PROVISION
     cchar *id = jsonGet(json, 0, "provision.id", 0);
-    if (id && !smatch(ioto->id, id)) {
-        rError("ioto", "Provisioning does not match configured device claim ID, reset provisioning");
-        ioDeprovision();
+    if (id) {
+        if (ioto->id) {
+            if (!smatch(ioto->id, id)) {
+                rError("ioto", "Provisioning does not match configured device claim ID, reset provisioning");
+                ioDeprovision();
+            }
+        } else {
+            ioto->id = sclone(id);
+        }
     }
     if (!ioto->product || smatch(ioto->product, "")) {
         rError("ioto", "Define your Builder \"product\" token in device.json5");

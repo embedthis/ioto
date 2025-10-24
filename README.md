@@ -455,7 +455,32 @@ Some of these files may not be present unless the built app requires.
 
 ## Resources
 
+### Online Documentation
 -   [EmbedThis web site](http://www.embedthis.com/)
+-   [EmbedThis Ioto Documentation](https://www.embedthis.com/doc/)
 -   [EmbedThis Ioto Documentation GitHub
 repository](https://github.com/embedthis/ioto-doc)
+
+### Project Documentation
+-   [AI/designs/DESIGN.md](AI/designs/DESIGN.md) - Architecture and design
+overview
+-   [AI/context/CONTEXT.md](AI/context/CONTEXT.md) - Module documentation index
+-   [AI/references/REFERENCES.md](AI/references/REFERENCES.md) - External
+references and links
+-   [AI/plans/PLAN.md](AI/plans/PLAN.md) - Development plans
+
+### Module Documentation
+Detailed documentation for each module is available in
+[AI/context/](AI/context/):
+-   [r.md](AI/context/r.md) - Safe Runtime foundation
+-   [json.md](AI/context/json.md) - JSON5/JSON6 parser
+-   [crypt.md](AI/context/crypt.md) - Cryptographic functions
+-   [db.md](AI/context/db.md) - Embedded database
+-   [mqtt.md](AI/context/mqtt.md) - MQTT client
+-   [web.md](AI/context/web.md) - Web server
+-   [url.md](AI/context/url.md) - HTTP client
+-   [websock.md](AI/context/websock.md) - WebSocket support
+-   [openai.md](AI/context/openai.md) - OpenAI integration
+-   [osdep.md](AI/context/osdep.md) - OS abstraction
+-   [uctx.md](AI/context/uctx.md) - User context/fibers
 

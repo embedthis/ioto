@@ -3,4 +3,4 @@
 #   TestMe cleanup script
 #
 
-rm -f *.log
+rm -f *.log tmp/*

@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 3.0.0
+VERSION               := 1.0.0
 PROJECT               := ioto-freebsd-default
 PROFILE               ?= dev
 ARCH                  ?= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/')
@@ -55,7 +55,7 @@ ME_COM_URL            ?= 1
 ME_COM_WEB            ?= 1
 ME_COM_WEBSOCK        ?= 1
 ME_COMPANY            ?= \"embedthis\"
-ME_COMPATIBLE         ?= \"3.0\"
+ME_COMPATIBLE         ?= \"1.0\"
 ME_COMPILER_FORTIFY   ?= 1
 ME_COMPILER_HAS_ATOMIC ?= 1
 ME_COMPILER_HAS_ATOMIC64 ?= 1
@@ -91,7 +91,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"3.0.0\"
+ME_VERSION            ?= \"1.0.0\"
 ME_WEB_AUTH           ?= 1
 ME_WEB_LIMITS         ?= 1
 ME_WEB_SESSIONS       ?= 1

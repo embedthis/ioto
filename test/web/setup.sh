@@ -18,7 +18,7 @@ else
 fi
 
 cleanup() {
-    if [ "${TESTME_SUCCESS}" = "0" ] ; then
+    if [ "${TESTME_VERBOSE}" = "1" ] ; then
         cat log.txt >&2
     fi
     kill $PID 2>/dev/null
