@@ -146,7 +146,7 @@ static char *makeName(cchar *name);
 static ssize mapChars(char *dest, cchar *src);
 static int parseArgs(int argc, char **argv);
 static void outputAll(Json *json, int flags);
-static void outputNode(Json *json, JsonNode *node, char *name, int flags);
+static int outputNode(Json *json, JsonNode *node, char *name, int flags);
 static void outputProperty(Json *json, cchar *name, cchar *value, int type);
 static char *readInput();
 static int run();
@@ -546,7 +546,9 @@ static int run()
     } else if (cmd == JSON_CMD_QUERY) {
         if (!check) {
             node = jsonGetNode(json, 0, property);
-            outputNode(json, node, property, flags);
+            if (outputNode(json, node, property, flags) < 0) {
+                return R_ERR_CANT_FIND;
+            }
         }
 
     } else if (cmd == JSON_CMD_CONVERT) {
@@ -770,7 +772,7 @@ static void outputAll(Json *json, int flags)
     }
 }
 
-static void outputNode(Json *json, JsonNode *node, char *name, int flags)
+static int outputNode(Json *json, JsonNode *node, char *name, int flags)
 {
     JsonNode *child;
     cchar    *value;
@@ -802,16 +804,16 @@ static void outputNode(Json *json, JsonNode *node, char *name, int flags)
                 rPrintf("%s", output);
                 rFree(output);
             }
-            return;
+            return 0;
         }
     } else if (defaultValue) {
         value = defaultValue;
         type = JSON_PRIMITIVE;
     } else {
-        error("Cannot find property \"%s\"", name);
-        return;
+        return error("Cannot find property \"%s\"", name);
     }
     outputProperty(json, name, value, type);
+    return 0;
 }
 
 static void outputProperty(Json *json, cchar *name, cchar *value, int type)
