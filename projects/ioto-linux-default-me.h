@@ -46,7 +46,7 @@
     #define ME_COMPANY "embedthis"
 #endif
 #ifndef ME_COMPATIBLE
-    #define ME_COMPATIBLE "1.0"
+    #define ME_COMPATIBLE "2.8"
 #endif
 #ifndef ME_COMPILER_FORTIFY
     #define ME_COMPILER_FORTIFY 1
@@ -148,7 +148,7 @@
     #define ME_USER "ioto"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "1.0.0"
+    #define ME_VERSION "2.8.0"
 #endif
 #ifndef ME_WEB_AUTH
     #define ME_WEB_AUTH 1
@@ -186,7 +186,7 @@
     #define ME_APP_PREFIX "/usr/local/lib/ioto"
 #endif
 #ifndef ME_VAPP_PREFIX
-    #define ME_VAPP_PREFIX "/usr/local/lib/ioto/1.0.0"
+    #define ME_VAPP_PREFIX "/usr/local/lib/ioto/2.8.0"
 #endif
 #ifndef ME_BIN_PREFIX
     #define ME_BIN_PREFIX "/usr/local/bin"
@@ -222,7 +222,7 @@
     #define ME_CACHE_PREFIX "/var/spool/ioto/cache"
 #endif
 #ifndef ME_SRC_PREFIX
-    #define ME_SRC_PREFIX "ioto-1.0.0"
+    #define ME_SRC_PREFIX "ioto-2.8.0"
 #endif
 
 /* Suffixes */
@@ -258,16 +258,16 @@
 
 /* Miscellaneous */
 #ifndef ME_MAJOR_VERSION
-    #define ME_MAJOR_VERSION 1
+    #define ME_MAJOR_VERSION 2
 #endif
 #ifndef ME_MINOR_VERSION
-    #define ME_MINOR_VERSION 0
+    #define ME_MINOR_VERSION 8
 #endif
 #ifndef ME_PATCH_VERSION
     #define ME_PATCH_VERSION 0
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 100000000
+    #define ME_VNUM 200080000
 #endif
 
 /* Components */

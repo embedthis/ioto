@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 1.0.0
+VERSION               := 2.8.0
 PROJECT               := ioto-vxworks-default
 PROFILE               ?= dev
 ARCH                  ?= $(shell echo $(WIND_HOST_TYPE) | sed 's/-.*$(ME_ROOT_PREFIX)/')
@@ -60,7 +60,7 @@ ME_COM_URL            ?= 1
 ME_COM_WEB            ?= 1
 ME_COM_WEBSOCK        ?= 1
 ME_COMPANY            ?= \"embedthis\"
-ME_COMPATIBLE         ?= \"1.0\"
+ME_COMPATIBLE         ?= \"2.8\"
 ME_COMPILER_FORTIFY   ?= 1
 ME_COMPILER_HAS_ATOMIC ?= 0
 ME_COMPILER_HAS_ATOMIC64 ?= 0
@@ -95,7 +95,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"1.0.0\"
+ME_VERSION            ?= \"2.8.0\"
 ME_WEB_AUTH           ?= 1
 ME_WEB_LIMITS         ?= 1
 ME_WEB_SESSIONS       ?= 1
