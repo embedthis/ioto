@@ -2,7 +2,7 @@
     "name": "ioto",
     "title": "Ioto",
     "description": "Ioto Device agent",
-    "version": "1.0.0",
+    "version": "2.8.0",
     "keywords": [
         "ioto",
         "Embedthis"
@@ -49,8 +49,7 @@
     },
     "override": {
         "manager": {
-            "export": [
-            ]
+            "export": []
         },
         "certs": {
             "export": {

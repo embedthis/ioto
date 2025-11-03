@@ -18,8 +18,6 @@ ARCH		?= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/;s/aarc
 LOCAL 		:= $(strip $(wildcard ./.local.mk))
 PROJECT		:= projects/ioto-$(OS)-default.mk
 CONFIG		:= $(TOP)/state/config
-
-# BUILD		:= build/$(OS)-$(ARCH)-$(PROFILE)
 BUILD		:= build
 
 BIN			:= $(TOP)/$(BUILD)/bin
@@ -87,7 +85,7 @@ info:
 	echo "      [Info] Run via: \"sudo make run\". Run \"ioto\" manually with \"$(BUILD)/bin\" in your path."
 
 test:
-	@./bin/test-prep.sh
+	@./bin/prep-test.sh
 	tm test
 	
 run:
