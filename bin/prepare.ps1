@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 #
-#   config-app.ps1 APP
+#   prepare.ps1 - Prepare for building with an APP
 #
 #   This exports the app's config files from the apps config directory to the
 #   TOP/state/config directory.
@@ -25,7 +25,7 @@ Write-Host "   [Prepare] Building with $APP app"
 
 if (-not (Test-Path $JSON)) {
     Write-Host "   [Trace] Making json tool"
-    & "$TOP\bin\make-json.ps1"
+    & "$TOP\bin\prep-build.ps1"
 }
 
 # Create required state directories

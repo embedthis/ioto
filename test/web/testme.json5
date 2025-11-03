@@ -1,43 +1,5 @@
 {
     inherit: ['compiler', 'environment'],
-    _compiler: {
-        c: {
-            gcc: {
-                flags: [
-                    '-Wformat', '-Wformat-security', '-Wsign-compare', '-Wsign-conversion',
-                    '-I../../build/inc', '-L../../build/bin'
-                ],
-                linux: {
-                    flags: ['-Wl,-rpath,$ORIGIN/${CONFIGDIR}/../../build/bin'],
-                },
-                macosx: {
-                    flags: ['-Wl,-rpath,@executable_path/${CONFIGDIR}/../../build/bin'],
-                },
-                libraries: ['ioto', 'm', 'crypto', 'ssl'],
-            },
-            msvc: {
-                flags: [
-                    '-GR-', '-MDd', '-wd4100',
-                    '/I../../build/inc', 
-                    '/LIBPATH:../../build/bin',
-                    '/I${ME_COM_OPENSSL_PATH}/include',
-                    '/LIBPATH:${ME_COM_OPENSSL_PATH}/lib/VC/x64/MDd',
-                    '/I${USERPROFILE}/vcpkg/installed/x64-windows/include',
-                    '/LIBPATH:${USERPROFILE}/vcpkg/installed/x64-windows/lib',
-                ],
-                libraries: ['libioto', 'libcrypto', 'libssl',
-                'ws2_32.lib', 'advapi32.lib', 'user32.lib', 'kernel32.lib', 'oldnames.lib', 'shell32.lib'],
-            },
-        },
-    },
-    _environment: {
-        default: {
-            PATH: '../../build/bin:${PATH}',
-        },
-        windows: {
-            PATH: '../../build/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/x64-windows/bin;${PATH}',
-        },
-    },
     execution: {
         workers: 1,
         parallel: false,
@@ -47,7 +9,6 @@
         prep: './prep.sh',
         setup: './setup.sh',
         cleanup: './cleanup.sh',
-        setupDelay: 2,
         healthcheck: { url: 'http://localhost:3150/index.html' },
     },
 }

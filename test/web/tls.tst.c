@@ -25,9 +25,7 @@ static void get()
     int   status;
 
     up = urlAlloc(0);
-    print("URL: %s\n", SFMT(url, "%s/index.html", HTTPS));
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTPS), NULL, 0, NULL);
-    print("Status: %d\n", status);
     ttrue(status == 200);
     response = urlGetResponse(up);
     tcontains(response, "Hello /index.html");

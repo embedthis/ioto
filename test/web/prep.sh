@@ -18,7 +18,7 @@ make-files() {
     fi
 }
 
-mkdir -p certs site
+mkdir -p certs site tmp
 
 if [ ! -f ./certs/test.crt ] ; then
     mkdir -p ./certs
@@ -42,7 +42,7 @@ fi
 # ../../bin/make-files 21000 site/1M.txt
 # ../../bin/make-files 210000 site/10M.txt
 
-killall web
+killall web 2>&1 >/dev/null
 
 rm -f ./log.txt
 exit 0

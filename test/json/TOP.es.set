@@ -1,6 +1,0 @@
-/*
-    r.es.set - Setup required libraries for unit tests
- */
-tset('libraries', 'json r uctx crypto ssl')
-
-Cmd.run('me test-prep')

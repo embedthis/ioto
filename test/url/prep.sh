@@ -18,7 +18,7 @@ make-files() {
     fi
 }
 
-mkdir -p site/size certs
+mkdir -p site/size certs tmp
 
 if [ ! -f certs/test.crt ] ; then
     cp ../../certs/*.crt certs

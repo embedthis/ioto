@@ -1,0 +1,270 @@
+# Ioto Device Agent v2.8.0 Release Notes
+
+Release Date: November 3, 2025
+
+## Recommended Action
+
+- [ ] Optional Upgrade -- Upgrade only if convenient
+- [x] **Recommended Upgrade** -- Upgrade recommended but not essential
+- [ ] Essential Upgrade -- All users strongly advised to upgrade
+
+## Overview
+
+Version 2.8.0 is a major release featuring comprehensive security hardening through extensive static analysis and fuzzing, enhanced MQTT capabilities, improved database synchronization, new cloud integration features, and comprehensive CI/CD improvements. This release includes numerous boundary condition fixes discovered through extensive testing and AI-driven security analysis.
+
+## Major Features
+
+### OpenAI Integration
+- **Enhanced Error Reporting**: Improved error reporting for OpenAI API interactions
+- **Better Diagnostics**: Enhanced diagnostic messages for API failures
+
+### Cloud Integration & File Management
+- **File Upload Support**: New `ioUpload` API for uploading files to the cloud with signed URL support
+- **Enhanced Signed URLs**: Added file-based signed URL generation with size parameter support
+- **Improved Provisioning**: Refactored provisioning to use `provision.json5` for device ID management
+- **Device Registration**: Enhanced registration with improved error handling and connection tracking
+
+### MQTT Enhancements
+- **Connection Blocking**: New block connection support for MQTT with configurable throttling
+- **On-Demand Connections**: Improved on-demand MQTT connection management
+- **Throttle Control**: New `MQTT_THROTTLE` defines for fine-tuning connection parameters
+- **Topic Validation**: Improved MQTT topic validation
+- **Pipelined Messages**: Fixed handling of pipelined MQTT messages
+- **Error Handling**: Better error clearing and connection state management
+- **Socket Management**: Improved disconnect handling with `rDisconnectSocket` API
+
+### Database & Synchronization
+- **Per-Model Sync Signals**: Extended `db:sync:` signal to operate on individual models
+- **Enhanced `ioSet`**: Updated to leverage database sync capabilities
+- **Connection Callbacks**: Fixed `ioOnConnect` to invoke after sync completion
+- **Crash Recovery**: Improved database save handling after crashes
+- **Query Improvements**: `ioGet` now properly uses local database
+
+### Security Hardening
+- **Comprehensive Security Audit**: Extensive security audit using static analysis, broader fuzzing tests, and AI-driven analysis
+- **NULL Tolerance**: Improved NULL tolerance at all API levels for enhanced robustness
+- **CSRF Protection**: New CSRF token support in web server with proper regeneration (renamed from XSRF for standards compliance)
+- **Input Validation**: Enhanced validation for empty payloads and edge cases discovered through fuzzing
+- **Boundary Condition Fixes**: Various boundary condition fixes as a result of extensive fuzzing and unit testing
+- **Cookie Security**: Fixed duplicate cookie handling and added `urlGetCookie` API
+- **Cryptographic Updates**: Improved constant-time compare API for timing attack resistance
+- **TLS Configuration**: Removed deprecated `tls.authority` setting
+- **OpenSSL 3.x**: Updated support for OpenSSL 3.x compatibility
+
+### JSON Processing
+- **Improved JSON Parser**: Significantly enhanced JSON parser with better error detection and security
+- **Parsing Compliance**: Improved parsing compliance to detect and reject invalid JSON
+- **Compact Output Format**: New compact output format to reduce whitespace in JSON output
+- **Buffer Operations**: New `jsonPutToBuf` and `jsonPutValueToBuf` APIs
+- **Date Support**: Added `jsonGetDate` for timestamp handling
+- **Keys-Only Output**: New `--keys` option for JSON command
+- **Validation API**: Revised validation API with support for `sigKey` in `webWriteValidatedItem`
+- **Schema Blending**: Fixed JSON schema blending issues
+- **Null Handling**: Improved handling of null values in JSON
+
+### Runtime Improvements
+- **Scheduled Events**: Events now run in guaranteed order
+- **Socket Management**: New `rDisconnectSocket` API for proper connection cleanup
+- **Pipelined Socket Data**: Fixed handling of pipelined socket data
+- **I/O Wait Events**: Fixed I/O wait events on re-opened file descriptors
+- **Thread Safety**: New `rIsForeignThread` API for thread detection
+- **Event Deadlines**: Fixed event deadline overflow issues
+- **Cron Support**: Added `cronUntilEnd` and fixed cron with zero time
+- **Date Parsing**: Fixed `rParseIsoDate` for ISO 8601 date parsing
+- **Printf Improvements**: Fixed `%g` format specifier handling
+- **Fiber Limits**: Added configurable fiber limits for better resource control
+
+## API Changes
+
+### New APIs
+- `ioUpload()` - Upload files to cloud storage
+- `ioBackoff()` - Implement exponential backoff strategies
+- `ioGetBool()`, `ioSetBool()` - Boolean data accessors
+- `jsonGetDate()` - Extract date/time from JSON
+- `jsonPutToBuf()`, `jsonPutValueToBuf()` - Buffer-based JSON output
+- `urlGetCookie()` - Cookie extraction utility
+- `rDisconnectSocket()` - Clean socket disconnection
+- `rIsForeignThread()` - Thread context detection
+- `cronUntilEnd()` - Cron scheduling until end time
+
+### Enhanced APIs
+- `ioSet()` - Now integrates with database sync
+- `ioGet()` - Uses local database efficiently
+- `ioGetMetric()`, `ioSetMetric()` - Fixed default dimensions
+- `getSignedUrl()` - Now accepts file and size parameters
+- `webWriteValidatedItem()` - Added signature key support
+- Improved constant-time compare API in cryptography module
+
+### Breaking Changes
+**Note**: Some APIs have minor breaking changes. Review the migration notes below before upgrading.
+
+## Bug Fixes
+
+### Critical Fixes
+- Fixed database save failures after crashes
+- Fixed event deadline overflow in scheduling
+- Fixed on-demand MQTT connection management
+- Fixed CSRF token regeneration issues
+- Fixed validation for empty payloads
+- Fixed pipelined MQTT message handling
+- Fixed pipelined socket data handling
+- Fixed I/O wait events on re-opened file descriptors
+
+### Web Server Fixes
+- Fixed multiple cookie headers support
+- Fixed handling of OPTIONS requests
+- Fixed handling of duplicate headers
+- Fixed SetCookie MaxAge attribute
+- Fixed CSRF token support (renamed from XSRF)
+
+### URL Client Fixes
+- Fixed show response body options
+- Fixed multiple cookie header handling
+
+### Stability Improvements
+- Fixed removal of stale device entries
+- Fixed device connection state tracking
+- Fixed device updates after provisioning
+- Fixed timeout handling for MQTT events
+- Fixed error handling for failed OTA updates
+- Fixed waiting for due events in scheduler
+- Fixed `rParseIsoDate` ISO 8601 parsing
+
+### Build & Platform Fixes
+- Fixed Windows build with Visual Studio 2022 support
+- Fixed `make.bat` for Windows builds
+- Fixed library math (`libm`) linking
+- Fixed binary file endings for cross-platform tests
+- Fixed package binary inclusion
+- Fixed building without `ioto-config.h`
+
+### Configuration Fixes
+- Fixed default dimensions for metrics
+- Fixed ID handling with `'auto'` and `jsonLock`
+- Fixed cron default specification
+- Fixed stop behavior when registration fails
+- Fixed environment path handling
+
+## Testing & Quality
+
+### Test Infrastructure
+- Enabled complete test suite
+- **Extensive Fuzzing**: Broader fuzzing tests to discover boundary conditions
+- **Enhanced Unit Testing**: Comprehensive unit test improvements
+- Added TestMe integration for CI/CD
+- Fixed test setup for multiple platforms
+- Fixed service start testing
+- Improved test isolation with unique filenames
+
+### CI/CD Improvements
+- Complete CI/CD pipeline implementation
+- Multi-platform build verification (Linux, macOS, Windows)
+- Automated test execution on all platforms
+- Enhanced build timeout configurations
+- Improved quiet mode for build output
+
+## Documentation
+
+### Updates
+- Comprehensive README updates
+- **Extensive API documentation improvements**: Many API definitions enhanced for clarity
+- **AI Context Files**: Added AGENTS.md context files to all modules to enable AI-assisted coding
+- Updated user context (uctx) documentation
+- Improved schema documentation
+- Enhanced cloud integration guides
+
+### Code Quality
+- Code formatting improvements
+- Enhanced debug tracing throughout
+- Better error messages and diagnostics
+- Improved code comments and clarity
+
+## Platform Support
+
+### Supported Platforms
+- Linux (x86, x64, ARM, ARM64, RISC-V)
+- macOS (Intel, Apple Silicon)
+- Windows 11 (Native with VS2022, WSL)
+- ESP32 (ESP-IDF)
+- FreeRTOS
+- VxWorks (experimental)
+
+### Compiler Support
+- GCC 7+
+- Clang 10+
+- MSVC 2022
+- ESP-IDF toolchain
+
+## Security Considerations
+
+This release underwent extensive security hardening:
+- **Comprehensive Security Audit**: Static analysis, fuzzing, and AI-driven security analysis
+- **Boundary Condition Testing**: Extensive fuzzing to identify edge cases
+- CSRF token protection for web interfaces
+- Enhanced NULL tolerance and input validation across all APIs
+- Improved constant-time cryptographic operations
+- Secure cookie handling with duplicate header support
+- Hardened JSON parsing with strict compliance checking
+- TLS configuration improvements
+
+## Migration Notes
+
+### Breaking API Changes
+
+While most changes are backward compatible, some APIs have breaking changes:
+
+- `getSignedUrl()` now requires file path and size parameters
+- Validation APIs updated - review custom validation code
+- Some internal APIs related to constant-time comparison may have signature changes
+
+**Action Required**: Review code that uses the above APIs and update accordingly.
+
+### Configuration Changes
+- `tls.authority` configuration option removed (use standard TLS settings)
+- Provisioning now uses `provision.json5` format
+- Device provision URL has changed for cloud connections
+- Fiber limits can now be configured in `ioto.json5`
+
+### Behavioral Changes
+- `ioOnConnect` callbacks now fire after sync completion
+- Scheduled events execute in deterministic order
+- Database operations prefer local DB for queries
+- XSRF renamed to CSRF for standards compliance (configuration may need updating)
+- JSON parser is stricter and will reject previously-accepted invalid JSON
+
+## Known Issues
+
+None identified in this release.
+
+## Upgrade Instructions
+
+1. **Backup**: Backup your current configuration and state directory
+2. **Review Breaking Changes**: Review the breaking API changes above
+3. **Update Source**: Update to v2.8.0 source code
+4. **Update Code**: Update any code using modified APIs (particularly `getSignedUrl()` and validation APIs)
+5. **Update Configuration**: Update configuration files if using `tls.authority` or XSRF references
+6. **Rebuild**: Rebuild with your application configuration
+7. **Test**: Test thoroughly before production deployment, especially:
+   - JSON parsing with your data
+   - Any custom validation code
+   - MQTT message handling
+   - Cookie and header handling
+8. **Review Security**: Review the security improvements and ensure they align with your deployment needs
+
+## Download
+
+Download from the [Builder Site](https://admin.embedthis.com/product)
+
+## Documentation
+
+Full documentation available at: https://www.embedthis.com/doc/
+
+## Support
+
+For support, please visit:
+- Documentation: https://www.embedthis.com/doc/
+- Issues: Contact EmbedThis support
+
+---
+
+**Note**: This is a significant update with 200+ commits since v2.7.0. Thorough testing is recommended before production deployment.

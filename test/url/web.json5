@@ -69,7 +69,7 @@
             validateUTF: false,
         },
         upload: {
-            dir: '/tmp',
+            dir: './tmp',
         },
     },
 }

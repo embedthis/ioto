@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-#	config-app APP
+#	prepare - Prepare for building with an APP
 #
 #	This exports the app's config files from the apps config directory to the 
 #	TOP/state/config directory.

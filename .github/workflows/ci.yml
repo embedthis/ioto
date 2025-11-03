@@ -97,7 +97,7 @@ jobs:
           IOTO_PRODUCT: ${{ secrets.IOTO_PRODUCT }}
           IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
-          tm test
+          make test
 
       - name: Run test suite (Windows)
         if: runner.os == 'Windows'
@@ -109,7 +109,7 @@ jobs:
           IOTO_CLOUD: ${{ secrets.IOTO_CLOUD }}
           IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
-          call bin\test-prep.bat
+          call bin\prep-test.bat
           tm test
 
       - name: Upload test results

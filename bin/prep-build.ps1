@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 #
-#   make-json.ps1 - Make the required build tools
+#   prep-build.ps1 - Make the required build tools
 #
 #   Usage: make-json.ps1
 #
