@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 2.8.0
+VERSION               := 2.8.1
 PROJECT               := ioto-vxworks-default
 PROFILE               ?= dev
 ARCH                  ?= $(shell echo $(WIND_HOST_TYPE) | sed 's/-.*$(ME_ROOT_PREFIX)/')
@@ -94,7 +94,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"2.8.0\"
+ME_VERSION            ?= \"2.8.1\"
 ME_WEB_AUTH           ?= 1
 ME_WEB_LIMITS         ?= 1
 ME_WEB_SESSIONS       ?= 1

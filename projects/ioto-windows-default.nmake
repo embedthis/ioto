@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 2.8.0
+VERSION               = 2.8.1
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -236,7 +236,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IFNDEF ME_VERSION
-ME_VERSION            = \"2.8.0\"
+ME_VERSION            = \"2.8.1\"
 !ENDIF
 !IFNDEF ME_WEB_AUTH
 ME_WEB_AUTH           = 1

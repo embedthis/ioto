@@ -142,7 +142,7 @@
     #define ME_USER "ioto"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "2.8.0"
+    #define ME_VERSION "2.8.1"
 #endif
 #ifndef ME_WEB_AUTH
     #define ME_WEB_AUTH 1
@@ -213,7 +213,7 @@
     #define ME_VAPP_PREFIX "deploy"
 #endif
 #ifndef ME_SRC_PREFIX
-    #define ME_SRC_PREFIX "/usr/src/ioto-2.8.0"
+    #define ME_SRC_PREFIX "/usr/src/ioto-2.8.1"
 #endif
 
 /* Suffixes */
@@ -255,10 +255,10 @@
     #define ME_MINOR_VERSION 8
 #endif
 #ifndef ME_PATCH_VERSION
-    #define ME_PATCH_VERSION 0
+    #define ME_PATCH_VERSION 1
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 200080000
+    #define ME_VNUM 200080001
 #endif
 
 /* Components */
