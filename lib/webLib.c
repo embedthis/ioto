@@ -302,9 +302,11 @@ static int putFile(Web *web, cchar *path)
     }
     while ((nbytes = webRead(web, buf, sizeof(buf))) > 0) {
         if (write(fd, buf, (uint) nbytes) != nbytes) {
+            close(fd);
             return webError(web, 500, "Cannot put document");
         }
     }
+    close(fd);
     return (int) webWriteResponse(web, web->exists ? 204 : 201, "Document successfully updated");
 }
 
@@ -325,6 +327,9 @@ PUBLIC ssize webSendFile(Web *web, int fd)
     for (written = 0; written < web->txLen; ) {
         if ((nbytes = read(fd, buf, sizeof(buf))) < 0) {
             return webError(web, 404, "Cannot read document");
+        }
+        if (nbytes == 0 && errno != EINTR) {
+            return webError(web, 404, "Premature end of input");
         }
         if ((nbytes = webWrite(web, buf, (uint) nbytes)) < 0) {
             return webNetError(web, "Cannot send file");
