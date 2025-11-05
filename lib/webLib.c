@@ -1433,9 +1433,11 @@ static int parseHeaders(Web *web, size_t headerSize)
     if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
         rLog("raw", "web", "Request <<<<\n\n%s\n", web->rxHeaders->start);
     }
-    web->method = supper(stok(web->rxHeaders->start, " \t", &tok));
-    parseMethod(web);
 
+    method = supper(stok(web->rxHeaders->start, " \t", &tok));
+    if (parseMethod(web, method) < 0) {
+        return R_ERR_BAD_REQUEST;
+    }
     web->url = stok(tok, " \t", &tok);
     web->protocol = supper(stok(tok, "\r", &tok));
     web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
@@ -1463,12 +1465,11 @@ static int parseHeaders(Web *web, size_t headerSize)
     return 0;
 }
 
-static void parseMethod(Web *web)
+static int parseMethod(Web *web, cchar *method)
 {
-    cchar *method;
-
-    method = web->method;
-
+    if (!method) {
+        return webNetError(web, "Bad request method");
+    }
     switch (method[0]) {
     case 'D':
         if (strcmp(method, "DELETE") == 0) {
@@ -1509,6 +1510,8 @@ static void parseMethod(Web *web)
         }
         break;
     }
+    web->method = method;
+    return 0;
 }
 
 /*
@@ -1522,133 +1525,132 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
     uchar     uc;
     bool      hasCL = 0, hasTE = 0;
 
-    if (!headers || *headers == '\0') {
-        return 1;
-    }
-    end = &headers[headersSize];
+    if (headers && *headers) {
+        end = &headers[headersSize];
 
-    for (cp = headers; cp < end; ) {
-        key = cp;
-        if ((cp = strchr(cp, ':')) == 0) {
-            webNetError(web, "Bad headers");
-            return 0;
-        }
-        endKey = cp;
-        *cp++ = '\0';
-        while (*cp && isWhite(*cp)) {
-            cp++;
-        }
-        value = cp;
-        while (*cp && *cp != '\r') {
-            //  Only permit strict \r\n header terminator
-            if (*cp == '\n') {
+        for (cp = headers; cp < end; ) {
+            key = cp;
+            if ((cp = strchr(cp, ':')) == 0) {
                 webNetError(web, "Bad headers");
                 return 0;
             }
-            cp++;
-        }
-        if (*cp != '\r') {
-            webNetError(web, "Bad headers");
-            return 0;
-        }
-        *cp++ = '\0';
-        if (*cp != '\n') {
-            webNetError(web, "Bad headers");
-            return 0;
-        }
-        *cp++ = '\0';
-
-        // Trim white space from value
-        for (t = cp - 2; t >= value; t--) {
-            if (isWhite(*t)) {
-                *t = '\0';
-            } else {
-                break;
+            endKey = cp;
+            *cp++ = '\0';
+            while (*cp && isWhite(*cp)) {
+                cp++;
             }
-        }
-        /*
-            From here, we've ensured the key and value are valid and do not contain any whitespace.
-            This prevents CRLF injection attacks in header values.
-         */
-
-        //  Validate header name
-        for (t = key; t < endKey; t++) {
-            uc = (uchar) * t;
-            if (uc >= sizeof(validHeaderChars) || !validHeaderChars[uc]) {
+            value = cp;
+            while (*cp && *cp != '\r') {
+                //  Only permit strict \r\n header terminator
+                if (*cp == '\n') {
+                    webNetError(web, "Bad headers");
+                    return 0;
+                }
+                cp++;
+            }
+            if (*cp != '\r') {
+                webNetError(web, "Bad headers");
                 return 0;
             }
-        }
-        c = tolower(*key);
+            *cp++ = '\0';
+            if (*cp != '\n') {
+                webNetError(web, "Bad headers");
+                return 0;
+            }
+            *cp++ = '\0';
 
-        if (upload && c != 'c' && (
-                !scaselessmatch(key, "content-disposition") &&
-                !scaselessmatch(key, "content-type"))) {
-            webNetError(web, "Bad upload headers");
-            return 0;
-        }
-        if (c == 'c') {
-            if (scaselessmatch(key, "content-disposition")) {
-                web->contentDisposition = value;
+            // Trim white space from value
+            for (t = cp - 2; t >= value; t--) {
+                if (isWhite(*t)) {
+                    *t = '\0';
+                } else {
+                    break;
+                }
+            }
+            /*
+                From here, we've ensured the key and value are valid and do not contain any whitespace.
+                This prevents CRLF injection attacks in header values.
+             */
 
-            } else if (scaselessmatch(key, "content-type")) {
-                web->contentType = value;
-                if (scontains(value, "multipart/form-data")) {
-                    if (webInitUpload(web) < 0) {
+            //  Validate header name
+            for (t = key; t < endKey; t++) {
+                uc = (uchar) * t;
+                if (uc >= sizeof(validHeaderChars) || !validHeaderChars[uc]) {
+                    return 0;
+                }
+            }
+            c = tolower(*key);
+
+            if (upload && c != 'c' && (
+                    !scaselessmatch(key, "content-disposition") &&
+                    !scaselessmatch(key, "content-type"))) {
+                webNetError(web, "Bad upload headers");
+                return 0;
+            }
+            if (c == 'c') {
+                if (scaselessmatch(key, "content-disposition")) {
+                    web->contentDisposition = value;
+
+                } else if (scaselessmatch(key, "content-type")) {
+                    web->contentType = value;
+                    if (scontains(value, "multipart/form-data")) {
+                        if (webInitUpload(web) < 0) {
+                            return 0;
+                        }
+
+                    } else if (smatch(value, "application/x-www-form-urlencoded")) {
+                        web->formBody = 1;
+
+                    } else if (smatch(value, "application/json")) {
+                        web->jsonBody = 1;
+                    }
+
+                } else if (scaselessmatch(key, "connection")) {
+                    if (scaselessmatch(value, "close")) {
+                        web->close = 1;
+                    }
+                } else if (scaselessmatch(key, "content-length")) {
+                    hasCL = 1;
+                    web->rxLen = web->rxRemaining = stoi(value);
+                    if (web->rxLen < 0 || web->rxLen > web->host->maxBody) {
+                        webNetError(web, "Bad Content-Length");
                         return 0;
                     }
 
-                } else if (smatch(value, "application/x-www-form-urlencoded")) {
-                    web->formBody = 1;
-
-                } else if (smatch(value, "application/json")) {
-                    web->jsonBody = 1;
+                } else if (scaselessmatch(key, "cookie")) {
+                    if (web->cookie) {
+                        prior = web->cookie;
+                        web->cookie = sjoin(prior, "; ", value, NULL);
+                        rFree(prior);
+                    } else {
+                        web->cookie = sclone(value);
+                    }
                 }
 
-            } else if (scaselessmatch(key, "connection")) {
-                if (scaselessmatch(value, "close")) {
-                    web->close = 1;
+            } else if (c == 'i' && strcmp(key, "if-modified-since") == 0) {
+    #if !defined(ESP32)
+                if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
+                    #if ME_WIN_LIKE
+                    web->since = _mkgmtime(&tm);
+                    #else
+                    web->since = timegm(&tm);
+                    #endif
                 }
-            } else if (scaselessmatch(key, "content-length")) {
-                hasCL = 1;
-                web->rxLen = web->rxRemaining = stoi(value);
-                if (web->rxLen < 0 || web->rxLen > web->host->maxBody) {
-                    webNetError(web, "Bad Content-Length");
-                    return 0;
-                }
+    #endif
+            } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
+                web->lastEventId = stoi(value);
 
-            } else if (scaselessmatch(key, "cookie")) {
-                if (web->cookie) {
-                    prior = web->cookie;
-                    web->cookie = sjoin(prior, "; ", value, NULL);
-                    rFree(prior);
-                } else {
-                    web->cookie = sclone(value);
+            } else if (c == 'o' && scaselessmatch(key, "origin")) {
+                web->origin = value;
+
+            } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
+                if (scaselessmatch(value, "chunked")) {
+                    hasTE = 1;
+                    web->chunked = WEB_CHUNK_START;
                 }
+            } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
+                web->upgrade = value;
             }
-
-        } else if (c == 'i' && strcmp(key, "if-modified-since") == 0) {
-#if !defined(ESP32)
-            if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
-                #if ME_WIN_LIKE
-                web->since = _mkgmtime(&tm);
-                #else
-                web->since = timegm(&tm);
-                #endif
-            }
-#endif
-        } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
-            web->lastEventId = stoi(value);
-
-        } else if (c == 'o' && scaselessmatch(key, "origin")) {
-            web->origin = value;
-
-        } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
-            if (scaselessmatch(value, "chunked")) {
-                hasTE = 1;
-                web->chunked = WEB_CHUNK_START;
-            }
-        } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
-            web->upgrade = value;
         }
     }
     if (hasCL && hasTE) {
@@ -2305,9 +2307,6 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
     ssize written;
 
     if (web->finalized) {
-        if (buf && bufsize > 0) {
-            rError("web", "Web connection already finalized");
-        }
         return 0;
     }
     if (buf == NULL) {
@@ -2448,6 +2447,9 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
     ssize   rc;
     char    *msg;
 
+    if (web->wroteHeaders) {
+        return 0;
+    }
     if (!fmt) {
         fmt = "";
     }
@@ -2638,7 +2640,6 @@ PUBLIC int webError(Web *web, int status, cchar *fmt, ...)
     va_list args;
 
     if (!web->error) {
-        rFree(web->error);
         va_start(args, fmt);
         web->error = sfmtv(fmt, args);
         va_end(args);
@@ -2676,6 +2677,12 @@ static bool isprintable(cchar *s, size_t len)
     cchar *cp;
     int   c;
 
+    if (!s) {
+        return 0;
+    }
+    if (len == 0) {
+        return 1;
+    }
     for (cp = s; *cp && cp < &s[len]; cp++) {
         c = *cp;
         if ((c > 126) || (c < 32 && c != 10 && c != 13 && c != 9)) {
@@ -2786,8 +2793,7 @@ PUBLIC void webDestroySession(Web *web)
 PUBLIC WebSession *webCreateSession(Web *web)
 {
     webDestroySession(web);
-    web->session = createSession(web);
-    return web->session;
+    return createSession(web);
 }
 
 /*
@@ -2804,13 +2810,14 @@ WebSession *webGetSession(Web *web, int create)
 
     if (!session) {
         id = webParseCookie(web, web->host->sessionCookie);
-        if ((session = rLookupName(web->host->sessions, id)) == 0) {
-            if (create) {
-                session = createSession(web);
-            }
-            web->session = session;
+        if (id) {
+            session = rLookupName(web->host->sessions, id);
+            rFree(id);
         }
-        rFree(id);
+        if (!session && create) {
+            session = createSession(web);
+        }
+        web->session = session;
     }
     if (session) {
         session->expires = rGetTicks() + session->lifespan;
