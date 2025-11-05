@@ -106,7 +106,6 @@ PUBLIC int ioRegister(void)
  */
 static int parseRegisterResponse(Json *json)
 {
-    static int once = 0;
     char       *path;
 
     /*
@@ -125,13 +124,14 @@ static int parseRegisterResponse(Json *json)
      */
     if (json->count < 2) {
         return 0;
-    } else if (json->count == 2) {
-        if (ioto->provisionService) {
-            //  Registered but not yet claimed and not auto claiming
-            if (once++ == 0 && !ioto->account && !ioto->cloud) {
-                rInfo("ioto", "Device not yet claimed. Claim %s with the product device app.", ioto->id);
-            }
+#if SERVICES_CLOUD
+    } else if (json->count == 2 && ioto->provisionService) {
+        static int once = 0;
+        //  Registered but not yet claimed and not auto claiming
+        if (once++ == 0 && !ioto->account && !ioto->cloud) {
+            rInfo("ioto", "Device not yet claimed. Claim %s with the product device app.", ioto->id);
         }
+#endif
     }
 
     /*

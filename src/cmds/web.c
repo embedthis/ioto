@@ -227,7 +227,6 @@ static void start(void)
     if (profile) {
         jsonSetString(config, 0, "profile", profile);
     }
-
     //  Configure fiber limits if specified in config
     maxFibers = (int) svalue(jsonGet(config, 0, "limits.fibers", "0"));
     if (maxFibers) {

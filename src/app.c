@@ -5,14 +5,12 @@
 /********************************** Includes **********************************/
 
 #include "ioto.h"
-#include "config.h"
 
 #define STRINGIFY(x) #x
 #define HEADER(x)    STRINGIFY(x)
 
-/* choose one: -DAPP=demo  (no quotes) */
 #ifndef APP
-#define APP demo
+    #define APP blank
 #endif
 
 /* *INDENT-OFF* */

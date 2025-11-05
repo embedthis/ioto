@@ -101,11 +101,13 @@ PUBLIC int ioInitConfig(void)
     ioto->version = jsonGetClone(json, 0, "version", "1.0.0");
     ioto->properties = makeTemplate();
 
+#if SERVICES_CLOUD
     if (ioto->cmdBuilder) {
         ioto->builder = sclone(ioto->cmdBuilder);
     } else {
         ioto->builder = jsonGetClone(json, 0, "api.builder", "https://api.admin.embedthis.com/api");
     }
+#endif
 
 #if SERVICES_PROVISION
     cchar *id = jsonGet(json, 0, "provision.id", 0);

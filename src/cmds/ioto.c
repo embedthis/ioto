@@ -243,6 +243,7 @@ PUBLIC int main(int argc, char **argv, char **envp)
         ioto->cmdProduct = scloneDefined(getenv("IOTO_PRODUCT"));
         ioto->noSaveDevice = 1;
     }
+#if SERVICES_CLOUD
     if (!ioto->cmdAccount) {
         ioto->cmdAccount = scloneDefined(getenv("IOTO_ACCOUNT"));
         ioto->noSaveDevice = 1;
@@ -254,6 +255,7 @@ PUBLIC int main(int argc, char **argv, char **envp)
     if (!ioto->cmdBuilder) {
         ioto->cmdBuilder = scloneDefined(getenv("IOTO_BUILDER"));
     }
+#endif
 
     setEvent(exitEvent);
 

@@ -1308,7 +1308,7 @@ PUBLIC char *webDate(char *buf, size_t size, time_t when);
     @description Decode URL percent-encoded characters in place. Converts sequences
         like %20 back to their original characters. The string is modified in-place.
     @param str URL-encoded string to decode (modified in place)
-    @return Pointer to the same string buffer after decoding
+    @return Pointer to the same string buffer after decoding.
     @stability Evolving
  */
 PUBLIC char *webDecode(char *str);
