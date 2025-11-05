@@ -91,6 +91,7 @@ struct Url;
 #define URL_SHOW_RESP_BODY              0x8  /**< Trace response body */
 #define URL_SHOW_RESP_HEADERS           0x10 /**< Trace response headers */
 #define URL_HTTP_0                      0x20 /**< Use HTTP/1.0 */
+#define URL_NO_LINGER                   0x40 /**< Use no linger and issue RST on close instead of FIN */
 
 #if URL_SSE
 /**
@@ -119,6 +120,7 @@ typedef struct Url {
     uint finalized : 1;            /**< The request body has been fully written */
     uint gotResponse : 1;          /**< Response has been read */
     uint inCallback : 1;           /**< SSE callback is in progress */
+    uint linger: 1;                /**< Connection should be kept alive for subsequent requests */
     uint needFree : 1;             /**< Free the URL object */
     uint nonblock : 1;             /**< Don't block in SSE callback */
     uint protocol : 2;             /**< Use HTTP/1.0 without keep-alive. Defaults to HTTP/1.1. */

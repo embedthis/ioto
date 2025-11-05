@@ -8472,6 +8472,7 @@ PUBLIC RSocket *rAllocSocket(void)
         return 0;
     }
     sp->fd = INVALID_SOCKET;
+    sp->linger = -1;
     return sp;
 }
 
@@ -8519,10 +8520,12 @@ PUBLIC void rCloseSocket(RSocket *sp)
         closesocket(sp->fd);
         sp->fd = INVALID_SOCKET;
     }
+    sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
+
     if (sp->wait) {
+        // The resumed party may free the socket -- be careful!
         rResumeWait(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
     }
-    sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
 }
 
 PUBLIC void rDisconnectSocket(RSocket *sp)
@@ -8555,6 +8558,9 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
 
     if (!host) {
         return rSetSocketError(sp, "Host address required for connection");
+    }
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
     }
     if (sp->fd != INVALID_SOCKET) {
         rCloseSocket(sp);
@@ -8592,7 +8598,6 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
             rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
             continue;
         }
-
         rSetSocketBlocking(sp, 0);
         sp->wait = rAllocWait((int) sp->fd);
 
@@ -8634,6 +8639,12 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         return rSetSocketError(sp, "Cannot upgrade socket to TLS");
     }
  #endif
+    if (sp->linger >= 0) {
+        struct linger linger;
+        linger.l_onoff = 1;
+        linger.l_linger = sp->linger;
+        setsockopt(sp->fd, SOL_SOCKET, SO_LINGER, (char*) &linger, sizeof(linger));
+    }
     return 0;
 }
 
@@ -8643,7 +8654,7 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     struct sockaddr_storage addr;
     char                    pbuf[16];
     Socklen                 addrLen;
-    int                     family, rc;
+    int                     family;
 
     if (!lp || !handler) {
         return R_ERR_BAD_ARGS;
@@ -8671,7 +8682,7 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     }
 
     sitosbuf(pbuf, sizeof(pbuf), port, 10);
-    if ((rc = getaddrinfo(host, pbuf, &hints, &res)) != 0) {
+    if (getaddrinfo(host, pbuf, &hints, &res) != 0) {
         return rSetSocketError(lp, "Cannot resolve address %s:%d", host ? host : "*", port);
     }
     //  Try each resolved address until one succeeds
@@ -8860,6 +8871,9 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
     if (!sp || !buf || bufsize <= 0 || bufsize > MAXSSIZE / 2) {
         return R_ERR_BAD_ARGS;
     }
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
+    }
     while (1) {
         nbytes = rReadSocketSync(sp, buf, bufsize);
         if (nbytes != 0) {
@@ -8876,6 +8890,9 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
     ssize  written;
     size_t toWrite;
 
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
+    }
     for (toWrite = bufsize; toWrite > 0; ) {
         written = rWriteSocketSync(sp, buf, toWrite);
         if (written < 0) {
@@ -9036,6 +9053,13 @@ PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers)
     rSetTlsDefaultCiphers(ciphers);
 }
 
+PUBLIC void rSetSocketLinger(RSocket *sp, int linger)
+{
+    if (sp) {
+        sp->linger = linger;
+    }
+}
+
 PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer)
 {
     if (!sp->tls) {
@@ -9193,7 +9217,7 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port)
 static int getSocketError(RSocket *sp)
 {
     Socklen len;
-    int error;
+    int     error;
 
     len = sizeof(error);
     error = 0;
@@ -11088,9 +11112,9 @@ PUBLIC Ticks rGetTicks(void)
         Last chance. Need to resort to rGetTime which is subject to user and seasonal adjustments.
         This code will prevent it going backwards, but may suffer large jumps forward.
      */
-    static Time  lastTicks = 0;
-    static Time  adjustTicks = 0;
-    Time         result, diff;
+    static Time lastTicks = 0;
+    static Time adjustTicks = 0;
+    Time        result, diff;
 
     if (lastTicks == 0) {
         /* This will happen at init time when single threaded */

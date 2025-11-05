@@ -3762,6 +3762,7 @@ typedef struct RSocket {
     int flags : 8;
     uint mask : 4;
     uint hasCert : 1;                       /**< TLS certificate defined */
+    int linger;                             /**< Linger timeout in seconds. -1 means no linger. */
     RSocketProc handler;
     void *arg;
     char *error;
@@ -4019,6 +4020,17 @@ PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers);
     @stability Evolving
  */
 PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
+
+/**
+    Set the socket linger timeout
+    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be closed.
+    If set to zero, the socket will be closed immediately with a RST packet instead of a FIN packet.
+    This API must be called before calling rConnectSocket.
+    @param sp Socket object returned from rAllocSocket
+    @param linger Timeout in seconds
+    @stability Evolving
+ */
+PUBLIC void rSetSocketLinger(RSocket *sp, int linger);
 
 /**
     Set the socket TLS verification parameters
