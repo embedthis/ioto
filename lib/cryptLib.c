@@ -589,10 +589,10 @@ static void cryptSha1Process(CryptSha1 *sha)
     int  t;
 
     for (t = 0; t < 16; t++) {
-        W[t] = (uint) (sha->block[t * 4] << 24);
-        W[t] |= (uint) (sha->block[t * 4 + 1] << 16);
-        W[t] |= (uint) (sha->block[t * 4 + 2] << 8);
-        W[t] |= (uint) (sha->block[t * 4 + 3]);
+        W[t] = ((uint) sha->block[t * 4]) << 24;
+        W[t] |= ((uint) sha->block[t * 4 + 1]) << 16;
+        W[t] |= ((uint) sha->block[t * 4 + 2]) << 8;
+        W[t] |= (uint) sha->block[t * 4 + 3];
     }
     for (t = 16; t < 80; t++) {
         W[t] = sha1Shift(1, W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16]);
