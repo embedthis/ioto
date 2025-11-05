@@ -1471,16 +1471,59 @@ PUBLIC int rInitFibers(void)
         return R_ERR_CANT_ALLOCATE;
     }
 #endif
+    setupFiberSignalHandlers();
     return 0;
 }
 
 PUBLIC void rTermFibers(void)
 {
-    // MOB - test this on windows --exit 5
     uctx_freecontext(&mainFiber->context);
     uctx_term();
     mainFiber = NULL;
     currentFiber = NULL;
+}
+
+PUBLIC int rStartFiberBlock(void)
+{
+    currentFiber->block = 1;
+    return setjmp(currentFiber->jmpbuf);
+}
+
+static void fiberSignalHandler(int signum)
+{
+    /*
+        If there is a double-exception while it is cleaning up, then abort.
+    */
+    if (currentFiber->block && currentFiber->exception == 0) {
+        currentFiber->block = 0;
+        currentFiber->exception = signum;
+        rEndFiberBlock();
+    } else {
+        abort();
+    }
+}
+
+/*
+    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit. 
+*/
+PUBLIC void rEndFiberBlock(void)
+{
+    longjmp(currentFiber->jmpbuf, 1);
+}
+
+static void setupFiberSignalHandlers(void)
+{
+#if ME_UNIX_LIKE
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = fiberSignalHandler;
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+#endif
 }
 
 /*
@@ -4534,12 +4577,14 @@ PUBLIC void rMetrics(cchar *message, cchar *namespace, cchar *dimensions, cchar 
     if ((buf = rAllocBuf(0)) == 0) {
         return;
     }
-    rPutToBuf(buf, "%s\n\
+    rPutToBuf(buf,
+              "%s\n\
         _aws: {\n\
             Timestamp: %lld,\n\
             CloudWatchMetrics: [{\n\
                 Dimensions: [dimensions],\n\
-                Namespace: %s,\n", message,
+                Namespace: %s,\n",
+              message,
               rGetTime(), namespace);
 
     if (dimensions) {
@@ -11776,9 +11821,11 @@ PUBLIC RWait *rAllocWait(int fd)
 
 PUBLIC void rFreeWait(RWait *wp)
 {
+    char fdbuf[32];
+
     if (wp) {
         rSetWaitMask(wp, 0, 0);
-        rRemoveName(waitMap, sitos(wp->fd));
+        rRemoveName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) wp->fd, 10));
         rResumeWait(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
         rFree(wp);
     }
@@ -12162,10 +12209,11 @@ static void invokeHandler(size_t fd, int mask)
 {
     RWait  *wp;
     RFiber *fiber;
+    char   fdbuf[32];
 
     assert(rIsMain());
 
-    if ((wp = rLookupName(waitMap, sitos((int64) fd))) == 0) {
+    if ((wp = rLookupName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) fd, 10))) == 0) {
         return;
     }
     if ((wp->mask | R_TIMEOUT) & mask) {

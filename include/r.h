@@ -542,7 +542,10 @@ typedef void (*RFiberProc)(void *data);
  */
 typedef struct RFiber {
     uctx_t context;
+    jmp_buf jmpbuf;
     void *result;
+    bool block;      // Fiber executing a setjmp block
+    int exception;    // Exception that caused the fiber to crash
     int done;
 #if FIBER_WITH_VALGRIND
     uint stackId;
@@ -631,6 +634,22 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
  */
 PUBLIC void *rYieldFiber(void *value);
 
+/** 
+    Start a fiber block
+    @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
+    @return Zero on first call. Returns 1 when jumping out of the block.
+    @stability Prototype
+ */
+PUBLIC int rStartFiberBlock(void);
+
+/**
+    End a fiber block
+    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs 
+    in the fiber block.
+    @stability Prototype
+ */
+PUBLIC void rEndFiberBlock(void);
+
 /**
     Get the current fiber object
     @return fiber Fiber object
@@ -695,9 +714,10 @@ PUBLIC void rSetFiberStack(size_t size);
 /**
     Set the fiber limits
     @param maxFibers The maximum number of fibers (stacks). Set to zero for no limit.
+    @return The previous limit.
     @stability Evolving
  */
-PUBLIC void rSetFiberLimits(int maxFibers);
+PUBLIC int rSetFiberLimits(int maxFibers);
 
 /**
     Allocate a fiber coroutine object
