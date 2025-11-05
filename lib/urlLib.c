@@ -307,6 +307,9 @@ static int connectHost(Url *up)
         if (up->flags & URL_SHOW_REQ_HEADERS) {
             rLog("raw", "url", "\nConnect: %s://%s:%d\n", up->sock->tls ? "https" : "http", up->host, up->port);
         }
+        if (up->flags & URL_NO_LINGER) {
+            rSetSocketLinger(up->sock, 0);
+        }
         if (rConnectSocket(up->sock, up->host, up->port, up->deadline) < 0) {
             urlError(up, "%s", rGetSocketError(up->sock));
             return R_ERR_CANT_CONNECT;
@@ -1565,6 +1568,12 @@ static bool isprintable(cchar *s, size_t len)
     cchar *cp;
     int   c;
 
+    if (!s) {
+        return 0;
+    }
+    if (len == 0) {
+        return 1;
+    }
     for (cp = s; *cp && cp < &s[len]; cp++) {
         c = *cp;
         if ((c > 126) || (c < 32 && c != 10 && c != 13 && c != 9)) {
