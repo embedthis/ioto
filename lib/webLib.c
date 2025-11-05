@@ -975,7 +975,7 @@ static void initWeb(Web *web, WebListen *listen, RSocket *sock, RBuf *rx, int cl
 static int handleRequest(Web *web);
 static bool matchFrom(Web *web, cchar *from);
 static int parseHeaders(Web *web, size_t headerSize);
-static void parseMethod(Web *web);
+static int parseMethod(Web *web, cchar *method);
 static int processBody(Web *web);
 static void processOptions(Web *web);
 static void processRequests(Web *web);
@@ -990,6 +990,7 @@ static int webActionHandler(Web *web);
 /************************************* Code ***********************************/
 /*
     Allocate a new web connection. This is called by the socket listener when a new connection is accepted.
+    NOTE: return code not used
  */
 PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
 {
@@ -3928,7 +3929,7 @@ static WebUpload *processUploadHeaders(Web *web)
         }
         key = next;
     }
-    if (!(name || filename)) {
+    if (!name && !filename) {
         rFree(filename);
         webNetError(web, "Bad multipart mime headers");
         return 0;
@@ -4051,6 +4052,7 @@ static int processUploadData(Web *web, WebUpload *upload)
 
     if (upload->fd >= 0) {
         close(upload->fd);
+        upload->fd = -1;
     }
     return 1;
 }
@@ -4518,7 +4520,7 @@ PUBLIC Json *webParseJson(Web *web)
     char *errorMsg;
 
     if ((json = jsonParseString(rBufToString(web->body), &errorMsg, 0)) == 0) {
-        rError("web", "Cannot parse json: %s", errorMsg);
+        rDebug("web", "Cannot parse json: %s", errorMsg);
         rFree(errorMsg);
         return 0;
     }
