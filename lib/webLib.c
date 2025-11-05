@@ -2835,13 +2835,15 @@ static WebSession *createSession(Web *web)
 
     count = rGetHashLength(host->sessions);
     if (count >= host->maxSessions) {
-        rError("session", "Too many sessions %d/%d", count, host->maxSessions);
+        webError(web, 429, "Failed to create session");
         return 0;
     }
     if ((session = webAllocSession(web, host->sessionTimeout)) == 0) {
+        webError(web, 429, "Failed to create session");
         return 0;
     }
     webSetCookie(web, web->host->sessionCookie, session->id, "/", 0, 0);
+    web->session = session;
     return session;
 }
 
@@ -2923,6 +2925,7 @@ PUBLIC cchar *webSetSessionVar(Web *web, cchar *key, cchar *fmt, ...)
     assert(fmt);
 
     if ((sp = webGetSession(web, 1)) == 0) {
+        webError(web, 429, "Failed to create session");
         return 0;
     }
     va_start(ap, fmt);
