@@ -231,10 +231,10 @@ static int getFile(Web *web, cchar *path, FileInfo *info)
         web->ext = strrchr(path, '.');
     }
     if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
+        webError(web, 404, "Cannot open document");
         rFree(lpath);
-        return webError(web, 404, "Cannot open document");
+        return R_ERR_CANT_OPEN;
     }
-
     if (web->since && info->st_mtime <= web->since) {
         //  Request has not been modified since the client last retrieved the document
         web->txLen = 0;
