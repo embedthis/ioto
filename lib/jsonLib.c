@@ -831,7 +831,9 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             *json->next++ = 0;
             json->nodes[parent].last = json->count;
             parent = prior;
-            type = json->nodes[parent].type;
+            if (parent >= 0) {
+                type = json->nodes[parent].type;
+            }
             break;
 
         case '\n':
