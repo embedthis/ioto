@@ -23,7 +23,7 @@ if [ -z "${APP}" ] ; then
 	APP=unit
 fi
 
-echo "   [Prepare] Building with ${APP} app"
+echo "   [Prepare] Building with \"${APP}\" app"
 
 if [ ! -f bin/json ] ; then
     cc -DJSON_SOLO=1 -o bin/json bin/json.c -lm
@@ -50,6 +50,7 @@ fi
 #
 #	Change to the app directory	
 #
+echo ${APP} >${TOP}/build/.app
 cd apps/${APP} >/dev/null
 changed=0
 
@@ -92,7 +93,7 @@ done
 if [ ! -f ${HDR} -o config/ioto.json5 -nt ${HDR} ] ; then
 	echo "      [Create] ${HDR}"
 	${JSON} --header services ${CONFIG}/ioto.json5 >${HDR}
-	${JSON} --header app ${CONFIG}/ioto.json5 | sed 's/"//g' >>${HDR}
+	# ${JSON} --header app ${CONFIG}/ioto.json5 | sed 's/"//g' >>${HDR}
 	changed=1
 fi
 

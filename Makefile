@@ -26,7 +26,7 @@ CDPATH		:=
 
 .EXPORT_ALL_VARIABLES:
 
-.PHONY:		app build clean compile config info show test
+.PHONY:		app build clean compile config doc info projects show test
 
 ifndef SHOW
 .SILENT:
@@ -38,6 +38,9 @@ build: config compile info
 
 config:
 	@mkdir -p $(BUILD)/bin $(CONFIG)/certs $(CONFIG)/db $(CONFIG)/site 
+	if [ ! -d apps/$(APP) ] ; then \
+		echo "      [Error] Unknown app \"$(APP)\"" ; exit 255 ; \
+	fi ; \
 	if [ -f build/.app ] ; then \
 		if [ "$(APP)" != "`cat build/.app`" ] ; then \
 			echo "      [Clean] Previous app build" ; \
@@ -56,7 +59,7 @@ compile:
 clean:
 	@echo '       [Run] $@'
 	@$(MAKE) -f $(PROJECT) TOP=$(TOP) APP=$(APP) PROFILE=$(PROFILE) $@
-	make -C samples/agent clean
+	if [ -d samples/agent ] ; then make -C samples/agent clean ; fi
 	rm -f $(CONFIG)/db/*.jnl $(CONFIG)/db/*.db 
 	rm -f $(CONFIG)/db.json5 $(CONFIG)/display.json5 $(CONFIG)/local.json5
 	rm -f $(CONFIG)/signature.json5 $(CONFIG)/web.json5 $(CONFIG)/schema.json5

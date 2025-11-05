@@ -137,6 +137,26 @@ This documentation should be updated when:
 - Integration patterns are modified
 - New dependencies are introduced
 
+## Recent Activity
+
+### Version 2.8.1 Release (November 5, 2025)
+
+Completed comprehensive release notes for version 2.8.1:
+
+**Key Changes**:
+- New fiber and socket linger control APIs
+- Critical security fixes from fuzzing (JSON parser, HTTP method parsing)
+- Fixed resource leaks (file descriptors, memory)
+- Fixed `webSendFile` hang with large files
+- Build system hardening and improvements
+
+**Documentation Updated**:
+- [../releases/2.8.1.md](../releases/2.8.1.md) - Full release notes
+- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry
+- [../logs/SESSION-2025-11-05.md](../logs/SESSION-2025-11-05.md) - Session log
+
+**Status**: Release documentation complete and ready for v2.8.1 release.
+
 ---
 
-**Last Updated:** 2025-10-24
+**Last Updated:** 2025-11-05

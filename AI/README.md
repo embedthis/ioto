@@ -47,6 +47,10 @@ Official documentation is available at: https://www.embedthis.com/doc/
 - **references/** - External documentation and resources
   - `REFERENCES.md` - Links to external sites, documentation, and code
 
+- **releases/** - Version release notes
+  - `X.Y.Z.md` - Detailed release notes for each version
+  - Comprehensive documentation of features, fixes, and changes
+
 - **archive/** - Historical documentation (same structure as above)
   - Designs, plans, procedures, logs, and references from previous versions
 
@@ -72,6 +76,7 @@ Official documentation is available at: https://www.embedthis.com/doc/
 - [plans/PLAN.md](plans/PLAN.md) - Current implementation plan and roadmap
 - [context/CONTEXT.md](context/CONTEXT.md) - Current project state and progress
 - [logs/CHANGELOG.md](logs/CHANGELOG.md) - Public change log
+- [releases/](releases/) - Version release notes (e.g., 2.8.1.md, 2.8.0.md)
 - [references/REFERENCES.md](references/REFERENCES.md) - External resources
 
 ## Maintenance
