@@ -3832,6 +3832,10 @@ static void freeUpload(WebUpload *upload)
         unlink(upload->filename);
         rFree(upload->filename);
     }
+    if (upload->fd >= 0) {
+        close(upload->fd);
+        upload->fd = -1;
+    }
     rFree(upload->clientFilename);
     rFree(upload->name);
     rFree(upload->contentType);
