@@ -106,9 +106,6 @@ ME_COM_COMPILER       = 1
 #
 # Settings
 #
-!IFNDEF ME_APP
-ME_APP                = \"unit\"
-!ENDIF
 !IFNDEF ME_AUTHOR
 ME_AUTHOR             = \"Embedthis Software.\"
 !ENDIF
@@ -653,7 +650,7 @@ DEPS_18 = $(DEPS_18) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/agent.obj: \
     src/agent.c $(DEPS_18)
 	@echo .. [Compile] $(BUILD)/obj/agent.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/agent.obj" -Fd"$(BUILD)/obj/agent.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/agent.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/agent.obj" -Fd"$(BUILD)/obj/agent.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/agent.c" $(LOG)
 
 #
 #   ai.obj
@@ -663,18 +660,17 @@ DEPS_19 = $(DEPS_19) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ai.obj: \
     src/ai.c $(DEPS_19)
 	@echo .. [Compile] $(BUILD)/obj/ai.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/ai.obj" -Fd"$(BUILD)/obj/ai.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/ai.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/ai.obj" -Fd"$(BUILD)/obj/ai.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/ai.c" $(LOG)
 
 #
 #   app.obj
 #
 DEPS_20 = $(DEPS_20) $(BUILD)/inc/ioto.h
-DEPS_20 = $(DEPS_20) $(BUILD)/inc/config.h
 
 $(BUILD)/obj/app.obj: \
     src/app.c $(DEPS_20)
 	@echo .. [Compile] $(BUILD)/obj/app.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/app.obj" -Fd"$(BUILD)/obj/app.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/app.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/app.obj" -Fd"$(BUILD)/obj/app.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/app.c" $(LOG)
 
 #
 #   cloud.obj
@@ -684,7 +680,7 @@ DEPS_21 = $(DEPS_21) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloud.obj: \
     src/cloud/cloud.c $(DEPS_21)
 	@echo .. [Compile] $(BUILD)/obj/cloud.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/cloud.obj" -Fd"$(BUILD)/obj/cloud.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/cloud.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/cloud.obj" -Fd"$(BUILD)/obj/cloud.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/cloud.c" $(LOG)
 
 #
 #   cloudwatch.obj
@@ -694,7 +690,7 @@ DEPS_22 = $(DEPS_22) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloudwatch.obj: \
     src/cloud/cloudwatch.c $(DEPS_22)
 	@echo .. [Compile] $(BUILD)/obj/cloudwatch.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/cloudwatch.obj" -Fd"$(BUILD)/obj/cloudwatch.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/cloudwatch.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/cloudwatch.obj" -Fd"$(BUILD)/obj/cloudwatch.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/cloudwatch.c" $(LOG)
 
 #
 #   config.obj
@@ -704,7 +700,7 @@ DEPS_23 = $(DEPS_23) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/config.obj: \
     src/config.c $(DEPS_23)
 	@echo .. [Compile] $(BUILD)/obj/config.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/config.obj" -Fd"$(BUILD)/obj/config.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/config.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/config.obj" -Fd"$(BUILD)/obj/config.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/config.c" $(LOG)
 
 #
 #   cron.obj
@@ -714,7 +710,7 @@ DEPS_24 = $(DEPS_24) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cron.obj: \
     src/cron.c $(DEPS_24)
 	@echo .. [Compile] $(BUILD)/obj/cron.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/cron.obj" -Fd"$(BUILD)/obj/cron.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cron.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/cron.obj" -Fd"$(BUILD)/obj/cron.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cron.c" $(LOG)
 
 #
 #   cryptLib.obj
@@ -724,7 +720,7 @@ DEPS_25 = $(DEPS_25) $(BUILD)/inc/crypt.h
 $(BUILD)/obj/cryptLib.obj: \
     lib/cryptLib.c $(DEPS_25)
 	@echo .. [Compile] $(BUILD)/obj/cryptLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/cryptLib.obj" -Fd"$(BUILD)/obj/cryptLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/cryptLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/cryptLib.obj" -Fd"$(BUILD)/obj/cryptLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/cryptLib.c" $(LOG)
 
 #
 #   database.obj
@@ -734,7 +730,7 @@ DEPS_26 = $(DEPS_26) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/database.obj: \
     src/database.c $(DEPS_26)
 	@echo .. [Compile] $(BUILD)/obj/database.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/database.obj" -Fd"$(BUILD)/obj/database.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/database.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/database.obj" -Fd"$(BUILD)/obj/database.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/database.c" $(LOG)
 
 #
 #   db.obj
@@ -745,7 +741,7 @@ DEPS_27 = $(DEPS_27) $(BUILD)/inc/db.h
 $(BUILD)/obj/db.obj: \
     src/cmds/db.c $(DEPS_27)
 	@echo .. [Compile] $(BUILD)/obj/db.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/db.obj" -Fd"$(BUILD)/obj/db.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/db.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/db.obj" -Fd"$(BUILD)/obj/db.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/db.c" $(LOG)
 
 #
 #   dbLib.obj
@@ -756,7 +752,7 @@ DEPS_28 = $(DEPS_28) $(BUILD)/inc/crypt.h
 $(BUILD)/obj/dbLib.obj: \
     lib/dbLib.c $(DEPS_28)
 	@echo .. [Compile] $(BUILD)/obj/dbLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/dbLib.obj" -Fd"$(BUILD)/obj/dbLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/dbLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/dbLib.obj" -Fd"$(BUILD)/obj/dbLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/dbLib.c" $(LOG)
 
 #
 #   esp32.obj
@@ -766,7 +762,7 @@ DEPS_29 = $(DEPS_29) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/esp32.obj: \
     src/esp32.c $(DEPS_29)
 	@echo .. [Compile] $(BUILD)/obj/esp32.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/esp32.obj" -Fd"$(BUILD)/obj/esp32.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/esp32.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/esp32.obj" -Fd"$(BUILD)/obj/esp32.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/esp32.c" $(LOG)
 
 #
 #   helpers.obj
@@ -776,7 +772,7 @@ DEPS_30 = $(DEPS_30) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/helpers.obj: \
     src/cloud/helpers.c $(DEPS_30)
 	@echo .. [Compile] $(BUILD)/obj/helpers.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/helpers.obj" -Fd"$(BUILD)/obj/helpers.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/helpers.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/helpers.obj" -Fd"$(BUILD)/obj/helpers.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/helpers.c" $(LOG)
 
 #
 #   ioto.obj
@@ -786,7 +782,7 @@ DEPS_31 = $(DEPS_31) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ioto.obj: \
     src/cmds/ioto.c $(DEPS_31)
 	@echo .. [Compile] $(BUILD)/obj/ioto.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/ioto.obj" -Fd"$(BUILD)/obj/ioto.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/ioto.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/ioto.obj" -Fd"$(BUILD)/obj/ioto.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/ioto.c" $(LOG)
 
 #
 #   json.obj
@@ -798,7 +794,7 @@ DEPS_32 = $(DEPS_32) $(BUILD)/inc/json.h
 $(BUILD)/obj/json.obj: \
     src/cmds/json.c $(DEPS_32)
 	@echo .. [Compile] $(BUILD)/obj/json.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/json.obj" -Fd"$(BUILD)/obj/json.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/json.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/json.obj" -Fd"$(BUILD)/obj/json.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/json.c" $(LOG)
 
 #
 #   jsonLib.obj
@@ -808,7 +804,7 @@ DEPS_33 = $(DEPS_33) $(BUILD)/inc/json.h
 $(BUILD)/obj/jsonLib.obj: \
     lib/jsonLib.c $(DEPS_33)
 	@echo .. [Compile] $(BUILD)/obj/jsonLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/jsonLib.obj" -Fd"$(BUILD)/obj/jsonLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/jsonLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/jsonLib.obj" -Fd"$(BUILD)/obj/jsonLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/jsonLib.c" $(LOG)
 
 #
 #   logs.obj
@@ -818,7 +814,7 @@ DEPS_34 = $(DEPS_34) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/logs.obj: \
     src/cloud/logs.c $(DEPS_34)
 	@echo .. [Compile] $(BUILD)/obj/logs.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/logs.obj" -Fd"$(BUILD)/obj/logs.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/logs.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/logs.obj" -Fd"$(BUILD)/obj/logs.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/logs.c" $(LOG)
 
 #
 #   mqtt.obj
@@ -828,7 +824,7 @@ DEPS_35 = $(DEPS_35) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/mqtt.obj: \
     src/mqtt.c $(DEPS_35)
 	@echo .. [Compile] $(BUILD)/obj/mqtt.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/mqtt.obj" -Fd"$(BUILD)/obj/mqtt.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/mqtt.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/mqtt.obj" -Fd"$(BUILD)/obj/mqtt.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/mqtt.c" $(LOG)
 
 #
 #   mqttLib.obj
@@ -838,7 +834,7 @@ DEPS_36 = $(DEPS_36) $(BUILD)/inc/mqtt.h
 $(BUILD)/obj/mqttLib.obj: \
     lib/mqttLib.c $(DEPS_36)
 	@echo .. [Compile] $(BUILD)/obj/mqttLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/mqttLib.obj" -Fd"$(BUILD)/obj/mqttLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/mqttLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/mqttLib.obj" -Fd"$(BUILD)/obj/mqttLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/mqttLib.c" $(LOG)
 
 #
 #   openaiLib.obj
@@ -848,7 +844,7 @@ DEPS_37 = $(DEPS_37) $(BUILD)/inc/openai.h
 $(BUILD)/obj/openaiLib.obj: \
     lib/openaiLib.c $(DEPS_37)
 	@echo .. [Compile] $(BUILD)/obj/openaiLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/openaiLib.obj" -Fd"$(BUILD)/obj/openaiLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/openaiLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/openaiLib.obj" -Fd"$(BUILD)/obj/openaiLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/openaiLib.c" $(LOG)
 
 #
 #   password.obj
@@ -860,7 +856,7 @@ DEPS_38 = $(DEPS_38) $(BUILD)/inc/json.h
 $(BUILD)/obj/password.obj: \
     src/cmds/password.c $(DEPS_38)
 	@echo .. [Compile] $(BUILD)/obj/password.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/password.obj" -Fd"$(BUILD)/obj/password.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/password.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/password.obj" -Fd"$(BUILD)/obj/password.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/password.c" $(LOG)
 
 #
 #   provision.obj
@@ -870,7 +866,7 @@ DEPS_39 = $(DEPS_39) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/provision.obj: \
     src/cloud/provision.c $(DEPS_39)
 	@echo .. [Compile] $(BUILD)/obj/provision.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/provision.obj" -Fd"$(BUILD)/obj/provision.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/provision.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/provision.obj" -Fd"$(BUILD)/obj/provision.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/provision.c" $(LOG)
 
 #
 #   rLib.obj
@@ -880,7 +876,7 @@ DEPS_40 = $(DEPS_40) $(BUILD)/inc/r.h
 $(BUILD)/obj/rLib.obj: \
     lib/rLib.c $(DEPS_40)
 	@echo .. [Compile] $(BUILD)/obj/rLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/rLib.obj" -Fd"$(BUILD)/obj/rLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/rLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/rLib.obj" -Fd"$(BUILD)/obj/rLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/rLib.c" $(LOG)
 
 #
 #   register.obj
@@ -890,7 +886,7 @@ DEPS_41 = $(DEPS_41) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/register.obj: \
     src/register.c $(DEPS_41)
 	@echo .. [Compile] $(BUILD)/obj/register.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/register.obj" -Fd"$(BUILD)/obj/register.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/register.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/register.obj" -Fd"$(BUILD)/obj/register.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/register.c" $(LOG)
 
 #
 #   serialize.obj
@@ -900,7 +896,7 @@ DEPS_42 = $(DEPS_42) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/serialize.obj: \
     src/serialize.c $(DEPS_42)
 	@echo .. [Compile] $(BUILD)/obj/serialize.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/serialize.obj" -Fd"$(BUILD)/obj/serialize.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/serialize.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/serialize.obj" -Fd"$(BUILD)/obj/serialize.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/serialize.c" $(LOG)
 
 #
 #   setup.obj
@@ -910,7 +906,7 @@ DEPS_43 = $(DEPS_43) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/setup.obj: \
     src/setup.c $(DEPS_43)
 	@echo .. [Compile] $(BUILD)/obj/setup.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/setup.obj" -Fd"$(BUILD)/obj/setup.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/setup.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/setup.obj" -Fd"$(BUILD)/obj/setup.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/setup.c" $(LOG)
 
 #
 #   shadow.obj
@@ -920,7 +916,7 @@ DEPS_44 = $(DEPS_44) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/shadow.obj: \
     src/cloud/shadow.c $(DEPS_44)
 	@echo .. [Compile] $(BUILD)/obj/shadow.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/shadow.obj" -Fd"$(BUILD)/obj/shadow.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/shadow.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/shadow.obj" -Fd"$(BUILD)/obj/shadow.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/shadow.c" $(LOG)
 
 #
 #   sync.obj
@@ -930,7 +926,7 @@ DEPS_45 = $(DEPS_45) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/sync.obj: \
     src/cloud/sync.c $(DEPS_45)
 	@echo .. [Compile] $(BUILD)/obj/sync.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/sync.obj" -Fd"$(BUILD)/obj/sync.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/sync.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/sync.obj" -Fd"$(BUILD)/obj/sync.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/sync.c" $(LOG)
 
 #
 #   uctxLib.obj
@@ -941,7 +937,7 @@ DEPS_46 = $(DEPS_46) $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxLib.obj: \
     lib/uctxLib.c $(DEPS_46)
 	@echo .. [Compile] $(BUILD)/obj/uctxLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/uctxLib.obj" -Fd"$(BUILD)/obj/uctxLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/uctxLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/uctxLib.obj" -Fd"$(BUILD)/obj/uctxLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/uctxLib.c" $(LOG)
 
 #
 #   update.obj
@@ -951,7 +947,7 @@ DEPS_47 = $(DEPS_47) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/update.obj: \
     src/cloud/update.c $(DEPS_47)
 	@echo .. [Compile] $(BUILD)/obj/update.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/update.obj" -Fd"$(BUILD)/obj/update.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/update.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/update.obj" -Fd"$(BUILD)/obj/update.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cloud/update.c" $(LOG)
 
 #
 #   url.obj
@@ -962,7 +958,7 @@ DEPS_48 = $(DEPS_48) $(BUILD)/inc/json.h
 $(BUILD)/obj/url.obj: \
     src/cmds/url.c $(DEPS_48)
 	@echo .. [Compile] $(BUILD)/obj/url.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/url.obj" -Fd"$(BUILD)/obj/url.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/url.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/url.obj" -Fd"$(BUILD)/obj/url.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/url.c" $(LOG)
 
 #
 #   urlLib.obj
@@ -973,7 +969,7 @@ DEPS_49 = $(DEPS_49) $(BUILD)/inc/websock.h
 $(BUILD)/obj/urlLib.obj: \
     lib/urlLib.c $(DEPS_49)
 	@echo .. [Compile] $(BUILD)/obj/urlLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/urlLib.obj" -Fd"$(BUILD)/obj/urlLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/urlLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/urlLib.obj" -Fd"$(BUILD)/obj/urlLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/urlLib.c" $(LOG)
 
 #
 #   web.obj
@@ -983,7 +979,7 @@ DEPS_50 = $(DEPS_50) $(BUILD)/inc/web.h
 $(BUILD)/obj/web.obj: \
     src/cmds/web.c $(DEPS_50)
 	@echo .. [Compile] $(BUILD)/obj/web.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/web.obj" -Fd"$(BUILD)/obj/web.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/web.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/web.obj" -Fd"$(BUILD)/obj/web.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/cmds/web.c" $(LOG)
 
 #
 #   webLib.obj
@@ -993,7 +989,7 @@ DEPS_51 = $(DEPS_51) $(BUILD)/inc/web.h
 $(BUILD)/obj/webLib.obj: \
     lib/webLib.c $(DEPS_51)
 	@echo .. [Compile] $(BUILD)/obj/webLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/webLib.obj" -Fd"$(BUILD)/obj/webLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/webLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/webLib.obj" -Fd"$(BUILD)/obj/webLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/webLib.c" $(LOG)
 
 #
 #   webserver.obj
@@ -1003,7 +999,7 @@ DEPS_52 = $(DEPS_52) $(BUILD)/inc/ioto.h
 $(BUILD)/obj/webserver.obj: \
     src/webserver.c $(DEPS_52)
 	@echo .. [Compile] $(BUILD)/obj/webserver.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/webserver.obj" -Fd"$(BUILD)/obj/webserver.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/webserver.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/webserver.obj" -Fd"$(BUILD)/obj/webserver.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "src/webserver.c" $(LOG)
 
 #
 #   websockLib.obj
@@ -1014,7 +1010,7 @@ DEPS_53 = $(DEPS_53) $(BUILD)/inc/crypt.h
 $(BUILD)/obj/websockLib.obj: \
     lib/websockLib.c $(DEPS_53)
 	@echo .. [Compile] $(BUILD)/obj/websockLib.obj
-	"$(CC)" -c -Fo"$(BUILD)/obj/websockLib.obj" -Fd"$(BUILD)/obj/websockLib.pdb" $(CFLAGS) $(DFLAGS) "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/websockLib.c" $(LOG)
+	"$(CC)" -c -Fo"$(BUILD)/obj/websockLib.obj" -Fd"$(BUILD)/obj/websockLib.pdb" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" "-DME_COM_MBEDTLS_PATH=$(ME_COM_MBEDTLS_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" "-I$(ME_COM_MBEDTLS_PATH)/include" $(INPUT) "lib/websockLib.c" $(LOG)
 
 #
 #   libioto

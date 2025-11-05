@@ -46,7 +46,6 @@ endif
 #
 # Settings
 #
-ME_APP                ?= \"unit\"
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_BUILD              ?= \"build\"
 ME_COM_CRYPT          ?= 1
@@ -439,7 +438,7 @@ DEPS_18 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/agent.o: \
     src/agent.c $(DEPS_18)
 	@echo '   [Compile] $(BUILD)/obj/agent.o'
-	$(CC) -c -o "$(BUILD)/obj/agent.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/agent.c"
+	$(CC) -c -o "$(BUILD)/obj/agent.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/agent.c"
 
 #
 #   ai.o
@@ -449,18 +448,17 @@ DEPS_19 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ai.o: \
     src/ai.c $(DEPS_19)
 	@echo '   [Compile] $(BUILD)/obj/ai.o'
-	$(CC) -c -o "$(BUILD)/obj/ai.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/ai.c"
+	$(CC) -c -o "$(BUILD)/obj/ai.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/ai.c"
 
 #
 #   app.o
 #
 DEPS_20 += $(BUILD)/inc/ioto.h
-DEPS_20 += $(BUILD)/inc/config.h
 
 $(BUILD)/obj/app.o: \
     src/app.c $(DEPS_20)
 	@echo '   [Compile] $(BUILD)/obj/app.o'
-	$(CC) -c -o "$(BUILD)/obj/app.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/app.c"
+	$(CC) -c -o "$(BUILD)/obj/app.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/app.c"
 
 #
 #   cloud.o
@@ -470,7 +468,7 @@ DEPS_21 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloud.o: \
     src/cloud/cloud.c $(DEPS_21)
 	@echo '   [Compile] $(BUILD)/obj/cloud.o'
-	$(CC) -c -o "$(BUILD)/obj/cloud.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/cloud.c"
+	$(CC) -c -o "$(BUILD)/obj/cloud.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/cloud.c"
 
 #
 #   cloudwatch.o
@@ -480,7 +478,7 @@ DEPS_22 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloudwatch.o: \
     src/cloud/cloudwatch.c $(DEPS_22)
 	@echo '   [Compile] $(BUILD)/obj/cloudwatch.o'
-	$(CC) -c -o "$(BUILD)/obj/cloudwatch.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/cloudwatch.c"
+	$(CC) -c -o "$(BUILD)/obj/cloudwatch.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/cloudwatch.c"
 
 #
 #   config.o
@@ -490,7 +488,7 @@ DEPS_23 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/config.o: \
     src/config.c $(DEPS_23)
 	@echo '   [Compile] $(BUILD)/obj/config.o'
-	$(CC) -c -o "$(BUILD)/obj/config.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/config.c"
+	$(CC) -c -o "$(BUILD)/obj/config.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/config.c"
 
 #
 #   cron.o
@@ -500,7 +498,7 @@ DEPS_24 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cron.o: \
     src/cron.c $(DEPS_24)
 	@echo '   [Compile] $(BUILD)/obj/cron.o'
-	$(CC) -c -o "$(BUILD)/obj/cron.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cron.c"
+	$(CC) -c -o "$(BUILD)/obj/cron.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cron.c"
 
 #
 #   cryptLib.o
@@ -510,7 +508,7 @@ DEPS_25 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/cryptLib.o: \
     lib/cryptLib.c $(DEPS_25)
 	@echo '   [Compile] $(BUILD)/obj/cryptLib.o'
-	$(CC) -c -o "$(BUILD)/obj/cryptLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/cryptLib.c"
+	$(CC) -c -o "$(BUILD)/obj/cryptLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/cryptLib.c"
 
 #
 #   database.o
@@ -520,7 +518,7 @@ DEPS_26 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/database.o: \
     src/database.c $(DEPS_26)
 	@echo '   [Compile] $(BUILD)/obj/database.o'
-	$(CC) -c -o "$(BUILD)/obj/database.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/database.c"
+	$(CC) -c -o "$(BUILD)/obj/database.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/database.c"
 
 #
 #   db.o
@@ -531,7 +529,7 @@ DEPS_27 += $(BUILD)/inc/db.h
 $(BUILD)/obj/db.o: \
     src/cmds/db.c $(DEPS_27)
 	@echo '   [Compile] $(BUILD)/obj/db.o'
-	$(CC) -c -o "$(BUILD)/obj/db.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/db.c"
+	$(CC) -c -o "$(BUILD)/obj/db.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/db.c"
 
 #
 #   dbLib.o
@@ -542,7 +540,7 @@ DEPS_28 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/dbLib.o: \
     lib/dbLib.c $(DEPS_28)
 	@echo '   [Compile] $(BUILD)/obj/dbLib.o'
-	$(CC) -c -o "$(BUILD)/obj/dbLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/dbLib.c"
+	$(CC) -c -o "$(BUILD)/obj/dbLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/dbLib.c"
 
 #
 #   esp32.o
@@ -552,7 +550,7 @@ DEPS_29 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/esp32.o: \
     src/esp32.c $(DEPS_29)
 	@echo '   [Compile] $(BUILD)/obj/esp32.o'
-	$(CC) -c -o "$(BUILD)/obj/esp32.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/esp32.c"
+	$(CC) -c -o "$(BUILD)/obj/esp32.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/esp32.c"
 
 #
 #   helpers.o
@@ -562,7 +560,7 @@ DEPS_30 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/helpers.o: \
     src/cloud/helpers.c $(DEPS_30)
 	@echo '   [Compile] $(BUILD)/obj/helpers.o'
-	$(CC) -c -o "$(BUILD)/obj/helpers.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/helpers.c"
+	$(CC) -c -o "$(BUILD)/obj/helpers.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/helpers.c"
 
 #
 #   ioto.o
@@ -572,7 +570,7 @@ DEPS_31 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ioto.o: \
     src/cmds/ioto.c $(DEPS_31)
 	@echo '   [Compile] $(BUILD)/obj/ioto.o'
-	$(CC) -c -o "$(BUILD)/obj/ioto.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/ioto.c"
+	$(CC) -c -o "$(BUILD)/obj/ioto.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/ioto.c"
 
 #
 #   json.o
@@ -584,7 +582,7 @@ DEPS_32 += $(BUILD)/inc/json.h
 $(BUILD)/obj/json.o: \
     src/cmds/json.c $(DEPS_32)
 	@echo '   [Compile] $(BUILD)/obj/json.o'
-	$(CC) -c -o "$(BUILD)/obj/json.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/json.c"
+	$(CC) -c -o "$(BUILD)/obj/json.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/json.c"
 
 #
 #   jsonLib.o
@@ -594,7 +592,7 @@ DEPS_33 += $(BUILD)/inc/json.h
 $(BUILD)/obj/jsonLib.o: \
     lib/jsonLib.c $(DEPS_33)
 	@echo '   [Compile] $(BUILD)/obj/jsonLib.o'
-	$(CC) -c -o "$(BUILD)/obj/jsonLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/jsonLib.c"
+	$(CC) -c -o "$(BUILD)/obj/jsonLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/jsonLib.c"
 
 #
 #   logs.o
@@ -604,7 +602,7 @@ DEPS_34 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/logs.o: \
     src/cloud/logs.c $(DEPS_34)
 	@echo '   [Compile] $(BUILD)/obj/logs.o'
-	$(CC) -c -o "$(BUILD)/obj/logs.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/logs.c"
+	$(CC) -c -o "$(BUILD)/obj/logs.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/logs.c"
 
 #
 #   mqtt.o
@@ -614,7 +612,7 @@ DEPS_35 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/mqtt.o: \
     src/mqtt.c $(DEPS_35)
 	@echo '   [Compile] $(BUILD)/obj/mqtt.o'
-	$(CC) -c -o "$(BUILD)/obj/mqtt.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/mqtt.c"
+	$(CC) -c -o "$(BUILD)/obj/mqtt.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/mqtt.c"
 
 #
 #   mqttLib.o
@@ -624,7 +622,7 @@ DEPS_36 += $(BUILD)/inc/mqtt.h
 $(BUILD)/obj/mqttLib.o: \
     lib/mqttLib.c $(DEPS_36)
 	@echo '   [Compile] $(BUILD)/obj/mqttLib.o'
-	$(CC) -c -o "$(BUILD)/obj/mqttLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/mqttLib.c"
+	$(CC) -c -o "$(BUILD)/obj/mqttLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/mqttLib.c"
 
 #
 #   openaiLib.o
@@ -634,7 +632,7 @@ DEPS_37 += $(BUILD)/inc/openai.h
 $(BUILD)/obj/openaiLib.o: \
     lib/openaiLib.c $(DEPS_37)
 	@echo '   [Compile] $(BUILD)/obj/openaiLib.o'
-	$(CC) -c -o "$(BUILD)/obj/openaiLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/openaiLib.c"
+	$(CC) -c -o "$(BUILD)/obj/openaiLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/openaiLib.c"
 
 #
 #   password.o
@@ -646,7 +644,7 @@ DEPS_38 += $(BUILD)/inc/json.h
 $(BUILD)/obj/password.o: \
     src/cmds/password.c $(DEPS_38)
 	@echo '   [Compile] $(BUILD)/obj/password.o'
-	$(CC) -c -o "$(BUILD)/obj/password.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/password.c"
+	$(CC) -c -o "$(BUILD)/obj/password.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/password.c"
 
 #
 #   provision.o
@@ -656,7 +654,7 @@ DEPS_39 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/provision.o: \
     src/cloud/provision.c $(DEPS_39)
 	@echo '   [Compile] $(BUILD)/obj/provision.o'
-	$(CC) -c -o "$(BUILD)/obj/provision.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/provision.c"
+	$(CC) -c -o "$(BUILD)/obj/provision.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/provision.c"
 
 #
 #   rLib.o
@@ -666,7 +664,7 @@ DEPS_40 += $(BUILD)/inc/r.h
 $(BUILD)/obj/rLib.o: \
     lib/rLib.c $(DEPS_40)
 	@echo '   [Compile] $(BUILD)/obj/rLib.o'
-	$(CC) -c -o "$(BUILD)/obj/rLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/rLib.c"
+	$(CC) -c -o "$(BUILD)/obj/rLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/rLib.c"
 
 #
 #   register.o
@@ -676,7 +674,7 @@ DEPS_41 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/register.o: \
     src/register.c $(DEPS_41)
 	@echo '   [Compile] $(BUILD)/obj/register.o'
-	$(CC) -c -o "$(BUILD)/obj/register.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/register.c"
+	$(CC) -c -o "$(BUILD)/obj/register.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/register.c"
 
 #
 #   serialize.o
@@ -686,7 +684,7 @@ DEPS_42 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/serialize.o: \
     src/serialize.c $(DEPS_42)
 	@echo '   [Compile] $(BUILD)/obj/serialize.o'
-	$(CC) -c -o "$(BUILD)/obj/serialize.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/serialize.c"
+	$(CC) -c -o "$(BUILD)/obj/serialize.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/serialize.c"
 
 #
 #   setup.o
@@ -696,7 +694,7 @@ DEPS_43 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/setup.o: \
     src/setup.c $(DEPS_43)
 	@echo '   [Compile] $(BUILD)/obj/setup.o'
-	$(CC) -c -o "$(BUILD)/obj/setup.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/setup.c"
+	$(CC) -c -o "$(BUILD)/obj/setup.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/setup.c"
 
 #
 #   shadow.o
@@ -706,7 +704,7 @@ DEPS_44 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/shadow.o: \
     src/cloud/shadow.c $(DEPS_44)
 	@echo '   [Compile] $(BUILD)/obj/shadow.o'
-	$(CC) -c -o "$(BUILD)/obj/shadow.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/shadow.c"
+	$(CC) -c -o "$(BUILD)/obj/shadow.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/shadow.c"
 
 #
 #   sync.o
@@ -716,7 +714,7 @@ DEPS_45 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/sync.o: \
     src/cloud/sync.c $(DEPS_45)
 	@echo '   [Compile] $(BUILD)/obj/sync.o'
-	$(CC) -c -o "$(BUILD)/obj/sync.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/sync.c"
+	$(CC) -c -o "$(BUILD)/obj/sync.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/sync.c"
 
 #
 #   uctxAssembly.o
@@ -727,7 +725,7 @@ DEPS_46 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxAssembly.o: \
     lib/uctxAssembly.S $(DEPS_46)
 	@echo '   [Compile] $(BUILD)/obj/uctxAssembly.o'
-	$(CC) -c -o "$(BUILD)/obj/uctxAssembly.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/uctxAssembly.S"
+	$(CC) -c -o "$(BUILD)/obj/uctxAssembly.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/uctxAssembly.S"
 
 #
 #   uctxLib.o
@@ -738,7 +736,7 @@ DEPS_47 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxLib.o: \
     lib/uctxLib.c $(DEPS_47)
 	@echo '   [Compile] $(BUILD)/obj/uctxLib.o'
-	$(CC) -c -o "$(BUILD)/obj/uctxLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/uctxLib.c"
+	$(CC) -c -o "$(BUILD)/obj/uctxLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/uctxLib.c"
 
 #
 #   update.o
@@ -748,7 +746,7 @@ DEPS_48 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/update.o: \
     src/cloud/update.c $(DEPS_48)
 	@echo '   [Compile] $(BUILD)/obj/update.o'
-	$(CC) -c -o "$(BUILD)/obj/update.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/update.c"
+	$(CC) -c -o "$(BUILD)/obj/update.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cloud/update.c"
 
 #
 #   url.o
@@ -759,7 +757,7 @@ DEPS_49 += $(BUILD)/inc/json.h
 $(BUILD)/obj/url.o: \
     src/cmds/url.c $(DEPS_49)
 	@echo '   [Compile] $(BUILD)/obj/url.o'
-	$(CC) -c -o "$(BUILD)/obj/url.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/url.c"
+	$(CC) -c -o "$(BUILD)/obj/url.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/url.c"
 
 #
 #   urlLib.o
@@ -770,7 +768,7 @@ DEPS_50 += $(BUILD)/inc/websock.h
 $(BUILD)/obj/urlLib.o: \
     lib/urlLib.c $(DEPS_50)
 	@echo '   [Compile] $(BUILD)/obj/urlLib.o'
-	$(CC) -c -o "$(BUILD)/obj/urlLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/urlLib.c"
+	$(CC) -c -o "$(BUILD)/obj/urlLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/urlLib.c"
 
 #
 #   web.o
@@ -780,7 +778,7 @@ DEPS_51 += $(BUILD)/inc/web.h
 $(BUILD)/obj/web.o: \
     src/cmds/web.c $(DEPS_51)
 	@echo '   [Compile] $(BUILD)/obj/web.o'
-	$(CC) -c -o "$(BUILD)/obj/web.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/web.c"
+	$(CC) -c -o "$(BUILD)/obj/web.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/cmds/web.c"
 
 #
 #   webLib.o
@@ -790,7 +788,7 @@ DEPS_52 += $(BUILD)/inc/web.h
 $(BUILD)/obj/webLib.o: \
     lib/webLib.c $(DEPS_52)
 	@echo '   [Compile] $(BUILD)/obj/webLib.o'
-	$(CC) -c -o "$(BUILD)/obj/webLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/webLib.c"
+	$(CC) -c -o "$(BUILD)/obj/webLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/webLib.c"
 
 #
 #   webserver.o
@@ -800,7 +798,7 @@ DEPS_53 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/webserver.o: \
     src/webserver.c $(DEPS_53)
 	@echo '   [Compile] $(BUILD)/obj/webserver.o'
-	$(CC) -c -o "$(BUILD)/obj/webserver.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/webserver.c"
+	$(CC) -c -o "$(BUILD)/obj/webserver.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "src/webserver.c"
 
 #
 #   websockLib.o
@@ -811,7 +809,7 @@ DEPS_54 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/websockLib.o: \
     lib/websockLib.c $(DEPS_54)
 	@echo '   [Compile] $(BUILD)/obj/websockLib.o'
-	$(CC) -c -o "$(BUILD)/obj/websockLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/websockLib.c"
+	$(CC) -c -o "$(BUILD)/obj/websockLib.o" $(CFLAGS) $(DFLAGS) "-DME_DEBUG=1" "-DVXWORKS" "-DRW_MULTI_THREAD" "-DCPU=ARMARCH7" "-DTOOL_FAMILY=gnu" "-DTOOL=gnu" "-D_GNU_TOOL" "-D_WRS_KERNEL_" "-D_VSB_CONFIG_FILE=\"/WindRiver/vxworks-7/samples/prebuilt_projects/vsb_vxsim_linux/h/config/vsbConfig.h\"" "-DAPP=$(APP)" "-DME_COM_OPENSSL_PATH=$(ME_COM_OPENSSL_PATH)" $(IFLAGS) "-I$(ME_COM_OPENSSL_PATH)/include" $(INPUT) "lib/websockLib.c"
 
 #
 #   libioto

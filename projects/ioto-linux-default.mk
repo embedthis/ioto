@@ -40,7 +40,6 @@ endif
 #
 # Settings
 #
-ME_APP                ?= \"unit\"
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_BUILD              ?= \"build\"
 ME_COM_CRYPT          ?= 1
@@ -98,10 +97,10 @@ ME_WEB_UPLOAD         ?= 1
 ME_WEB_GROUP          ?= \"$(WEB_GROUP)\"
 ME_WEB_USER           ?= \"$(WEB_USER)\"
 
-CFLAGS                += -Wno-unused-result -Wall -g -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,-z,noexecheap -Wl,--no-warn-execstack -pie -fPIE
+CFLAGS                += -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,-z,noexecheap -Wl,--no-warn-execstack -pie -fPIE
 DFLAGS                +=  $(patsubst %,-D%,$(filter ME_%,$(MAKEFLAGS))) "-DME_COM_COMPILER=$(ME_COM_COMPILER)" "-DME_COM_LIB=$(ME_COM_LIB)" "-DME_COM_MBEDTLS=$(ME_COM_MBEDTLS)" "-DME_COM_OPENSSL=$(ME_COM_OPENSSL)" "-DME_COM_SSL=$(ME_COM_SSL)" "-DME_COM_VXWORKS=$(ME_COM_VXWORKS)" "-DME_COM_CRYPT=$(ME_COM_CRYPT)" "-DME_COM_DB=$(ME_COM_DB)" "-DME_COM_JSON=$(ME_COM_JSON)" "-DME_COM_MQTT=$(ME_COM_MQTT)" "-DME_COM_OPENAI=$(ME_COM_OPENAI)" "-DME_COM_R=$(ME_COM_R)" "-DME_COM_UCTX=$(ME_COM_UCTX)" "-DME_COM_URL=$(ME_COM_URL)" "-DME_COM_WEB=$(ME_COM_WEB)" "-DME_COM_WEBSOCK=$(ME_COM_WEBSOCK)" "-DME_WEB_AUTH=$(ME_WEB_AUTH)" "-DME_WEB_LIMITS=$(ME_WEB_LIMITS)" "-DME_WEB_SESSIONS=$(ME_WEB_SESSIONS)" "-DME_WEB_UPLOAD=$(ME_WEB_UPLOAD)" 
 IFLAGS                += "-I$(BUILD)/inc"
-LDFLAGS               += "-g"
+LDFLAGS               += 
 LIBPATHS              += "-L$(BUILD)/bin"
 LIBS                  += "-lrt" "-ldl" "-lpthread" "-lm"
 
@@ -431,7 +430,7 @@ DEPS_18 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/agent.o: \
     src/agent.c $(DEPS_18)
 	@echo '   [Compile] $(BUILD)/obj/agent.o'
-	$(CC) -c -o "$(BUILD)/obj/agent.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/agent.c"
+	$(CC) -c -o "$(BUILD)/obj/agent.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/agent.c"
 
 #
 #   ai.o
@@ -441,18 +440,17 @@ DEPS_19 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ai.o: \
     src/ai.c $(DEPS_19)
 	@echo '   [Compile] $(BUILD)/obj/ai.o'
-	$(CC) -c -o "$(BUILD)/obj/ai.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/ai.c"
+	$(CC) -c -o "$(BUILD)/obj/ai.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/ai.c"
 
 #
 #   app.o
 #
 DEPS_20 += $(BUILD)/inc/ioto.h
-DEPS_20 += $(BUILD)/inc/config.h
 
 $(BUILD)/obj/app.o: \
     src/app.c $(DEPS_20)
 	@echo '   [Compile] $(BUILD)/obj/app.o'
-	$(CC) -c -o "$(BUILD)/obj/app.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/app.c"
+	$(CC) -c -o "$(BUILD)/obj/app.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/app.c"
 
 #
 #   cloud.o
@@ -462,7 +460,7 @@ DEPS_21 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloud.o: \
     src/cloud/cloud.c $(DEPS_21)
 	@echo '   [Compile] $(BUILD)/obj/cloud.o'
-	$(CC) -c -o "$(BUILD)/obj/cloud.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/cloud.c"
+	$(CC) -c -o "$(BUILD)/obj/cloud.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/cloud.c"
 
 #
 #   cloudwatch.o
@@ -472,7 +470,7 @@ DEPS_22 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cloudwatch.o: \
     src/cloud/cloudwatch.c $(DEPS_22)
 	@echo '   [Compile] $(BUILD)/obj/cloudwatch.o'
-	$(CC) -c -o "$(BUILD)/obj/cloudwatch.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/cloudwatch.c"
+	$(CC) -c -o "$(BUILD)/obj/cloudwatch.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/cloudwatch.c"
 
 #
 #   config.o
@@ -482,7 +480,7 @@ DEPS_23 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/config.o: \
     src/config.c $(DEPS_23)
 	@echo '   [Compile] $(BUILD)/obj/config.o'
-	$(CC) -c -o "$(BUILD)/obj/config.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/config.c"
+	$(CC) -c -o "$(BUILD)/obj/config.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/config.c"
 
 #
 #   cron.o
@@ -492,7 +490,7 @@ DEPS_24 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/cron.o: \
     src/cron.c $(DEPS_24)
 	@echo '   [Compile] $(BUILD)/obj/cron.o'
-	$(CC) -c -o "$(BUILD)/obj/cron.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cron.c"
+	$(CC) -c -o "$(BUILD)/obj/cron.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cron.c"
 
 #
 #   cryptLib.o
@@ -502,7 +500,7 @@ DEPS_25 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/cryptLib.o: \
     lib/cryptLib.c $(DEPS_25)
 	@echo '   [Compile] $(BUILD)/obj/cryptLib.o'
-	$(CC) -c -o "$(BUILD)/obj/cryptLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/cryptLib.c"
+	$(CC) -c -o "$(BUILD)/obj/cryptLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/cryptLib.c"
 
 #
 #   database.o
@@ -512,7 +510,7 @@ DEPS_26 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/database.o: \
     src/database.c $(DEPS_26)
 	@echo '   [Compile] $(BUILD)/obj/database.o'
-	$(CC) -c -o "$(BUILD)/obj/database.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/database.c"
+	$(CC) -c -o "$(BUILD)/obj/database.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/database.c"
 
 #
 #   db.o
@@ -523,7 +521,7 @@ DEPS_27 += $(BUILD)/inc/db.h
 $(BUILD)/obj/db.o: \
     src/cmds/db.c $(DEPS_27)
 	@echo '   [Compile] $(BUILD)/obj/db.o'
-	$(CC) -c -o "$(BUILD)/obj/db.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/db.c"
+	$(CC) -c -o "$(BUILD)/obj/db.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/db.c"
 
 #
 #   dbLib.o
@@ -534,7 +532,7 @@ DEPS_28 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/dbLib.o: \
     lib/dbLib.c $(DEPS_28)
 	@echo '   [Compile] $(BUILD)/obj/dbLib.o'
-	$(CC) -c -o "$(BUILD)/obj/dbLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/dbLib.c"
+	$(CC) -c -o "$(BUILD)/obj/dbLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/dbLib.c"
 
 #
 #   esp32.o
@@ -544,7 +542,7 @@ DEPS_29 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/esp32.o: \
     src/esp32.c $(DEPS_29)
 	@echo '   [Compile] $(BUILD)/obj/esp32.o'
-	$(CC) -c -o "$(BUILD)/obj/esp32.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/esp32.c"
+	$(CC) -c -o "$(BUILD)/obj/esp32.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/esp32.c"
 
 #
 #   helpers.o
@@ -554,7 +552,7 @@ DEPS_30 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/helpers.o: \
     src/cloud/helpers.c $(DEPS_30)
 	@echo '   [Compile] $(BUILD)/obj/helpers.o'
-	$(CC) -c -o "$(BUILD)/obj/helpers.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/helpers.c"
+	$(CC) -c -o "$(BUILD)/obj/helpers.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/helpers.c"
 
 #
 #   ioto.o
@@ -564,7 +562,7 @@ DEPS_31 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/ioto.o: \
     src/cmds/ioto.c $(DEPS_31)
 	@echo '   [Compile] $(BUILD)/obj/ioto.o'
-	$(CC) -c -o "$(BUILD)/obj/ioto.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/ioto.c"
+	$(CC) -c -o "$(BUILD)/obj/ioto.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/ioto.c"
 
 #
 #   json.o
@@ -576,7 +574,7 @@ DEPS_32 += $(BUILD)/inc/json.h
 $(BUILD)/obj/json.o: \
     src/cmds/json.c $(DEPS_32)
 	@echo '   [Compile] $(BUILD)/obj/json.o'
-	$(CC) -c -o "$(BUILD)/obj/json.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/json.c"
+	$(CC) -c -o "$(BUILD)/obj/json.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/json.c"
 
 #
 #   jsonLib.o
@@ -586,7 +584,7 @@ DEPS_33 += $(BUILD)/inc/json.h
 $(BUILD)/obj/jsonLib.o: \
     lib/jsonLib.c $(DEPS_33)
 	@echo '   [Compile] $(BUILD)/obj/jsonLib.o'
-	$(CC) -c -o "$(BUILD)/obj/jsonLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/jsonLib.c"
+	$(CC) -c -o "$(BUILD)/obj/jsonLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/jsonLib.c"
 
 #
 #   logs.o
@@ -596,7 +594,7 @@ DEPS_34 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/logs.o: \
     src/cloud/logs.c $(DEPS_34)
 	@echo '   [Compile] $(BUILD)/obj/logs.o'
-	$(CC) -c -o "$(BUILD)/obj/logs.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/logs.c"
+	$(CC) -c -o "$(BUILD)/obj/logs.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/logs.c"
 
 #
 #   mqtt.o
@@ -606,7 +604,7 @@ DEPS_35 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/mqtt.o: \
     src/mqtt.c $(DEPS_35)
 	@echo '   [Compile] $(BUILD)/obj/mqtt.o'
-	$(CC) -c -o "$(BUILD)/obj/mqtt.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/mqtt.c"
+	$(CC) -c -o "$(BUILD)/obj/mqtt.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/mqtt.c"
 
 #
 #   mqttLib.o
@@ -616,7 +614,7 @@ DEPS_36 += $(BUILD)/inc/mqtt.h
 $(BUILD)/obj/mqttLib.o: \
     lib/mqttLib.c $(DEPS_36)
 	@echo '   [Compile] $(BUILD)/obj/mqttLib.o'
-	$(CC) -c -o "$(BUILD)/obj/mqttLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/mqttLib.c"
+	$(CC) -c -o "$(BUILD)/obj/mqttLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/mqttLib.c"
 
 #
 #   openaiLib.o
@@ -626,7 +624,7 @@ DEPS_37 += $(BUILD)/inc/openai.h
 $(BUILD)/obj/openaiLib.o: \
     lib/openaiLib.c $(DEPS_37)
 	@echo '   [Compile] $(BUILD)/obj/openaiLib.o'
-	$(CC) -c -o "$(BUILD)/obj/openaiLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/openaiLib.c"
+	$(CC) -c -o "$(BUILD)/obj/openaiLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/openaiLib.c"
 
 #
 #   password.o
@@ -638,7 +636,7 @@ DEPS_38 += $(BUILD)/inc/json.h
 $(BUILD)/obj/password.o: \
     src/cmds/password.c $(DEPS_38)
 	@echo '   [Compile] $(BUILD)/obj/password.o'
-	$(CC) -c -o "$(BUILD)/obj/password.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/password.c"
+	$(CC) -c -o "$(BUILD)/obj/password.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/password.c"
 
 #
 #   provision.o
@@ -648,7 +646,7 @@ DEPS_39 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/provision.o: \
     src/cloud/provision.c $(DEPS_39)
 	@echo '   [Compile] $(BUILD)/obj/provision.o'
-	$(CC) -c -o "$(BUILD)/obj/provision.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/provision.c"
+	$(CC) -c -o "$(BUILD)/obj/provision.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/provision.c"
 
 #
 #   rLib.o
@@ -658,7 +656,7 @@ DEPS_40 += $(BUILD)/inc/r.h
 $(BUILD)/obj/rLib.o: \
     lib/rLib.c $(DEPS_40)
 	@echo '   [Compile] $(BUILD)/obj/rLib.o'
-	$(CC) -c -o "$(BUILD)/obj/rLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/rLib.c"
+	$(CC) -c -o "$(BUILD)/obj/rLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/rLib.c"
 
 #
 #   register.o
@@ -668,7 +666,7 @@ DEPS_41 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/register.o: \
     src/register.c $(DEPS_41)
 	@echo '   [Compile] $(BUILD)/obj/register.o'
-	$(CC) -c -o "$(BUILD)/obj/register.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/register.c"
+	$(CC) -c -o "$(BUILD)/obj/register.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/register.c"
 
 #
 #   serialize.o
@@ -678,7 +676,7 @@ DEPS_42 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/serialize.o: \
     src/serialize.c $(DEPS_42)
 	@echo '   [Compile] $(BUILD)/obj/serialize.o'
-	$(CC) -c -o "$(BUILD)/obj/serialize.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/serialize.c"
+	$(CC) -c -o "$(BUILD)/obj/serialize.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/serialize.c"
 
 #
 #   setup.o
@@ -688,7 +686,7 @@ DEPS_43 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/setup.o: \
     src/setup.c $(DEPS_43)
 	@echo '   [Compile] $(BUILD)/obj/setup.o'
-	$(CC) -c -o "$(BUILD)/obj/setup.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/setup.c"
+	$(CC) -c -o "$(BUILD)/obj/setup.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/setup.c"
 
 #
 #   shadow.o
@@ -698,7 +696,7 @@ DEPS_44 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/shadow.o: \
     src/cloud/shadow.c $(DEPS_44)
 	@echo '   [Compile] $(BUILD)/obj/shadow.o'
-	$(CC) -c -o "$(BUILD)/obj/shadow.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/shadow.c"
+	$(CC) -c -o "$(BUILD)/obj/shadow.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/shadow.c"
 
 #
 #   sync.o
@@ -708,7 +706,7 @@ DEPS_45 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/sync.o: \
     src/cloud/sync.c $(DEPS_45)
 	@echo '   [Compile] $(BUILD)/obj/sync.o'
-	$(CC) -c -o "$(BUILD)/obj/sync.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/sync.c"
+	$(CC) -c -o "$(BUILD)/obj/sync.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/sync.c"
 
 #
 #   uctxAssembly.o
@@ -719,7 +717,7 @@ DEPS_46 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxAssembly.o: \
     lib/uctxAssembly.S $(DEPS_46)
 	@echo '   [Compile] $(BUILD)/obj/uctxAssembly.o'
-	$(CC) -c -o "$(BUILD)/obj/uctxAssembly.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/uctxAssembly.S"
+	$(CC) -c -o "$(BUILD)/obj/uctxAssembly.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/uctxAssembly.S"
 
 #
 #   uctxLib.o
@@ -730,7 +728,7 @@ DEPS_47 += $(BUILD)/inc/uctx-defs.h
 $(BUILD)/obj/uctxLib.o: \
     lib/uctxLib.c $(DEPS_47)
 	@echo '   [Compile] $(BUILD)/obj/uctxLib.o'
-	$(CC) -c -o "$(BUILD)/obj/uctxLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/uctxLib.c"
+	$(CC) -c -o "$(BUILD)/obj/uctxLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/uctxLib.c"
 
 #
 #   update.o
@@ -740,7 +738,7 @@ DEPS_48 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/update.o: \
     src/cloud/update.c $(DEPS_48)
 	@echo '   [Compile] $(BUILD)/obj/update.o'
-	$(CC) -c -o "$(BUILD)/obj/update.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cloud/update.c"
+	$(CC) -c -o "$(BUILD)/obj/update.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cloud/update.c"
 
 #
 #   url.o
@@ -751,7 +749,7 @@ DEPS_49 += $(BUILD)/inc/json.h
 $(BUILD)/obj/url.o: \
     src/cmds/url.c $(DEPS_49)
 	@echo '   [Compile] $(BUILD)/obj/url.o'
-	$(CC) -c -o "$(BUILD)/obj/url.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/url.c"
+	$(CC) -c -o "$(BUILD)/obj/url.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/url.c"
 
 #
 #   urlLib.o
@@ -762,7 +760,7 @@ DEPS_50 += $(BUILD)/inc/websock.h
 $(BUILD)/obj/urlLib.o: \
     lib/urlLib.c $(DEPS_50)
 	@echo '   [Compile] $(BUILD)/obj/urlLib.o'
-	$(CC) -c -o "$(BUILD)/obj/urlLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/urlLib.c"
+	$(CC) -c -o "$(BUILD)/obj/urlLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/urlLib.c"
 
 #
 #   web.o
@@ -772,7 +770,7 @@ DEPS_51 += $(BUILD)/inc/web.h
 $(BUILD)/obj/web.o: \
     src/cmds/web.c $(DEPS_51)
 	@echo '   [Compile] $(BUILD)/obj/web.o'
-	$(CC) -c -o "$(BUILD)/obj/web.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/cmds/web.c"
+	$(CC) -c -o "$(BUILD)/obj/web.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/cmds/web.c"
 
 #
 #   webLib.o
@@ -782,7 +780,7 @@ DEPS_52 += $(BUILD)/inc/web.h
 $(BUILD)/obj/webLib.o: \
     lib/webLib.c $(DEPS_52)
 	@echo '   [Compile] $(BUILD)/obj/webLib.o'
-	$(CC) -c -o "$(BUILD)/obj/webLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/webLib.c"
+	$(CC) -c -o "$(BUILD)/obj/webLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/webLib.c"
 
 #
 #   webserver.o
@@ -792,7 +790,7 @@ DEPS_53 += $(BUILD)/inc/ioto.h
 $(BUILD)/obj/webserver.o: \
     src/webserver.c $(DEPS_53)
 	@echo '   [Compile] $(BUILD)/obj/webserver.o'
-	$(CC) -c -o "$(BUILD)/obj/webserver.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "src/webserver.c"
+	$(CC) -c -o "$(BUILD)/obj/webserver.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "src/webserver.c"
 
 #
 #   websockLib.o
@@ -803,7 +801,7 @@ DEPS_54 += $(BUILD)/inc/crypt.h
 $(BUILD)/obj/websockLib.o: \
     lib/websockLib.c $(DEPS_54)
 	@echo '   [Compile] $(BUILD)/obj/websockLib.o'
-	$(CC) -c -o "$(BUILD)/obj/websockLib.o" $(CFLAGS) $(DFLAGS) $(IFLAGS) $(INPUT) "lib/websockLib.c"
+	$(CC) -c -o "$(BUILD)/obj/websockLib.o" $(CFLAGS) $(DFLAGS) "-DAPP=$(APP)" $(IFLAGS) $(INPUT) "lib/websockLib.c"
 
 #
 #   libioto
@@ -888,7 +886,7 @@ endif
 
 $(BUILD)/bin/db: $(DEPS_56)
 	@echo '      [Link] $(BUILD)/bin/db'
-	$(CC) -o "$(BUILD)/bin/db" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/db.o" $(LIBPATHS_56) $(LIBS_56) $(LIBS_56) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/db" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/db.o" $(LIBPATHS_56) $(LIBS_56) $(LIBS_56) $(LIBS) $(LIBS) 
 
 #
 #   ioto
@@ -919,7 +917,7 @@ endif
 
 $(BUILD)/bin/ioto: $(DEPS_57)
 	@echo '      [Link] $(BUILD)/bin/ioto'
-	$(CC) -o "$(BUILD)/bin/ioto" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/ioto.o" $(LIBPATHS_57) $(LIBS_57) $(LIBS_57) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/ioto" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/ioto.o" $(LIBPATHS_57) $(LIBS_57) $(LIBS_57) $(LIBS) $(LIBS) 
 
 #
 #   json
@@ -950,7 +948,7 @@ endif
 
 $(BUILD)/bin/json: $(DEPS_58)
 	@echo '      [Link] $(BUILD)/bin/json'
-	$(CC) -o "$(BUILD)/bin/json" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/json.o" $(LIBPATHS_58) $(LIBS_58) $(LIBS_58) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/json" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/json.o" $(LIBPATHS_58) $(LIBS_58) $(LIBS_58) $(LIBS) $(LIBS) 
 
 #
 #   password
@@ -981,7 +979,7 @@ endif
 
 $(BUILD)/bin/password: $(DEPS_59)
 	@echo '      [Link] $(BUILD)/bin/password'
-	$(CC) -o "$(BUILD)/bin/password" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/password.o" $(LIBPATHS_59) $(LIBS_59) $(LIBS_59) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/password" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/password.o" $(LIBPATHS_59) $(LIBS_59) $(LIBS_59) $(LIBS) $(LIBS) 
 
 #
 #   url
@@ -1012,7 +1010,7 @@ endif
 
 $(BUILD)/bin/url: $(DEPS_60)
 	@echo '      [Link] $(BUILD)/bin/url'
-	$(CC) -o "$(BUILD)/bin/url" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/url.o" $(LIBPATHS_60) $(LIBS_60) $(LIBS_60) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/url" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/url.o" $(LIBPATHS_60) $(LIBS_60) $(LIBS_60) $(LIBS) $(LIBS) 
 
 #
 #   web
@@ -1043,7 +1041,7 @@ endif
 
 $(BUILD)/bin/web: $(DEPS_61)
 	@echo '      [Link] $(BUILD)/bin/web'
-	$(CC) -o "$(BUILD)/bin/web" $(LDFLAGS) $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.o" $(LIBPATHS_61) $(LIBS_61) $(LIBS_61) $(LIBS) $(LIBS) 
+	$(CC) -o "$(BUILD)/bin/web" $(LIBPATHS) $(INPUT) "$(BUILD)/obj/web.o" $(LIBPATHS_61) $(LIBS_61) $(LIBS_61) $(LIBS) $(LIBS) 
 
 #
 #   stop

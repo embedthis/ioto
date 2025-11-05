@@ -3,9 +3,6 @@
  */
 
 /* Settings */
-#ifndef ME_APP
-    #define ME_APP "unit"
-#endif
 #ifndef ME_AUTHOR
     #define ME_AUTHOR "Embedthis Software."
 #endif
