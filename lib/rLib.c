@@ -1190,8 +1190,9 @@ PUBLIC Ticks rRunEvents(void)
             if (!fiber) {
                 fiber = rAllocFiber(NULL, (RFiberProc) ep->proc, arg);
                 if (!fiber) {
-                    // MOB - add error message here
-                    freeEvent(ep);
+                    // Put back event until we have a fiber to run it on
+                    ep->when = rGetTicks() + 1;
+                    linkEvent(ep);
                     continue;
                 }
             }
@@ -1299,7 +1300,6 @@ static void linkEvent(Event *event)
     rUnlock(&eventLock);
 }
 
-// MOB - change type to "int" and return error code
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data)
 {
     Watch *watch;
@@ -1341,7 +1341,10 @@ PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data)
         for (ITERATE_ITEMS(list, watch, next)) {
             if (watch->proc == proc && watch->data == data) {
                 rRemoveItemAt(list, next);
+#ifndef __clang_analyzer__
+                // Clang analyzer incorrectly complains about this
                 rFree(watch);
+#endif
                 break;
             }
         }
@@ -1407,7 +1410,6 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 
 #if R_USE_FIBER
 /*********************************** Locals ***********************************/
-
 /*
     Printf alone can use 8k
  */
@@ -1443,6 +1445,8 @@ static size_t stackSize = FIBER_DEFAULT_STACK;
 static int    fiberPeak = 0;
 static int    fiberCount = 0;
 static int    fiberLimit = 0;
+
+static void setupFiberSignalHandlers(void);
 
 /************************************ Code ************************************/
 
@@ -1489,8 +1493,8 @@ static void fiberEntry(RFiber *fiber, RFiberProc func, void *data)
     fiber->done = 1;
     rYieldFiber(0);
     /*
-        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext will resume
-        here and the pthread should immediately exit.
+        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext 
+        will resume here and the pthread should immediately exit.
      */
 }
 
@@ -1500,14 +1504,21 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
     size_t size;
     uctx_t *context;
 
-    if (++fiberCount > fiberLimit) {
+    if (fiberCount >= fiberLimit) {
         if (fiberLimit) {
-            rError("runtime", "Exceeded fiber limit %d", (int) fiberLimit);
+#if ME_FIBER_ALLOC_DEBUG
+            {
+                char buf[16];
+                DWRITE("Exceeded fiber limit "); DWRITE(sitosbuf(buf, sizeof(buf), fiberLimit, 10)); DWRITE("\n");
+            }
+#endif
+#if FIBER_HARD_FAIL
             rAllocException(R_MEM_STACK, (size_t) fiberLimit);
+#endif
             return NULL;
         }
     }
-    if (fiberCount > fiberPeak) {
+    if (++fiberCount > fiberPeak) {
         fiberPeak = fiberCount;
 #if ME_FIBER_ALLOC_DEBUG
         {
@@ -1674,9 +1685,11 @@ PUBLIC void rSetFiberStack(size_t size)
     }
 }
 
-PUBLIC void rSetFiberLimits(int maxFibers)
+PUBLIC int rSetFiberLimits(int maxFibers)
 {
+    int old = maxFibers;
     fiberLimit = maxFibers;
+    return old;
 }
 
 PUBLIC RFiber *rGetFiber(void)
@@ -1850,7 +1863,7 @@ PUBLIC int64 rGetStackUsage(void)
 #else
     #define SEPS "/"
     #define issep(c)       (c == '/')
-    #define isAbs(path)    (path && *path == '/')
+    #define isAbs(path)    (path && (*path == '/'))
     #define firstSep(path) strchr(path, '/')
 #endif
 
@@ -12163,6 +12176,8 @@ static void invokeHandler(size_t fd, int mask)
             assert(wp->handler);
             if (!wp->handler) return;
             if ((fiber = rAllocFiber("wait", (RFiberProc) wp->handler, wp->arg)) == 0) {
+                // Wait for a fiber to be available to run the handler
+                rStartEvent((REventProc) wp->handler, (void*) wp->arg, 1);
                 return;
             }
         }
