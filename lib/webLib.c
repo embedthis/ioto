@@ -1003,7 +1003,6 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
 
     if (host->connections >= host->maxConnections) {
         rTrace("web", "Too many connections %d/%d", (int) host->connections, (int) host->maxConnections);
-        rFreeSocket(sock);
         return R_ERR_WONT_FIT;
     }
     if ((web = rAllocType(Web)) == 0) {
@@ -1011,9 +1010,13 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
     }
     host->connections++;
     web->conn = conn++;
+
     initWeb(web, listen, sock, 0, 0);
     rAddItem(host->webs, web);
 
+#if FIBER_BLOCKS
+    if (rStartFiberBlock() == 0) {
+#endif
     if (host->flags & WEB_SHOW_REQ_HEADERS) {
         rLog("raw", "web", "Connect: %s\n", listen->endpoint);
     }
@@ -1024,6 +1027,9 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
     if (host->flags & WEB_SHOW_REQ_HEADERS) {
         rLog("raw", "web", "Disconnect: %s\n", listen->endpoint);
     }
+#if FIBER_BLOCKS
+}
+#endif
     webHook(web, WEB_HOOK_DISCONNECT);
     webFree(web);
 
@@ -1232,8 +1238,7 @@ static int handleRequest(Web *web)
     if (web->route->xsrf) {
         if (web->get) {
             /*
-                This send the XSRF token to the client. It will generate a new XSRF token if there is
-                not one already in the session state.
+                This will generate a new XSRF token if there is not one already in the session state.
              */
             webAddSecurityToken(web, 0);
         } else if (!web->options && !web->head && !web->trace) {
@@ -1420,7 +1425,7 @@ static bool matchFrom(Web *web, cchar *from)
 static int parseHeaders(Web *web, size_t headerSize)
 {
     RBuf *buf;
-    char *end, *tok;
+    char *end, *method, *tok;
 
     buf = web->rx;
     if (headerSize <= 10) {
