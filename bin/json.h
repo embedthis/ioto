@@ -2570,7 +2570,10 @@ typedef void (*RFiberProc)(void *data);
  */
 typedef struct RFiber {
     uctx_t context;
+    jmp_buf jmpbuf;
     void *result;
+    bool block;      // Fiber executing a setjmp block
+    int exception;    // Exception that caused the fiber to crash
     int done;
 #if FIBER_WITH_VALGRIND
     uint stackId;
@@ -2659,6 +2662,22 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
  */
 PUBLIC void *rYieldFiber(void *value);
 
+/** 
+    Start a fiber block
+    @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
+    @return Zero on first call. Returns 1 when jumping out of the block.
+    @stability Prototype
+ */
+PUBLIC int rStartFiberBlock(void);
+
+/**
+    End a fiber block
+    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs 
+    in the fiber block.
+    @stability Prototype
+ */
+PUBLIC void rEndFiberBlock(void);
+
 /**
     Get the current fiber object
     @return fiber Fiber object
@@ -2723,9 +2742,10 @@ PUBLIC void rSetFiberStack(size_t size);
 /**
     Set the fiber limits
     @param maxFibers The maximum number of fibers (stacks). Set to zero for no limit.
+    @return The previous limit.
     @stability Evolving
  */
-PUBLIC void rSetFiberLimits(int maxFibers);
+PUBLIC int rSetFiberLimits(int maxFibers);
 
 /**
     Allocate a fiber coroutine object
@@ -5790,6 +5810,7 @@ typedef struct RSocket {
     int flags : 8;
     uint mask : 4;
     uint hasCert : 1;                       /**< TLS certificate defined */
+    int linger;                             /**< Linger timeout in seconds. -1 means no linger. */
     RSocketProc handler;
     void *arg;
     char *error;
@@ -5943,10 +5964,10 @@ PUBLIC bool rIsSocketSecure(RSocket *sp);
 PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler, void *arg);
 
 /**
-    Read from a socket.
-    @description Read data from a socket. The read will return with whatever bytes are available. If none is available,
-       this call
-        will yield the current fiber and resume the main fiber. When data is available, the fiber will resume.
+    Read from a socket until a deadline is reached.
+    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are 
+        available. If none is available, this call will yield the current fiber and resume the main fiber. When data 
+        is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
@@ -5964,8 +5985,8 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
     Read from a socket.
     @description Read data from a socket. The read will return with whatever bytes are available. If none and the socket
         is in blocking mode, it will block until there is some data available or the socket is disconnected.
-        Use rSetSocketBlocking to change the socket blocking mode.
-        It is preferable to use rReadSocket which can wait without blocking via fiber coroutines.
+        Use rSetSocketBlocking to change the socket blocking mode.  It is preferable to use rReadSocket which can wait 
+        without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
     @param bufsize Size of the buffer.
@@ -6049,6 +6070,17 @@ PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers);
 PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
 
 /**
+    Set the socket linger timeout
+    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be closed.
+    If set to zero, the socket will be closed immediately with a RST packet instead of a FIN packet.
+    This API must be called before calling rConnectSocket.
+    @param sp Socket object returned from rAllocSocket
+    @param linger Timeout in seconds
+    @stability Evolving
+ */
+PUBLIC void rSetSocketLinger(RSocket *sp, int linger);
+
+/**
     Set the socket TLS verification parameters
     @description This call is a wrapper over rSetTlsCerts.
     @param sp Socket object returned from rAllocSocket
@@ -6077,21 +6109,18 @@ PUBLIC void rSetSocketDefaultVerify(int verifyPeer, int verifyIssuer);
 PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
 
 /**
-    Write to a socket
-    @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes. If no data can be written, this call
-            will yield the current fiber and resume the main fiber. When data is available, the fiber will resume.
+    Write to a socket until a deadline is reached
+    @description Write a block of data to a socket until a deadline is reached. This may return having written less 
+        than the required bytes if the deadline is reached. This call will yield the current fiber and resume 
+        the main fiber. When data is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param bufsize Length of data to write. This may be less than the requested write length if the socket is in
-       non-blocking
-        mode. Will return a negative error code on errors.
+    @param bufsize Length of data to write.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot absorb
-       any
-        more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
-        or EWOULDBLOCK.
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
+        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError() 
+        returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
 PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadline);
@@ -6099,17 +6128,15 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
 /**
     Write to a socket
     @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes.
-        It is preferable to use rWriteSocket which can wait without blocking via fiber coroutines.
+        may return having written less than the required bytes. It is preferable to use rWriteSocket which can wait 
+        without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param len Length of data to write. This may be less than the requested write length if the socket is in
-       non-blocking
-        mode. Will return a negative error code on errors.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot absorb
-       any
-        more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
-        or EWOULDBLOCK.
+    @param len Length of data to write. This may be less than the requested write length if the socket is 
+        in non-blocking mode. Will return a negative error code on errors.
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
+        absorb any more data. If the transport is saturated, will return a negative error and rGetError() 
+        returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t len);

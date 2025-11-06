@@ -1735,7 +1735,9 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             *json->next++ = 0;
             json->nodes[parent].last = json->count;
             parent = prior;
-            type = json->nodes[parent].type;
+            if (parent >= 0) {
+                type = json->nodes[parent].type;
+            }
             break;
 
         case '\n':
@@ -4366,8 +4368,9 @@ PUBLIC Ticks rRunEvents(void)
             if (!fiber) {
                 fiber = rAllocFiber(NULL, (RFiberProc) ep->proc, arg);
                 if (!fiber) {
-                    // MOB - add error message here
-                    freeEvent(ep);
+                    // Put back event until we have a fiber to run it on
+                    ep->when = rGetTicks() + 1;
+                    linkEvent(ep);
                     continue;
                 }
             }
@@ -4475,7 +4478,6 @@ static void linkEvent(Event *event)
     rUnlock(&eventLock);
 }
 
-// MOB - change type to "int" and return error code
 PUBLIC void rWatch(cchar *name, RWatchProc proc, void *data)
 {
     Watch *watch;
@@ -4517,7 +4519,10 @@ PUBLIC void rWatchOff(cchar *name, RWatchProc proc, void *data)
         for (ITERATE_ITEMS(list, watch, next)) {
             if (watch->proc == proc && watch->data == data) {
                 rRemoveItemAt(list, next);
+#ifndef __clang_analyzer__
+                // Clang analyzer incorrectly complains about this
                 rFree(watch);
+#endif
                 break;
             }
         }
@@ -4583,7 +4588,6 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 
 #if R_USE_FIBER
 /*********************************** Locals ***********************************/
-
 /*
     Printf alone can use 8k
  */
@@ -4620,6 +4624,8 @@ static int    fiberPeak = 0;
 static int    fiberCount = 0;
 static int    fiberLimit = 0;
 
+static void setupFiberSignalHandlers(void);
+
 /************************************ Code ************************************/
 
 PUBLIC int rInitFibers(void)
@@ -4643,16 +4649,59 @@ PUBLIC int rInitFibers(void)
         return R_ERR_CANT_ALLOCATE;
     }
 #endif
+    setupFiberSignalHandlers();
     return 0;
 }
 
 PUBLIC void rTermFibers(void)
 {
-    // MOB - test this on windows --exit 5
     uctx_freecontext(&mainFiber->context);
     uctx_term();
     mainFiber = NULL;
     currentFiber = NULL;
+}
+
+PUBLIC int rStartFiberBlock(void)
+{
+    currentFiber->block = 1;
+    return setjmp(currentFiber->jmpbuf);
+}
+
+static void fiberSignalHandler(int signum)
+{
+    /*
+        If there is a double-exception while it is cleaning up, then abort.
+    */
+    if (currentFiber->block && currentFiber->exception == 0) {
+        currentFiber->block = 0;
+        currentFiber->exception = signum;
+        rEndFiberBlock();
+    } else {
+        abort();
+    }
+}
+
+/*
+    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit. 
+*/
+PUBLIC void rEndFiberBlock(void)
+{
+    longjmp(currentFiber->jmpbuf, 1);
+}
+
+static void setupFiberSignalHandlers(void)
+{
+#if ME_UNIX_LIKE
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = fiberSignalHandler;
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+#endif
 }
 
 /*
@@ -4665,8 +4714,8 @@ static void fiberEntry(RFiber *fiber, RFiberProc func, void *data)
     fiber->done = 1;
     rYieldFiber(0);
     /*
-        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext will resume
-        here and the pthread should immediately exit.
+        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext 
+        will resume here and the pthread should immediately exit.
      */
 }
 
@@ -4676,14 +4725,21 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
     size_t size;
     uctx_t *context;
 
-    if (++fiberCount > fiberLimit) {
+    if (fiberCount >= fiberLimit) {
         if (fiberLimit) {
-            rError("runtime", "Exceeded fiber limit %d", (int) fiberLimit);
+#if ME_FIBER_ALLOC_DEBUG
+            {
+                char buf[16];
+                DWRITE("Exceeded fiber limit "); DWRITE(sitosbuf(buf, sizeof(buf), fiberLimit, 10)); DWRITE("\n");
+            }
+#endif
+#if FIBER_HARD_FAIL
             rAllocException(R_MEM_STACK, (size_t) fiberLimit);
+#endif
             return NULL;
         }
     }
-    if (fiberCount > fiberPeak) {
+    if (++fiberCount > fiberPeak) {
         fiberPeak = fiberCount;
 #if ME_FIBER_ALLOC_DEBUG
         {
@@ -4850,9 +4906,11 @@ PUBLIC void rSetFiberStack(size_t size)
     }
 }
 
-PUBLIC void rSetFiberLimits(int maxFibers)
+PUBLIC int rSetFiberLimits(int maxFibers)
 {
+    int old = maxFibers;
     fiberLimit = maxFibers;
+    return old;
 }
 
 PUBLIC RFiber *rGetFiber(void)
@@ -5026,7 +5084,7 @@ PUBLIC int64 rGetStackUsage(void)
 #else
     #define SEPS "/"
     #define issep(c)       (c == '/')
-    #define isAbs(path)    (path && *path == '/')
+    #define isAbs(path)    (path && (*path == '/'))
     #define firstSep(path) strchr(path, '/')
 #endif
 
@@ -7697,12 +7755,14 @@ PUBLIC void rMetrics(cchar *message, cchar *namespace, cchar *dimensions, cchar 
     if ((buf = rAllocBuf(0)) == 0) {
         return;
     }
-    rPutToBuf(buf, "%s\n\
+    rPutToBuf(buf,
+              "%s\n\
         _aws: {\n\
             Timestamp: %lld,\n\
             CloudWatchMetrics: [{\n\
                 Dimensions: [dimensions],\n\
-                Namespace: %s,\n", message,
+                Namespace: %s,\n",
+              message,
               rGetTime(), namespace);
 
     if (dimensions) {
@@ -11648,6 +11708,7 @@ PUBLIC RSocket *rAllocSocket(void)
         return 0;
     }
     sp->fd = INVALID_SOCKET;
+    sp->linger = -1;
     return sp;
 }
 
@@ -11695,10 +11756,12 @@ PUBLIC void rCloseSocket(RSocket *sp)
         closesocket(sp->fd);
         sp->fd = INVALID_SOCKET;
     }
+    sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
+
     if (sp->wait) {
+        // The resumed party may free the socket -- be careful!
         rResumeWait(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
     }
-    sp->flags |= R_SOCKET_CLOSED | R_SOCKET_EOF;
 }
 
 PUBLIC void rDisconnectSocket(RSocket *sp)
@@ -11731,6 +11794,9 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
 
     if (!host) {
         return rSetSocketError(sp, "Host address required for connection");
+    }
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
     }
     if (sp->fd != INVALID_SOCKET) {
         rCloseSocket(sp);
@@ -11768,7 +11834,6 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
             rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
             continue;
         }
-
         rSetSocketBlocking(sp, 0);
         sp->wait = rAllocWait((int) sp->fd);
 
@@ -11810,6 +11875,12 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         return rSetSocketError(sp, "Cannot upgrade socket to TLS");
     }
  #endif
+    if (sp->linger >= 0) {
+        struct linger linger;
+        linger.l_onoff = 1;
+        linger.l_linger = sp->linger;
+        setsockopt(sp->fd, SOL_SOCKET, SO_LINGER, (char*) &linger, sizeof(linger));
+    }
     return 0;
 }
 
@@ -11819,7 +11890,7 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     struct sockaddr_storage addr;
     char                    pbuf[16];
     Socklen                 addrLen;
-    int                     family, rc;
+    int                     family;
 
     if (!lp || !handler) {
         return R_ERR_BAD_ARGS;
@@ -11847,7 +11918,7 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     }
 
     sitosbuf(pbuf, sizeof(pbuf), port, 10);
-    if ((rc = getaddrinfo(host, pbuf, &hints, &res)) != 0) {
+    if (getaddrinfo(host, pbuf, &hints, &res) != 0) {
         return rSetSocketError(lp, "Cannot resolve address %s:%d", host ? host : "*", port);
     }
     //  Try each resolved address until one succeeds
@@ -12036,6 +12107,9 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
     if (!sp || !buf || bufsize <= 0 || bufsize > MAXSSIZE / 2) {
         return R_ERR_BAD_ARGS;
     }
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
+    }
     while (1) {
         nbytes = rReadSocketSync(sp, buf, bufsize);
         if (nbytes != 0) {
@@ -12052,6 +12126,9 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
     ssize  written;
     size_t toWrite;
 
+    if (deadline <= 0) {
+        deadline = rGetTicks() + ME_HANDSHAKE_TIMEOUT;
+    }
     for (toWrite = bufsize; toWrite > 0; ) {
         written = rWriteSocketSync(sp, buf, toWrite);
         if (written < 0) {
@@ -12111,6 +12188,10 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
     return bytes;
 }
 
+/*
+    Set a socket into blocking I/O mode. from a socket.
+    Sockets are opened in non-blocking mode by default.
+*/
 PUBLIC void rSetSocketBlocking(RSocket *sp, bool on)
 {
 #if ME_WIN_LIKE
@@ -12210,6 +12291,13 @@ PUBLIC void rSetSocketCiphers(RSocket *sp, cchar *ciphers)
 PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers)
 {
     rSetTlsDefaultCiphers(ciphers);
+}
+
+PUBLIC void rSetSocketLinger(RSocket *sp, int linger)
+{
+    if (sp) {
+        sp->linger = linger;
+    }
 }
 
 PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer)
@@ -12369,7 +12457,7 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port)
 static int getSocketError(RSocket *sp)
 {
     Socklen len;
-    int error;
+    int     error;
 
     len = sizeof(error);
     error = 0;
@@ -14264,9 +14352,9 @@ PUBLIC Ticks rGetTicks(void)
         Last chance. Need to resort to rGetTime which is subject to user and seasonal adjustments.
         This code will prevent it going backwards, but may suffer large jumps forward.
      */
-    static Time  lastTicks = 0;
-    static Time  adjustTicks = 0;
-    Time         result, diff;
+    static Time lastTicks = 0;
+    static Time adjustTicks = 0;
+    Time        result, diff;
 
     if (lastTicks == 0) {
         /* This will happen at init time when single threaded */
@@ -14915,9 +15003,11 @@ PUBLIC RWait *rAllocWait(int fd)
 
 PUBLIC void rFreeWait(RWait *wp)
 {
+    char fdbuf[32];
+
     if (wp) {
         rSetWaitMask(wp, 0, 0);
-        rRemoveName(waitMap, sitos(wp->fd));
+        rRemoveName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) wp->fd, 10));
         rResumeWait(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
         rFree(wp);
     }
@@ -15301,10 +15391,11 @@ static void invokeHandler(size_t fd, int mask)
 {
     RWait  *wp;
     RFiber *fiber;
+    char   fdbuf[32];
 
     assert(rIsMain());
 
-    if ((wp = rLookupName(waitMap, sitos((int64) fd))) == 0) {
+    if ((wp = rLookupName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) fd, 10))) == 0) {
         return;
     }
     if ((wp->mask | R_TIMEOUT) & mask) {
@@ -15315,6 +15406,8 @@ static void invokeHandler(size_t fd, int mask)
             assert(wp->handler);
             if (!wp->handler) return;
             if ((fiber = rAllocFiber("wait", (RFiberProc) wp->handler, wp->arg)) == 0) {
+                // Wait for a fiber to be available to run the handler
+                rStartEvent((REventProc) wp->handler, (void*) wp->arg, 1);
                 return;
             }
         }
