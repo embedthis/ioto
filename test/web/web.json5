@@ -4,6 +4,9 @@
     See doc/web.json5 for examples.
 */
 {
+    limits: {
+        fibers: 10,
+    },
     log: {
         path: 'log.txt',
         format: '%S: %T: %M',

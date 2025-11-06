@@ -1,28 +1,26 @@
 /*
-    fuzzLib.c - Fuzzing test library implementation
+    fuzz.c - Fuzzing test library implementation
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 /********************************** Includes **********************************/
 
-#include "fuzzLib.h"
-#include "r.h"
-#include "crypt.h"
-#include <signal.h>
-#include <setjmp.h>
-#include <sys/stat.h>
-#include <stdlib.h>
+#include "fuzz.h"
 
 /*********************************** Locals ***********************************/
 
 static FuzzRunner *currentRunner = NULL;
+static bool       (*shouldStopCallback)(void) = NULL;
 
 /********************************** Forwards **********************************/
 
-static void signalHandler(int sig);
+static uint hex2int(char c);
+static char *fuzzUnescapeString(cchar *str, size_t *outLen);
 static char *generateRandomData(size_t len, bool printable);
 static uint getRandom(void);
+static void signalHandler(int sig);
+static size_t utf8Encode(uint cp, char *buf);
 
 /************************************ Code ************************************/
 
@@ -87,24 +85,34 @@ PUBLIC void fuzzSetMutator(FuzzRunner *runner, FuzzMutator mutator)
     runner->mutator = mutator;
 }
 
+PUBLIC void fuzzSetShouldStopCallback(bool (*callback)(void))
+{
+    shouldStopCallback = callback;
+}
+
 PUBLIC int fuzzLoadCorpus(FuzzRunner *runner, cchar *path)
 {
-    char   *content, *line, *next;
-    size_t len;
+    char   *content, *line, *next, *unescaped;
+    size_t len, unescapedLen;
     int    count = 0;
 
     content = rReadFile(path, &len);
     if (!content) {
         return 0;
     }
-
     for (line = stok(content, "\n", &next); line; line = stok(NULL, "\n", &next)) {
+        // Skip comments and blank lines
+        line = strim(line, " \t\r\n", 0);
         if (line[0] && line[0] != '#') {
-            fuzzAddCorpus(runner, line, slen(line));
-            count++;
+            // Unescape the line to convert \r\n → CR LF, \x00 → null byte, etc.
+            unescaped = fuzzUnescapeString(line, &unescapedLen);
+            if (unescaped) {
+                fuzzAddCorpus(runner, unescaped, unescapedLen);
+                rFree(unescaped);
+                count++;
+            }
         }
     }
-
     rFree(content);
     return count;
 }
@@ -116,25 +124,36 @@ PUBLIC void fuzzAddCorpus(FuzzRunner *runner, cchar *input, size_t len)
 
 PUBLIC int fuzzRun(FuzzRunner *runner)
 {
-    size_t corpusLen;
+    size_t corpusLen, len;
+    cchar  *input;
+    char   *mutated;
     int    i;
 
     if (!runner->oracle) {
         rError("fuzz", "No test oracle configured");
         return -1;
     }
-
     if (rGetListLength(runner->corpus) == 0) {
         rError("fuzz", "Empty corpus - add at least one test case");
         return -1;
     }
-
     for (i = 0; i < runner->config.iterations; i++) {
-        cchar *input = fuzzGetRandomCorpus(runner, &corpusLen);
+        if (runner->config.randomize) {
+            input = fuzzGetRandomCorpus(runner, &corpusLen);
+        } else {
+            input = rGetItem(runner->corpus, i);
+            corpusLen = slen(input);
+        }
         if (!input) continue;
 
-        size_t len = corpusLen;
-        char   *mutated = runner->mutator ? runner->mutator(input, &len) : snclone(input, len);
+        // Check if fuzzing should stop (e.g., server crashed)
+        if (shouldStopCallback && shouldStopCallback()) {
+            rInfo("fuzz", "Stopping fuzzing early at iteration %d", i);
+            break;
+        }
+        len = corpusLen;
+        mutated = (runner->mutator && runner->config.mutate) ?
+                  runner->mutator(input, &len) : snclone(input, len);
 
         if (setjmp(runner->crashJmp) == 0) {
             bool passed = runner->oracle(mutated, len);
@@ -144,6 +163,13 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
                     fuzzSaveCrash(runner, mutated, len, 0);
                     runner->stats.crashes++;
                     runner->stats.unique++;
+
+                    // Stop on first error if configured
+                    if (runner->config.stop) {
+                        rInfo("fuzz", "Stopping on first error at iteration %d", i);
+                        rFree(mutated);
+                        break;
+                    }
                 }
             }
             runner->stats.total++;
@@ -153,13 +179,17 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
                 fuzzSaveCrash(runner, mutated, len, runner->signal);
                 runner->stats.crashes++;
                 runner->stats.unique++;
+
+                // Stop on first error if configured
+                if (runner->config.stop) {
+                    rInfo("fuzz", "Stopping on first crash at iteration %d", i);
+                    rFree(mutated);
+                    break;
+                }
             }
             runner->crashed = false;
         }
-
-        rFree(mutated);
-
-        if (runner->config.verbose && (i % 1000) == 0 && i > 0) {
+        if (runner->config.verbose && (i % 100) == 0 && i > 0) {
             rInfo("fuzz", "Iteration %d/%d - Crashes: %d (unique: %d)",
                   i, runner->config.iterations, runner->stats.crashes, runner->stats.unique);
         }
@@ -310,7 +340,7 @@ PUBLIC char *fuzzReplace(cchar *input, size_t *len, cchar *pattern, cchar *repla
 
     patternLen = slen(pattern);
     replaceLen = slen(replacement);
-    offset = (size_t)(pos - input);
+    offset = (size_t) (pos - input);
     result = rAlloc(*len - patternLen + replaceLen);
 
     memcpy(result, input, offset);
@@ -418,6 +448,266 @@ static char *generateRandomData(size_t len, bool printable)
 static uint getRandom(void)
 {
     return (uint) random();
+}
+
+/*
+    Unescape a string with support for:
+    - Standard escapes: \r \n \t \\ \' \"
+    - Hex codes: \x00 \xFF
+    - Unicode: \u0041 \u{1F600}
+    Returns newly allocated unescaped string with actual byte values
+ */
+static char *fuzzUnescapeString(cchar *str, size_t *outLen)
+{
+    RBuf   *buf;
+    char   *result;
+    size_t hexLen, i, len;
+    uint   cp;
+
+    if (!str) {
+        *outLen = 0;
+        return NULL;
+    }
+    len = slen(str);
+    buf = rAllocBuf(len);  // Will be <= original length
+
+    for (i = 0; i < len; i++) {
+        if (str[i] == '\\' && i + 1 < len) {
+            switch (str[i + 1]) {
+            case 'r':
+                rPutCharToBuf(buf, '\r');
+                i++;
+                break;
+            case 'n':
+                rPutCharToBuf(buf, '\n');
+                i++;
+                break;
+            case 't':
+                rPutCharToBuf(buf, '\t');
+                i++;
+                break;
+            case '\\':
+                rPutCharToBuf(buf, '\\');
+                i++;
+                break;
+            case '\'':
+                rPutCharToBuf(buf, '\'');
+                i++;
+                break;
+            case '"':
+                rPutCharToBuf(buf, '"');
+                i++;
+                break;
+            case '0':
+                rPutCharToBuf(buf, '\0');
+                i++;
+                break;
+            case 'x':
+                // Hex escape: \xHH (2 hex digits)
+                if (i + 3 < len && isxdigit((uchar) str[i + 2]) && isxdigit((uchar) str[i + 3])) {
+                    uchar byte = (uchar) ((hex2int(str[i + 2]) << 4) | hex2int(str[i + 3]));
+                    rPutCharToBuf(buf, byte);
+                    i += 3;
+                } else {
+                    // Invalid hex escape, keep literal
+                    rPutCharToBuf(buf, '\\');
+                }
+                break;
+            case 'u':
+                // Unicode escape: \uHHHH or \u{HHHHHH}
+                if (i + 2 < len && str[i + 2] == '{') { /* } */
+                    // Extended form: \u{HHHHHH}
+                    hexLen = 0;
+                    cp = 0;
+                    /* { */
+                    for (size_t j = i + 3; j < len && str[j] != '}' && hexLen < 6; j++) {
+                        if (isxdigit((uchar) str[j])) {
+                            cp = (cp << 4) | hex2int(str[j]);
+                            hexLen++;
+                        } else {
+                            break;
+                        }
+                    }
+                    /* { */
+                    if (hexLen > 0 && i + 3 + hexLen < len && str[i + 3 + hexLen] == '}') {
+                        // Valid unicode escape - encode as UTF-8
+                        char   utf8[5];
+                        size_t utf8len = utf8Encode(cp, utf8);
+                        rPutBlockToBuf(buf, utf8, utf8len);
+                        i += 3 + hexLen + 1;  // Skip \u{HHHHHH}
+                    } else {
+                        // Invalid, keep literal
+                        rPutCharToBuf(buf, '\\');
+                    }
+                } else if (i + 5 < len) {
+                    // Standard form: \uHHHH (4 hex digits)
+                    if (isxdigit((uchar) str[i + 2]) && isxdigit((uchar) str[i + 3]) &&
+                        isxdigit((uchar) str[i + 4]) && isxdigit((uchar) str[i + 5])) {
+                        cp = (hex2int(str[i + 2]) << 12) | (hex2int(str[i + 3]) << 8) |
+                             (hex2int(str[i + 4]) << 4) | hex2int(str[i + 5]);
+                        // Encode as UTF-8
+                        char   utf8[5];
+                        size_t utf8len = utf8Encode(cp, utf8);
+                        rPutBlockToBuf(buf, utf8, utf8len);
+                        i += 5;  // Skip \uHHHH
+                    } else {
+                        // Invalid, keep literal
+                        rPutCharToBuf(buf, '\\');
+                    }
+                } else {
+                    // Invalid, keep literal
+                    rPutCharToBuf(buf, '\\');
+                }
+                break;
+            default:
+                // Unknown escape, keep literal backslash
+                rPutCharToBuf(buf, '\\');
+                break;
+            }
+        } else {
+            rPutCharToBuf(buf, str[i]);
+        }
+    }
+    rAddNullToBuf(buf);
+    *outLen = rGetBufLength(buf);
+    result = rBufToStringAndFree(buf);
+    return result;
+}
+
+/*
+    Convert hex character to integer value
+ */
+static uint hex2int(char c)
+{
+    if (c >= '0' && c <= '9') return (uint)(c - '0');
+    if (c >= 'a' && c <= 'f') return (uint)(c - 'a' + 10);
+    if (c >= 'A' && c <= 'F') return (uint)(c - 'A' + 10);
+    return 0;
+}
+
+/*
+    Encode Unicode codepoint as UTF-8
+    Returns number of bytes written (1-4)
+ */
+static size_t utf8Encode(uint cp, char *buf)
+{
+    if (cp <= 0x7F) {
+        // 1-byte sequence: 0xxxxxxx
+        buf[0] = (char) cp;
+        return 1;
+    } else if (cp <= 0x7FF) {
+        // 2-byte sequence: 110xxxxx 10xxxxxx
+        buf[0] = (char) (0xC0 | (cp >> 6));
+        buf[1] = (char) (0x80 | (cp & 0x3F));
+        return 2;
+    } else if (cp <= 0xFFFF) {
+        // 3-byte sequence: 1110xxxx 10xxxxxx 10xxxxxx
+        buf[0] = (char) (0xE0 | (cp >> 12));
+        buf[1] = (char) (0x80 | ((cp >> 6) & 0x3F));
+        buf[2] = (char) (0x80 | (cp & 0x3F));
+        return 3;
+    } else if (cp <= 0x10FFFF) {
+        // 4-byte sequence: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+        buf[0] = (char) (0xF0 | (cp >> 18));
+        buf[1] = (char) (0x80 | ((cp >> 12) & 0x3F));
+        buf[2] = (char) (0x80 | ((cp >> 6) & 0x3F));
+        buf[3] = (char) (0x80 | (cp & 0x3F));
+        return 4;
+    }
+    // Invalid codepoint, return replacement character �
+    buf[0] = (char) 0xEF;
+    buf[1] = (char) 0xBF;
+    buf[2] = (char) 0xBD;
+    return 3;
+}
+
+/************************* Server Crash Detection *****************************/
+
+PUBLIC pid_t fuzzGetServerPid(void)
+{
+    static pid_t cachedPid = 0;
+    FILE         *fp;
+    char         line[32];
+
+    if (cachedPid != 0) {
+        return cachedPid;
+    }
+    fp = fopen(".testme/server.pid", "r");
+    if (!fp) {
+        return 0;
+    }
+    if (fgets(line, sizeof(line), fp)) {
+        cachedPid = (pid_t) atoi(line);
+    }
+    fclose(fp);
+    return cachedPid;
+}
+
+PUBLIC bool fuzzIsServerAlive(pid_t pid)
+{
+    if (pid <= 0) {
+        return false;
+    }
+#if _WIN32
+    HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+    if (process == NULL) {
+        return false;
+    }
+    DWORD exitCode;
+    bool  alive = GetExitCodeProcess(process, &exitCode) && exitCode == STILL_ACTIVE;
+    CloseHandle(process);
+    return alive;
+#else
+    return kill(pid, 0) == 0;
+#endif
+}
+
+PUBLIC void fuzzReportServerCrash(cchar *input, size_t len)
+{
+    char   *hash, *filename, *metafile, *content;
+    FILE   *fp;
+    size_t i;
+
+    hash = fuzzHash(input, len);
+    filename = sfmt("crashes/server/crash-%s.txt", hash);
+    metafile = sfmt("crashes/server/crash-%s.meta", hash);
+
+    mkdir("crashes", 0755);
+    mkdir("crashes/server", 0755);
+
+    fp = fopen(filename, "w");
+    if (fp) {
+        fprintf(fp, "=== SERVER CRASH ===\n");
+        fprintf(fp, "Timestamp: %lld\n", (long long) rGetTicks());
+        fprintf(fp, "Input length: %zu\n", len);
+        fprintf(fp, "Input hash: %s\n", hash);
+        fprintf(fp, "\n--- Input Data (hex) ---\n");
+
+        for (i = 0; i < len; i++) {
+            fprintf(fp, "%02x ", (unsigned char) input[i]);
+            if ((i + 1) % 16 == 0) fprintf(fp, "\n");
+        }
+        fprintf(fp, "\n\n--- Input Data (printable) ---\n");
+        for (i = 0; i < len; i++) {
+            char c = input[i];
+            if (c >= 32 && c < 127) {
+                fputc(c, fp);
+            } else {
+                fprintf(fp, "\\x%02x", (unsigned char) c);
+            }
+        }
+        fprintf(fp, "\n");
+        fclose(fp);
+    }
+    content = sfmt("Signal: 0 (server crash)\nLength: %lld\nHash: %s\nTime: %lld\n",
+                   (long long) len, hash, (long long) rGetTicks());
+    rWriteFile(metafile, content, slen(content), 0644);
+    rInfo("fuzz", "Server crash input saved to: %s", filename);
+
+    rFree(hash);
+    rFree(filename);
+    rFree(metafile);
+    rFree(content);
 }
 
 /*

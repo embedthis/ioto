@@ -1,23 +1,416 @@
-GET / HTTP/1.1
-Host: localhost
+# HTTP Protocol Fuzzing Corpus
+# Each line is a complete HTTP request with \r\n encoded as actual bytes
+# This complements the inline corpus with additional edge cases and variations
 
-POST /api HTTP/1.1
-Host: localhost
-Content-Type: application/json
-Content-Length: 13
+# Test crash
+GET /test/error/ HTTP/1.1\r\n\r\n
 
-{"key":"value"}
-HEAD /index.html HTTP/1.1
-Host: localhost
+# Protocol edge cases
+GET / HTTP/1.1\r\n\r\n
+GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n
+GET / HTTP/0.9\r\n\r\n
+GET / HTTP/2.0\r\nHost: localhost\r\n\r\n
 
-PUT /upload HTTP/1.1
-Host: localhost
-Content-Length: 4
+# Method variations
+PATCH /test/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+CONNECT localhost:4200 HTTP/1.1\r\n\r\n
+PROPFIND / HTTP/1.1\r\nHost: localhost\r\nDepth: 0\r\n\r\n
 
-test
-DELETE /resource HTTP/1.1
-Host: localhost
+# Header edge cases
+GET / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\nContent-Length: 0\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nHost: evil.com\r\n\r\n
+GET / HTTP/1.1\r\nHost:\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost:99999\r\n\r\n
+GET / HTTP/1.1\r\nHost: [::1]\r\n\r\n
 
-OPTIONS * HTTP/1.1
-Host: localhost
+# Content-Length mismatches
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\n\r\nshort
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\ntoolongbody
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\nunexpected
 
+# Chunked encoding
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nFFFFFFFF\r\n
+
+# Cookie variations
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: session=; expires=Thu, 01 Jan 1970 00:00:00 GMT\r\n\r\n
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: a=1; b=2; c=3\r\n\r\n
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: name=value\0othercookie=bad\r\n\r\n
+
+# XSRF testing
+POST /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{"xsrf":"test"}
+POST /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\nX-CSRF-Token: invalid\r\nContent-Length: 0\r\n\r\n
+
+# Upload testing
+PUT /upload/file.txt HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\n\r\nfile\ncontent
+DELETE /upload/file.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Path traversal attempts
+GET /../etc/passwd HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/../../etc/passwd HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/%2e%2e%2f%2e%2e%2fetc%2fpasswd HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/..%5c..%5cwindows%5csystem32%5cconfig%5csam HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# URL encoding edge cases
+GET /%00 HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /%0a%0d HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /%ff%fe HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test%00.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Query string edge cases
+GET /test/?param= HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/?=value HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/?a=1&a=2&a=3 HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/?key=<script>alert(1)</script> HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Range request edge cases
+GET / HTTP/1.1\r\nHost: localhost\r\nRange: bytes=-1\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nRange: bytes=999999999-\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nRange: bytes=100-50\r\n\r\n
+
+# Compression edge cases
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept-Encoding: gzip;q=1.0, identity; q=0.5\r\n\r\n
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Encoding: gzip\r\nContent-Length: 0\r\n\r\n
+
+# Authentication edge cases
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Basic \r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Digest username="admin", realm="test"\r\n\r\n
+
+# Large header values
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Large: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n\r\n
+
+# Many headers
+GET / HTTP/1.1\r\nHost: localhost\r\nX-1: a\r\nX-2: b\r\nX-3: c\r\nX-4: d\r\nX-5: e\r\nX-6: f\r\nX-7: g\r\nX-8: h\r\nX-9: i\r\nX-10: j\r\n\r\n
+
+# WebSocket specific
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 7\r\n\r\n
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: keep-alive, Upgrade\r\nSec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\nSec-WebSocket-Version: 13\r\n\r\n
+
+# Invalid line endings (smuggling attempts)
+GET / HTTP/1.1\nHost: localhost\n\n
+GET / HTTP/1.1\rHost: localhost\r\r
+GET / HTTP/1.1\r\n Host: localhost\r\n\r\n
+
+# Request smuggling patterns
+GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 6\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\nX
+POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\n1\r\nZ\r\nQ
+
+# Uppercase/lowercase variations
+get / http/1.1\r\nhost: localhost\r\n\r\n
+GeT / HTtP/1.1\r\nHoSt: localhost\r\n\r\n
+
+# Streaming endpoint
+GET /stream/ HTTP/1.1\r\nHost: localhost\r\nAccept: text/event-stream\r\n\r\n
+
+# Trace method variations
+TRACE / HTTP/1.1\r\nHost: localhost\r\nMax-Forwards: 0\r\n\r\n
+TRACE /trace/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# OPTIONS variations
+OPTIONS * HTTP/1.1\r\nHost: localhost\r\n\r\n
+OPTIONS /trace/ HTTP/1.1\r\nHost: localhost\r\nAccess-Control-Request-Method: POST\r\n\r\n
+
+# Empty and whitespace
+\r\n
+ \r\n
+GET  /  HTTP/1.1\r\nHost:  localhost\r\n\r\n
+
+# Unicode and special chars
+GET /тест/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/ HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla/5.0 (😀)\r\n\r\n
+
+# Hard-coded corpus from http.tst.c (previously inline)
+# Covers all routes from web.json5: /test/sig/, /test/session/, /test/xsrf/, /test/, /upload/, /trace/, /stream/, /ws/, /
+
+# Basic GET requests to all routes
+GET / HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/sig/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /trace/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /stream/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# POST requests with content
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+POST /test/sig/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 13\r\n\r\n{"test":true}
+POST /trace/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\ntest
+
+# HTTP methods for various routes
+DELETE /trace/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+PUT /upload/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+HEAD /test/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+OPTIONS /trace/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+TRACE /trace/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# HTTP/1.0 variants
+GET / HTTP/1.0\r\n\r\n
+GET /test/ HTTP/1.0\r\n\r\n
+
+# Keep-Alive variations
+GET / HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n
+
+# Different Content-Types
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 9\r\n\r\nkey=value
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: text/plain\r\nContent-Length: 4\r\n\r\ntest
+PUT /upload/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----WebKitFormBoundary\r\nContent-Length: 0\r\n\r\n
+
+# Transfer-Encoding chunked
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n
+
+# Range requests (more examples)
+GET / HTTP/1.1\r\nHost: localhost\r\nRange: bytes=0-99\r\n\r\n
+
+# Various Accept headers
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept: text/html\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept: application/json\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept: */*\r\n\r\n
+
+# Compression support
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept-Encoding: gzip, deflate\r\n\r\n
+
+# Query strings (additional examples)
+GET /test/?key=value HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/?a=1&b=2&c=3 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Headers with real-world examples
+GET / HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla/5.0\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nReferer: http://example.com\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Basic dGVzdDp0ZXN0\r\n\r\n
+
+# Cookie handling (session tests)
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+
+# WebSocket upgrade request
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n
+
+# Static file requests
+GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /favicon.ico HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /robots.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Edge cases - long headers
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Custom-Header: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\n\r\n
+
+# Edge cases - many headers
+GET / HTTP/1.1\r\nHost: localhost\r\nX-A: 1\r\nX-B: 2\r\nX-C: 3\r\nX-D: 4\r\nX-E: 5\r\n\r\n
+
+# Minimal valid request
+GET / HTTP/1.1\r\n\r\n
+
+# Request with path parameters
+GET /test/action?param1=value1 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# XSRF-specific request
+POST /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 0\r\n\r\n
+
+# ============================================================
+# Additional Test Handler Coverage (test.c handlers)
+# ============================================================
+
+# /test/event - SSE streaming (100 events)
+GET /test/event HTTP/1.1\r\nHost: localhost\r\nAccept: text/event-stream\r\n\r\n
+
+# /test/form - Form processing with valid data
+POST /test/form HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 36\r\n\r\nname=John&address=123+Main&submit=OK
+
+# /test/form - Form with XSS attempt
+POST /test/form HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 48\r\n\r\nname=<script>alert(1)</script>&address=test
+
+# /test/form - Form with HTML entities
+POST /test/form HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 35\r\n\r\nname=Test&address=<b>bold</b>
+
+# /test/form - Form with single quotes
+POST /test/form HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 30\r\n\r\nname=O'Brien&address=test
+
+# /test/bulk - Large output with count param
+GET /test/bulk?count=1000 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Count=10 (small)
+GET /test/bulk?count=10 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Invalid count (non-numeric)
+GET /test/bulk?count=abc HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Negative count
+GET /test/bulk?count=-1 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Zero count
+GET /test/bulk?count=0 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Huge count (overflow test)
+GET /test/bulk?count=999999999999 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/bulk - Missing count param (uses default)
+GET /test/bulk HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/error - Tests error response
+GET /test/error HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/success - Tests success response
+GET /test/success HTTP/1.1\r\nHost: localhost\r\n\r\n
+POST /test/success HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+
+# /test/show - Echoes full request context (headers, query, body, uploads)
+GET /test/show HTTP/1.1\r\nHost: localhost\r\n\r\n
+POST /test/show HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{"test":"data"}
+
+# /test/show - With query parameters
+GET /test/show?param1=value1&param2=value2 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/show - With many headers
+GET /test/show HTTP/1.1\r\nHost: localhost\r\nX-Custom-1: value1\r\nX-Custom-2: value2\r\nUser-Agent: TestAgent\r\n\r\n
+
+# /test/stream - Streaming rx body (webRead loop)
+POST /test/stream HTTP/1.1\r\nHost: localhost\r\nContent-Length: 10\r\n\r\n0123456789
+
+# /test/stream - Chunked transfer encoding
+POST /test/stream HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n5\r\nworld\r\n0\r\n\r\n
+
+# /test/stream - Large body streaming
+POST /test/stream HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1000\r\n\r\n[... 1000 bytes of data ...]
+
+# /test/stream - Empty body
+POST /test/stream HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+
+# /test/cookie - Set cookie with valid params
+GET /test/cookie?name=sessionid&value=abc123&path=/test HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Set cookie with root path
+GET /test/cookie?name=id&value=12345&path=/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Missing name param (should return 400)
+GET /test/cookie?value=test&path=/test HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Missing value param (should return 400)
+GET /test/cookie?name=test&path=/test HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Missing all params (should return 400)
+GET /test/cookie HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Path traversal attempt
+GET /test/cookie?name=id&value=val&path=../../../etc HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/cookie - Special chars in cookie name
+GET /test/cookie?name=<script>&value=test&path=/test HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/session/create - Creates session with token
+GET /test/session/create HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/session/check - Checks token match (valid)
+GET /test/session/check?validtoken HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+
+# /test/session/check - Token mismatch
+GET /test/session/check?wrongtoken HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+
+# /test/session/check - No query token
+GET /test/session/check HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+
+# /test/session/check - No session cookie
+GET /test/session/check?token HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/session/form.html - Session form test
+GET /test/session/form.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+POST /test/session/form.html HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+
+# /test/xsrf - GET (generates token)
+GET /test/xsrf HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/xsrf - POST (validates token, engine adds it automatically)
+POST /test/xsrf HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+
+# /test/xsrf - POST with invalid token header
+POST /test/xsrf HTTP/1.1\r\nHost: localhost\r\nX-XSRF-Token: invalid\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+
+# /test/xsrf - POST with no token (should fail validation)
+POST /test/xsrf HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+
+# /test/sig - API signature validation with JSON (authenticated)
+POST /test/sig HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 28\r\n\r\n{"action":"test","id":123}
+
+# /test/sig - API with form vars
+POST /test/sig HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 15\r\n\r\naction=test&id=1
+
+# /test/sig - API with malformed JSON
+POST /test/sig HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{invalid json}
+
+# /test/sig - API with empty JSON
+POST /test/sig HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+
+# /test/sig - API with no body
+POST /test/sig HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 0\r\n\r\n
+
+# /test/buffer - Tests webBuffer() with 64K buffer
+GET /test/buffer HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# /test/upload - Upload with multipart form (valid)
+POST /test/upload HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----Boundary\r\nContent-Length: 150\r\n\r\n------Boundary\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\nContent-Type: text/plain\r\n\r\nfile content\r\n------Boundary--\r\n
+
+# /test/upload - Upload with path traversal in filename
+POST /test/upload HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----B\r\nContent-Length: 160\r\n\r\n------B\r\nContent-Disposition: form-data; name="file"; filename="../../etc/passwd"\r\nContent-Type: text/plain\r\n\r\nmalicious\r\n------B--\r\n
+
+# /test/upload - Upload with null byte in filename
+POST /test/upload HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----B\r\nContent-Length: 155\r\n\r\n------B\r\nContent-Disposition: form-data; name="file"; filename="test\x00.jpg"\r\nContent-Type: text/plain\r\n\r\ndata\r\n------B--\r\n
+
+# /test/upload - Upload with missing filename
+POST /test/upload HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----B\r\nContent-Length: 130\r\n\r\n------B\r\nContent-Disposition: form-data; name="file"\r\nContent-Type: text/plain\r\n\r\ndata\r\n------B--\r\n
+
+# ============================================================
+# Static File Coverage (./site content)
+# ============================================================
+
+# Root index
+GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Subdirectory index
+GET /dir/index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /dir/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Empty HTML file
+GET /empty.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Socket test page
+GET /sockets.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Data files
+GET /data/test1.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Size test files (different sizes)
+GET /size/1K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/10K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/25K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/100K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/500K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/10M.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Size files with Range header
+GET /size/100K.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=0-999\r\n\r\n
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=1000-1999\r\n\r\n
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=-1000\r\n\r\n
+
+# Upload directory files (various edge case filenames)
+GET /upload/file.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/fil%.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/$file.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/file&txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/file. HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Upload operations to existing files
+PUT /upload/testfile.txt HTTP/1.1\r\nHost: localhost\r\nContent-Length: 12\r\n\r\ntest content
+DELETE /upload/testfile.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Non-existent files (404 tests)
+GET /nonexistent.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /dir/missing.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/999M.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Hidden files (should be blocked)
+GET /.DS_Store HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /dir/.dummy HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /upload/.dummy HTTP/1.1\r\nHost: localhost\r\n\r\n

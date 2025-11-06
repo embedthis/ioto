@@ -73,7 +73,7 @@ static void testLargeBody()
     Json *json;
     char url[128];
     char *largeData;
-    int  size = 1024 * 5;    // 5KB (smaller for testing)
+    size_t size = 1024 * 5;    // 5KB (smaller for testing)
 
     up = urlAlloc(0);
 

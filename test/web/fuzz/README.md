@@ -10,34 +10,31 @@ cd test/fuzz
 tm
 
 # Run specific fuzzer
-tm proto-http
+tm http
 
 # Run with verbose output
 tm -v
 
 # Run with custom iterations
-TESTME_ITERATIONS=50000 tm
+tm -i 50000
 ```
 
 ## Overview
 
-The fuzzing framework provides:
+The fuzzing framework currently provides:
 
-- **Protocol Fuzzing** - HTTP/HTTPS protocol parsing and compliance
-- **Input Validation** - Path traversal, injection, encoding attacks
-- **Resource Exhaustion** - DoS and resource limit testing
-- **API Fuzzing** - Signature validation and type confusion
-- **Auth/Session** - Authentication bypass and session attacks
-- **TLS/SSL** - Cryptographic protocol fuzzing
-- **WebSocket** - WebSocket protocol fuzzing
-- **Upload** - File upload attack vectors
+- **Protocol Fuzzing** - HTTP request line parsing and validation (implemented: `http.tst.c`)
+- **Input Validation** - URL path, query parameter, and fragment validation (implemented: `url.tst.c`)
+- **TLS/HTTPS Fuzzing** - HTTPS requests and TLS-specific edge cases (implemented: `tls.tst.c`)
+
+Additional fuzzing categories are planned for future implementation (see [AI/plans/fuzz-testing.md](../../AI/plans/fuzz-testing.md) for the complete roadmap).
 
 ## Architecture
 
 ```
 Fuzz Tests (*.c)
     ↓
-Fuzz Library (fuzzLib.h/c)
+Fuzz Library (fuzz.h/c)
     ↓
 TestMe Orchestration (testme.json5)
     ↓
@@ -50,73 +47,76 @@ All intermediate objects and executables are placed under the `.testme` director
 
 ```
 .testme/
-├── libfuzz.a               # Fuzzing library (static)
-├── fuzzLib.o               # Compiled fuzz library object
-├── proto-http              # HTTP protocol fuzzer executable
-├── proto-http.dSYM         # Debug symbols (macOS)
-├── input-path              # Path validation fuzzer executable
-└── ...                     # Other fuzzer artifacts
+├── http              # HTTP protocol fuzzer executable
+├── url               # URL Path validation fuzzer executable
+└── ...               # Other fuzzer artifacts
 ```
 
-This keeps the source directory clean and follows the standard TestMe convention. The `prep.sh` script compiles `fuzzLib.c` into a static library (`libfuzz.a`) that is linked via `-lfuzz`.
+This keeps the source directory clean and follows the standard TestMe convention. The fuzz.c library is included by the tests via a #include "fuzz.c" directive.
 
 ### Source Files
 
 ```
-fuzzLib.c, fuzzLib.h              # Fuzzing library
-proto-http.tst.c                # HTTP protocol fuzzer
-input-path.tst.c                # Path validation fuzzer
+fuzz.c, fuzz.h              # Fuzzing library (core framework)
+http.tst.c                  # HTTP protocol fuzzer (implemented)
+url.tst.c                   # URL path validation fuzzer (implemented)
+tls.tst.c                   # TLS/HTTPS protocol fuzzer (implemented)
 setup.sh, cleanup.sh        # Environment management scripts
+web.json5                   # Web server configuration for fuzzing
+testme.json5                # TestMe fuzzing configuration
 ```
 
-## Fuzzer Categories
+## Implemented Fuzzers
 
-### Protocol Fuzzers
+### Protocol Fuzzing
 
-Test HTTP protocol parsing and handling:
-
-- `proto-http.tst.c` - HTTP request line fuzzing
-- `proto-headers.c` - HTTP header fuzzing
-- `proto-chunked.c` - Chunked encoding fuzzing
-- `proto-methods.c` - HTTP method fuzzing
+**HTTP Request Fuzzer** (`http.tst.c`):
+- Tests HTTP request line parsing (method, URI, version)
+- Mutation-based fuzzing with 1,000 iterations (default)
+- Uses seed corpus from `corpus/http-requests.txt`
 
 **Example**:
 ```bash
-tm proto-http
+tm http
 ```
 
-### Input Validation Fuzzers
+### Input Validation Fuzzing
 
-Test input sanitization and validation:
-
-- `input-path.tst.c` - URL path validation
-- `input-query.c` - Query string parsing
-- `input-form.c` - Form data parsing
-- `input-json.c` - JSON payload validation
-- `input-encoding.c` - URL encoding edge cases
+**URL Path Fuzzer** (`url.tst.c`):
+- Tests URL path validation, query parameters, and fragments
+- Path traversal attacks, encoding edge cases
+- Mutation-based fuzzing with 20,000 iterations (default)
+- Uses seed corpus from `corpus/url-paths.txt`
 
 **Example**:
 ```bash
-tm input-path
+tm url
 ```
 
-### Resource Fuzzers
+### TLS/HTTPS Fuzzing
 
-Test resource limits and DoS prevention:
+**TLS Protocol Fuzzer** (`tls.tst.c`):
+- Tests HTTPS requests with TLS-specific edge cases
+- SNI hostname validation and certificate handling
+- Host header mutations for SNI mismatch testing
+- TLS-specific security header handling
+- Mutation-based fuzzing with 1,000 iterations (default)
+- Uses seed corpus from `corpus/tls-requests.txt`
 
-- `resource-connections.c` - Connection flooding
-- `resource-slowloris.c` - Slow request attacks
-- `resource-memory.c` - Memory exhaustion
-- `resource-sessions.c` - Session exhaustion
+**Example**:
+```bash
+tm tls
+```
 
-### Security Fuzzers
+## Planned Fuzzers
 
-Test authentication and authorization:
+See [AI/plans/fuzz-testing.md](../../AI/plans/fuzz-testing.md) for the complete implementation roadmap including:
 
-- `auth-session.c` - Session management
-- `auth-xsrf.c` - XSRF token validation
-- `auth-roles.c` - Role-based access control
-- `auth-cookies.c` - Cookie security
+- **Additional Protocol Fuzzers**: Headers, chunked encoding, methods
+- **Extended Input Validation**: Query strings, form data, JSON, cookies, encoding
+- **Resource Exhaustion**: Connection flooding, slowloris, memory exhaustion
+- **Security Testing**: Authentication, sessions, XSRF, role-based access
+- **Specialized Fuzzing**: TLS/SSL, WebSocket, file uploads, API signatures
 
 ## Configuration
 
@@ -137,9 +137,9 @@ Fuzzing is configured via `testme.json5`:
     },
 
     execution: {
-        timeout: 300000,        // 5 min per fuzzer
+        timeout: 300,        // 5 min per fuzzer
         parallel: true,
-        worker: 4,
+        worker: 1,
     },
 
     environment: {
@@ -151,10 +151,27 @@ Fuzzing is configured via `testme.json5`:
 
 ## Environment Variables
 
-- `TESTME_ITERATIONS` - Number of iterations per fuzzer (default: 1000, set by TestMe)
+- `TESTME_ITERATIONS` - Number of iterations per fuzzer (default: 1000 for http, 20000 for url)
 - `TESTME_VERBOSE` - Enable verbose output (set by TestMe via `tm -v`)
+- `TESTME_STOP` - Stop on first error (1) or continue (0, default)
+- `FUZZ_REPLAY` - Path to crash file for replay mode (skips corpus, runs once)
 - `ASAN_OPTIONS` - Address Sanitizer options
 - `UBSAN_OPTIONS` - Undefined Behavior Sanitizer options
+
+**Examples:**
+```bash
+# Stop on first crash for debugging
+tm --stop http
+
+# Run 100k iterations and continue through all errors
+tm --iterations 100000 --stop 0 url
+
+# Verbose mode with stop on first error
+tm -v --stop http
+
+# Replay a crash file
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt tm http
+```
 
 Server endpoints are configured in `web.json5`:
 - HTTP: http://localhost:4200
@@ -168,13 +185,11 @@ Initial test inputs are stored in `corpus/`:
 
 ```
 corpus/
-├── http-requests.txt      # Valid HTTP requests
-├── http-headers.txt       # Common headers
-├── paths.txt              # URL paths
-├── json-payloads.txt      # JSON examples
-├── attack-patterns.txt    # Known attacks
-└── websocket-frames.bin   # WebSocket frames
+├── http-requests.txt      # HTTP protocol requests and edge cases
+└── url-paths.txt          # URL paths, query parameters, and fragments
 ```
+
+See [AI/plans/fuzz-testing.md](../../AI/plans/fuzz-testing.md) for planned corpus files for future fuzzers.
 
 ### Crash Corpus
 
@@ -182,63 +197,165 @@ Crash-inducing inputs are saved to `crashes/`:
 
 ```
 crashes/
-├── protocol-http/
+├── http/                  # Client-side crashes in HTTP fuzzer
 │   ├── crash-DEADBEEF.txt
 │   └── crash-CAFEBABE.txt
-├── input-path/
+├── url/                   # Client-side crashes in URL fuzzer
 │   └── crash-12345678.txt
+├── server/                # Server-side crashes (web server)
+│   ├── crash-abc123.txt   # Crash-inducing input
+│   ├── crash-def456.log   # Web server log at crash
+│   ├── asan.12345         # ASAN reports
+│   ├── ubsan.12345        # UBSAN reports
+│   └── core.12345         # Core dumps
 └── crashes-archive/
     └── crashes-20250104-143022.tar.gz
 ```
 
+**Client Crash Files** (crashes/http/, crashes/url/):
 Each crash file includes:
 - Input that caused the crash
 - Signal/error information
 - Stack trace (if available)
 - Timestamp
 
+**Server Crash Files** (crashes/server/):
+Server crashes are detected during fuzzing and saved with:
+- Crash-inducing input that killed the server
+- Web server log at time of crash
+- ASAN/UBSAN sanitizer reports
+- Core dumps (if enabled)
+
 ## Writing New Fuzzers
 
 ### 1. Create Fuzzer File
 
 ```c
-// resource-newtest.tst.c
+// newtest.tst.c
 #include "../test.h"
-#include "fuzzLib.h"
+#include "fuzz.h"
+#include "fuzz.c"
 
-static bool testOracle(cchar *input, ssize len) {
-    // Test the input, return true if passed
-    // Return false if vulnerability found
-    return true;
-}
+#define CORPUS_FILE "corpus/newtest.txt"
+#define CRASH_DIR   "crashes/newtest"
 
-static char *mutateInput(cchar *input, ssize *len) {
-    // Apply mutations to input
-    return fuzzBitFlip(input, len);
-}
+static cchar      *TARGET_URL;
+static FuzzRunner *runner;
+static int        fuzzResult = 0;
+static bool       serverCrashed = 0;
+static cchar      *currentFuzzInput = NULL;
+static size_t     currentFuzzLen = 0;
 
-int main(int argc, char **argv) {
-    FuzzRunner *runner;
+static void fuzzFiber(void *arg);
+static bool testOracle(cchar *input, size_t len);
+static char *mutateInput(cchar *input, size_t *len);
+static bool shouldStopFuzzing(void);
+
+int main(int argc, char **argv)
+{
+    int iterations = getenv("TESTME_ITERATIONS") ? atoi(getenv("TESTME_ITERATIONS")) : 10000;
+
     FuzzConfig config = {
-        .iterations = 10000,
+        .iterations = iterations,
         .timeout = 5000,
-        .crashDir = "./crashes/resource-newtest",
+        .crashDir = CRASH_DIR,
+        .verbose = getenv("TESTME_VERBOSE") != NULL,
+        .stop = getenv("TESTME_STOP") && atoi(getenv("TESTME_STOP")) == 1,
     };
 
-    if (!setup(&HTTP, NULL)) return 1;
+    // Setup test environment (starts web server)
+    if (!setup((char**) &TARGET_URL, NULL)) {
+        return 1;
+    }
 
-    runner = fuzzInit(&config);
-    fuzzSetOracle(runner, testOracle);
-    fuzzSetMutator(runner, mutateInput);
+    // Run fuzzing in fiber
+    rStartFiber(fuzzFiber, &config);
+    rServiceEvents(0, -1);
 
-    // Add corpus
-    fuzzAddCorpus(runner, "initial input", 13);
+    return fuzzResult > 0 ? 1 : 0;
+}
+
+static void fuzzFiber(void *arg)
+{
+    FuzzConfig *config = (FuzzConfig*) arg;
+    cchar *replayFile = getenv("FUZZ_REPLAY");
+
+    // Check for replay mode
+    if (replayFile) {
+        rPrintf("Replaying crash file: %s\n", replayFile);
+        runner = fuzzInit(config);
+        fuzzSetOracle(runner, testOracle);
+
+        int loaded = fuzzLoadCorpus(runner, replayFile);
+        if (loaded == 0) {
+            rPrintf("✗ Failed to load crash file: %s\n", replayFile);
+            fuzzResult = -1;
+            rStop();
+            return;
+        }
+
+        config->iterations = 1;  // Run once, no mutations
+    } else {
+        // Normal fuzzing mode
+        rPrintf("Starting newtest fuzzer\n");
+        rPrintf("Target: %s\n", TARGET_URL);
+        rPrintf("Iterations: %d\n", config->iterations);
+
+        runner = fuzzInit(config);
+        fuzzSetOracle(runner, testOracle);
+        fuzzSetMutator(runner, mutateInput);
+        fuzzSetShouldStopCallback(shouldStopFuzzing);
+
+        // Load corpus
+        fuzzLoadCorpus(runner, CORPUS_FILE);
+    }
 
     int crashes = fuzzRun(runner);
     fuzzReport(runner);
     fuzzFree(runner);
+    fuzzResult = crashes;
+    rStop();
+}
 
-    return crashes > 0 ? 1 : 0;
+static bool testOracle(cchar *input, size_t len)
+{
+    currentFuzzInput = input;
+    currentFuzzLen = len;
+
+    // Test the input against the web server
+    // Return true if passed, false if crash/vulnerability found
+
+    // Check if server is still alive
+    if (!fuzzIsServerAlive(fuzzGetServerPid())) {
+        tinfo("Server crashed during fuzzing");
+        fuzzReportServerCrash(input, len);
+        serverCrashed = 1;
+        return false;
+    }
+
+    return true;
+}
+
+static char *mutateInput(cchar *input, size_t *len)
+{
+    // Apply mutations to input
+    int strategy = rRandom() % 10;
+
+    switch (strategy) {
+        case 0: return fuzzBitFlip(input, len);
+        case 1: return fuzzByteFlip(input, len);
+        case 2: return fuzzInsertRandom(input, len);
+        case 3: return fuzzDeleteRandom(input, len);
+        case 4: return fuzzInsertSpecial(input, len);
+        case 5: return fuzzTruncate(input, len);
+        case 6: return fuzzDuplicate(input, len);
+        default: return fuzzBitFlip(input, len);
+    }
+}
+
+static bool shouldStopFuzzing(void)
+{
+    return serverCrashed;
 }
 ```
 
@@ -246,11 +363,20 @@ int main(int argc, char **argv) {
 
 The fuzzer will be automatically discovered if it matches the naming pattern in testme.json5.
 
-### 3. Run Fuzzer
+### 3. Create Corpus File
+
+Create `corpus/newtest.txt` with seed inputs:
+```
+valid input 1
+valid input 2
+edge case input
+```
+
+### 4. Run Fuzzer
 
 ```bash
 cd test/fuzz
-tm resource-newtest
+tm newtest
 ```
 
 ## Mutation Strategies
@@ -309,7 +435,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run fuzz tests
-        run: cd test/fuzz && TESTME_ITERATIONS=50000 tm
+        run: cd test/fuzz && tm -i 50000
       - name: Upload crashes
         if: failure()
         uses: actions/upload-artifact@v3
@@ -318,47 +444,28 @@ jobs:
           path: test/fuzz/crashes/
 ```
 
-### Jenkins
-
-```groovy
-pipeline {
-    agent any
-    triggers {
-        cron('0 2 * * *')
-    }
-    stages {
-        stage('Fuzz') {
-            steps {
-                sh 'cd test/fuzz && TESTME_ITERATIONS=50000 tm'
-            }
-        }
-    }
-    post {
-        failure {
-            archiveArtifacts 'test/fuzz/crashes/**'
-        }
-    }
-}
-```
-
 ## Analyzing Crashes
 
 ### 1. Reproduce Crash
 
 ```bash
-# Find crash file
-ls crashes/protocol-http/
+# Find crash files
+ls crashes/http/
 
-# Replay crash with TestMe
+# Replay crash with FUZZ_REPLAY
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt tm http
+
+# Or manually:
 cd test/fuzz
-cat crashes/protocol-http/crash-DEADBEEF.txt | .testme/proto-http
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt .testme/http
 ```
 
 ### 2. Debug with GDB
 
 ```bash
-gdb .testme/proto-http
-(gdb) run < crashes/protocol-http/crash-DEADBEEF.txt
+# Set FUZZ_REPLAY and run with debugger
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt gdb .testme/http
+(gdb) run
 (gdb) bt
 (gdb) info locals
 ```
@@ -368,9 +475,9 @@ gdb .testme/proto-http
 Use delta debugging to find minimal reproducer:
 
 ```bash
-# Manual minimization
-cat crash.txt | head -n 10 | .testme/fuzzer  # Test smaller input
-cat crash.txt | sed 's/AAAAA/A/' | .testme/fuzzer  # Remove characters
+# Manual minimization - edit crash file and replay
+vi crashes/http/crash-DEADBEEF.txt
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt tm http
 ```
 
 ### 4. Fix and Verify
@@ -378,9 +485,8 @@ cat crash.txt | sed 's/AAAAA/A/' | .testme/fuzzer  # Remove characters
 After fixing the issue:
 
 ```bash
-# Re-run test with crash input
-cd test/fuzz
-cat crashes/protocol-http/crash-DEADBEEF.txt | .testme/proto-http
+# Re-run fuzzer with crash input
+FUZZ_REPLAY=crashes/http/crash-DEADBEEF.txt tm http
 
 # Should not crash anymore
 ```
@@ -406,13 +512,13 @@ Adjust based on CI/CD budget:
 
 ```bash
 # Quick smoke test (CI on every commit)
-TESTME_ITERATIONS=1000 tm
+tm -i 1000
 
 # Normal testing (CI nightly)
-TESTME_ITERATIONS=50000 tm
+tm -i 50000
 
 # Intensive testing (manual/weekly)
-TESTME_ITERATIONS=1000000 tm
+tm -i 10000000
 ```
 
 ## Best Practices
@@ -448,7 +554,7 @@ Good! But verify:
 
 ```bash
 # Try more iterations
-TESTME_ITERATIONS=100000 tm proto-http
+tm -i 100000 http
 
 # Try different mutation strategies
 ```
@@ -457,21 +563,21 @@ TESTME_ITERATIONS=100000 tm proto-http
 
 ```bash
 # Deduplicate
-cd crashes/protocol-http
+cd crashes/http
 for f in crash-*; do
     md5sum "$f"
 done | sort | uniq -d -w 32
 
 # Analyze most common
-ls -lS crashes/protocol-http/ | head -10
+ls -lS crashes/http/ | head -10
 ```
 
 ## References
 
-- [../../doc/PLAN.md](../../doc/PLAN.md) - Complete fuzzing plan, implementation guide, and task tracking
-- [../../doc/DESIGN.md](../../doc/DESIGN.md) - Architecture and Safe Runtime patterns
-- [../../doc/CHANGELOG.md](../../doc/CHANGELOG.md) - Change history
-- [fuzzLib.h](fuzzLib.h) - Fuzzing API documentation
+- [../../AI/plans/fuzz-testing.md](../../AI/plans/fuzz-testing.md) - Complete fuzzing plan, implementation guide, and task tracking
+- [../../AI/archive/plans/server-crash-detection.md](../../AI/archive/plans/server-crash-detection.md) - Server crash detection implementation (completed)
+- [../../AI/logs/CHANGELOG.md](../../AI/logs/CHANGELOG.md) - Change history
+- [fuzz.h](fuzz.h) - Fuzzing API documentation
 - [OWASP Fuzzing Guide](https://owasp.org/www-community/Fuzzing)
 - [libFuzzer Tutorial](https://llvm.org/docs/LibFuzzer.html)
 - [AFL++ Documentation](https://aflplus.plus/)
@@ -480,6 +586,6 @@ ls -lS crashes/protocol-http/ | head -10
 
 For issues or questions:
 1. Check existing crashes in `crashes/`
-2. Review fuzzer logs in `fuzz-log.txt`
+2. Review fuzzer logs in `web.log`
 3. Enable verbose mode: `tm -v`
-4. Consult [../../doc/PLAN.md](../../doc/PLAN.md) for architecture and implementation status
+4. Consult [../../AI/plans/fuzz-testing.md](../../AI/plans/fuzz-testing.md) for architecture and implementation status

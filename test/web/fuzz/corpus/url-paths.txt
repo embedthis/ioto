@@ -1,0 +1,463 @@
+# URL Path Fuzzing Corpus (url-paths.txt)
+# Tests various URL path patterns, query parameters, and URI fragments
+# Used by url.tst.c fuzzer to validate path parsing and sanitization
+
+# Basic paths
+/
+/index.html
+/api/users
+/path/to/resource
+/file.txt
+/dir/
+/test.php
+/admin/login
+/static/css/main.css
+/images/logo.png
+
+# Path traversal attempts
+/../../../etc/passwd
+/./././file
+/path/../../../etc/shadow
+/test/../../../../../../windows/system32/config/sam
+/app/..%2f..%2fetc/passwd
+/%2e%2e%2f%2e%2e%2fetc%2fpasswd
+/path/..%252f..%252fetc/passwd
+/.%2e/.%2e/.%2e/etc/passwd
+/test/....//....//etc/passwd
+/test/.%00./.%00./etc/passwd
+
+# Encoded path traversal
+/%2e%2e%2f%2e%2e%2f
+/path/..%5c..%5cwindows
+/%252e%252e%252f
+/test%2f..%2f..%2f
+/%c0%ae%c0%ae%c0%af
+/%e0%80%ae%e0%80%ae/
+
+# Null byte injection
+/path%00.txt
+/file.txt%00.jpg
+/path/file\x00.html
+/test%00/../../etc/passwd
+/index.php%00.png
+/script.php%00
+
+# Double slashes and backslashes
+/path//double//slash
+//double/slash/start
+/path///triple///slash
+/path\\backslash\\win
+/path\/mixed\/slashes
+/path/\/\/\/multiple
+
+# Long paths
+/very/long/path/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z
+/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+/path/segment/that/repeats/segment/that/repeats/segment/that/repeats/segment/that/repeats/segment/that/repeats
+
+# Unicode and special characters
+/unicode/\xc3\xa9\xc3\xa0
+/тест/файл
+/测试/文件
+/emoji/😀/test
+/special/café/résumé
+/unicode/\u0041\u0042\u0043
+
+# Injection attempts
+/special/<script>alert(1)</script>
+/sql/';DROP TABLE users--
+/<img src=x onerror=alert(1)>
+/path?<svg/onload=alert(1)>
+/test';exec('id')--
+/../../bin/sh
+/path|ls -la
+/test`whoami`
+/path;cat /etc/passwd
+
+# Hidden/special files
+/.git/config
+/.git/HEAD
+/.svn/entries
+/.env
+/.htaccess
+/.htpasswd
+/.DS_Store
+/.bash_history
+/web.config
+/WEB-INF/web.xml
+/.well-known/security.txt
+/~user/private
+/~root/.ssh/id_rsa
+
+# CGI and script paths
+/cgi-bin/../../etc/passwd
+/cgi-bin/test.cgi
+/scripts/admin.php
+/bin/sh
+/usr/bin/perl
+/wp-admin/
+/phpMyAdmin/
+
+# Case variations
+/Path/To/File
+/PATH/TO/FILE
+/PaTh/tO/FiLe
+/index.HTML
+/INDEX.html
+
+# Special extensions
+/test.php.bak
+/config.php~
+/backup.sql
+/database.db
+/settings.json
+/.config.swp
+/index.php.old
+
+# Query parameters - simple
+/?param=value
+/?key=test
+/?id=123
+/?page=1
+/?search=test
+
+# Query parameters - multiple
+/?a=1&b=2&c=3
+/?name=value&email=test@example.com
+/?id=1&action=delete&confirm=yes
+/?x=1&x=2&x=3
+/?first=1&second=2&third=3
+
+# Query parameters - empty values
+/?param=
+/?key=&value=
+/?empty&novalue
+/?=value
+/?&&&
+/?key=value&&
+
+# Query parameters - encoded
+/?param=%20value
+/?key=test%20value
+/?encoded=%3Cscript%3E
+/?url=http%3A%2F%2Fexample.com
+/?path=%2Fetc%2Fpasswd
+/?null=%00
+
+# Query parameters - injection attempts
+/?id=1' OR '1'='1
+/?search=<script>alert(1)</script>
+/?cmd=;ls -la
+/?exec=`whoami`
+/?redirect=javascript:alert(1)
+/?callback=eval(alert(1))
+/?jsonp=<script>
+/?xml=<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+
+# Query parameters - long values
+/?param=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+/?many=a&a=b&b=c&c=d&d=e&e=f&f=g&g=h&h=i&i=j&j=k&k=l&l=m&m=n&n=o&o=p&p=q&q=r&r=s&s=t&t=u&u=v&v=w&w=x&x=y&y=z
+
+# Query parameters - special characters
+/?key=value with spaces
+/?param=<>&"'
+/?test=café
+/?unicode=测试
+/?emoji=😀
+/?special=!@#$%^&*()
+
+# URI fragments - basic
+/#top
+/#section1
+/#footer
+/#main-content
+
+# URI fragments - encoded
+/#%20space
+/#encoded%3Cscript%3E
+/#null%00byte
+/#path%2Ftraversal
+
+# URI fragments - injection
+/#<script>alert(1)</script>
+/#javascript:alert(1)
+/#';alert(1)//
+/#"><img src=x onerror=alert(1)>
+
+# Combined path + query + fragment
+/path/to/file?param=value#section
+/test.html?id=123&name=test#top
+/api/users?filter=active&sort=name#results
+/search?q=test&page=1#result-5
+
+# Complex combined patterns
+/path/../test?param=../../etc/passwd#fragment
+/api/users?id=1'OR'1'='1#<script>
+/test.php?file=../../../../etc/passwd%00#hidden
+/?redir=javascript:alert(1)#payload
+
+# Edge cases with query and fragment
+/?#fragment
+/#?notquery
+/?param=#value
+/#section?param=value
+
+# Multiple fragments (invalid but test parser)
+/#first#second
+/#one#two#three
+
+# Query with encoded special chars
+/?param=%2F%2E%2E%2F%2E%2E%2F
+/?path=%00%00%00
+/?test=%0d%0a
+/?crlf=%0d%0aSet-Cookie:
+
+# Very long combined URLs
+/very/long/path/with/many/segments/to/test/parser?param1=value1&param2=value2&param3=value3&param4=value4&param5=value5#verylongfragmentidentifierthatgoesononandon
+
+# Windows-specific paths
+/C:/Windows/System32
+/C:\Windows\System32
+/\\server\share\file
+/\\..\..\..\windows
+
+# Percent encoding edge cases
+/%
+/%%
+/%2
+/%2F
+/%G0
+/%u0041
+/%%32%66
+
+# Double encoding
+/%252e%252e%252f
+/%25252e%25252e%25252f
+/%2e%2e%c0%af
+
+# Mixed encoding
+/test%2f..%2f..%2fetc%2fpasswd
+/path%5c..%5c..%5c
+
+# Overlong UTF-8 sequences
+/%c0%ae%c0%ae%c0%af
+/%e0%80%ae%e0%80%ae%c0%af
+/%f0%80%80%ae%f0%80%80%ae%c0%af
+
+# Normalization attacks
+/test/./././././file
+/path/foo/../bar/../baz
+/./test/./file/./
+/../../../test
+
+# Special query parameter patterns
+/?__proto__=polluted
+/?constructor.prototype.isAdmin=true
+/?toString=hacked
+
+# Fragment with query-like syntax
+/#?fake=query&another=param
+/#key=value&test=123
+
+# Unusual but valid paths
+/file.name.with.many.dots
+/path-with-dashes/and_underscores
+/123/456/789
+/v1.2.3/api
+/@user/profile
+/$/special
+
+# File upload paths
+/upload/../../etc/passwd
+/files/../../../windows/win.ini
+/media/..%2f..%2fetc/shadow
+
+# API-style paths with IDs
+/api/users/1
+/api/posts/123/comments
+/v1/resources/abc123
+/api/items/1; DROP TABLE items--
+
+# Trailing characters
+/path/
+/path//
+/path///
+/path/.
+/path/..
+/path/...
+
+# Query arrays (PHP-style)
+/?items[]=1&items[]=2&items[]=3
+/?data[key]=value
+/?nested[a][b][c]=deep
+
+# Query with equals in value
+/?key=value=with=equals
+/?param==double
+/?test=a=b&c=d
+
+# Fragment identifiers with special chars
+/#section!
+/#anchor@top
+/#id$123
+/#element%20space
+
+# Combinations testing all three components
+/path%2ftraversal?param=value%00null#fragment<script>
+/api/users/../admin?token=abc'OR'1=1#section
+/test?a=1&b=../../etc/passwd&c=3#%00null
+
+# ============================================================
+# Test Handler Paths (test.c routes)
+# ============================================================
+
+# Test handlers with various methods
+/test/
+/test/event
+/test/form
+/test/bulk
+/test/error
+/test/success
+/test/show
+/test/stream
+/test/upload
+/test/ws
+/test/cookie
+/test/xsrf
+/test/sig
+/test/buffer
+
+# Session handler sub-paths
+/test/session
+/test/session/create
+/test/session/check
+/test/session/form.html
+
+# Test paths with query parameters
+/test/bulk?count=100
+/test/bulk?count=abc
+/test/bulk?count=-1
+/test/bulk?count=0
+/test/bulk?count=999999999
+/test/cookie?name=id&value=test&path=/
+/test/cookie?name=<script>&value=xss&path=/
+/test/cookie?name=id&value=val&path=../../etc
+/test/session/check?token
+/test/session/check?wrongtoken
+/test/show?param1=value1&param2=value2
+
+# Test paths with traversal attempts
+/test/../etc/passwd
+/test/../../windows/system32
+/test/%2e%2e%2f%2e%2e%2f
+/test/session/../../../etc/passwd
+
+# Test paths with various encodings
+/test%2f
+/test%2Fbulk
+/%74%65%73%74/event
+/test%00/show
+
+# ============================================================
+# Static File Paths (./site content)
+# ============================================================
+
+# Root level files
+/index.html
+/empty.html
+/sockets.html
+/favicon.ico
+/robots.txt
+
+# Directory paths
+/dir/
+/dir/index.html
+/data/
+/size/
+/upload/
+
+# Data files
+/data/test1.txt
+
+# Size test files (different file sizes)
+/size/1K.txt
+/size/10K.txt
+/size/25K.txt
+/size/100K.txt
+/size/500K.txt
+/size/1M.txt
+/size/10M.txt
+
+# Upload directory files with edge case names
+/upload/file.txt
+/upload/fil%.txt
+/upload/$file.txt
+/upload/file&txt
+/upload/file.
+/upload/fild.txt
+/upload/filg.txt
+/upload/vile.txt
+/upload/file.pxt
+/upload/file.vxt
+/upload/file.txt$
+/upload/file.tx't
+
+# Hidden/dot files (should be blocked)
+/.DS_Store
+/dir/.dummy
+/upload/.dummy
+
+# Case variations of real files
+/INDEX.html
+/Index.HTML
+/INDEX.HTML
+/dir/INDEX.html
+/SIZE/1K.txt
+
+# Non-existent files (404 tests)
+/nonexistent.html
+/missing.txt
+/dir/notfound.html
+/size/999M.txt
+/upload/nofile.txt
+
+# Path traversal to real files
+/../index.html
+/./index.html
+/dir/../index.html
+/dir/./index.html
+/dir/../dir/index.html
+/size/../index.html
+/size/../size/1K.txt
+
+# Double encoding to real paths
+/%252e%252e%252findex.html
+/%2e%2e%2findex.html
+/dir/%2e%2e%2findex.html
+
+# Real paths with query strings
+/index.html?param=value
+/dir/index.html?test=1
+/size/1K.txt?download=true
+/data/test1.txt?view=raw
+
+# Real paths with fragments
+/index.html#top
+/dir/index.html#section
+/sockets.html#connection
+
+# Real paths with null bytes
+/index.html%00
+/index.html%00.jpg
+/size/1K.txt%00.php
+
+# Real paths with special chars
+/index.html?key=<script>
+/data/test1.txt?cmd=;ls
+/size/1K.txt?path=../../etc
+
+# Upload operations
+/upload/newfile.txt
+/upload/test%20file.txt
+/upload/<script>.txt
+/upload/../../../etc/passwd

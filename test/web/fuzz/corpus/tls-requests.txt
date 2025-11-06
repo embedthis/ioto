@@ -1,0 +1,210 @@
+# TLS/HTTPS Protocol Fuzzing Corpus
+# Each line is a complete HTTP request that will be sent over TLS
+# Focus on HTTPS-specific edge cases, SNI handling, and encrypted payload edge cases
+
+# Basic HTTPS requests
+GET / HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Protocol version variations
+GET / HTTP/1.0\r\nHost: localhost\r\n\r\n
+GET / HTTP/0.9\r\n\r\n
+GET / HTTP/2.0\r\nHost: localhost\r\n\r\n
+
+# POST with encrypted body
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 15\r\n\r\n{"test":"data"}
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\n
+
+# SNI-related hostname variations (critical for TLS)
+GET / HTTP/1.1\r\nHost: localhost:4443\r\n\r\n
+GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n
+GET / HTTP/1.1\r\nHost: [::1]\r\n\r\n
+GET / HTTP/1.1\r\nHost: LOCALHOST\r\n\r\n
+
+# Missing or malformed Host header (SNI mismatch)
+GET / HTTP/1.1\r\n\r\n
+GET / HTTP/1.1\r\nHost: \r\n\r\n
+GET / HTTP/1.1\r\nHost: evil.com\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\x00.evil.com\r\n\r\n
+
+# Multiple Host headers
+GET / HTTP/1.1\r\nHost: localhost\r\nHost: evil.com\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost:4443\r\nHost: localhost:9999\r\n\r\n
+
+# Connection header variations
+GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\n\r\n
+
+# Upgrade attempts (protocol confusion)
+GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: h2c\r\nConnection: Upgrade\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade: TLS/1.0\r\nConnection: Upgrade\r\n\r\n
+
+# HTTPS security headers
+GET / HTTP/1.1\r\nHost: localhost\r\nStrict-Transport-Security: max-age=31536000\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nExpect-CT: max-age=86400, enforce\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nUpgrade-Insecure-Requests: 1\r\n\r\n
+
+# Large encrypted payload
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 1000\r\nContent-Type: application/octet-stream\r\n\r\n[1000 bytes of data]
+
+# Content-Length mismatches (affects TLS framing)
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\n\r\nshort
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 5\r\n\r\ntoolongbody
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\n\r\nunexpected
+
+# Chunked encoding over TLS
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked\r\n\r\nFFFFFFFF\r\n
+
+# Cookie handling over TLS (session security)
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: session=; Secure; HttpOnly\r\n\r\n
+GET /test/session/ HTTP/1.1\r\nHost: localhost\r\nCookie: a=1; b=2; c=3\r\n\r\n
+
+# XSRF token validation over HTTPS
+POST /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}
+POST /test/xsrf/ HTTP/1.1\r\nHost: localhost\r\nX-XSRF-Token: test\r\nContent-Length: 0\r\n\r\n
+
+# Path traversal attempts over HTTPS
+GET /../etc/passwd HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/../../etc/passwd HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/%2e%2e%2f%2e%2e%2fetc%2fpasswd HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# URL encoding edge cases
+GET /%00 HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /%0a%0d HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test%00.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Query string attacks
+GET /test/?param=<script>alert(1)</script> HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/?key='; DROP TABLE users-- HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Range requests over HTTPS
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=0-999\r\n\r\n
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=-1\r\n\r\n
+GET /size/1M.txt HTTP/1.1\r\nHost: localhost\r\nRange: bytes=999999999-\r\n\r\n
+
+# Authentication over HTTPS
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Basic dGVzdDp0ZXN0\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nAuthorization: \r\n\r\n
+
+# Large headers (TLS record size testing)
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Large: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n\r\n
+
+# Many headers (TLS framing)
+GET / HTTP/1.1\r\nHost: localhost\r\nX-1: a\r\nX-2: b\r\nX-3: c\r\nX-4: d\r\nX-5: e\r\nX-6: f\r\nX-7: g\r\nX-8: h\r\nX-9: i\r\nX-10: j\r\nX-11: k\r\nX-12: l\r\nX-13: m\r\nX-14: n\r\nX-15: o\r\n\r\n
+
+# WebSocket upgrade over TLS
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n
+GET /ws/ HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 7\r\n\r\n
+
+# Line ending variations (framing attacks)
+GET / HTTP/1.1\nHost: localhost\n\n
+GET / HTTP/1.1\rHost: localhost\r\r
+GET / HTTP/1.1\r\n Host: localhost\r\n\r\n
+
+# Request smuggling over TLS
+GET / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 6\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\nX
+POST / HTTP/1.1\r\nHost: localhost\r\nContent-Length: 4\r\n\r\n1\r\nZ\r\nQ
+
+# Case variations
+get / http/1.1\r\nhost: localhost\r\n\r\n
+GeT / HTtP/1.1\r\nHoSt: localhost\r\n\r\n
+
+# Streaming over HTTPS
+GET /stream/ HTTP/1.1\r\nHost: localhost\r\nAccept: text/event-stream\r\n\r\n
+
+# TRACE and OPTIONS
+TRACE / HTTP/1.1\r\nHost: localhost\r\nMax-Forwards: 0\r\n\r\n
+OPTIONS * HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Empty and whitespace
+\r\n
+ \r\n
+GET  /  HTTP/1.1\r\nHost:  localhost\r\n\r\n
+
+# Unicode
+GET /тест/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/ HTTP/1.1\r\nHost: localhost\r\nUser-Agent: Mozilla/5.0 (😀)\r\n\r\n
+
+# CONNECT method (HTTPS proxy)
+CONNECT localhost:4443 HTTP/1.1\r\nHost: localhost\r\n\r\n
+CONNECT evil.com:443 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Compression over encrypted channel
+GET / HTTP/1.1\r\nHost: localhost\r\nAccept-Encoding: gzip, deflate, br\r\n\r\n
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Encoding: gzip\r\nContent-Length: 0\r\n\r\n
+
+# Certificate-related edge cases (SNI/hostname)
+GET / HTTP/1.1\r\nHost: *.localhost\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost.\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost:0\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost:65536\r\n\r\n
+
+# Null bytes (certificate validation bypass attempts)
+GET / HTTP/1.1\r\nHost: localhost\x00.evil.com\r\n\r\n
+GET /test\x00.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Form submission over HTTPS
+POST /test/form HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 36\r\n\r\nname=John&address=123+Main&submit=OK
+
+# File upload over HTTPS
+POST /test/upload HTTP/1.1\r\nHost: localhost\r\nContent-Type: multipart/form-data; boundary=----Boundary\r\nContent-Length: 150\r\n\r\n------Boundary\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\nContent-Type: text/plain\r\n\r\nfile content\r\n------Boundary--\r\n
+
+# Upload operations over HTTPS
+PUT /upload/secure.txt HTTP/1.1\r\nHost: localhost\r\nContent-Length: 12\r\n\r\ntest content
+DELETE /upload/secure.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# API signatures over HTTPS
+POST /test/sig/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 28\r\n\r\n{"action":"test","id":123}
+
+# Session management over HTTPS
+GET /test/session/create HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/session/check?token HTTP/1.1\r\nHost: localhost\r\nCookie: session=abc123\r\n\r\n
+
+# Static files over HTTPS
+GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /dir/index.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /size/100K.txt HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Hidden files (should be blocked)
+GET /.DS_Store HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /.env HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /.git/config HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# CORS preflight over HTTPS
+OPTIONS /test/ HTTP/1.1\r\nHost: localhost\r\nOrigin: https://example.com\r\nAccess-Control-Request-Method: POST\r\nAccess-Control-Request-Headers: content-type\r\n\r\n
+
+# Content-Type variations over encrypted channel
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 2\r\n\r\n{}
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Type: text/plain; charset=iso-8859-1\r\nContent-Length: 4\r\n\r\ntest
+
+# Method override attempts
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nX-HTTP-Method-Override: DELETE\r\nContent-Length: 0\r\n\r\n
+
+# Forwarded headers (proxy scenarios)
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Forwarded-Proto: http\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Forwarded-For: 1.2.3.4\r\n\r\n
+GET / HTTP/1.1\r\nHost: localhost\r\nX-Real-IP: 5.6.7.8\r\n\r\n
+
+# Timing attacks (encrypted response variations)
+GET /test/bulk?count=1000 HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /test/bulk?count=10000 HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Error conditions over HTTPS
+GET /test/error HTTP/1.1\r\nHost: localhost\r\n\r\n
+GET /nonexistent.html HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Buffer boundaries for TLS records (16KB default)
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 16384\r\n\r\n[16384 bytes]
+POST /test/ HTTP/1.1\r\nHost: localhost\r\nContent-Length: 16385\r\n\r\n[16385 bytes]
+
+# Pipelining over TLS (multiple requests)
+GET / HTTP/1.1\r\nHost: localhost\r\n\r\nGET /test/ HTTP/1.1\r\nHost: localhost\r\n\r\n
+
+# Early data (0-RTT) simulation
+GET / HTTP/1.1\r\nHost: localhost\r\nEarly-Data: 1\r\n\r\n

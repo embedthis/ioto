@@ -1,5 +1,5 @@
 /*
-    fuzzLib.h - Fuzzing test library
+    fuzz.h - Fuzzing test library
 
     Provides common fuzzing utilities, mutation strategies, and test orchestration
     for comprehensive security testing of the web server.
@@ -13,8 +13,11 @@
 /********************************** Includes **********************************/
 
 #include "r.h"
+#include "crypt.h"
+/*
 #include <signal.h>
 #include <setjmp.h>
+*/
 
 /*********************************** Types ************************************/
 
@@ -27,23 +30,25 @@ typedef struct FuzzConfig {
     int parallel;               // Number of parallel workers
     uint seed;                  // Random seed (0 = time-based)
     cchar *crashDir;            // Directory for crash-inducing inputs
-    cchar *corpusDir;           // Directory for seed corpus
-    bool verbose;               // Verbose output
     bool coverage;              // Track code coverage
+    bool mutate;                // Mutate the corpus (default: true)
+    bool randomize;             // Randomize corpus order (default: true)
+    bool stop;                  // Stop on first error (default: false)
+    bool verbose;               // Verbose output
 } FuzzConfig;
 
 /**
     Fuzzing statistics
  */
 typedef struct FuzzStats {
-    int total;                  // Total test cases executed
+    int coverage;               // Code coverage percentage (if enabled)
     int crashes;                // Number of crashes found
-    int hangs;                  // Number of hangs/timeouts
     int errors;                 // Number of errors
+    int hangs;                  // Number of hangs/timeouts
+    int total;                  // Total test cases executed
     int unique;                 // Unique crashes (deduplicated)
     Ticks startTime;            // Fuzzing start time
     Ticks endTime;              // Fuzzing end time
-    int coverage;               // Code coverage percentage (if enabled)
 } FuzzStats;
 
 /**
@@ -121,6 +126,12 @@ PUBLIC void fuzzSetOracle(FuzzRunner *runner, FuzzOracle oracle);
     @param mutator Mutator function
  */
 PUBLIC void fuzzSetMutator(FuzzRunner *runner, FuzzMutator mutator);
+
+/**
+    Set callback to check if fuzzing should stop
+    @param callback Function that returns true if fuzzing should stop
+ */
+PUBLIC void fuzzSetShouldStopCallback(bool (*callback)(void));
 
 /**
     Load seed corpus from file
@@ -284,6 +295,28 @@ PUBLIC bool fuzzIsUniqueCrash(FuzzRunner *runner, cchar *input, size_t len);
     @return Random corpus entry (caller must not free)
  */
 PUBLIC cchar *fuzzGetRandomCorpus(FuzzRunner *runner, size_t *len);
+
+/************************* Server Crash Detection *****************************/
+
+/**
+    Get server process ID from file
+    @return Server PID or 0 if not found
+ */
+PUBLIC pid_t fuzzGetServerPid(void);
+
+/**
+    Check if server process is alive
+    @param pid Server process ID
+    @return True if server is running
+ */
+PUBLIC bool fuzzIsServerAlive(pid_t pid);
+
+/**
+    Report server crash with input that caused it
+    @param input Input data that may have caused crash
+    @param len Length of input
+ */
+PUBLIC void fuzzReportServerCrash(cchar *input, size_t len);
 
 /********************************* Constants **********************************/
 

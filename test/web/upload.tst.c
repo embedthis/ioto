@@ -40,7 +40,7 @@ static void uploadBasic(void)
 
     rc = urlUpload(up, files, forms, NULL);
     teqi(rc, 0);
-    rc = urlFinalize(up);
+    urlFinalize(up);
     teqi(urlGetStatus(up), 200);
 
     json = urlGetJsonResponse(up);

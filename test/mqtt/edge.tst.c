@@ -205,7 +205,6 @@ static void testMqttWaitFlags(void)
     teq(rc, 0);
 
     mqttFree(mq);
-    // MOB - restore this -- must somehow eat pending I/O events
     rFreeSocket(sock);
 }
 

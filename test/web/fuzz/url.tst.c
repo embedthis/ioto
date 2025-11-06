@@ -1,5 +1,5 @@
 /*
-    input-path.fuzz.c - URL path validation fuzzer
+    url.tst.c - URL path validation fuzzer
 
     Fuzzes URL path parsing and validation to find path traversal,
     injection, and sanitization bypass vulnerabilities.
@@ -10,44 +10,120 @@
 /********************************** Includes **********************************/
 
 #include "../test.h"
-#include "fuzzLib.h"
+#include "fuzz.h"
+#include "fuzz.c"
+
+/*********************************** Config ***********************************/
+
+#define CORPUS_FILE "corpus/url-paths.txt"
+#define CRASH_DIR   "crashes/url"
 
 /*********************************** Locals ***********************************/
 
-static cchar *HTTP;
-static int   fuzzResult = 0;
+static char *HTTP;
+static int  fuzzResult = 0;
 
-// Path fuzzing corpus
-static cchar *pathCorpus[] = {
-    "/",
-    "/index.html",
-    "/api/users",
-    "/path/to/resource",
-    "/file.txt",
-    "/dir/",
-    "/../../../etc/passwd",
-    "/./././file",
-    "/path/../../../etc/shadow",
-    "/%2e%2e%2f%2e%2e%2f",
-    "/path/..%2f..%2f",
-    "/path%00.txt",
-    "/path/file\x00.html",
-    "/path//double//slash",
-    "/path\\backslash\\win",
-    "/very/long/path/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z",
-    "/unicode/\xc3\xa9\xc3\xa0",
-    "/special/<script>alert(1)</script>",
-    "/sql/';DROP TABLE users--",
-    "/null\x00byte",
-    "/.git/config",
-    "/.env",
-    "/.htaccess",
-    "/~user/private",
-    "/cgi-bin/../../etc/passwd",
-    NULL
-};
+/*********************************** Forwards *********************************/
+
+static void fuzzFiber(void *arg);
+static bool testPathValidation(cchar *fuzzPath, size_t len);
+static char *mutatePathInput(cchar *input, size_t *len);
 
 /************************************ Code ************************************/
+/*
+    Main entry point
+ */
+int main(int argc, char **argv)
+{
+    int iterations = getenv("TESTME_ITERATIONS") ? atoi(getenv("TESTME_ITERATIONS")) : 0;
+
+    FuzzConfig config = {
+        .crashDir = CRASH_DIR,
+        .iterations = (iterations > 1) ? iterations : 1000,
+        .parallel = 1,
+        .seed = 0,
+        .mutate = getenv("FUZZ_MUTATE") ? atoi(getenv("FUZZ_MUTATE")) : 1,
+        .randomize = getenv("FUZZ_RANDOMIZE") ? atoi(getenv("FUZZ_RANDOMIZE")) : 1,
+        .stop = getenv("TESTME_STOP") ? atoi(getenv("TESTME_STOP")) : 0,
+        .timeout = 5000,
+        .verbose = getenv("TESTME_VERBOSE") != NULL,
+    };
+
+    // Extra room for ASAN
+    rSetFiberStack(256 * 1024);
+    rInit(fuzzFiber, &config);
+    rServiceEvents();
+    rTerm();
+
+    if (fuzzResult < 0) {
+        return 1;  // Setup failed
+    } else if (fuzzResult > 0) {
+        tfail("Found %d path validation issues", fuzzResult);
+        return 1;
+    }
+    tinfo("Path validation fuzzing complete - no issues found");
+    return 0;
+}
+
+/*
+    Fiber main - runs the fuzzer
+ */
+static void fuzzFiber(void *arg)
+{
+    FuzzRunner *runner;
+    FuzzConfig *config = (FuzzConfig*) arg;
+    cchar      *replayFile = getenv("FUZZ_REPLAY");
+
+    if (!setup(&HTTP, NULL)) {
+        tfail("Cannot setup test environment");
+        fuzzResult = -1;
+        rStop();
+        return;
+    }
+
+    // Check if we're replaying a crash file
+    if (replayFile) {
+        tinfo("Replaying crash file: %s", replayFile);
+        tinfo("Target: %s", HTTP);
+
+        config->mutate = 0;
+        config->randomize = 0;
+
+        runner = fuzzInit(config);
+        fuzzSetOracle(runner, testPathValidation);
+
+        // Load single crash file instead of corpus
+        int loaded = fuzzLoadCorpus(runner, replayFile);
+        if (loaded == 0) {
+            tfail("Failed to load crash file: %s", replayFile);
+            fuzzResult = -1;
+            rStop();
+            return;
+        }
+
+        // Run once with the crash input (no mutations)
+        config->iterations = 1;
+        tinfo("Running single iteration with crash input...");
+    } else {
+        tinfo("Starting URL path validation fuzzer");
+        tinfo("Target: %s", HTTP);
+        tinfo("Iterations: %d", config->iterations);
+
+        runner = fuzzInit(config);
+        fuzzSetOracle(runner, testPathValidation);
+        fuzzSetMutator(runner, mutatePathInput);
+
+        fuzzLoadCorpus(runner, CORPUS_FILE);
+    }
+
+    int crashes = fuzzRun(runner);
+
+    fuzzReport(runner);
+    fuzzFree(runner);
+
+    fuzzResult = crashes;
+    rStop();
+}
 
 /*
     Test oracle - returns true if path handled safely
@@ -58,37 +134,54 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
     char url[2048];
     int  status;
 
-    up = urlAlloc(0);
+    /*
+        Use URL_NO_LINGER to prevent TIME_WAIT accumulation during fuzzing
+        This sends RST instead of FIN on close (works on Linux, macOS, Windows)
+     */
+    up = urlAlloc(URL_NO_LINGER);
     urlSetTimeout(up, 2000);
 
     // Construct URL with fuzzed path
     if (len >= sizeof(url) - slen(HTTP) - 1) {
         // Path too long
         urlFree(up);
-        return true;
+        return 1;
     }
-
     snprintf(url, sizeof(url), "%s%.*s", HTTP, (int) len, fuzzPath);
 
     // Fetch URL and check response
     status = urlFetch(up, "GET", url, NULL, 0, NULL);
 
-    // Acceptable responses:
-    // 200 - OK (file exists and is accessible)
-    // 301/302 - Redirect (might be normalizing path)
-    // 400 - Bad Request (rejected malformed path)
-    // 403 - Forbidden (access denied, good security)
-    // 404 - Not Found (file doesn't exist)
-    // 414 - URI Too Long (rejected oversized path)
+    /*
+        Check if server crashed during request
+        urlFetch returns error code if connection failed
+     */
+    if (status < 0) {
+        if (!fuzzIsServerAlive(fuzzGetServerPid())) {
+            tinfo("Server crashed during path validation: %.*s", (int) len, fuzzPath);
+            fuzzReportServerCrash(fuzzPath, len);
+            urlFree(up);
+            return 0;  // Server crash detected
+        }
+    }
 
-    // Unacceptable responses that might indicate vulnerability:
-    // 500 - Internal Server Error (crashed during parsing?)
-    // Accessing /etc/passwd or other sensitive files
+    /*
+        Acceptable responses:
+            200 - OK (file exists and is accessible)
+            301/302 - Redirect (might be normalizing path)
+            400 - Bad Request (rejected malformed path)
+            403 - Forbidden (access denied, good security)
+            404 - Not Found (file doesn't exist)
+            414 - URI Too Long (rejected oversized path)
 
+        Unacceptable responses that might indicate vulnerability:
+            500 - Internal Server Error (crashed during parsing?)
+            Accessing /etc/passwd or other sensitive files
+     */
     if (status == 500) {
         tinfo("Internal server error for path: %.*s", (int) len, fuzzPath);
         // This might indicate a vulnerability
-        return false;
+        return 0;
     }
 
     // Check if we got unexpected file content (like /etc/passwd)
@@ -100,13 +193,23 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
                 scontains(response, "daemon:x:1:1")) {
                 tinfo("Possible path traversal - got sensitive file content");
                 urlFree(up);
-                return false;
+                return 0;
             }
         }
     }
-
     urlFree(up);
-    return true;  // Test passed
+
+    /*
+        Check if server is still alive after processing request
+        This catches delayed crashes
+     */
+    if (!fuzzIsServerAlive(fuzzGetServerPid())) {
+        tinfo("Server crashed after processing path: %.*s", (int) len, fuzzPath);
+        fuzzReportServerCrash(fuzzPath, len);
+        return 0; // Server crash detected
+    }
+
+    return 1;     // Test passed
 }
 
 /*
@@ -227,86 +330,6 @@ static char *mutatePathInput(cchar *input, size_t *len)
     default:
         return sclone(input);
     }
-}
-
-/*
-    Fiber main - runs the fuzzer
- */
-static void fuzzFiber(void *arg)
-{
-    FuzzRunner *runner;
-    FuzzConfig *config = (FuzzConfig*) arg;
-    int        i;
-
-    // Setup test environment
-    if (!setup(&HTTP, NULL)) {
-        tfail("Cannot setup test environment");
-        fuzzResult = -1;
-        rStop();
-        return;
-    }
-
-    tinfo("Starting URL path validation fuzzer");
-    tinfo("Target: %s", HTTP);
-    tinfo("Iterations: %d", config->iterations);
-
-    // Initialize fuzzer
-    runner = fuzzInit(config);
-    fuzzSetOracle(runner, testPathValidation);
-    fuzzSetMutator(runner, mutatePathInput);
-
-    // Load initial corpus
-    for (i = 0; pathCorpus[i]; i++) {
-        fuzzAddCorpus(runner, pathCorpus[i], slen(pathCorpus[i]));
-    }
-
-    // Load corpus from file if exists
-    fuzzLoadCorpus(runner, "corpus/paths.txt");
-
-    // Run fuzzing campaign
-    int crashes = fuzzRun(runner);
-
-    // Report results
-    fuzzReport(runner);
-    fuzzFree(runner);
-
-    fuzzResult = crashes;
-    rStop();
-}
-
-/*
-    Main entry point
- */
-int main(int argc, char **argv)
-{
-    int iterations = getenv("TESTME_ITERATIONS") ? atoi(getenv("TESTME_ITERATIONS")) : 0;
-
-    FuzzConfig config = {
-        .iterations = (iterations > 1) ? iterations : 20000,
-        .timeout = 5000,
-        .parallel = 1,
-        .seed = 0,
-        .crashDir = "./crashes/input-path",
-        .corpusDir = "./corpus/path",
-        .verbose = getenv("TESTME_VERBOSE") != NULL,
-    };
-
-    // Initialize runtime with fiber
-    rInit(fuzzFiber, &config);
-    rServiceEvents();
-    rTerm();
-
-    if (fuzzResult < 0) {
-        return 1;  // Setup failed
-    }
-
-    if (fuzzResult > 0) {
-        tfail("Found %d path validation issues", fuzzResult);
-        return 1;
-    }
-
-    tinfo("Path validation fuzzing complete - no issues found");
-    return 0;
 }
 
 /*
