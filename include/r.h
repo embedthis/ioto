@@ -3936,10 +3936,10 @@ PUBLIC bool rIsSocketSecure(RSocket *sp);
 PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler, void *arg);
 
 /**
-    Read from a socket.
-    @description Read data from a socket. The read will return with whatever bytes are available. If none is available,
-       this call
-        will yield the current fiber and resume the main fiber. When data is available, the fiber will resume.
+    Read from a socket until a deadline is reached.
+    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are 
+        available. If none is available, this call will yield the current fiber and resume the main fiber. When data 
+        is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
@@ -3957,8 +3957,8 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
     Read from a socket.
     @description Read data from a socket. The read will return with whatever bytes are available. If none and the socket
         is in blocking mode, it will block until there is some data available or the socket is disconnected.
-        Use rSetSocketBlocking to change the socket blocking mode.
-        It is preferable to use rReadSocket which can wait without blocking via fiber coroutines.
+        Use rSetSocketBlocking to change the socket blocking mode.  It is preferable to use rReadSocket which can wait 
+        without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
     @param bufsize Size of the buffer.
@@ -4081,21 +4081,18 @@ PUBLIC void rSetSocketDefaultVerify(int verifyPeer, int verifyIssuer);
 PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
 
 /**
-    Write to a socket
-    @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes. If no data can be written, this call
-            will yield the current fiber and resume the main fiber. When data is available, the fiber will resume.
+    Write to a socket until a deadline is reached
+    @description Write a block of data to a socket until a deadline is reached. This may return having written less 
+        than the required bytes if the deadline is reached. This call will yield the current fiber and resume 
+        the main fiber. When data is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param bufsize Length of data to write. This may be less than the requested write length if the socket is in
-       non-blocking
-        mode. Will return a negative error code on errors.
+    @param bufsize Length of data to write.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot absorb
-       any
-        more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
-        or EWOULDBLOCK.
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
+        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError() 
+        returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
 PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadline);
@@ -4103,17 +4100,15 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
 /**
     Write to a socket
     @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes.
-        It is preferable to use rWriteSocket which can wait without blocking via fiber coroutines.
+        may return having written less than the required bytes. It is preferable to use rWriteSocket which can wait 
+        without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param len Length of data to write. This may be less than the requested write length if the socket is in
-       non-blocking
-        mode. Will return a negative error code on errors.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot absorb
-       any
-        more data. If the transport is saturated, will return a negative error and rGetError() returns EAGAIN
-        or EWOULDBLOCK.
+    @param len Length of data to write. This may be less than the requested write length if the socket is 
+        in non-blocking mode. Will return a negative error code on errors.
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
+        absorb any more data. If the transport is saturated, will return a negative error and rGetError() 
+        returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t len);

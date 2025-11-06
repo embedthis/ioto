@@ -1010,6 +1010,7 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
     }
     host->connections++;
     web->conn = conn++;
+    web->connectionStarted = rGetTicks();
 
     initWeb(web, listen, sock, 0, 0);
     rAddItem(host->webs, web);
@@ -1157,7 +1158,17 @@ static int serveRequest(Web *web)
     ssize size;
 
     web->started = rGetTicks();
-    web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
+
+    if (rGetTimeouts()) {
+        if (web->reuse > 0) {
+            web->deadline = min(web->started + web->host->inactivityTimeout, 
+                                web->started + web->host->requestTimeout);
+        } else {
+            web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
+        }
+    } else {
+        web->deadline = 0;
+    }
 
     /*
         Read until we have all the headers up to the limit
@@ -3934,9 +3945,8 @@ static WebUpload *processUploadHeaders(Web *web)
         }
         key = next;
     }
-    if (!name && !filename) {
-        rFree(filename);
-        webNetError(web, "Bad multipart mime headers");
+    if (!name) {
+        webNetError(web, "Missing upload name");
         return 0;
     }
     if ((upload = allocUpload(web, name, filename, type)) == 0) {
@@ -3953,8 +3963,6 @@ static WebUpload *processUploadHeaders(Web *web)
 static WebUpload *allocUpload(Web *web, cchar *name, cchar *path, cchar *contentType)
 {
     WebUpload *upload;
-
-    assert(name);
 
     if ((upload = rAllocType(WebUpload)) == 0) {
         return 0;

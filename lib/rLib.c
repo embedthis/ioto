@@ -9010,6 +9010,10 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
     return bytes;
 }
 
+/*
+    Set a socket into blocking I/O mode. from a socket.
+    Sockets are opened in non-blocking mode by default.
+*/
 PUBLIC void rSetSocketBlocking(RSocket *sp, bool on)
 {
 #if ME_WIN_LIKE

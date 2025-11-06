@@ -508,6 +508,7 @@ typedef struct Web {
     Json *qvars;                /**< Parsed request query string variables */
     RSocket *sock;
 
+    Ticks connectionStarted;    /**< Time when the connection started */
     Ticks started;              /**< Time when the request started */
     Ticks deadline;             /**< Timeout deadline for when the next I/O must complete */
 
