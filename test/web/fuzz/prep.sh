@@ -5,8 +5,7 @@
 #   Compile the fuzz library before tests run
 #
 
-rm -fr ../site/upload/
-mkdir -p .testme ../site/upload
+mkdir -p .testme
 cp -r ../../../certs ../../certs
 
 #

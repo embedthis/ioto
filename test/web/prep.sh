@@ -21,7 +21,6 @@ make-files() {
 mkdir -p certs site tmp
 
 if [ ! -f ./certs/test.crt ] ; then
-    mkdir -p ./certs
     cp ../../certs/*.crt ./certs
     cp ../../certs/*.key ./certs
 fi
