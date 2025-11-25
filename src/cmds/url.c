@@ -37,7 +37,7 @@
     url --ciphers ssss
     url --ca CA --key KEY --cert cert --verify
     url --show H
-    url --clients 10 --count 10000 --benchmark
+    url --clients 10 --iterations 10000 --benchmark
     url -w --size 1024 --couunt 1000 --benchmark /ws/echo
 
     Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
@@ -70,11 +70,11 @@ static int   chunkSize;                /* Ask for response data to be chunked in
 static char  *ciphers;                 /* Set of acceptable ciphers to use for SSL */
 static int   completed;                /* Total completed requests */
 static int   continueOnErrors;         /* Continue testing if an error occurs. Default is to stop. */
-static int   count = 1;                /* URLs to fetch */
 static int   clients = CLIENTS;        /* Number of clients to use for URL requests */
 static RList *files;                   /* List of files to upload */
 static RHash *forms;                   /* List of upload form fields */
 static RHash *headers;                 /* Request headers */
+static int   iterations = 1;           /* URLs to fetch */
 static cchar *keyFile;                 /* Private key file */
 static int   maxRedirects = 10;        /* Times to retry a failed request */
 static int   maxRetries = 0;           /* Times to retry an SSE connection */
@@ -92,6 +92,11 @@ static cchar *trace;                   /* Trace spec */
 static int   timeout;                  /* Timeout in msecs for a non-responsive server */
 static int   upload;                   /* Upload using multipart mime */
 static char  *url;                     /* Request url */
+
+#if URL_AUTH
+static char  *username;                /* Username for authentication */
+static char  *password;                /* Password for authentication */
+#endif
 
 /*
     SECURITY Acceptable:: This utility is a development tool and never included in production builds. These default to false so that self-signed certs can be used more easily in development. Do not flag this as a security issue.
@@ -117,7 +122,7 @@ static char *formatOutput(char *response, size_t *count);
 static bool isPort(cchar *name);
 static int  parseArgs(int argc, char **argv);
 static char *prepBuffer(size_t size);
-static char *prepHeaders(void);
+static char *prepHeaders(int count);
 static void progress(Url *up);
 static void report(Time start);
 static void showResponse(Url *up, RBuf *buf);
@@ -144,9 +149,9 @@ static int usage(void)
             "    --clients count            # Number of request clients to spawn (default 1).\n"
             "    --continue                 # Continue on errors.\n"
             "    --cookie CookieString      # Define a cookie header. Multiple uses okay.\n"
-            "    --count NUM                # Number of times to fetch the URL (default 1).\n"
             "    --debug                    # Enable module debug tracing.\n"
             "    --header 'key: value'      # Add a custom request header.\n"
+            "    --iterations NUM           # Number of times to fetch the URL (default 1).\n"
             "    --key file                 # Private key file.\n"
             "    --printable                # Make binary output printable.\n"
             "    --protocol 0|1             # Set HTTP protocol to HTTP/1.0 or HTTP/1.1 (default HTTP/1.1).\n"
@@ -161,6 +166,9 @@ static int usage(void)
             "    --timeout secs             # Request timeout period in seconds. Zero for no timeouts.\n"
             "    --trace file[:type:from]   # Trace to file (stdout:all:all)\n"
             "    --upload                   # Use multipart mime upload.\n"
+#if URL_AUTH
+            "    --user username:password   # Set authentication credentials. Supports Basic and Digest.\n"
+#endif
             "    --verify                   # Validate server certificates when using SSL.\n"
             "    --verbose                  # Verbose operation.\n"
             "    --version                  # Display the program version.\n"
@@ -214,6 +222,10 @@ static void cleanup(void)
     rFreeHash(forms);
     rFreeHash(headers);
     rFreeList(files);
+#if URL_AUTH
+    rFree(username);
+    rFree(password);
+#endif
 }
 
 /*
@@ -288,13 +300,13 @@ static int parseArgs(int argc, char **argv)
                 ciphers = sclone(argv[++nextArg]);
             }
 
-        } else if (smatch(argp, "--count") || smatch(argp, "-c")) {
+        } else if (smatch(argp, "--iterations") || smatch(argp, "-i") || smatch(argp, "--count") || smatch(argp, "-c")) {
             if (nextArg + 1 >= argc) {
                 return usage();
             } else {
-                count = atoi(argv[++nextArg]);
-                if (count == 0) {
-                    count = MAXINT;
+                iterations = atoi(argv[++nextArg]);
+                if (iterations == 0) {
+                    iterations = MAXINT;
                 }
             }
 
@@ -445,6 +457,22 @@ static int parseArgs(int argc, char **argv)
             upload++;
             files = rAllocList(0, 0);
 
+#if URL_AUTH
+        } else if (smatch(argp, "--user")) {
+            if (nextArg + 1 >= argc) {
+                return usage();
+            } else {
+                value = argv[++nextArg];
+                username = stok(value, ":", &password);
+                if (!username || !password) {
+                    rError("url", "Bad user format. Must be \"username:password\"");
+                    return R_ERR_BAD_ARGS;
+                }
+                username = sclone(username);
+                password = sclone(password);
+            }
+#endif
+
         } else if (smatch(argp, "--verify")) {
             //  Verify the server certificate
             verifyPeer = 1;
@@ -586,7 +614,7 @@ static int parseArgs(int argc, char **argv)
     /*
         Process arg settings
      */
-    if (save && count == 1) {
+    if (save && iterations == 1) {
         if ((saveFd = open(save, O_CREAT | O_WRONLY | O_TRUNC | O_TEXT, 0664)) < 0) {
             rError("url", "Cannot open %s", save);
             return R_ERR_BAD_ARGS;
@@ -633,14 +661,17 @@ static void startClients(void)
     }
 }
 
-static char *prepHeaders(void)
+static char *prepHeaders(int count)
 {
     RBuf  *buf;
     RName *np;
 
     buf = rAllocBuf(0);
-    if (count > 0) {
+    if (iterations > 0) {
         rPutToBuf(buf, "X-Request: %08d\r\n", completed);
+    }
+    if (count == 1) {
+        rPutStringToBuf(buf, "Connection: close\r\n");
     }
     for (ITERATE_NAMES(headers, np)) {
         rPutToBuf(buf, "%s: %s\r\n", np->name, (char*) np->value);
@@ -678,7 +709,7 @@ static void sseCallback(Url *up, ssize id, cchar *event, cchar *data, void *arg)
 static void webSocketCallback(WebSocket *ws, int event, cchar *data, size_t len, void *arg)
 {
     Url *up = (Url*) arg;
-    if (++completed < count) {
+    if (++completed < iterations) {
         if (webSocketsSize > 0) {
             rDebug("url", "Sending: %zd bytes", webSocketsSize);
             webSocketSendBlock(ws, WS_MSG_TEXT, webSocketsBuffer, webSocketsSize);
@@ -700,15 +731,18 @@ static void fiberMain(void *data)
 {
     RBuf  *buf;
     Url   *up;
+    cchar *location;
     char  *headers;
-    cchar  *location;
-    int     redirects;
+    int   authRetried, redirects;
 
     if (show == 0) {
         show = URL_SHOW_RESP_BODY;
     }
-    // Show body handled locally by this program
-    up = urlAlloc(show & ~URL_SHOW_RESP_BODY);
+    /*
+        Show body handled locally by this program. 
+        No linger to avoid TIME_WAITS when closing the connection. Necessary for load tests and benchmarks.
+    */
+    up = urlAlloc((show & ~URL_SHOW_RESP_BODY) | URL_NO_LINGER);
 #if URL_SSE
     if (sse) {
         urlSetMaxRetries(up, maxRetries);
@@ -721,10 +755,18 @@ static void fiberMain(void *data)
     rSetSocketDefaultVerify(verifyPeer, verifyIssuer);
     rSetSocketDefaultCiphers(ciphers);
 
-    headers = prepHeaders();
+#if URL_AUTH
+    // Set authentication credentials if provided
+    if (username && password) {
+        urlSetAuth(up, username, password, NULL);  // Auto-detect auth type
+    }
+#endif
+
+    authRetried = 0;
     redirects = 0;
 
-    for (; success && completed < count + redirects; completed++) {
+    for (; success && completed < iterations + redirects; completed++) {
+        headers = prepHeaders(iterations + redirects - completed);
         if (urlStart(up, method, url) < 0) {
             urlError(up, "Cannot start request");
 
@@ -775,6 +817,16 @@ static void fiberMain(void *data)
             }
             continue;
         }
+#if URL_AUTH
+        // Handle 401 authentication challenge
+        if (up->status == URL_CODE_UNAUTHORIZED && up->username && up->password && !authRetried) {
+            if (urlParseAuthChallenge(up)) {
+                authRetried = 1;
+                redirects++;
+                continue;
+            }
+        }
+#endif
         if (up->error || !(webSockets || sse)) {
             if ((buf = urlGetResponseBuf(up)) == NULL) {
                 urlError(up, "Cannot read response body");
@@ -797,8 +849,8 @@ static void fiberMain(void *data)
                 break;
             }
         }
+        rFree(headers);
     }
-    rFree(headers);
     urlFree(up);
     if (--activeClients <= 0) {
         rStop();
@@ -824,12 +876,14 @@ static void showResponse(Url *up, RBuf *buf)
         bytes = rGetBufLength(buf);
     }
     if (saveFd >= 0) {
-        write(saveFd, response, (uint) bytes);
+        if (bytes > 0) {
+            write(saveFd, response, (uint) bytes);
 #if ME_UNIX_LIKE
-        if (isatty(saveFd)) {
-            write(saveFd, "\n", 1);
-        }
+            if (isatty(saveFd)) {
+                write(saveFd, "\n", 1);
+            }
 #endif
+        }
         if (saveFd > 1) {
             close(saveFd);
             saveFd = -1;
