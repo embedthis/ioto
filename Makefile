@@ -10,6 +10,7 @@
 SHELL		:= /bin/bash
 PROFILE 	?= dev
 OPTIMIZE	?= debug
+TOOLS	    := $(shell bin/prep-build)
 TOP			:= $(shell realpath .)
 APP			?= $(shell if [ -f build/.app ] ; then cat build/.app ; else echo unit ; fi)
 MAKE		:= $(shell if which gmake >/dev/null 2>&1; then echo gmake ; else echo make ; fi) --no-print-directory

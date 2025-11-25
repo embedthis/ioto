@@ -50,6 +50,7 @@ projecs/*.suo
 projects/*-mine*
 projects/*/project.xcworkspace/
 projects/*/xcuserdata/
+projects/*/xcshareddata/
 proto/
 provision.json5
 reports/*.html

@@ -110,7 +110,7 @@ jobs:
           IOTO_ID: ${{ secrets.IOTO_ID }}
         run: |
           call bin\prep-test.bat
-          tm test
+          tm
 
       - name: Upload test results
         if: failure()

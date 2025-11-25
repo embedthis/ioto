@@ -65,7 +65,13 @@
     },
     web: {
         auth: {
-            roles: ['user', 'admin', 'owner', 'super'],
+            roles: {
+                public: [],
+                user: [],
+                admin: ['user'],
+                owner: ['admin'],
+                super: ['owner']
+            },
             login: '/api/public/login',
             logout: '/api/public/logout',
         },
