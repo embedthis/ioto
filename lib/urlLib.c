@@ -23,6 +23,7 @@
 /********************************** Includes **********************************/
 
 
+#include    "crypt.h"
 #include    "websock.h"
 
 #if ME_COM_URL
@@ -46,6 +47,7 @@
 
 #define URL_BUFSIZE          4096              /**< Buffer size */
 #define URL_UNLIMITED        MAXINT            /**< Unlimited size */
+#define MAX_DIGEST_PARAM_LEN 8192              /**< Max length for digest auth parameters (DoS prevention) */
 
 #define HDR_HTTP             (1 << 0)          /**< HTTP header */
 #define HDR_SSE              (1 << 1)          /**< SSE header */
@@ -89,7 +91,13 @@ static void resetSocket(Url *up);
 static void setDeadline(Url *up);
 static int verifyWebSocket(Url *up);
 static int writeChunkDivider(Url *up, size_t len);
-static ssize writeWebSocketHeaders(Url *up, RBuf *buf);
+static ssize addWebSocketHeaders(Url *up, RBuf *buf);
+
+#if URL_AUTH
+static char *buildAuthHeader(Url *up);
+static char *buildBasicAuthHeader(Url *up);
+static char *buildDigestAuthHeader(Url *up);
+#endif
 
 /************************************ Code ************************************/
 
@@ -107,7 +115,7 @@ PUBLIC Url *urlAlloc(int flags)
     up->deadline = MAXINT64;
     up->bufLimit = URL_MAX_RESPONSE;
 
-    if (flags == 0) {
+    if ((flags & URL_SHOW_FLAGS) == 0) {
         /*
             SECURITY Acceptable: acceptable risk to use getenv here to modify log level
             These flags are only used at development time for debugging purposes.
@@ -155,6 +163,16 @@ PUBLIC void urlFree(Url *up)
     rFree(up->url);
     rFree(up->urlbuf);
     rFree(up->boundary);
+#if URL_AUTH
+    rFree(up->authType);
+    rFree(up->username);
+    rFree(up->password);
+    rFree(up->realm);
+    rFree(up->nonce);
+    rFree(up->qop);
+    rFree(up->opaque);
+    rFree(up->algorithm);
+#endif /* URL_AUTH */
 #if ME_COM_WEBSOCK
     if (up->webSocket) {
         webSocketFree(up->webSocket);
@@ -176,6 +194,7 @@ static void resetState(Url *up)
         return;
     }
     resetSocket(up);
+    rFree(up->boundary);
     up->boundary = 0;
     up->chunked = 0;
     up->finalized = 0;
@@ -292,11 +311,13 @@ static int connectHost(Url *up)
 
     if (up->sock) {
         if (((smatch(up->scheme, "https") || smatch(up->scheme, "wss")) != rIsSocketSecure(up->sock)) ||
-            (*host && !smatch(up->host, host)) || (port && up->port != port)) {
+            (*host && !smatch(up->host, host)) || (port && up->port != port) || up->close) {
             rFreeSocket(up->sock);
             up->sock = 0;
         }
     }
+    up->close = 0;
+
     if (!up->sock) {
         up->sock = rAllocSocket();
     }
@@ -320,53 +341,74 @@ static int connectHost(Url *up)
 
 /*
     Convenience function used by most higher level functions.
+    If the content length is not specified, and the data is provided, use the length of the data to set
+    the content length. If data buffer provided and length is zero, get the string length.
  */
 static int fetch(Url *up, cchar *method, cchar *uri, cvoid *data, size_t len, cchar *headers)
 {
-    char *allocHeaders;
+    int authRetried;
 
     if (!up || !method || !uri) {
         return R_ERR_BAD_ARGS;
     }
-    // LEGACY
-    if ((ssize) len == -1) {
+    // LEGACY when len was a ssize, but now is a size_t
+    if ((ssize) len < 0) {
         len = 0;
     }
-    if (urlStart(up, method, uri) == 0) {
-        if (getContentLength(headers, slen(headers)) < 0) {
-            if (data && len == 0) {
-                len = data ? slen(data) : 0;
-            }
-            //  Add a content length header if not already present
-            if (len > 0) {
-                headers = allocHeaders = sfmt("Content-Length: %zd\r\n%s", len, headers);
-            } else {
-                allocHeaders = NULL;
+    authRetried = 0;
+
+    do {
+        if (urlStart(up, method, uri) == 0) {
+            // Successful connection
+            if (getContentLength(headers, slen(headers)) < 0) {
+                // No content length specified, so use the length of the data if provided
+                if (data && len == 0) {
+                    // Buffer but zero length, so get the string length
+                    len = slen(data);
+                }
+                if (len >= SSIZE_MAX) {
+                    urlError(up, "Request body too large");
+                    break;
+                }
+                up->txLen = (ssize) len;
             }
             if (urlWriteHeaders(up, headers) < 0) {
-                rFree(allocHeaders);
-                return urlError(up, "Cannot write headers");
+                urlError(up, "Cannot write headers");
+                break;
             }
-            rFree(allocHeaders);
-        } else {
-            if (urlWriteHeaders(up, headers) < 0) {
-                return urlError(up, "Cannot write headers");
+            if (data && len > 0) {
+                if (urlWrite(up, data, len) < 0) {
+                    urlError(up, "Cannot write body");
+                    break;
+                }
             }
-        }
-        if (data && len > 0) {
-            if (urlWrite(up, data, len) >= 0) {
-                return up->status;
+            if (urlFinalize(up) < 0) {
+                return urlError(up, "Cannot finalize");
             }
+#if URL_AUTH
+            /*
+                Transparent digest challenge handling
+             */
+            if (up->status == URL_CODE_UNAUTHORIZED && up->username && up->password && !authRetried) {
+                if (urlParseAuthChallenge(up)) {
+                    // Retry the request with authentication (resetState will be called by urlStart)
+                    authRetried = 1;
+                    continue;
+                }
+            }
+#endif
+            // Complete
+            break;
         }
-        if (urlFinalize(up) < 0) {
-            return urlError(up, "Cannot finalize");
+        if (!up->error) {
+            urlError(up, "Cannot run \"%s\" %s", method, uri);
         }
-        return up->status;
+    } while (!up->error);
+
+    if (up->error) {
+        return R_ERR_CANT_CONNECT;
     }
-    if (!up->error) {
-        urlError(up, "Cannot run \"%s\" %s", method, uri);
-    }
-    return R_ERR_CANT_CONNECT;
+    return up->status;
 }
 
 PUBLIC char *urlGet(cchar *uri, cchar *headersFmt, ...)
@@ -1486,6 +1528,16 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers)
             rPutToBuf(buf, "Host: %s\r\n", up->host);
         }
     }
+#if URL_AUTH
+    // Add authentication header if credentials are set and no Authorization header in provided headers
+    if (!sncaselesscontains(headers, "authorization:", 0)) {
+        char *authHeader = buildAuthHeader(up);
+        if (authHeader) {
+            rPutStringToBuf(buf, authHeader);
+            rFree(authHeader);
+        }
+    }
+#endif
 #if URL_SSE
     if (up->sse) {
         rPutStringToBuf(buf, "Accept: text/event-stream\r\n");
@@ -1500,15 +1552,19 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers)
             rFatal("sockets", "memory error");
             return R_ERR_MEMORY;
         }
-        if (writeWebSocketHeaders(up, buf) < 0) {
+        if (addWebSocketHeaders(up, buf) < 0) {
             return urlError(up, "Cannot upgrade WebSocket");
         }
     }
     /*
         See if the caller has specified a content length and intelligently handle chunked encoding.
      */
-    up->txLen = getContentLength(rBufToString(buf), rGetBufLength(buf));
-
+    if (up->txLen >= 0) {
+        // Caller has requested a Content-Length
+        rPutToBuf(buf, "Content-Length: %zd\r\n", up->txLen);
+    } else {
+        up->txLen = getContentLength(rBufToString(buf), rGetBufLength(buf));
+    }
     if (up->txLen < 0 && scaselessmatch(up->method, "GET") && !sncaselesscontains(headers, "Transfer-Encoding", 0)) {
         up->txLen = 0;
     }
@@ -1647,14 +1703,16 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
 
 #if ME_COM_WEBSOCK
 
-PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg)
+PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg)
 {
     if (!up) {
-        return;
+        return R_ERR_BAD_ARGS;
     }
-    if (up->webSocket) {
-        webSocketAsync(up->webSocket, callback, arg, up->rx);
+    if (!up->webSocket) {
+        return R_ERR_BAD_STATE;
     }
+    webSocketAsync(up->webSocket, callback, arg, up->rx);
+    return 0;
 }
 
 /*
@@ -1698,7 +1756,7 @@ PUBLIC int urlWebSocket(cchar *uri, WebSocketProc callback, void *arg, cchar *he
     Upgrade a client socket to use Web Sockets.
     User can set required sub-protocol in the headers via: Sec-WebSocket-Protocol: <sub-protocol>
  */
-static ssize writeWebSocketHeaders(Url *up, RBuf *buf)
+static ssize addWebSocketHeaders(Url *up, RBuf *buf)
 {
     WebSocket *ws;
     uchar     bytes[16];
@@ -2026,7 +2084,7 @@ PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, .
     }
     urlSseAsync(up, proc, arg);
     if (urlWait(up) < 0) {
-        rDebug("test", "WebSocket error");
+        rDebug("test", "GetEvents error");
     }
     urlFree(up);
     rFree(headers);
@@ -2074,6 +2132,395 @@ return 0;
 }
 #endif /* ME_COM_WEBSOCK || URL_SSE */
 
+/******************************** Authentication ********************************/
+#if URL_AUTH
+
+PUBLIC void urlSetAuth(Url *up, cchar *username, cchar *password, cchar *authType)
+{
+    if (!up) {
+        return;
+    }
+    rFree(up->username);
+    rFree(up->password);
+    rFree(up->authType);
+
+    up->username = username ? sclone(username) : NULL;
+    up->password = password ? sclone(password) : NULL;
+    up->authType = authType ? sclone(authType) : NULL;
+
+    // Clear challenge state when credentials are cleared
+    if (!username || !password) {
+        rFree(up->realm);
+        up->realm = NULL;
+        rFree(up->nonce);
+        up->nonce = NULL;
+        rFree(up->qop);
+        up->qop = NULL;
+        rFree(up->opaque);
+        up->opaque = NULL;
+        rFree(up->algorithm);
+        up->algorithm = NULL;
+        up->nc = 0;
+    }
+}
+
+/*
+    Build an authorization header based on the authentication type.
+    Returns allocated string or NULL if no authentication is configured.
+ */
+static char *buildAuthHeader(Url *up)
+{
+    if (!up || !up->username || !up->password) {
+        return NULL;
+    }
+    if (up->authType) {
+        if (scaselessmatch(up->authType, "basic")) {
+            return buildBasicAuthHeader(up);
+        } else if (scaselessmatch(up->authType, "digest")) {
+            return buildDigestAuthHeader(up);
+        }
+    }
+    // Auto-detect: if we have digest challenge info, use digest
+    if (up->realm && up->nonce) {
+        return buildDigestAuthHeader(up);
+    }
+    // Default to basic
+    return buildBasicAuthHeader(up);
+}
+
+/*
+    Build HTTP Basic authentication header.
+    Returns allocated string in the format: "Authorization: Basic <base64>\r\n"
+ */
+static char *buildBasicAuthHeader(Url *up)
+{
+    char *credentials, *encoded, *header;
+
+    if (!up || !up->username || !up->password) {
+        return NULL;
+    }
+    // Warn if sending Basic auth over unencrypted HTTP (development warning)
+    // Note: This is acceptable for testing with self-signed certificates per project policy
+    if (up->scheme && scaselessmatch(up->scheme, "http")) {
+        rDebug("url", "Sending Basic authentication over unencrypted HTTP (OK for development/testing)");
+    }
+    credentials = sfmt("%s:%s", up->username, up->password);
+    encoded = cryptEncode64(credentials);
+    header = sfmt("Authorization: Basic %s\r\n", encoded);
+
+    rFree(credentials);
+    rFree(encoded);
+    return header;
+}
+
+/*
+    Escape quotes and backslashes for RFC 7616 quoted-string values.
+    Per RFC 7616 Section 3.4, quoted-string values must escape:
+    - Backslash (\) becomes \\
+    - Quote (") becomes \"
+    Returns allocated string (caller must free) or NULL if str is NULL.
+ */
+static char *escapeQuotedString(cchar *str)
+{
+    RBuf  *buf;
+    cchar *cp;
+
+    if (!str) {
+        return NULL;
+    }
+    buf = rAllocBuf(0);
+    for (cp = str; *cp; cp++) {
+        if (*cp == '"' || *cp == '\\') {
+            rPutCharToBuf(buf, '\\');  // Add backslash before quote or backslash
+        }
+        rPutCharToBuf(buf, *cp);
+    }
+    return rBufToStringAndFree(buf);
+}
+
+/*
+    Build HTTP Digest authentication header with specified hash algorithm.
+    Supports MD5 (RFC 2617) and SHA-256 (RFC 7616).
+    Returns allocated string or NULL on error.
+ */
+static char *buildDigestAuthHeader(Url *up)
+{
+    char *ha1, *ha2, *response, *header, *cnonce, *nc, *temp, *algorithm;
+    char *escapedUsername, *escapedRealm, *escapedNonce, *escapedOpaque;
+
+    if (!up || !up->username || !up->password || !up->realm || !up->nonce) {
+        return NULL;
+    }
+    // Increment nonce count
+    up->nc++;
+
+    // Determine hash algorithm (default to MD5 for RFC 2617 compatibility)
+    algorithm = up->algorithm ? up->algorithm : "MD5";
+
+    // Calculate HA1 = HASH(username:realm:password)
+    temp = sfmt("%s:%s:%s", up->username, up->realm, up->password);
+    if (scaselessmatch(algorithm, "SHA-256")) {
+        ha1 = cryptGetSha256((uchar*) temp, slen(temp));
+    } else {
+        // Default to MD5 for RFC 2617 compatibility
+        ha1 = cryptGetMd5((uchar*) temp, slen(temp));
+    }
+    rFree(temp);
+
+    // Calculate HA2 = HASH(method:uri)
+    if (up->query) {
+        temp = sfmt("%s:/%s?%s", up->method, up->path, up->query);
+    } else {
+        temp = sfmt("%s:/%s", up->method, up->path);
+    }
+    if (scaselessmatch(algorithm, "SHA-256")) {
+        ha2 = cryptGetSha256((uchar*) temp, slen(temp));
+    } else {
+        ha2 = cryptGetMd5((uchar*) temp, slen(temp));
+    }
+    rFree(temp);
+
+    // Generate client nonce for qop (cryptographically secure random)
+    cnonce = cryptID(16);
+    nc = sfmt("%08x", (unsigned int) up->nc);
+
+    /*
+        Escape digest parameters per RFC 7616 Section 3.4 (quoted-string values)
+        Defense-in-depth: Prevents header injection from malicious servers
+     */
+    escapedUsername = escapeQuotedString(up->username);
+    escapedRealm = escapeQuotedString(up->realm);
+    escapedNonce = escapeQuotedString(up->nonce);
+    escapedOpaque = escapeQuotedString(up->opaque);  // NULL-safe
+
+    // Calculate response
+    if (up->qop && scaselessmatch(up->qop, "auth")) {
+        // response = HASH(HA1:nonce:nc:cnonce:qop:HA2)
+        temp = sfmt("%s:%s:%s:%s:%s:%s", ha1, up->nonce, nc, cnonce, up->qop, ha2);
+        if (scaselessmatch(algorithm, "SHA-256")) {
+            response = cryptGetSha256((uchar*) temp, slen(temp));
+        } else {
+            response = cryptGetMd5((uchar*) temp, slen(temp));
+        }
+        rFree(temp);
+
+        header = sfmt("Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"/%s%s%s\", "
+                      "qop=%s, nc=%s, cnonce=\"%s\", response=\"%s\", algorithm=%s%s%s%s\r\n",
+                      escapedUsername, escapedRealm, escapedNonce, up->path, up->query ? "?" : "",
+                      up->query ? up->query : "",
+                      up->qop, nc, cnonce, response, algorithm, escapedOpaque ? ", opaque=\"" : "",
+                      escapedOpaque ? escapedOpaque : "", escapedOpaque ? "\"" : "");
+    } else {
+        // response = HASH(HA1:nonce:HA2)
+        temp = sfmt("%s:%s:%s", ha1, up->nonce, ha2);
+        if (scaselessmatch(algorithm, "SHA-256")) {
+            response = cryptGetSha256((uchar*) temp, slen(temp));
+        } else {
+            response = cryptGetMd5((uchar*) temp, slen(temp));
+        }
+        rFree(temp);
+
+        header = sfmt("Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"/%s%s%s\", "
+                      "response=\"%s\", algorithm=%s%s%s%s\r\n",
+                      escapedUsername, escapedRealm, escapedNonce, up->path, up->query ? "?" : "",
+                      up->query ? up->query : "",
+                      response, algorithm, escapedOpaque ? ", opaque=\"" : "", escapedOpaque ? escapedOpaque : "",
+                      escapedOpaque ? "\"" : "");
+    }
+    rFree(ha1);
+    rFree(ha2);
+    rFree(response);
+    rFree(cnonce);
+    rFree(nc);
+    rFree(escapedUsername);
+    rFree(escapedRealm);
+    rFree(escapedNonce);
+    rFree(escapedOpaque);
+    return header;
+}
+
+/*
+    Parse a quoted-string or token value from digest challenge per RFC 7230.
+    Handles escaped quotes (\") within quoted strings.
+    Returns allocated string (caller must free) or NULL on error.
+ */
+static char *parseDigestValue(char **tokPtr)
+{
+    char *tok, *value, *dst;
+    bool quoted;
+
+    tok = *tokPtr;
+
+    // Skip whitespace
+    while (*tok && isWhite(*tok)) tok++;
+
+    quoted = (*tok == '"');
+    if (quoted) {
+        tok++;                         // Skip opening quote
+        value = rAlloc(slen(tok) + 1); // Allocate max needed (will be <= this after unescaping)
+        dst = value;
+
+        // Parse quoted-string with escape handling
+        while (*tok && *tok != '"') {
+            if (*tok == '\\' && *(tok + 1)) {
+                // Escaped character - copy the next char literally
+                tok++;
+                *dst++ = *tok++;
+            } else {
+                *dst++ = *tok++;
+            }
+        }
+        *dst = '\0';
+
+        if (*tok == '"') {
+            tok++;  // Skip closing quote
+        }
+    } else {
+        // Unquoted token - read until comma or whitespace
+        value = tok;
+        while (*tok && *tok != ',' && !isWhite(*tok)) tok++;
+        if (*tok) {
+            value = snclone(value, (size_t) (tok - value));
+        } else {
+            value = sclone(value);
+        }
+    }
+
+    // Skip trailing whitespace and comma
+    while (*tok && (isWhite(*tok) || *tok == ',')) tok++;
+
+    *tokPtr = tok;
+    return value;
+}
+
+/*
+    Parse WWW-Authenticate header for Digest or Basic authentication.
+    Returns true if successfully parsed.
+ */
+PUBLIC bool urlParseAuthChallenge(Url *up)
+{
+    cchar *challenge;
+    char  *buf, *tok, *key, *value, *qopCopy, *qtok, *next;
+    bool  stale;
+
+    if (!up) {
+        return 0;
+    }
+    challenge = urlGetHeader(up, "WWW-Authenticate");
+    if (!challenge) {
+        return 0;
+    }
+    buf = sclone(challenge);
+    stale = 0;
+
+    // Determine auth type
+    if (sncaselesscmp(buf, "basic", 5) == 0) {
+        rFree(up->authType);
+        up->authType = sclone("basic");
+        rFree(buf);
+        return 1;
+    }
+    if (sncaselesscmp(buf, "digest", 6) == 0) {
+        rFree(up->authType);
+        up->authType = sclone("digest");
+
+        // Parse digest parameters
+        tok = &buf[6];
+        while (*tok) {
+            // Skip whitespace
+            while (*tok && isWhite(*tok)) tok++;
+            if (!*tok) break;
+
+            // Parse key
+            key = tok;
+            while (*tok && *tok != '=') tok++;
+            if (*tok != '=') {
+                break;
+            }
+            *tok++ = '\0';
+            key = strim(key, " \t", 0);
+
+            // Parse value (handles both quoted and unquoted, with escape support)
+            value = parseDigestValue(&tok);
+            if (!value) {
+                rFree(buf);
+                return 0;
+            }
+            // Validate parameter length to prevent DoS attacks from malicious servers
+            if (slen(value) > MAX_DIGEST_PARAM_LEN) {
+                rError("url", "Digest parameter '%s' too long: %d bytes (max %d)", key, (int) slen(value),
+                       MAX_DIGEST_PARAM_LEN);
+                rFree(value);
+                rFree(buf);
+                return 0;
+            }
+            // Store digest parameters
+            if (scaselessmatch(key, "realm")) {
+                rFree(up->realm);
+                up->realm = value;
+            } else if (scaselessmatch(key, "nonce")) {
+                rFree(up->nonce);
+                up->nonce = value;
+            } else if (scaselessmatch(key, "qop")) {
+                rFree(up->qop);
+                up->qop = value;
+            } else if (scaselessmatch(key, "opaque")) {
+                rFree(up->opaque);
+                up->opaque = value;
+            } else if (scaselessmatch(key, "algorithm")) {
+                rFree(up->algorithm);
+                up->algorithm = value;
+            } else if (scaselessmatch(key, "stale")) {
+                // RFC 7616: stale=true means nonce expired, retry with same credentials
+                stale = scaselessmatch(value, "true");
+                rFree(value);
+            } else {
+                // Unknown parameter - log for security monitoring
+                rDebug("url", "Unknown digest auth parameter: %s=%s", key, value);
+                rFree(value);
+            }
+        }
+
+        // If stale=true, clear the nonce to force re-challenge (server will provide new nonce)
+        if (stale) {
+            rDebug("url", "Server indicated stale nonce - will obtain new nonce");
+            rFree(up->nonce);
+            up->nonce = NULL;
+        }
+        // Validate algorithm - only MD5 and SHA-256 are supported per RFC 2617/7616
+        if (up->algorithm && !scaselessmatch(up->algorithm, "MD5") && !scaselessmatch(up->algorithm, "SHA-256")) {
+            rError("url", "Unsupported digest algorithm: %s (only MD5 and SHA-256 are supported)", up->algorithm);
+            rFree(buf);
+            return 0;
+        }
+        /*
+            Validate qop - only "auth" is supported, not "auth-int"
+            Parse as comma-separated list per RFC 7616
+         */
+        if (up->qop) {
+            qopCopy = sclone(up->qop);
+            qtok = stok(qopCopy, ",", &next);
+            while (qtok) {
+                qtok = strim(qtok, " \t", 0);
+                if (scaselessmatch(qtok, "auth-int")) {
+                    rError("url", "Unsupported digest qop: %s (only 'auth' is supported, not 'auth-int')", up->qop);
+                    rFree(qopCopy);
+                    rFree(buf);
+                    return 0;
+                }
+                qtok = stok(NULL, ",", &next);
+            }
+            rFree(qopCopy);
+        }
+        rFree(buf);
+        return 1;
+    }
+    rFree(buf);
+    return 0;
+}
+
+#endif /* URL_AUTH */
+
 #else
 void dummyUrl(void)
 {
@@ -2081,7 +2528,7 @@ void dummyUrl(void)
 #endif /* ME_COM_URL */
 
 /*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
+    Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 

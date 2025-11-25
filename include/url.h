@@ -1,9 +1,26 @@
 
 /*
     url.h - HTTP client library for embedded IoT applications.
+
     The URL module provides a lightweight, streaming HTTP client optimized for embedded IoT devices.
-    Supports HTTP/HTTPS, WebSockets, and Server-Sent Events (SSE) with fiber-based concurrency.
+    Supports HTTP/HTTPS, WebSockets, Server-Sent Events (SSE), and HTTP authentication with fiber-based concurrency.
     Uses the R runtime for memory management and cross-platform compatibility.
+
+    THREAD SAFETY:
+    This module is NOT thread-safe. Url objects must not be accessed from multiple OS threads simultaneously.
+    The module uses single-threaded execution with fiber coroutines for concurrency. All URL operations
+    should be performed within the same thread context. If multi-threaded access is required, the embedding
+    application must provide external synchronization (mutexes, locks, etc.).
+
+    SECURITY CONSIDERATIONS:
+    - Target Audience: Embedded IoT devices connecting to known, controlled servers (IoT cloud endpoints,
+      internal APIs), not for general-purpose web browsing.
+    - Developer Responsibility: Applications must validate and sanitize all user-controlled input
+      (usernames, URLs, custom headers) before passing to this library.
+    - Server-Controlled Data: The library validates server-provided data (WWW-Authenticate challenges,
+      response headers) to prevent injection attacks and DoS conditions.
+    - Authentication: Supports HTTP Basic and Digest authentication. Basic auth sends credentials in
+      base64 (not encrypted) - use HTTPS in production. Digest auth supports MD5 and SHA-256 algorithms.
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -26,7 +43,11 @@
 #if ME_COM_URL
 
 #ifndef URL_SSE
-    #define URL_SSE 1
+    #define URL_SSE  1
+#endif
+
+#ifndef URL_AUTH
+    #define URL_AUTH 1
 #endif
 
 #ifdef __cplusplus
@@ -92,6 +113,8 @@ struct Url;
 #define URL_SHOW_RESP_HEADERS           0x10 /**< Trace response headers */
 #define URL_HTTP_0                      0x20 /**< Use HTTP/1.0 */
 #define URL_NO_LINGER                   0x40 /**< Use no linger and issue RST on close instead of FIN */
+#define URL_SHOW_FLAGS                  (URL_SHOW_REQ_BODY | URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | \
+                                         URL_SHOW_RESP_HEADERS)
 
 #if URL_SSE
 /**
@@ -165,15 +188,30 @@ typedef struct Url {
     REvent abortEvent;             /**< Abort event */
     void *sseArg;                  /**< SSE callback argument */
 
+#if URL_AUTH
+    uint authRetried;              /**< Request has been retried with authentication */
+    char *authType;                /**< Authentication type: "basic", "digest", or NULL for auto-detect */
+    char *username;                /**< Username for authentication */
+    char *password;                /**< Password for authentication */
+    char *realm;                   /**< Digest auth realm */
+    char *nonce;                   /**< Digest auth nonce */
+    char *qop;                     /**< Digest auth quality of protection */
+    char *opaque;                  /**< Digest auth opaque value */
+    char *algorithm;               /**< Digest auth algorithm (MD5 or SHA-256 only) */
+    uint nc;                       /**< Digest auth nonce count */
+#endif
+
 #if ME_COM_WEBSOCK
     WebSocket *webSocket;          /**< WebSocket object */
 #endif
+
 #if URL_SSE
     UrlSseProc sseProc;            /**< SSE callback */
     uint retries;                  /**< Number of retries for SSE */
     uint maxRetries;               /**< Maximum of retries for SSE */
     ssize lastEventId;             /**< Last event ID (SSE) */
 #endif
+
 } Url;
 
 /**
@@ -213,9 +251,19 @@ PUBLIC int urlError(Url *up, cchar *message, ...);
     code. This routine will return after the response status and headers have been read and before the response body
     data has been read. Use $urlRead or $urlGetResponse to read the response body data.
     This routine will block the current fiber while waiting for the request to respond. Other fibers continue to run.
+
+    IMPORTANT - URI ENCODING FOR DIGEST AUTHENTICATION:
+    When using Digest authentication with URIs containing special characters (spaces, %, #, etc.),
+    the application must ensure the URL parameter is properly encoded as it will appear in the HTTP
+    Request-Line. The library uses the URI "as-is" for digest HA2 calculation per RFC 7616 Section 3.4.3.
+    Mismatch between client and server URI encoding will cause authentication failure.
+
+    Example: Use "https://example.com/path%20with%20spaces" not "https://example.com/path with spaces"
+
     @param up URL object.
     @param method HTTP method verb.
-    @param url HTTP URL to fetch
+    @param url HTTP URL to fetch. For Digest authentication, this must be properly URL-encoded to match
+        the Request-Line format. The application is responsible for URL encoding.
     @param data Body data for request. Set to NULL if none.
     @param size Size of body data for request. Set to 0 if none. If set to zero and data is provided, it is assumed to
        be a string and the size is calculated.
@@ -399,6 +447,15 @@ PUBLIC int urlGetStatus(Url *up);
 PUBLIC int urlParse(Url *up, cchar *url);
 
 /**
+    Parse the authentication challenge from the response headers.
+    @description This will parse the authentication challenge from the response headers.
+    @param up URL object
+    @return True if the authentication challenge is parsed successfully.
+    @stability Evolving
+ */
+PUBLIC bool urlParseAuthChallenge(Url *up);
+
+/**
     Issue a HTTP POST request.
     @description This will issue a HTTP POST request to the specified URL with the optional body data.
         Regardless of the HTTP status, this will return the response body.
@@ -473,6 +530,36 @@ PUBLIC void urlSetCerts(Url *up, cchar *ca, cchar *key, cchar *cert, cchar *revo
     @stability Evolving
  */
 PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
+
+#if URL_AUTH
+/**
+    Set authentication credentials for HTTP requests.
+    @description Configure username and password for HTTP authentication. The library will automatically
+        handle Basic and Digest authentication challenges (401 responses with WWW-Authenticate headers).
+        When a 401 response is received, the library will parse the authentication challenge and retry
+        the request with appropriate credentials.
+
+    IMPORTANT SECURITY CONSIDERATIONS:
+    - Developer Responsibility: The application must validate and sanitize the username parameter
+        before calling this function. The library escapes quotes in digest auth per RFC 7616, but
+        the application is responsible for validating input from untrusted sources.
+    - Basic Authentication: Credentials are sent in base64-encoded form (not encrypted). Use HTTPS
+        for production deployments. A debug warning is issued when Basic auth is used over HTTP.
+    - Digest Authentication: Supports MD5 (RFC 2617) and SHA-256 (RFC 7616) algorithms.
+        The qop="auth" mode is supported; qop="auth-int" is not supported.
+    - Nonce Handling: The server manages nonce expiration via the stale parameter. The library
+        automatically handles stale nonces by clearing cached challenge data and retrying.
+
+    @param up URL object to configure
+    @param username Username for authentication. Set to NULL to disable authentication.
+        The application must validate this parameter if it comes from untrusted input.
+    @param password Password for authentication. May be NULL if username is NULL.
+    @param authType Optional authentication type: "basic" or "digest". Set to NULL for auto-detection
+        based on server challenge.
+    @stability Evolving
+ */
+PUBLIC void urlSetAuth(Url *up, cchar *username, cchar *password, cchar *authType);
+#endif
 
 /**
     Set the default request timeout to use for future URL instances.
@@ -638,9 +725,10 @@ PUBLIC WebSocket *urlGetWebSocket(Url *up);
     @param up URL object with WebSocket connection
     @param callback Callback function to invoke for WebSocket events
     @param arg User argument to pass to the callback function
+    @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
-PUBLIC void urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
+PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
 #endif /* ME_COM_WEBSOCK */
 
 #if URL_SSE
@@ -710,6 +798,6 @@ PUBLIC int urlWait(Url *up);
 #endif /* _h_URL */
 
 /*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
+    Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
