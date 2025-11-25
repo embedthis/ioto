@@ -1,0 +1,28 @@
+{
+    /*  
+        Leak test configuration
+        This test monitors the web server for memory leaks by sampling
+        memory usage over time while running various request patterns.
+    */
+    enable: 'manual',
+    environment: {
+        default: {
+            PATH: '../../build/${PLATFORM}-${PROFILE}/bin:${PATH}',
+        },
+    },
+    execution: {
+        timeout: 3600,
+    },
+    services: {
+        prep: './prep.sh',
+        setup: './setup.sh',
+        cleanup: './cleanup.sh',
+        healthcheck: { url: 'http://localhost:4250/index.html' },
+    },
+    tests: {
+        'leak.tst.sh': {
+            enable: 'manual',
+            platforms: ['macosx', 'linux'],
+        },
+    },
+}

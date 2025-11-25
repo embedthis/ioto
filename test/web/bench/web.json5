@@ -1,0 +1,88 @@
+{
+    /*
+        bench.json5 - Web server configuration for benchmarking
+        Minimal overhead configuration for accurate performance measurement
+    */
+    limits: {
+        fibers: 20,
+    },
+    log: {
+        path: 'web.log',
+        format: '%S: %T: %M',
+        types: 'error',  // Minimal logging for performance
+    },
+    tls: {
+        authority: '../../certs/ca.crt',
+        certificate: '../../certs/test.crt',
+        key: '../../certs/test.key',
+    },
+    web: {
+        auth: {
+            realm: 'Test Realm',  // Must match parent web.json5 for password compatibility
+            authType: 'digest',
+            algorithm: 'SHA-256',
+            secret: 'test-secret-1234567890abcdef',  // Must match parent web.json5
+            track: false, // Disable nonce tracking for benchmarking (no replay protection needed)
+            roles: {
+                public: [],
+                user: ['view', 'read'],
+                admin: ['user', 'edit', 'delete'],
+                owner: ['admin', 'billing', 'manage'],
+                super: ['owner', 'super-admin']
+            },
+            users: {
+                alice: {
+                    // password: 'password' (SHA-256 hash for 'alice:Test Realm:password')
+                    password: 'SHA256:11c66702489123a02c7dd0860e47fc4989bb0805ba5835fbbb36f316ec83eb83',
+                    role: 'user'
+                },
+                bench: {
+                    // password: 'password' (SHA-256 hash for 'bench:Test Realm:password')
+                    password: 'SHA256:e2b7e34670c39605a1ed8e1e7376645debdcfdc7c0fbf6f3fc9f7527ef527b69',
+                    role: 'user'
+                }
+            }
+        },
+        documents: './site',  // Benchmark files in ./site subdirectory
+        index: 'index.html',
+        limits: {
+            buffer: '64K',
+            body: '1MB',
+            connections: '100',
+            upload: '20MB',
+        },
+        listen: ['http://localhost:4260', 'https://localhost:4261'],
+        routes: [
+            // Static benchmark files
+            { match: '/static/' },
+
+            // Authentication test routes
+            { match: '/auth/', authType: 'digest', role: 'user', handler: 'file' },
+
+            // Action handler routes
+            { match: '/test/', handler: 'action' },
+
+            // Upload routes - files go to site/upload
+            { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
+
+            // WebSocket routes
+            { match: '/ws/', methods: ['GET'], handler: 'action' },
+
+            // Catch all for static files
+            { /* Catch all */ },
+        ],
+        sessions: {
+            enable: true,
+        },
+        timeouts: {
+            request: '10 mins',
+        },
+        upload: {
+            dir: './tmp',
+        },
+        webSockets: {
+            enable: true,
+            protocol: 'bench',
+        },
+    },
+}

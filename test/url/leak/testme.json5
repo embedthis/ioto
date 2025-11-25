@@ -1,0 +1,8 @@
+{
+    inherit: ['compiler', 'environment', 'execution'],
+    enable: 'manual',
+    platforms: ['!windows'],
+    execution: {
+        timeout: 7200,
+    }
+}

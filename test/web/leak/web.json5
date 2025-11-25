@@ -1,0 +1,68 @@
+/*
+    web.json5 - Leak test configuration
+*/
+{
+    limits: {
+        fibers: 20,
+    },
+    log: {
+        path: 'web.log',
+        format: '%S: %T: %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+    },
+    tls: {
+        authority: '../../certs/ca.crt',
+        certificate: '../../certs/test.crt',
+        key: '../../certs/test.key',
+    },
+    web: {
+        auth: {
+            realm: 'Test Realm',
+            authType: 'digest',
+            algorithm: 'SHA-256',
+            secret: 'leak-test-secret-1234567890',
+            track: false, // Disable nonce tracking for leak testing
+            roles: {
+                public: [],
+                user: ['view', 'read'],
+            },
+            users: {
+                alice: {
+                    password: 'SHA256:11c66702489123a02c7dd0860e47fc4989bb0805ba5835fbbb36f316ec83eb83',
+                    role: 'user'
+                },
+            },
+        },
+        documents: './site',
+        index: 'index.html',
+        limits: {
+            buffer: '64K',
+            body: '100K',
+            connections: '100',
+            header: '10K',
+            sessions: '200',
+            upload: '20MB',
+        },
+        listen: ['http://localhost:4250', 'https://localhost:4251'],
+        routes: [
+            { match: '/auth/', authType: 'digest', role: 'user', handler: 'file' },
+            { match: '/test/', handler: 'action' },
+            { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
+            { /* Catch all */ },
+        ],
+        sessions: {
+            httpOnly: true,
+            sameSite: 'Lax',
+        },
+        timeouts: {
+            parse: '60 secs',
+            inactivity: '300 secs',
+            request: '10 mins',
+            session: '5 mins',
+        },
+        upload: {
+            dir: './tmp',
+        },
+    },
+}
