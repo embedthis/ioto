@@ -545,7 +545,7 @@ typedef struct RFiber {
     jmp_buf jmpbuf;
     void *result;
     bool block;      // Fiber executing a setjmp block
-    int exception;    // Exception that caused the fiber to crash
+    int exception;   // Exception that caused the fiber to crash
     int done;
 #if FIBER_WITH_VALGRIND
     uint stackId;
@@ -634,7 +634,7 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
  */
 PUBLIC void *rYieldFiber(void *value);
 
-/** 
+/**
     Start a fiber block
     @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
     @return Zero on first call. Returns 1 when jumping out of the block.
@@ -644,7 +644,7 @@ PUBLIC int rStartFiberBlock(void);
 
 /**
     End a fiber block
-    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs 
+    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs
     in the fiber block.
     @stability Prototype
  */
@@ -931,13 +931,30 @@ PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
 PUBLIC char *rGetDate(cchar *format);
 
 /**
+    Get the elapsed time since a ticks mark. Create the ticks mark with rGetTicks()
+    @param mark Staring time stamp
+    @returns the time elapsed since the mark was taken.
+    @stability Evolving
+ */
+PUBLIC Ticks rGetElapsedTicks(Ticks mark);
+
+/**
     Get an ISO Date string representation of the given date/time
-    @description Get the date/time as an ISO string.
+    @description Get the date/time as an ISO string. This is a RFC 3339 date string: "2025-11-10T21:28:28.000Z"
     @param time Given time to convert.
     @return A date string. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rGetIsoDate(Time time);
+
+/**
+    Get an HTTP Date string representation of the given date/time
+    @description Get the date/time as an HTTP string. This is a RFC 7231 IMF-fixdate: "Mon, 10 Nov 2025 21:28:28 GMT"
+    @param time Given time to convert.
+    @return A date string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *rGetHttpDate(Time time);
 
 /**
     Get the elapsed time since a ticks mark. Create the ticks mark with rGetTicks()
@@ -974,11 +991,34 @@ PUBLIC Ticks rGetTicks(void);
 PUBLIC Time rGetTime(void);
 
 /**
+    Make a time from a struct tm
+    @param tp Pointer to a struct tm
+    @return The time in milliseconds since Jan 1 1970.
+    @stability Evolving
+ */
+PUBLIC Time rMakeTime(struct tm *tp);
+/**
+    Make a universal time from a struct tm
+    @param tp Pointer to a struct tm
+    @return The time in milliseconds since Jan 1 1970.
+    @stability Evolving
+ */
+PUBLIC Time rMakeUniversalTime(struct tm *tp);
+
+/**
     Parse an ISO date string
-    @return The time in milliseconds since Jan 1, 1970.
+    @return The time in milliseconds since Jan 1, 1970. If the string is invalid, return -1.
     @stability Evolving
  */
 PUBLIC Time rParseIsoDate(cchar *when);
+
+/**
+    Parse an HTTP date string
+    @param value HTTP date string
+    @return The time in milliseconds since Jan 1, 1970. If the string is invalid, return 0.
+    @stability Evolving
+ */
+PUBLIC Time rParseHttpDate(cchar *value);
 
 #endif /* R_USE_TIME */
 
@@ -1183,6 +1223,7 @@ typedef struct RWait {
     cvoid *arg;             /**< Argument to pass to the handler */
     Ticks deadline;         /**< System deadline time to wait until */
     int mask;               /**< Current event mask */
+    int eventMask;          /**< I/O events received */
     int fd;                 /**< File descriptor to wait upon */
 } RWait;
 
@@ -1767,6 +1808,17 @@ PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, size_t limit);
     @stability Evolving
  */
 PUBLIC ssize sncopy(char *dest, size_t destMax, cchar *src, size_t len);
+
+/**
+    Catenate strings.
+    @description This catenates strings together.
+    @param dest Destination string to append to.
+    @param destMax Maximum size of the destination buffer in characters (including null terminator).
+    @param src Source string to append.
+    @return Returns the number of characters copied to the destination string, or -1 on error.
+    @stability Prototype
+ */
+PUBLIC ssize sncat(char *dest, size_t destMax, cchar *src);
 
 /*
     Test if a string is a floating point number
@@ -2422,7 +2474,7 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
 typedef struct RList {
     int capacity;           /**< Current list capacity */
     int length;             /**< Current length of the list contents */
-    int flags : 1;          /**< Items should be freed when list is freed */
+    int flags : 8;          /**< List flags: R_DYNAMIC_VALUE, R_STATIC_VALUE, R_TEMPORAL_VALUE */
     void **items;           /**< List item data */
 } RList;
 
@@ -3768,7 +3820,26 @@ PUBLIC void rTermEvents(void);
 
 #define R_TLS_HAS_AUTHORITY      0x1    /**< Signal to the custom callback that authority certs are available */
 
+/**
+    Socket handler callback function.
+    @description This function is called by the socket layer when a new connection is accepted. The handler
+    is responsible for freeing the socket passed to it.
+    @param data Data passed to the handler.
+    @param sp Socket object.
+    @stability Evolving
+ */
 typedef void (*RSocketProc)(cvoid *data, struct RSocket *sp);
+
+/**
+    Custom socket configuration callback function.
+    @description This function is called by the socket layer to configure the socket. It is used on some platforms
+        (ESP32) to attach the certificate bundle to the socket.
+    @param sp Socket object.
+    @param cmd Command to execute.
+    @param arg Argument to the command.
+    @param flags Flags for the command.
+    @stability Evolving
+ */
 typedef void (*RSocketCustom)(struct RSocket *sp, int cmd, void *arg, int flags);
 
 /*
@@ -3855,8 +3926,8 @@ PUBLIC void rFreeSocket(RSocket *sp);
 PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port);
 
 /**
-    Get the custom socket callback handler
-    @return The custom socket callback handler
+    Get the custom socket configuration callback
+    @return The custom socket callback
     @stability Evolving
  */
 PUBLIC RSocketCustom rGetSocketCustom(void);
@@ -3928,7 +3999,7 @@ PUBLIC bool rIsSocketSecure(RSocket *sp);
     @param host Host name or IP address to bind to. Set to 0.0.0.0 to bind to all possible addresses on a given port.
     @param port TCP/IP port number to connect to.
     @param handler Function callback to invoke for incoming connections. The function is invoked on a new fiber
-       coroutine.
+       coroutine. The handler is responsible for freeing the socket passed to it.
     @param arg Argument to handler.
     @return Zero if successful.
     @stability Evolving
@@ -3937,8 +4008,8 @@ PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler
 
 /**
     Read from a socket until a deadline is reached.
-    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are 
-        available. If none is available, this call will yield the current fiber and resume the main fiber. When data 
+    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are
+        available. If none is available, this call will yield the current fiber and resume the main fiber. When data
         is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
@@ -3957,7 +4028,7 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
     Read from a socket.
     @description Read data from a socket. The read will return with whatever bytes are available. If none and the socket
         is in blocking mode, it will block until there is some data available or the socket is disconnected.
-        Use rSetSocketBlocking to change the socket blocking mode.  It is preferable to use rReadSocket which can wait 
+        Use rSetSocketBlocking to change the socket blocking mode.  It is preferable to use rReadSocket which can wait
         without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
@@ -3992,7 +4063,9 @@ PUBLIC void rSetSocketCerts(RSocket *sp, cchar *ca, cchar *key, cchar *cert, cch
 
 /**
     Set the socket custom configuration callback
-    @param custom Custom callback function
+    @description This call is used to set the custom socket configuration callback. It is used on some platforms
+        (ESP32) to attach the certificate bundle to the socket.
+    @param custom Custom socket configuration callback function
     @stability Evolving
  */
 PUBLIC void rSetSocketCustom(RSocketCustom custom);
@@ -4043,7 +4116,8 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
 
 /**
     Set the socket linger timeout
-    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be closed.
+    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be
+       closed.
     If set to zero, the socket will be closed immediately with a RST packet instead of a FIN packet.
     This API must be called before calling rConnectSocket.
     @param sp Socket object returned from rAllocSocket
@@ -4082,16 +4156,16 @@ PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
 
 /**
     Write to a socket until a deadline is reached
-    @description Write a block of data to a socket until a deadline is reached. This may return having written less 
-        than the required bytes if the deadline is reached. This call will yield the current fiber and resume 
+    @description Write a block of data to a socket until a deadline is reached. This may return having written less
+        than the required bytes if the deadline is reached. This call will yield the current fiber and resume
         the main fiber. When data is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
     @param bufsize Length of data to write.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
-        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError() 
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot
+        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError()
         returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
@@ -4100,14 +4174,14 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
 /**
     Write to a socket
     @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes. It is preferable to use rWriteSocket which can wait 
+        may return having written less than the required bytes. It is preferable to use rWriteSocket which can wait
         without blocking via fiber coroutines until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param len Length of data to write. This may be less than the requested write length if the socket is 
+    @param len Length of data to write. This may be less than the requested write length if the socket is
         in non-blocking mode. Will return a negative error code on errors.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
-        absorb any more data. If the transport is saturated, will return a negative error and rGetError() 
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot
+        absorb any more data. If the transport is saturated, will return a negative error and rGetError()
         returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */

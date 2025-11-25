@@ -1493,7 +1493,7 @@ static void fiberSignalHandler(int signum)
 {
     /*
         If there is a double-exception while it is cleaning up, then abort.
-    */
+     */
     if (currentFiber->block && currentFiber->exception == 0) {
         currentFiber->block = 0;
         currentFiber->exception = signum;
@@ -1504,8 +1504,8 @@ static void fiberSignalHandler(int signum)
 }
 
 /*
-    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit. 
-*/
+    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit.
+ */
 PUBLIC void rEndFiberBlock(void)
 {
     longjmp(currentFiber->jmpbuf, 1);
@@ -1536,7 +1536,7 @@ static void fiberEntry(RFiber *fiber, RFiberProc func, void *data)
     fiber->done = 1;
     rYieldFiber(0);
     /*
-        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext 
+        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext
         will resume here and the pthread should immediately exit.
      */
 }
@@ -1731,6 +1731,7 @@ PUBLIC void rSetFiberStack(size_t size)
 PUBLIC int rSetFiberLimits(int maxFibers)
 {
     int old = maxFibers;
+
     fiberLimit = maxFibers;
     return old;
 }
@@ -3686,6 +3687,9 @@ PUBLIC int rAddItem(RList *lp, cvoid *item)
             return R_ERR_TOO_MANY;
         }
     }
+    if (lp->flags & R_TEMPORAL_VALUE) {
+        item = sclone(item);
+    }
     index = lp->length++;
     lp->items[index] = (void*) item;
     return (int) index;
@@ -3714,8 +3718,8 @@ PUBLIC int rAddNullItem(RList *lp)
 }
 
 /*
-    Inser an item to the list at a specified position. We inser before the item at "index".
-    ie. The insered item will go into the "index" location and the other elements will be moved up.
+    Insert an item to the list at a specified position. We insert before the item at "index".
+    ie. The inserted item will go into the "index" location and the other elements will be moved up.
  */
 PUBLIC int rInsertItemAt(RList *lp, int index, cvoid *item)
 {
@@ -3735,11 +3739,14 @@ PUBLIC int rInsertItemAt(RList *lp, int index, cvoid *item)
             return R_ERR_TOO_MANY;
         }
     }
+    if (lp->flags & R_TEMPORAL_VALUE) {
+        item = sclone(item);
+    }
     if (index >= lp->length) {
         lp->length = index + 1;
     } else {
         /*
-            Copy up items to make room to inser
+            Copy up items to make room to insert
          */
         items = lp->items;
         for (i = lp->length; i > index; i--) {
@@ -8507,7 +8514,7 @@ PUBLIC ssize rMakeArgs(cchar *command, char ***argvp, bool argsOnly)
 #define ME_SOCKET_TIMEOUT    (30 * 1000)
 #define ME_HANDSHAKE_TIMEOUT (30 * 1000)
 #ifndef ME_SOCKET_MAX
-    #define ME_SOCKET_MAX    100
+    #define ME_SOCKET_MAX    10000
 #endif
 
 static int activeSockets = 0;
@@ -8517,6 +8524,9 @@ static int activeSockets = 0;
 static void acceptSocket(RSocket *listen);
 static int getOsError(RSocket *sp);
 static int getSocketError(RSocket *sp);
+#if ME_DEBUG
+static void traceSocket(Socket fd, cchar *label);
+#endif
 
 static RSocketCustom socketCustom;
 
@@ -8570,10 +8580,12 @@ PUBLIC void rCloseSocket(RSocket *sp)
     }
 #endif
     if (sp->fd != INVALID_SOCKET) {
-        rSetSocketBlocking(sp, 0);
-        while (recv(sp->fd, buf, sizeof(buf), 0) > 0);
-        if (shutdown(sp->fd, SHUT_RDWR) == 0) {
+        if (sp->linger != 0) {
+            rSetSocketBlocking(sp, 0);
             while (recv(sp->fd, buf, sizeof(buf), 0) > 0);
+            if (shutdown(sp->fd, SHUT_RDWR) == 0) {
+                while (recv(sp->fd, buf, sizeof(buf), 0) > 0);
+            }
         }
         closesocket(sp->fd);
         sp->fd = INVALID_SOCKET;
@@ -8703,6 +8715,11 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         linger.l_linger = sp->linger;
         setsockopt(sp->fd, SOL_SOCKET, SO_LINGER, (char*) &linger, sizeof(linger));
     }
+#if ME_DEBUG
+    if (rEmitLog("socket", "debug")) {
+        traceSocket(sp->fd, "Client bound to");
+    }
+#endif
     return 0;
 }
 
@@ -8728,11 +8745,14 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     hints.ai_flags = AI_PASSIVE;     // Use wildcard address if host is NULL
 
     /*
-        When host is NULL or "localhost", prefer IPv6 with dual-stack to accept both IPv4 and IPv6
-        When host is a specific IPv4 address like "127.0.0.1", use IPv4 only
+        When host is NULL (wildcard), prefer IPv6 with dual-stack to accept both IPv4 and IPv6.
+        When host is "localhost", prefer IPv4 for compatibility as most clients expect IPv4 loopback.
+        When host is a specific IPv4 address like "127.0.0.1", use IPv4 only.
      */
-    if (!host || smatch(host, "localhost")) {
-        hints.ai_family = AF_INET6;  // Dual-stack for wildcard and localhost
+    if (!host) {
+        hints.ai_family = AF_INET6;  // Dual-stack for wildcard
+    } else if (smatch(host, "localhost")) {
+        hints.ai_family = AF_INET;   // Prefer IPv4 for localhost compatibility
     } else if (smatch(host, "127.0.0.1")) {
         hints.ai_family = AF_INET;   // Explicit IPv4 loopback
     } else {
@@ -8776,7 +8796,11 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
             lp->fd = INVALID_SOCKET;
             continue;
         }
-        //  Successfully bound
+#if ME_DEBUG
+        if (rEmitLog("socket", "debug")) {
+            traceSocket(lp->fd, "Server bound to");
+        }
+#endif
         break;
     }
     freeaddrinfo(res);
@@ -8801,11 +8825,17 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     lp->handler = handler;
     lp->arg = arg;
 
-    //  Will run acceptSocket on a new coroutine
+    //  Run acceptSocket on a new coroutine when readable
     rSetWaitHandler(lp->wait, (RWaitProc) acceptSocket, lp, R_READABLE, 0);
     return 0;
 }
 
+/*
+    This routine is called by the accept wait handler when a new connection is accepted.
+    It allocates a new socket and sets up the connection.
+    It then calls the socket handler with the new socket.
+    The handler frees the socket.
+ */
 static void acceptSocket(RSocket *listen)
 {
     RSocket                 *sp;
@@ -8869,10 +8899,12 @@ static void acceptSocket(RSocket *listen)
     if (!sp->handler) {
         rSetSocketError(sp, "Missing socket handler");
     } else {
-        // Handler must not free the socket
+        // Handler must free the socket
         (sp->handler)(sp->arg, sp);
     }
+#if LEGACY
     rFreeSocket(sp);
+#endif
 }
 
 PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, size_t bufsize)
@@ -9013,7 +9045,7 @@ PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
 /*
     Set a socket into blocking I/O mode. from a socket.
     Sockets are opened in non-blocking mode by default.
-*/
+ */
 PUBLIC void rSetSocketBlocking(RSocket *sp, bool on)
 {
 #if ME_WIN_LIKE
@@ -9271,6 +9303,39 @@ PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port)
 #endif
     return 0;
 }
+
+#if ME_DEBUG
+/*
+    Debug routine to display the socket's bound address, port and family
+ */
+static void traceSocket(Socket fd, cchar *label)
+{
+    struct sockaddr_storage boundAddr;
+    Socklen                 boundLen;
+    char                    ip[INET6_ADDRSTRLEN];
+    int                     boundPort;
+
+    boundLen = sizeof(boundAddr);
+    boundPort = 0;
+    scopy(ip, sizeof(ip), "unknown");
+
+    if (getsockname(fd, (struct sockaddr*) &boundAddr, &boundLen) == 0) {
+        if (boundAddr.ss_family == AF_INET) {
+            struct sockaddr_in *s = (struct sockaddr_in*) &boundAddr;
+            inet_ntop(AF_INET, &s->sin_addr, ip, sizeof(ip));
+            boundPort = ntohs(s->sin_port);
+        } else if (boundAddr.ss_family == AF_INET6) {
+            struct sockaddr_in6 *s = (struct sockaddr_in6*) &boundAddr;
+            inet_ntop(AF_INET6, &s->sin6_addr, ip, sizeof(ip));
+            boundPort = ntohs(s->sin6_port);
+        } else {
+            rDebug("socket", "%s unknown address family %d", label, boundAddr.ss_family);
+            return;
+        }
+        rDebug("socket", "%s %s:%d %s", label, ip, boundPort, boundAddr.ss_family == AF_INET ? "IPv4" : "IPv6");
+    }
+}
+#endif
 
 /*
     Return the socket error code for the socket
@@ -9937,18 +10002,10 @@ PUBLIC ssize sncopy(char *dest, size_t destMax, cchar *src, size_t count)
 {
     size_t len;
 
-    assert(dest);
-    assert(src != dest);
-    assert(0 <= count && count < MAXINT);
-    assert(0 < destMax && destMax < MAXINT);
-
-    if (!dest || !src || dest == src || count > MAXINT || destMax <= 0 || destMax > MAXINT) {
+    if (!dest || !src || dest == src || count > MAXINT || destMax == 0 || destMax > MAXINT) {
         return R_ERR_BAD_ARGS;
     }
-    len = slen(src);
-    if (count >= 0) {
-        len = min(len, count);
-    }
+    len = min(slen(src), count);
     if (destMax <= len || destMax < 1) {
         return R_ERR_WONT_FIT;
     }
@@ -9960,6 +10017,26 @@ PUBLIC ssize sncopy(char *dest, size_t destMax, cchar *src, size_t count)
         len = 0;
     }
     return (ssize) len;
+}
+
+PUBLIC ssize sncat(char *dest, size_t destMax, cchar *src)
+{
+    size_t count, len;
+
+    if (!dest || !src || dest == src || destMax == 0 || destMax > MAXINT) {
+        return R_ERR_BAD_ARGS;
+    }
+    len = slen(dest);
+    if (len >= destMax) {
+        return R_ERR_WONT_FIT;
+    }
+    count = slen(src);
+    if (count >= destMax - len) {
+        return R_ERR_WONT_FIT;
+    }
+    memcpy(&dest[len], src, count);
+    dest[len + count] = '\0';
+    return (ssize) (len + count);
 }
 
 PUBLIC bool snumber(cchar *s)
@@ -10954,6 +11031,23 @@ PUBLIC char *rGetIsoDate(Time time)
     return sclone(buf);
 }
 
+PUBLIC char *rGetHttpDate(Time when)
+{
+    struct tm tm;
+    time_t    time;
+    char      buf[64];
+
+    time = when / TPS;
+    if (universalTime(&tm, time) == NULL) {
+        return NULL;
+    }
+    //  Format as RFC 7231 IMF-fixdate: "Mon, 10 Nov 2025 21:28:28 GMT"
+    if (strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tm) == 0) {
+        return NULL;
+    }
+    return sclone(buf);
+}
+
 /*
     Returns time in milliseconds since the epoch: 0:0:0 UTC Jan 1 1970.
  */
@@ -10971,108 +11065,183 @@ PUBLIC Time rGetTime(void)
 }
 
 #if ESP32
-time_t timegm(struct tm *tm)
+PUBLIC time_t timegm(struct tm *tm)
 {
     //  Currently only GMT supported
     return mktime(tm) - 0;
 }
 #endif
 
-#if ME_WIN_LIKE
-PUBLIC Time rParseIsoDate(cchar *when)
+/*
+    Parse ISO-8601 timestamps like:
+      "2023-12-25T10:30:45+00:00"
+      "2023-12-25T10:30:45Z"
+      "2022-01-01T00:00:00.000Z"
+
+    Also accepts numeric offsets: +/-HH:MM or +/-HHMM
+
+    Returns:
+      - On success: ticks since Unix epoch in units of TPS.
+      - On failure: -1.
+ */
+PUBLIC Time rParseIsoDate(cchar *str)
 {
-    struct tm tm = { 0 };
-    char      *pos, *cp;
-    int       hours_offset = 0;
-    int       minutes_offset = 0;
-    int       ms = 0;
-    int       sign = 1; // Positive offset
+    struct tm tm;
+    cchar     *p;
+    int64     seconds, nsec;
+    int       n, year, month, day, hour, min, sec;
+    int       digits, frac, offsetSign, offsetHours, offsetMins;
 
-    if (!when) {
+    n = 0;
+    nsec = 0;
+
+    if (!str || !*str) {
         return -1;
     }
-    if (sscanf(when, "%4d-%2d-%2dT%2d:%2d:%2d",
-               &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-               &tm.tm_hour, &tm.tm_min, &tm.tm_sec) != 6) {
+    // Parse "YYYY-MM-DDTHH:MM:SS"
+    if (sscanf(str, "%4d-%2d-%2dT%2d:%2d:%2d%n", &year, &month, &day, &hour, &min, &sec, &n) != 6) {
         return -1;
     }
-    if (tm.tm_mon < 1 || tm.tm_mon > 12) {
+    p = str + n;
+
+    // Validate date and time component ranges
+    if (year < 1900 || year > 9999) {
         return -1;
     }
-    if (tm.tm_mday < 1 || tm.tm_mday > 31) {
+    if (month < 1 || month > 12) {
         return -1;
     }
-    if (tm.tm_hour < 0 || tm.tm_hour > 23) {
+    if (day < 1 || day > 31) {
         return -1;
     }
-    if (tm.tm_min < 0 || tm.tm_min > 59) {
+    if (hour < 0 || hour > 23) {
         return -1;
     }
-    if (tm.tm_sec < 0 || tm.tm_sec > 60) {
+    if (min < 0 || min > 59) {
+        return -1;
+    }
+    if (sec < 0 || sec > 60) {  // 60 allows for leap seconds
         return -1;
     }
 
-    tm.tm_year -= 1900; // Adjust year
-    tm.tm_mon -= 1;     // Adjust month
+    // Optional fractional seconds: ".ssssss..."
+    if (*p == '.') {
+        p++;
+        frac = 0;
+        digits = 0;
 
-    // Parse optional milliseconds
-    if ((cp = strrchr(when, '.')) != NULL) {
-        ms = atoi(cp + 1);
+        // Read up to 9 digits of fractional seconds
+        while (isdigit((unsigned char) *p) && digits < 9) {
+            frac = (frac * 10) + (*p - '0');
+            digits++;
+            p++;
+        }
+        // Scale to nanoseconds if fewer than 9 digits
+        while (digits < 9) {
+            frac *= 10;
+            digits++;
+        }
+        // Ignore any extra digits beyond 9
+        while (isdigit((unsigned char) *p)) {
+            p++;
+        }
+        nsec = frac;    /* 0..999,999,999 */
     }
 
-    // Find the time portion first (after 'T'), then look for timezone indicator
-    pos = strchr(when, 'T');
-    if (pos != NULL) {
-        // Look for timezone indicator after the 'T'
-        pos = strpbrk(pos, "Z+-");
-        if (pos != NULL) {
-            if (*pos == 'Z') {
-                // UTC time zone - no offset adjustment needed
-                tm.tm_isdst = 0;
-            } else {
-                // Time zone offset
-                if (*pos == '-') {
-                    sign = -1; // Negative offset
-                }
-                if (sscanf(pos + 1, "%2d:%2d", &hours_offset, &minutes_offset) != 2) {
-                    if (sscanf(pos + 1, "%2d", &hours_offset) != 1) {
-                        // Handle parsing error
-                        return -1;
-                    }
-                    minutes_offset = 0;
-                }
-                hours_offset *= sign;
-                minutes_offset *= sign;
-                tm.tm_hour -= hours_offset;
-                tm.tm_min -= minutes_offset;
-            }
+    // Timezone: 'Z' or [+/-]HH[:MM] or [+/-]HHMM
+    offsetSign = 0;
+    offsetHours = 0;
+    offsetMins = 0;
+
+    if (*p == 'Z') {
+        // UTC offset 0
+        offsetSign = 0;
+        p++;
+    } else if (*p == '+' || *p == '-') {
+        offsetSign = (*p == '-') ? -1 : +1;
+        p++;
+        // Parse HH
+        if (!isdigit((unsigned char) p[0]) || !isdigit((unsigned char) p[1])) {
+            return -1;
+        }
+        offsetHours = (p[0] - '0') * 10 + (p[1] - '0');
+        p += 2;
+        // Optional ':'
+        if (*p == ':') {
+            p++;
+        }
+        // Optional MM
+        if (isdigit((unsigned char) p[0]) && isdigit((unsigned char) p[1])) {
+            offsetMins = (p[0] - '0') * 10 + (p[1] - '0');
+            p += 2;
+        }
+        if (offsetHours > 23 || offsetMins > 59) {
+            return -1;
+        }
+    } else {
+        // No timezone → reject (we require Z or explicit offset)
+        return -1;
+    }
+    // No trailing junk allowed
+    if (*p != '\0') {
+        return -1;
+    }
+
+    // Build broken-down time
+    memset(&tm, 0, sizeof(tm));
+    tm.tm_year = year - 1900;
+    tm.tm_mon = month - 1;
+    tm.tm_mday = day;
+    tm.tm_hour = hour;
+    tm.tm_min = min;
+    tm.tm_sec = sec;
+    tm.tm_isdst = -1;
+
+    seconds = rMakeUniversalTime(&tm);
+    if (seconds == (time_t) -1) {
+        return -1;
+    }
+    /*
+        Offset semantics:
+        Input represents local time with offset relative to UTC:
+          local_time = UTC + offset
+        We parsed local_time into 'seconds'. To get UTC:
+          UTC = local_time - offset
+     */
+    if (offsetSign != 0) {
+        long offsetSecs = offsetHours * 3600L + offsetMins * 60L;
+        if (offsetSign > 0) {
+            // +HH:MM
+            seconds -= offsetSecs;
+        } else {
+            // -HH:MM
+            seconds += offsetSecs;
         }
     }
-    return _mkgmtime(&tm) * TPS + ms;
+    // Convert to ticks: seconds * TPS + fractional part in ticks
+    Time base = (Time) seconds * (Time) TPS;
+    Time msec = (Time) nsec * (Time) TPS / 1000000000LL;
+    return base + msec;
 }
-#else
 
-PUBLIC Time rParseIsoDate(cchar *when)
+/*
+    Parse an HTTP date string
+ */
+PUBLIC Time rParseHttpDate(cchar *value)
 {
-    struct tm ctime;
-    char      *cp;
-    int       ms = 0;
+#if !defined(ESP32)
+    struct tm tm;
 
-    memset(&ctime, 0, sizeof(ctime));
-    if (when) {
-        /*
-            Parse date/time without fractional seconds, then manually extract milliseconds.
-            The %f specifier is not reliable across platforms and struct tm doesn't store fractional seconds.
-         */
-        strptime(when, "%FT%T%z", &ctime);
-        if ((cp = strrchr(when, '.')) != NULL) {
-            ms = atoi(cp + 1);
-        }
-        return timegm(&ctime) * TPS + ms;
+    if (strptime(value, "%a, %d %b %Y %H:%M:%S", &tm) != NULL) {
+#if ME_WIN_LIKE
+        return _mkgmtime(&tm);
+#else
+        return timegm(&tm);
+#endif
     }
+#endif
     return 0;
 }
-#endif
 
 /*
     High resolution timer
@@ -11231,7 +11400,6 @@ PUBLIC Ticks rGetElapsedTicks(Ticks mark)
     return rGetTicks() - mark;
 }
 
-#if KEEP
 PUBLIC Time rGetElapsedTime(Time mark)
 {
     return rGetTime() - mark;
@@ -11244,9 +11412,12 @@ PUBLIC Time rMakeTime(struct tm *tp)
 
 PUBLIC Time rMakeUniversalTime(struct tm *tp)
 {
+#if ME_WIN_LIKE
+    return _mkgmtime(tp);
+#else
     return timegm(tp);
-}
 #endif
+}
 
 /*************************************** O/S Layer ***********************************/
 
@@ -12221,6 +12392,7 @@ static void invokeHandler(size_t fd, int mask)
         return;
     }
     if ((wp->mask | R_TIMEOUT) & mask) {
+        wp->eventMask = mask;
         rSetWaitMask(wp, 0, 0);
         if (wp->fiber) {
             fiber = wp->fiber;

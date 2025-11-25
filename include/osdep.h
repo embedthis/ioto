@@ -650,6 +650,7 @@
     #include    <netinet/ip.h>
 #endif
 #if ME_UNIX_LIKE
+    #include    <stdbool.h>
     #include    <pthread.h>
     #include    <pwd.h>
 #if !CYGWIN
@@ -821,7 +822,7 @@
 */
 #ifndef HAS_BOOL
     #ifndef __cplusplus
-        #if !MACOSX && !FREERTOS
+        #if !ME_UNIX_LIKE && !FREERTOS
             #define HAS_BOOL 1
             /**
                 Boolean data type.
