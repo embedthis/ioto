@@ -687,12 +687,16 @@ static int writeFrame(WebSocket *ws, int type, int fin, cuchar *buf, size_t len)
     }
     *pp = '\0';
     if (rWriteSocket(ws->sock, prefix, (size_t) (pp - prefix), ws->deadline) < 0) {
-        wsError(ws, 0, "Cannot write to socket");
+        if (type != WS_MSG_CLOSE) {
+            wsError(ws, 0, "Cannot write to socket");
+        }
         rFree(tbuf);
         return R_ERR_CANT_WRITE;
     }
     if (rWriteSocket(ws->sock, buf, len, ws->deadline) < 0) {
-        wsError(ws, 0, "Cannot write to socket");
+        if (type != WS_MSG_CLOSE) {
+            wsError(ws, 0, "Cannot write to socket");
+        }
         rFree(tbuf);
         return R_ERR_CANT_WRITE;
     }
@@ -907,7 +911,7 @@ static int wsError(WebSocket *ws, int code, cchar *fmt, ...)
     ws->errorMessage = sfmtv(fmt, args);
     va_end(args);
 
-    rError("sockets", "%s", ws->errorMessage);
+    rTrace("sockets", "%s", ws->errorMessage);
     invokeCallback(ws, WS_EVENT_ERROR, ws->errorMessage, slen(ws->errorMessage));
     return -code;
 }
