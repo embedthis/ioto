@@ -46,20 +46,31 @@ extern "C" {
  *     These macros control which features are included in the build.
  * @{
  */
-#ifndef ME_WEB_AUTH
-    #define ME_WEB_AUTH     1        /**< Enable authentication and authorization support */
+#ifndef ME_WEB_HTTP_AUTH
+    #define ME_WEB_HTTP_AUTH       1   /**< Enable HTTP Basic and Digest authentication protocols */
+#endif
+#if ME_WEB_HTTP_AUTH
+    #ifndef ME_WEB_AUTH_BASIC
+        #define ME_WEB_AUTH_BASIC  1   /**< Enable HTTP Basic authentication */
+    #endif
+    #ifndef ME_WEB_AUTH_DIGEST
+        #define ME_WEB_AUTH_DIGEST 1   /**< Enable HTTP Digest authentication */
+    #endif
+    #ifndef ME_WEB_MAX_AUTH
+        #define ME_WEB_MAX_AUTH    256 /**< Default maximum length for usernames and password hashes */
+    #endif
 #endif
 #ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS   1        /**< Enable resource limits and security constraints */
+    #define ME_WEB_LIMITS          1   /**< Enable resource limits and security constraints */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS 1        /**< Enable session management support */
+    #define ME_WEB_SESSIONS        1   /**< Enable session management support */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD   1        /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD          1   /**< Enable file upload functionality */
 #endif
 #ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK  1        /**< Enable WebSocket protocol support */
+    #define ME_COM_WEBSOCK         1   /**< Enable WebSocket protocol support */
 #endif
 /** @} */
 
@@ -144,6 +155,36 @@ struct WebHost;
 struct WebRoute;
 struct WebSession;
 struct WebUpload;
+struct WebUser;
+
+#if ME_WEB_HTTP_AUTH && ME_WEB_AUTH_DIGEST
+/**
+    Nonce tracking entry for replay protection
+    @description Tracks nonce usage and nonce count (nc) values to prevent replay attacks.
+        Each nonce can be used multiple times (for pipelined requests), but the nc value
+        must strictly increment with each use.
+    @stability Internal
+ */
+typedef struct WebNonceEntry {
+    Ticks created;              /**< Time when nonce was created (for expiration) */
+    int lastNc;                 /**< Last nonce count (nc) value seen for this nonce */
+} WebNonceEntry;
+#endif
+
+/**
+    HTTP Range request representation
+    @description Represents a single byte range from an HTTP Range request header.
+        Ranges are stored as a linked list to support multi-range requests.
+        Range offsets are stored as exclusive end positions (end = last_byte + 1).
+    @see RFC 7233
+    @stability Evolving
+ */
+typedef struct WebRange {
+    int64 start;                /**< Start byte offset (inclusive, 0-based) */
+    int64 end;                  /**< End byte offset (exclusive, end = last_byte + 1) */
+    int64 len;                  /**< Range length in bytes (end - start) */
+    struct WebRange *next;      /**< Next range in linked list for multi-range requests */
+} WebRange;
 
 /******************************************************************************/
 
@@ -188,15 +229,25 @@ typedef struct WebAction {
  */
 typedef struct WebRoute {
     cchar *match;                       /**< Matching URI path pattern */
-    bool validate : 1;                  /**< Validate request */
+    bool compressed : 1;                /**< Serve pre-compressed files (.gz, .br) */
     bool exact : 1;                     /**< Exact match vs prefix match. If trailing "/" in route. */
+    bool validate : 1;                  /**< Validate request */
     bool xsrf : 1;                      /**< Use XSRF tokens */
     RHash *methods;                     /**< HTTP methods verbs */
     cchar *handler;                     /**< Request handler (file, action) */
-    cchar *role;                        /**< Required user role */
+    cchar *role;                        /**< Required user role or ability */
+#if ME_WEB_HTTP_AUTH
+    cchar *authType;                    /**< Required authentication type: "basic" or "digest" */
+    cchar *algorithm;                   /**< Digest algorithm override: "MD5" or "SHA-256" */
+#endif
     cchar *redirect;                    /**< Redirection */
     cchar *trim;                        /**< Portion to trim from path */
     bool stream;                        /**< Stream request body */
+
+    //  Client-side cache control configuration (opt-in via configuration)
+    int cacheMaxAge;                    /**< Client cache max-age in seconds (0 = no max-age) */
+    cchar *cacheDirectives;             /**< Cache-Control directives string (e.g., "public, must-revalidate") */
+    RHash *extensions;                  /**< File extensions to cache (NULL = match all) */
 } WebRoute;
 
 /**
@@ -229,6 +280,30 @@ PUBLIC int webInit(void);
     @stability Evolving
  */
 PUBLIC void webTerm(void);
+
+/************************************** User ***********************************/
+/**
+    Authenticated user structure
+    @description Represents an authenticated user with their credentials, role, and computed abilities.
+        Users are loaded from the configuration file and stored in the host's user database. Each user
+        has a username, encrypted password, a single role, and a computed set of abilities inherited from
+        the role hierarchy.
+    @stability Evolving
+ */
+typedef struct WebUser {
+    char *username;             /**< User name */
+    char *password;             /**< Encrypted password hash: H(username:realm:password) */
+    char *role;                 /**< Single role name assigned to this user */
+    RHash *abilities;           /**< Computed abilities hash expanded from role inheritance */
+} WebUser;
+
+/**
+    Free a user structure
+    @description Free a user structure and all associated resources.
+    @param user WebUser structure to free
+    @stability Internal
+ */
+PUBLIC void webFreeUser(WebUser *user);
 
 /************************************* Host ***********************************/
 /**
@@ -269,24 +344,44 @@ typedef struct WebHost {
     char *docs;                 /**< Document root directory path for serving static files */
     char *ip;                   /**< Default IP address for redirects when host IP is indeterminate */
 
-#if ME_WEB_UPLOAD
-    //  Upload configuration
-    cchar *uploadDir;           /**< Directory path where uploaded files are temporarily stored */
-    bool removeUploads : 1;     /**< Automatically remove uploaded files when request completes */
-#endif
     //  Timeout configuration (in seconds)
     int inactivityTimeout;      /**< Maximum seconds of inactivity before closing connection */
     int parseTimeout;           /**< Maximum seconds allowed for parsing HTTP request headers */
     int requestTimeout;         /**< Maximum seconds for complete request processing */
     int sessionTimeout;         /**< Maximum seconds of inactivity before session expires */
     int connections;            /**< Current count of active client connections */
+    int64 connSequence;         /**< Connection sequence number for per-host connection tracking */
 
-    //  Security and resource limits
+#if ME_WEB_HTTP_AUTH
+    //  HTTP authentication configuration (Basic/Digest protocols)
+    cchar *realm;               /**< Authentication realm (default: host name) */
+    cchar *authType;            /**< Default authentication type: "basic" or "digest" */
+    cchar *algorithm;           /**< Digest algorithm: "MD5" or "SHA-256" */
+    char *secret;               /**< Random master secret for nonce generation */
+    int digestTimeout;          /**< Digest nonce time-to-live (seconds) */
+    bool requireTlsForBasic : 1;/**< Require TLS for Basic authentication */
+    char *opaque;               /**< Digest opaque value emitted in challenges */
+#if ME_WEB_AUTH_DIGEST
+    bool trackNonces : 1;       /**< Enable nonce replay protection tracking (disable for testing/benchmarks) */
+    RHash *nonces;              /**< Hash table tracking nonces for replay protection */
+    REvent nonceCleanupEvent;   /**< Timer event for cleaning up expired nonces */
+#endif
+#endif
+
+#if ME_WEB_UPLOAD
+    //  Upload configuration
+    cchar *uploadDir;           /**< Directory path where uploaded files are temporarily stored */
+    bool removeUploads : 1;     /**< Automatically remove uploaded files when request completes */
+#endif
+
 #if ME_WEB_LIMITS || DOXYGEN
+    //  Security and resource limits
     int maxBuffer;              /**< Maximum response buffer size in bytes */
+    int maxDigest;              /**< Maximum digest nonces for replay protection */
     int maxHeader;              /**< Maximum HTTP header size in bytes */
     int maxConnections;         /**< Maximum number of simultaneous connections */
     int maxBody;                /**< Maximum HTTP request body size in bytes */
+    int maxRequests;            /**< Maximum number of requests per keep-alive connection */
     int maxSessions;            /**< Maximum number of concurrent user sessions */
     int maxUpload;              /**< Maximum file upload size in bytes */
     int maxUploads;             /**< Maximum number of files per upload request */
@@ -470,6 +565,8 @@ typedef struct Web {
     Offset chunkRemaining;      /**< Bytes remaining in current HTTP chunk */
     ssize rxLen;                /**< Total expected request content length */
     Offset rxRemaining;         /**< Request body bytes remaining to be read */
+    ssize headerSize;           /**< Size of the request headers and delimiter */
+    ssize rxRead;               /**< Bytes read from the request including headers */
     ssize txLen;                /**< Response content length for Content-Length header */
     Offset txRemaining;         /**< Response body bytes remaining to be sent */
     ssize lastEventId;          /**< Last Server-Sent Events (SSE) event identifier */
@@ -498,11 +595,17 @@ typedef struct Web {
     uint put : 1;               /**< Is the current request a PUT request */
     uint trace : 1;             /**< Is the current request a TRACE request */
 
-    RFiber *fiber;              /**< Original owning fiber */
+    uint ifModified:1;          /**< If-Modified-Since header was present */
+    uint ifUnmodified:1;        /**< If-Unmodified-Since header was present */
+    uint ifMatchPresent:1;      /**< If-Match header was present */
+    uint ifNoneMatch:1;         /**< If-None-Match header was present */
+    uint ifRange:1;             /**< If-Range header was present */
+
     WebHost *host;              /**< Owning host object */
     struct WebSession *session; /**< Session state */
     WebRoute *route;            /**< Matching route for this request */
     WebListen *listen;          /**< Listening endpoint */
+    RFiber *fiber;              /**< Current fiber object may change between requests */
 
     Json *vars;                 /**< Parsed request body variables */
     Json *qvars;                /**< Parsed request query string variables */
@@ -528,16 +631,51 @@ typedef struct Web {
     char *redirect;             /**< Response redirect location. Used to set the Location header */
     char *hash;                 /**< Request URL reference portion */
     char *securityToken;        /**< Request security token */
-    time_t since;               /**< Value of the if-modified-since value in seconds since epoch */
+
+    //  Conditional requests (RFC 7232)
+    time_t since;               /**< Value of If-Modified-Since header in seconds since epoch */
+    time_t unmodifiedSince;     /**< Value of If-Unmodified-Since header in seconds since epoch */
+    RList *etags;               /**< List of ETags from If-Match or If-None-Match headers */
+    char *ifMatch;              /**< ETag from If-Range header (for conditional range requests) */
+
+    //  Range requests (RFC 7233)
+    WebRange *ranges;           /**< Linked list of requested byte ranges from Range header */
+    WebRange *currentRange;     /**< Current range being processed (for iteration) */
+    char *rangeBoundary;        /**< MIME multipart boundary string for multi-range responses */
+    char *rmime;                /**< Ranged request mime type based on the extension */
 
     //  Auth
     char *cookie;               /**< Request cookie string. Multiple cookies are joined and separated by ";" */
-    cchar *username;            /**< Username */
+    char *username;             /**< Username (allocated) */
     cchar *role;                /**< Authorized role */
-    int roleId;                 /**< Index into roles for the authorized role */
     int signature;              /**< Index into host->signatures for this request */
-    int64 reuse;                /**< Keep-alive reuse counter */
+    int64 count;                /**< Keep-alive reuse counter. Origin zero and incremented by one after each request */
     int64 conn;                 /**< Web connection sequence */
+
+    //  Authentication and authorization (always available for session-based auth)
+    struct WebUser *user;       /**< Authenticated user object */
+
+#if ME_WEB_HTTP_AUTH
+    //  HTTP Basic/Digest authentication state
+    char *authType;             /**< Auth type from Authorization header ("basic" or "digest") */
+    char *authDetails;          /**< Auth details (after "Basic " or "Digest ") */
+    char *password;             /**< Decoded password (Basic) or empty (Digest) */
+    bool encoded : 1;           /**< Password is hash encoded */
+
+#if ME_WEB_AUTH_DIGEST
+    //  Digest authentication fields
+    char *algorithm;            /**< Digest algorithm ("MD5" or "SHA-256") */
+    char *realm;                /**< Digest realm */
+    char *nonce;                /**< Server/client nonce */
+    char *opaque;               /**< Opaque value */
+    char *uri;                  /**< Digest URI */
+    char *qop;                  /**< Quality of protection */
+    char *nc;                   /**< Nonce count */
+    char *cnonce;               /**< Client nonce */
+    char *digestResponse;       /**< Client's digest response */
+    char *digest;               /**< Server-computed digest for comparison */
+#endif /* ME_WEB_AUTH_DIGEST */
+#endif /* ME_WEB_HTTP_AUTH */
 
 #if ME_WEB_UPLOAD
     //  Upload
@@ -616,15 +754,15 @@ PUBLIC void webBuffer(Web *web, size_t size);
     Read data and buffer until a given pattern or limit is reached
     @description Read data from the request stream into an internal buffer until a specific
         pattern is found or a byte limit is reached. The data remains in the buffer for
-        subsequent processing and is not consumed by this call.
+        subsequent processing and is not consumed by this call. If the pattern is not found
+        before the limit, the buffer will contain the data read up to the limit.
     @param web Web request object
     @param until Pattern string to search for, or NULL to read only up to the limit
     @param limit Maximum number of bytes to buffer
-    @param allowShort If true, return 0 when pattern not found before limit; if false, continue reading
-    @return Number of bytes read into buffer, 0 if pattern not found (when allowShort=true), negative on error
+    @return Number of bytes read into buffer, 0 if pattern not found before limit, negative on errors
     @stability Evolving
  */
-PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit, bool allowShort);
+PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit);
 
 /**
     Respond to the request with an error
@@ -634,6 +772,7 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit, bool allowShor
         response can be generated. Use webNetError() when the HTTP connection is compromised.
     @param web Web request object
     @param status HTTP response status code (e.g., 400, 404, 500)
+        If the status is <= 0, the socket will be closed after the response is sent.
     @param fmt Printf-style format string for the error message body
     @param ... Arguments for the format string
     @return Zero if successful, negative on failure
@@ -748,8 +887,8 @@ PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue);
 /**
     Close the current request and issue no response
     @description Immediately close the connection without sending any HTTP response.
-        Use this when the connection or request is compromised and no valid HTTP response
-        can be generated. The error message is logged for debugging purposes.
+        Use this when the connection or request is compromised or the client cannot be trusted.
+        No valid HTTP response is issued. The error message is logged for debugging purposes.
     @param web Web request object
     @param msg Printf-style error message for logging
     @param ... Arguments for the error message format string
@@ -806,17 +945,6 @@ PUBLIC char *webParseUrl(cchar *url,
     @stability Evolving
  */
 PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize);
-
-/**
-    Read data from the socket into the receive buffer
-    @description Read raw data from the client socket into the internal receive buffer.
-        This is a low-level function used internally for HTTP request parsing.
-    @param web Web request object
-    @param bufsize Maximum number of bytes to read from the socket
-    @return Number of bytes read from socket, or negative on error
-    @stability Evolving
- */
-PUBLIC ssize webReadSocket(Web *web, size_t bufsize);
 
 /**
     Read request body data until a given pattern is reached.
@@ -1020,7 +1148,8 @@ PUBLIC ssize webWriteHeaders(Web *web);
         Other fibers continue to run. This will set the Content-Type header to text/plain.
     @pre Must only be called from a fiber.
     @param web Web object
-    @param status HTTP status code.
+    @param status HTTP status code. If the status is less than or equal to zero, close the socket after issuing the
+       response. If status is zero, default the status to 400.
     @param fmt Printf style message string
     @param ... Format arguments.
     @return The number of bytes written.
@@ -1071,6 +1200,7 @@ PUBLIC bool webCheckSignature(Web *web, Json *json, int nid, JsonNode *signature
 PUBLIC int webConsumeInput(Web *web);
 PUBLIC int webFileHandler(Web *web);
 PUBLIC void webFree(Web *web);
+PUBLIC void webFreeRanges(Web *web);
 PUBLIC void webClose(Web *web);
 PUBLIC void webParseForm(Web *web);
 PUBLIC void webParseQuery(Web *web);
@@ -1078,6 +1208,7 @@ PUBLIC void webParseEncoded(Web *web, Json *vars, cchar *str);
 PUBLIC Json *webParseJson(Web *web);
 PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bool upload);
 PUBLIC int webReadBody(Web *web);
+PUBLIC void webSetCacheControlHeaders(Web *web);
 PUBLIC void webTestInit(WebHost *host, cchar *prefix);
 PUBLIC void webUpdateDeadline(Web *web);
 PUBLIC int webValidateUrl(Web *web);
@@ -1260,6 +1391,122 @@ PUBLIC bool webLogin(Web *web, cchar *username, cchar *role);
 PUBLIC void webLogout(Web *web);
 
 /**
+    Add a user to the authentication database
+    @param host WebHost object
+    @param username User name
+    @param password Pre-hashed password: H(username:realm:password)
+    @param role Role name
+    @return WebUser object or NULL on error
+    @stability Evolving
+ */
+PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, cchar *role);
+
+/**
+    Lookup a user by username
+    @param host WebHost object
+    @param username User name
+    @return WebUser object or NULL if not found
+    @stability Evolving
+ */
+PUBLIC WebUser *webLookupUser(WebHost *host, cchar *username);
+
+#if ME_WEB_AUTH_DIGEST
+/**
+    Initialize digest authentication subsystem
+    @description Starts the nonce cleanup timer for replay protection
+    @param host WebHost object
+    @stability Evolving
+ */
+PUBLIC void webInitDigestAuth(WebHost *host);
+#endif
+
+/**
+    Remove a user from the authentication database
+    @param host WebHost object
+    @param username User name
+    @return True if removed successfully
+    @stability Evolving
+ */
+PUBLIC bool webRemoveUser(WebHost *host, cchar *username);
+
+/**
+    Update user password and/or role
+    @param host WebHost object
+    @param username User name
+    @param password New password (or NULL to keep existing)
+    @param role New role (or NULL to keep existing)
+    @return True if updated successfully
+    @stability Evolving
+ */
+PUBLIC bool webUpdateUser(WebHost *host, cchar *username, cchar *password, cchar *role);
+
+/**
+    Check if user has required ability
+    @param user WebUser object
+    @param ability Required ability name
+    @return True if user has the ability
+    @stability Evolving
+ */
+PUBLIC bool webUserCan(WebUser *user, cchar *ability);
+
+/**
+    Hash a string using specified algorithm
+    @param str String to hash
+    @param algorithm Algorithm: "MD5" or "SHA-256"
+    @return Hex-encoded hash string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webHash(cchar *str, cchar *algorithm);
+
+/**
+    Hash password for storage
+    @param host WebHost object
+    @param username User name
+    @param password Plain-text password
+    @return Hex-encoded hash: H(username:realm:password). Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webHashPassword(WebHost *host, cchar *username, cchar *password);
+
+/**
+    Verify plain-text password against stored hash
+    @param host WebHost object
+    @param username User name
+    @param password Plain-text password
+    @return True if password matches
+    @stability Evolving
+ */
+PUBLIC bool webVerifyUserPassword(WebHost *host, cchar *username, cchar *password);
+
+/**
+    Decode Base64 string
+    @param str Base64-encoded string
+    @return Decoded string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webDecode64(cchar *str);
+
+/**
+    Encode string as Base64
+    @param str String to encode
+    @return Base64-encoded string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webEncode64(cchar *str);
+
+#if ME_WEB_HTTP_AUTH
+/**
+    Perform HTTP authentication (Basic or Digest)
+    @description Authenticates the request using HTTP Basic or Digest authentication from the Authorization header.
+        Sends appropriate WWW-Authenticate challenge if authentication fails.
+    @param web Web request object
+    @return True if authenticated and authorized for the route
+    @stability Evolving
+ */
+PUBLIC bool webHttpAuthenticate(Web *web);
+#endif /* ME_WEB_HTTP_AUTH */
+
+/**
     Define a request hook
     @description The request hook will be invoked for important request events during the lifecycle of processing the
         request.
@@ -1303,6 +1550,42 @@ PUBLIC int webWait(Web *web);
     @stability Evolving
  */
 PUBLIC char *webDate(char *buf, size_t size, time_t when);
+
+/**
+    Check if currentEtag matches any ETag in If-Match or If-None-Match list
+    @description Compares the current resource ETag against the list of ETags
+        provided in If-Match or If-None-Match headers. Handles wildcard (*) matching.
+    @param web Web request object
+    @param currentEtag Current ETag of the resource
+    @return True if there is a match, false otherwise
+    @stability Evolving
+ */
+PUBLIC bool webMatchEtag(Web *web, cchar *currentEtag);
+
+/**
+    Check if resource was modified based on If-Modified-Since or If-Unmodified-Since
+    @description Evaluates time-based conditional request headers per RFC 7232.
+        For If-Modified-Since, returns true if resource was modified after the given time.
+        For If-Unmodified-Since, returns true if resource was NOT modified after the given time.
+    @param web Web request object
+    @param mtime Modification time of the resource
+    @return True if the condition evaluates to true per RFC 7232
+    @stability Evolving
+ */
+PUBLIC bool webMatchModified(Web *web, time_t mtime);
+
+/**
+    Determine if 304 Not Modified should be returned
+    @description Per RFC 7232 section 6, determines if content has not been modified
+        based on If-None-Match and If-Modified-Since headers. If-None-Match takes
+        precedence over If-Modified-Since. Only applicable to GET and HEAD requests.
+    @param web Web request object
+    @param currentEtag Current ETag of the resource
+    @param mtime Modification time of the resource
+    @return True if 304 Not Modified should be returned, false otherwise
+    @stability Evolving
+ */
+PUBLIC bool webContentNotModified(Web *web, cchar *currentEtag, time_t mtime);
 
 /**
     Decode a URL-encoded string
