@@ -23,7 +23,7 @@ static void query()
     Json *json;
     char url[128];
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Key=value
     json = urlJson(up, "POST", SFMT(url, "%s/test/show?a=1&b=2&c=3", HTTP), NULL, 0, NULL);
@@ -51,7 +51,7 @@ static void encoded()
     Json *json;
     char url[128];
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Key=value
     json =

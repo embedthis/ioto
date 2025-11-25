@@ -22,15 +22,15 @@ static void testIfNoneMatchWithMatching()
     int  status;
     char *etag, *headers;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     //  Clone ETag from response headers before closing
     etag = sclone(urlGetHeader(up, "ETag"));
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     //  Close and create new request with If-None-Match
     urlClose(up);
@@ -38,7 +38,7 @@ static void testIfNoneMatchWithMatching()
     //  Format headers using sfmt which returns allocated string
     headers = sfmt("If-None-Match: %s\r\n", etag);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, headers);
-    ttrue(status == 304);  // 304 Not Modified
+    teqi(status, 304);  // 304 Not Modified
 
     rFree(headers);
     rFree(etag);
@@ -52,16 +52,16 @@ static void testIfNoneMatchWithDifferent()
     int   status;
     cchar *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request with If-None-Match using a different ETag - should get 200
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       "If-None-Match: \"different-etag\"\r\n");
-    ttrue(status == 200);         // 200 OK
+    teqi(status, 200);         // 200 OK
 
     response = urlGetResponse(up);
-    ttrue(response != NULL);
-    ttrue(slen(response) == 100); // Full content
+    tnotnull(response);
+    teqz(slen(response), 100); // Full content
 
     urlFree(up);
 }
@@ -72,12 +72,12 @@ static void testIfNoneMatchWildcard()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request with If-None-Match: * - should get 304 if resource exists
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       "If-None-Match: *\r\n");
-    ttrue(status == 304);  // 304 Not Modified
+    teqi(status, 304);  // 304 Not Modified
 
     urlFree(up);
 }
@@ -89,13 +89,13 @@ static void testIfMatchSuccess()
     int  status;
     char *etag, *headers;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     etag = sclone(urlGetHeader(up, "ETag"));
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     //  Now PUT with If-Match using the correct ETag - should succeed
     urlClose(up);
@@ -118,13 +118,13 @@ static void testIfMatchFailure()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  PUT with If-Match using wrong ETag - should get 412
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
                       "Updated content", 15,
                       "If-Match: \"wrong-etag\"\r\n");
-    ttrue(status == 412);  // 412 Precondition Failed
+    teqi(status, 412);  // 412 Precondition Failed
 
     urlFree(up);
 }
@@ -135,7 +135,7 @@ static void testIfMatchWildcard()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  PUT with If-Match: * - should succeed if resource exists
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
@@ -153,19 +153,19 @@ static void testIfModifiedSinceNotModified()
     int  status;
     char *lastModified, *headers;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     lastModified = sclone(urlGetHeader(up, "Last-Modified"));
-    ttrue(lastModified != NULL);
+    tnotnull(lastModified);
 
     //  Now request with If-Modified-Since using the same date - should get 304
     urlClose(up);
     headers = sfmt("If-Modified-Since: %s\r\n", lastModified);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, headers);
-    ttrue(status == 304);  // 304 Not Modified
+    teqi(status, 304);  // 304 Not Modified
 
     rFree(headers);
     rFree(lastModified);
@@ -179,16 +179,16 @@ static void testIfModifiedSinceModified()
     int   status;
     cchar *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request with If-Modified-Since using an old date - should get 200
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       "If-Modified-Since: Mon, 01 Jan 2000 00:00:00 GMT\r\n");
-    ttrue(status == 200);         // 200 OK
+    teqi(status, 200);         // 200 OK
 
     response = urlGetResponse(up);
-    ttrue(response != NULL);
-    ttrue(slen(response) == 100); // Full content
+    tnotnull(response);
+    teqz(slen(response), 100); // Full content
 
     urlFree(up);
 }
@@ -200,13 +200,13 @@ static void testIfUnmodifiedSinceSuccess()
     int  status;
     char *lastModified;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     lastModified = sclone(urlGetHeader(up, "Last-Modified"));
-    ttrue(lastModified != NULL);
+    tnotnull(lastModified);
 
     //  Now PUT with If-Unmodified-Since using same or future date - should succeed
     urlClose(up);
@@ -224,13 +224,13 @@ static void testIfUnmodifiedSinceFailure()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  PUT with If-Unmodified-Since using old date - should get 412
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
                       "Updated content", 15,
                       "If-Unmodified-Since: Mon, 01 Jan 2000 00:00:00 GMT\r\n");
-    ttrue(status == 412);  // 412 Precondition Failed
+    teqi(status, 412);  // 412 Precondition Failed
 
     urlFree(up);
 }
@@ -242,13 +242,13 @@ static void testIfNoneMatchPrecedence()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     etag = urlGetHeader(up, "ETag");
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     /*
         Send both If-None-Match (matching) and If-Modified-Since (old date)
@@ -257,7 +257,7 @@ static void testIfNoneMatchPrecedence()
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       SFMT(headers, "If-None-Match: %s\r\nIf-Modified-Since: Mon, 01 Jan 2000 00:00:00 GMT\r\n", etag));
-    ttrue(status == 304);  // 304 Not Modified (If-None-Match wins)
+    teqi(status, 304);  // 304 Not Modified (If-None-Match wins)
 
     urlFree(up);
 }
@@ -269,23 +269,23 @@ static void testIfRangeWithMatchingEtag()
     int   status;
     cchar *etag, *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     etag = urlGetHeader(up, "ETag");
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     //  Now request range with If-Range matching ETag - should get 206 with range
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       SFMT(headers, "Range: bytes=0-49\r\nIf-Range: %s\r\n", etag));
-    ttrue(status == 206);        // 206 Partial Content
+    teqi(status, 206);        // 206 Partial Content
 
     response = urlGetResponse(up);
-    ttrue(response != NULL);
-    ttrue(slen(response) == 50); // Range content only
+    tnotnull(response);
+    teqz(slen(response), 50); // Range content only
 
     urlFree(up);
 }
@@ -297,16 +297,16 @@ static void testIfRangeWithDifferentEtag()
     int   status;
     cchar *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request range with If-Range using wrong ETag - should get 200 with full content
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       "Range: bytes=0-49\r\nIf-Range: \"wrong-etag\"\r\n");
-    ttrue(status == 200);         // 200 OK (full content, not range)
+    teqi(status, 200);         // 200 OK (full content, not range)
 
     response = urlGetResponse(up);
-    ttrue(response != NULL);
-    ttrue(slen(response) == 100); // Full content, not range
+    tnotnull(response);
+    teqz(slen(response), 100); // Full content, not range
 
     urlFree(up);
 }
@@ -319,23 +319,23 @@ static void testIfRangeWithDate()
     char  *lastModified;
     cchar *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     lastModified = sclone(urlGetHeader(up, "Last-Modified"));
-    ttrue(lastModified != NULL);
+    tnotnull(lastModified);
 
     //  Now request range with If-Range matching date - should get 206 with range
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       SFMT(headers, "Range: bytes=0-49\r\nIf-Range: %s\r\n", lastModified));
-    ttrue(status == 206);        // 206 Partial Content
+    teqi(status, 206);        // 206 Partial Content
 
     response = urlGetResponse(up);
-    ttrue(response != NULL);
-    ttrue(slen(response) == 50); // Range content only
+    tnotnull(response);
+    teqz(slen(response), 50); // Range content only
 
     rFree(lastModified);
     urlFree(up);
@@ -348,19 +348,19 @@ static void testMultipleETags()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     etag = urlGetHeader(up, "ETag");
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     //  Request with If-None-Match containing multiple ETags (including matching one)
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       SFMT(headers, "If-None-Match: \"other-etag\", %s, \"another-etag\"\r\n", etag));
-    ttrue(status == 304);  // 304 Not Modified (one of the ETags matched)
+    teqi(status, 304);  // 304 Not Modified (one of the ETags matched)
 
     urlFree(up);
 }
@@ -372,24 +372,24 @@ static void testDeleteWithPrecondition()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
     etag = urlGetHeader(up, "ETag");
-    ttrue(etag != NULL);
+    tnotnull(etag);
 
     //  DELETE with If-Match using wrong ETag - should get 412
     urlClose(up);
     status = urlFetch(up, "DELETE", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0,
                       "If-Match: \"wrong-etag\"\r\n");
-    ttrue(status == 412);  // 412 Precondition Failed
+    teqi(status, 412);  // 412 Precondition Failed
 
     //  File should still exist
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);  // File still exists
+    teqi(status, 200);  // File still exists
 
     urlFree(up);
 }
@@ -400,12 +400,12 @@ static void testMalformedEtag()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request with malformed If-None-Match (missing quotes) - should get 400
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
                       "If-None-Match: malformed-etag\r\n");
-    ttrue(status == 400);  // 400 Bad Request
+    teqi(status, 400);  // 400 Bad Request
 
     urlFree(up);
 }

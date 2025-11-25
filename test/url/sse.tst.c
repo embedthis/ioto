@@ -46,7 +46,7 @@ static void lowLevelAPI()
     count = 0;
     expected = 100;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));
     ttrue(rc == 0);
@@ -79,7 +79,7 @@ static void keepAlive()
     count = 0;
     expected = 100;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Sames as per lowLevelAPI
     rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));

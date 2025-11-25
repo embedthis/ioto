@@ -21,7 +21,7 @@ static void testXsrf(void)
     char *cookie, *anotherCookie, *anotherToken, *securityToken, *formBody, url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     /*
         Get an XSRF token to use in a form.
@@ -66,7 +66,7 @@ static void testXsrf(void)
     /*
         POST without prior GET (no session, no token) must fail.
      */
-    cold = urlAlloc(0);
+    cold = urlAlloc(URL_NO_LINGER);
     status = urlFetch(cold, "POST", SFMT(url, "%s/test/xsrf/form.html", HTTP), NULL, 0, NULL);
     ttrue(status == 400);
     urlFree(cold);
@@ -75,7 +75,7 @@ static void testXsrf(void)
         POST with a valid token header but without the session cookie must fail.
      */
     urlClose(up);
-    upNoCookie = urlAlloc(0);
+    upNoCookie = urlAlloc(URL_NO_LINGER);
     status = urlFetch(upNoCookie, "POST", SFMT(url, "%s/test/xsrf/form.html", HTTP), NULL, 0,
                       "X-XSRF-TOKEN: %s\r\n", securityToken);
     ttrue(status == 400);

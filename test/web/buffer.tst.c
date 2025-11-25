@@ -24,7 +24,7 @@ static void testBuffer(void)
     char  url[128];
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/test/buffer", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
     response = urlGetResponse(up);

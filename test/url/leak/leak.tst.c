@@ -123,7 +123,7 @@ static void runBasicGET(cchar *http, int iterations)
     int     i, status;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         status = urlFetch(up, "GET", SFMT(url, "%s/test/index.html", http), NULL, 0, NULL);
         if (status == 200) {
             urlGetResponse(up);
@@ -150,7 +150,7 @@ static void runPOST(cchar *http, int iterations)
     data[sizeof(data) - 1] = '\0';
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         status = urlFetch(up, "POST", SFMT(url, "%s/test/", http), data, slen(data),
                          "Content-Type: application/x-www-form-urlencoded");
         if (status == 200) {
@@ -170,7 +170,7 @@ static void runBasicAuth(cchar *http, int iterations)
     int     i, status;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         urlSetAuth(up, "bob", "password", "basic");
         status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", http), NULL, 0, NULL);
         if (status == 200) {
@@ -190,7 +190,7 @@ static void runDigestAuth(cchar *http, int iterations)
     int     i, status;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         urlSetAuth(up, "alice", "password", "digest");
         status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", http), NULL, 0, NULL);
         if (status == 200) {
@@ -210,7 +210,7 @@ static void runChunked(cchar *http, int iterations)
     int     i, status;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         status = urlFetch(up, "GET", SFMT(url, "%s/test/chunked", http), NULL, 0, NULL);
         if (status == 200) {
             urlGetResponse(up);
@@ -229,7 +229,7 @@ static void runHeaders(cchar *http, int iterations)
     int     i, status;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         status = urlFetch(up, "GET", SFMT(url, "%s/test/index.html", http), NULL, 0,
                          "X-Custom-Header: test-value\r\nX-Test-ID: %d", i);
         if (status == 200) {
@@ -251,7 +251,7 @@ static void runStreaming(cchar *http, int iterations)
     ssize   len;
 
     for (i = 0; i < iterations; i++) {
-        up = urlAlloc(0);
+        up = urlAlloc(URL_NO_LINGER);
         status = urlFetch(up, "GET", SFMT(url, "%s/test/index.html", http), NULL, 0, NULL);
         if (status == 200) {
             while ((len = urlRead(up, buffer, sizeof(buffer))) > 0) {
@@ -272,7 +272,7 @@ static void runKeepAlive(cchar *http, int iterations)
     int     i, status;
 
     // Multiple requests on same connection
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     for (i = 0; i < iterations; i++) {
         status = urlFetch(up, "GET", SFMT(url, "%s/test/index.html", http), NULL, 0, NULL);
         if (status == 200) {

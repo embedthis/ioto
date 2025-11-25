@@ -24,7 +24,7 @@ static void get()
     char  url[128];
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 200);
     response = urlGetResponse(up);
@@ -41,7 +41,7 @@ static void getWithBody()
     cchar *response;
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status =
         urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTPS), "name=John&address=700+Park+Ave", (size_t) -1, NULL);
     ttrue(status == 200);

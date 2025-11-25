@@ -23,7 +23,8 @@ static void chunkedPostUrl()
     char   url[128];
     Json   *json;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
+
     if (urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP)) < 0) {
         tfail("Cannot start request");
     } else if (urlWrite(up, "Hello", 0) < 0 || urlWrite(up, " World", 0) < 0 || urlFinalize(up) < 0) {

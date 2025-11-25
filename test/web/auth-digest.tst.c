@@ -26,7 +26,7 @@ static void testDigest(void)
     }
 
     // Test 1: Public access (no auth required)
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "Public resource should return 200 OK");
     urlFree(up);
@@ -35,7 +35,7 @@ static void testDigest(void)
         Test 2: Protected resource without credentials (should get 401)
         Note: Routes need to be configured in web.json5 for full testing
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     // Will be 404 until routes are configured - this is expected for now
     if (status == 401) {
@@ -57,7 +57,7 @@ static void testDigest(void)
     /*
         Test 3: alice with SHA256 password (admin role) accessing /digest/
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "alice (SHA256) should access /digest/ with Digest auth");
@@ -66,7 +66,7 @@ static void testDigest(void)
     /*
         Test 4: alice (admin) can access /admin/ with Digest
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "alice (admin role) should access /admin/ with Digest");
@@ -76,7 +76,7 @@ static void testDigest(void)
         Test 5: bob with MD5 password (user role) accessing /digest-md5/
         NOTE: bob has MD5 password, so must use MD5 digest route
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest-md5/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "bob (MD5) should access /digest-md5/ with Digest auth");
@@ -85,7 +85,7 @@ static void testDigest(void)
     /*
         Test 6: Wrong password should be rejected
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "wrongpassword", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 401, "Wrong password should return 401 with Digest auth");
@@ -95,7 +95,7 @@ static void testDigest(void)
         Test 7: bob (user role) CANNOT access /admin/ (should get 401)
         NOTE: bob has MD5 password, /admin/ uses SHA-256, so he can't authenticate
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 401, "bob (MD5) should get 401 for /admin/ (algorithm mismatch) with Digest");
@@ -104,7 +104,7 @@ static void testDigest(void)
     /*
         Test 8: Auto-detect auth type (server will send Digest challenge)
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", NULL);  // NULL = auto-detect
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "Auto-detect should work for Digest auth");
@@ -113,7 +113,7 @@ static void testDigest(void)
     /*
         Test 9: Unknown user should be rejected
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "unknownuser", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 401, "Unknown user should return 401 for Digest auth");
@@ -124,7 +124,7 @@ static void testDigest(void)
         NOTE: URL client automatically switches to Digest when it sees a Digest challenge,
         so this test verifies the auto-upgrade behavior works correctly
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     tinfo("Basic credentials on Digest route (auto-upgraded): status = %d", status);
@@ -134,7 +134,7 @@ static void testDigest(void)
     /*
         Test 11: Reusing a Url handle keeps Digest session information
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200, "Initial request with alice should succeed");
@@ -145,7 +145,7 @@ static void testDigest(void)
     /*
         Test 12: Algorithm mismatch - bob (MD5) cannot access SHA-256 route
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 401, "bob (MD5 password) should fail on SHA-256 digest route");
@@ -154,7 +154,7 @@ static void testDigest(void)
     /*
         Test 13: ralph (Bcrypt) CANNOT use Digest authentication at all
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "ralph", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 401, "ralph (Bcrypt password) cannot use Digest authentication");
@@ -210,7 +210,7 @@ static void testDigestUriMismatch(void)
         return;
     }
     // Get challenge
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, rightUri), NULL, 0, NULL);
     ttrue(status == 401, "Expect 401 for initial challenge");
     wwwAuth = urlGetHeader(up, "WWW-Authenticate");
@@ -231,7 +231,7 @@ static void testDigestUriMismatch(void)
     response = webHash(respBuf, algorithm);
 
     // Send request to rightUri but with Authorization header using wrong URI
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, rightUri), NULL, 0,
                       SFMT(header,
                            "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=\"%s\", qop=auth, nc=%s, cnonce=\"%s\"\r\n",
@@ -261,7 +261,7 @@ static void testDigestReplay(void)
         return;
     }
     // Get challenge
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0, NULL);
     ttrue(status == 401, "Expect 401 for initial challenge");
     wwwAuth = urlGetHeader(up, "WWW-Authenticate");
@@ -282,7 +282,7 @@ static void testDigestReplay(void)
     response = webHash(respBuf, algorithm);
 
     // First request with Authorization header -> expect 200
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0,
                       SFMT(header,
                            "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=\"%s\", qop=auth, nc=%s, cnonce=\"%s\"\r\n",
@@ -291,7 +291,7 @@ static void testDigestReplay(void)
     urlFree(up);
 
     // Replay exact same Authorization -> expect 401
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0,
                       SFMT(header,
                            "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=\"%s\", qop=auth, nc=%s, cnonce=\"%s\"\r\n",
@@ -319,7 +319,7 @@ static void testDigestAlgorithmMismatch(void)
     if (!setup(&HTTP, NULL)) {
         return;
     }
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0, NULL);
     ttrue(status == 401, "Expect 401 for initial challenge");
     wwwAuth = urlGetHeader(up, "WWW-Authenticate");
@@ -329,7 +329,7 @@ static void testDigestAlgorithmMismatch(void)
     urlFree(up);
 
     // Send header with wrong algorithm token (MD5) while route uses SHA-256
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0,
                       SFMT(header,
                            "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=\"MD5\", qop=auth, nc=%s, cnonce=\"%s\"\r\n",
@@ -353,7 +353,7 @@ static void testDigestSha512Rejected(void)
     if (!setup(&HTTP, NULL)) {
         return;
     }
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0, NULL);
     ttrue(status == 401, "Expect 401 for initial challenge");
     wwwAuth = urlGetHeader(up, "WWW-Authenticate");
@@ -363,7 +363,7 @@ static void testDigestSha512Rejected(void)
     urlFree(up);
 
     // Send header advertising unsupported algorithm => parse failure -> 401
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, uri), NULL, 0,
                       SFMT(header,
                            "Authorization: Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", algorithm=\"SHA-512-256\", qop=auth, nc=%s, cnonce=\"%s\"\r\n",

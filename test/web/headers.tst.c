@@ -24,7 +24,7 @@ static void checkResponseHeaders()
     char  url[128];
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     teqi(status, 200);
@@ -41,8 +41,8 @@ static void checkResponseHeaders()
     tmatch(urlGetHeader(up, "content-length"), "8");
 
     //  Check unexpected headers
-    ttrue(!urlGetHeader(up, "Last-Modified"));
-    ttrue(!urlGetHeader(up, "ETag"));
+    tnull(urlGetHeader(up, "Last-Modified"));
+    tnull(urlGetHeader(up, "ETag"));
 
 
     //  Static file
@@ -71,7 +71,7 @@ static void testMultipleHeaders()
     char url[128];
 
     //  Test request with multiple custom headers
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
                   "X-Custom-1: value1\r\nX-Custom-2: value2\r\n"), 200);
@@ -85,7 +85,7 @@ static void testLongHeaderValues()
     char url[128], *longValue;
 
     //  Test header with long value (but within limits)
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     longValue = rAlloc(500);
     memset(longValue, 'A', 499);
@@ -105,7 +105,7 @@ static void testStandardHeaders()
     cchar *date;
 
     //  Verify standard response headers are present
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 
@@ -122,18 +122,20 @@ static void testContentTypeVariations()
     char  url[128];
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  HTML file
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
     contentType = urlGetHeader(up, "Content-Type");
-    ttrue(contentType && scontains(contentType, "text/html"));
+    tnotnull(contentType);
+    tnotnull(scontains(contentType, "text/html"));
 
     //  JSON endpoint
     urlClose(up);
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL), 200);
     contentType = urlGetHeader(up, "Content-Type");
-    ttrue(contentType && scontains(contentType, "text/plain"));
+    tnotnull(contentType);
+    tnotnull(scontains(contentType, "text/plain"));
 
     urlFree(up);
 }
@@ -145,7 +147,7 @@ static void testCacheHeaders()
     cchar *etag, *lastModified;
 
     //  Static files should have caching headers
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 
@@ -165,20 +167,22 @@ static void testConnectionHeader()
     char  url[128];
     cchar *connection;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Test keep-alive connection
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
                   "Connection: keep-alive\r\n"), 200);
     connection = urlGetHeader(up, "Connection");
-    ttrue(connection && smatch(connection, "keep-alive"));
+    tnotnull(connection);
+    tmatch(connection, "keep-alive");
 
     //  Test close connection
     urlClose(up);
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
                   "Connection: close\r\n"), 200);
     connection = urlGetHeader(up, "Connection");
-    ttrue(connection && smatch(connection, "close"));
+    tnotnull(connection);
+    tmatch(connection, "close");
 
     urlFree(up);
 }
@@ -190,7 +194,7 @@ static void testHeaderCaseInsensitivity()
     cchar *value1, *value2, *value3;
 
     //  HTTP headers should be case-insensitive
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 

@@ -6,6 +6,7 @@
 set -m
 
 ENDPOINT=$(json 'web.listen[0]' web.json5)
+WEB_STARTED=0  # Track if we started the web server
 
 if [ -z "$ENDPOINT" ]; then
     echo "Error: Cannot get endpoint from web.json5" >&2
@@ -13,23 +14,31 @@ if [ -z "$ENDPOINT" ]; then
 fi
 
 if curl -s ${ENDPOINT}/ >/dev/null 2>&1; then
-    echo "Web is already running on ${ENDPOINT}"
+    # Find the existing web server PID
+    PID=$(lsof -ti :4260 | head -1)
+    if [ -z "$PID" ]; then
+        echo "Error: Cannot find web server process" >&2
+        exit 1
+    fi
+    # Save web server PID for monitoring
+    echo $PID > bench.pid
+    echo "Web is already running on ${ENDPOINT} with PID $PID"
     sleep 999999 &
+    WAITING_PID=$!
 else
     echo "Starting web server for benchmarks on ${ENDPOINT}"
     web --trace web.log &
+    WAITING_PID=$!
+    # Save web server PID for monitoring
+    echo $WAITING_PID > bench.pid
 fi
-PID=$!
-
-# Save PID for monitoring
-echo $PID > bench.pid
 
 cleanup() {
-    kill $PID 2>/dev/null
+    kill $WAITING_PID 2>/dev/null
     rm -f bench.pid
     exit 0
 }
 
 trap cleanup SIGINT SIGTERM SIGQUIT EXIT
 
-wait $PID
+wait $WAITING_PID

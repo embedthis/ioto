@@ -18,6 +18,10 @@
 static char *HTTP;
 static char *HTTPS;
 
+// Global benchmark context (shared across all benchmark functions)
+static BenchContext benchCtx;
+BenchContext *bctx = &benchCtx;
+
 // Benchmark timing constants
 #define URL_TIMEOUT_MS        10000     // 10 second timeout to prevent hangs
 #define MIN_GROUP_DURATION_MS 500       // Minimum 500ms per test group
@@ -30,7 +34,7 @@ typedef struct {
     cchar *name;
     cchar *file;
     int64 size;
-    double multiplier;                                // Fraction of base iterations (1.0 = full, 0.25 = 25%)
+    double multiplier;                   // Fraction of base iterations (1.0 = full, 0.25 = 25%)
 } FileClass;
 
 static FileClass fileClasses[] = {
@@ -41,245 +45,45 @@ static FileClass fileClasses[] = {
     { NULL,    NULL,              0,          0    }
 };
 
-// Code
-
 /*
-   Calculate group duration with multiplier and enforce minimum
+    Calculate group duration based on file class multiplier
+    Allocates time proportionally and ensures minimum duration
  */
-static Ticks calculateGroupDuration(Ticks duration, double multiplier)
+static Ticks getGroupDuration(FileClass *fc)
 {
-    Ticks groupDuration;
+    Ticks duration;
 
-    groupDuration = (Ticks) (duration * multiplier);
-    if (groupDuration < MIN_GROUP_DURATION_MS) {
-        groupDuration = MIN_GROUP_DURATION_MS;
+    duration = (Ticks) (bctx->duration * fc->multiplier / bctx->totalUnits);
+    if (duration < MIN_GROUP_DURATION_MS) {
+        duration = MIN_GROUP_DURATION_MS;
     }
-    return groupDuration;
+    return duration;
 }
 
 /*
-   Initialize a single benchmark result
+    Calculate group duration for equal time allocation
+    Divides total duration equally among groups with minimum enforcement
  */
-static BenchResult *initResult(cchar *name, bool recordResults)
+static Ticks calcEqualDuration(Ticks duration, int numGroups)
 {
-    return recordResults ? createBenchResult(name) : NULL;
+    Ticks d = duration / numGroups;
+    return d < MIN_GROUP_DURATION_MS ? MIN_GROUP_DURATION_MS : d;
 }
 
 /*
-   Initialize results array from file classes
+   Calculate total weighted units for duration allocation
+   Sums all fileClasses multipliers and optionally doubles for warm/cold tests
  */
-static void initFileClassResults(BenchResult **results, FileClass *classes, int count, bool recordResults)
+static void setupTotalUnits(BenchContext *ctx, Ticks duration, bool warmCold)
 {
-    int i;
-
-    for (i = 0; i < count && classes[i].name; i++) {
-        results[i] = initResult(classes[i].name, recordResults);
+    ctx->duration = duration;
+    ctx->totalUnits = 0;
+    for (int i = 0; fileClasses[i].name; i++) {
+        ctx->totalUnits += fileClasses[i].multiplier;
     }
-}
-
-/*
-   Record timing result for a single request
-   Pass isSuccess=true if the request succeeded, false otherwise
- */
-static void recordRequest(BenchResult *result, bool isSuccess, Ticks elapsed, ssize bytes)
-{
-    if (!result) {
-        return;
+    if (warmCold) {
+        ctx->totalUnits *= 2;  // Account for warm and cold tests
     }
-    result->iterations++;
-    if (isSuccess) {
-        recordTiming(result, elapsed);
-        result->bytesTransferred += bytes;
-    } else {
-        result->errors++;
-    }
-}
-
-/*
-   Finalize benchmark results: calculate stats, print, save, and cleanup
- */
-static void finalizeResults(BenchResult **results, int count, cchar *groupName)
-{
-    int i;
-
-    // Calculate and print statistics
-    for (i = 0; i < count; i++) {
-        if (results[i]) {
-            calculateStats(results[i]);
-            printBenchResult(results[i]);
-        }
-    }
-
-    // Save results
-    saveBenchGroup(groupName, results, count);
-
-    // Cleanup
-    for (i = 0; i < count; i++) {
-        freeBenchResult(results[i]);
-    }
-}
-
-/*
-   Extract Content-Length from raw HTTP headers
-   Returns -1 if not found or invalid
- */
-static ssize parseContentLength(cchar *headers, size_t len)
-{
-    cchar  *start, *end, *line, *value;
-    size_t remaining;
-
-    start = headers;
-    remaining = len;
-
-    while (remaining > 0) {
-        line = start;
-        end = (cchar*) memchr(line, '\n', remaining);
-        if (!end) {
-            break;
-        }
-        // Check for end of headers
-        if (end == line || (end > line && *(end - 1) == '\r' && end - 1 == line)) {
-            break;
-        }
-        // Check for Content-Length header (case insensitive)
-        if ((end - line) > 16 && sncaselesscmp(line, "content-length:", 15) == 0) {
-            value = line + 15;
-            // Skip whitespace
-            while (value < end && (*value == ' ' || *value == '\t')) {
-                value++;
-            }
-            return stoi(value);
-        }
-        remaining -= (size_t) (end - line + 1);
-        start = end + 1;
-    }
-    return -1;
-}
-
-/*
-   Read until we find \r\n\r\n (end of headers)
-   Returns total bytes read, or -1 on error
-   Sets *bodyStart to the offset where body data begins (after the header delimiter)
-   Sets *bodyLen to how much body data was read along with headers
- */
-static ssize readHeaders(RSocket *sp, char *buf, size_t bufsize, Ticks deadline, ssize *bodyStart, ssize *bodyLen)
-{
-    ssize total, nbytes, headerEnd;
-    char  *end;
-
-    total = 0;
-    *bodyStart = 0;
-    *bodyLen = 0;
-
-    while (total < (ssize) bufsize - 1) {
-        nbytes = rReadSocket(sp, buf + total, bufsize - (size_t) total - 1, deadline);
-        if (nbytes <= 0) {
-            return -1;
-        }
-        total += nbytes;
-        buf[total] = '\0';
-
-        // Look for end of headers
-        end = scontains(buf, "\r\n\r\n");
-        if (end) {
-            headerEnd = end - buf + 4;  // +4 for \r\n\r\n
-            *bodyStart = headerEnd;
-            *bodyLen = total - headerEnd;
-            return total;
-        }
-        // Also accept \n\n (non-standard but some clients use it)
-        end = scontains(buf, "\n\n");
-        if (end) {
-            headerEnd = end - buf + 2;  // +2 for \n\n
-            *bodyStart = headerEnd;
-            *bodyLen = total - headerEnd;
-            return total;
-        }
-    }
-    return -1;  // Headers too large
-}
-
-/*
-   Helper: Execute a single raw socket request
-   Returns true on success, false on error
- */
-static bool executeRawRequest(RSocket **spPtr, cchar *request, cchar *host, int port, bool useTls, bool reuseSocket,
-                              Ticks deadline, ssize expectedSize)
-{
-    RSocket *sp;
-    char    headers[8192], *body;
-    ssize   bodyStart, bodyInHeaders, headerLen, contentLen, bodyRead, nbytes;
-
-    // Allocate socket if needed (cold connections)
-    if (!reuseSocket || !*spPtr) {
-        if (*spPtr && !reuseSocket) {
-            rFreeSocket(*spPtr);
-        }
-        *spPtr = sp = rAllocSocket();
-        if (useTls) {
-            rSetTls(sp);
-        }
-        rSetSocketLinger(sp, 0);
-    } else {
-        sp = *spPtr;
-    }
-    // Connect if needed
-    if (sp->fd == INVALID_SOCKET) {
-        if (rConnectSocket(sp, host, port, deadline) < 0) {
-            return false;
-        }
-    }
-    // Send request
-    if (rWriteSocket(sp, request, slen(request), deadline) < 0) {
-        if (reuseSocket) {
-            rCloseSocket(sp);
-            rResetSocket(sp);
-        }
-        return false;
-    }
-    // Read headers (may also read some body data)
-    headerLen = readHeaders(sp, headers, sizeof(headers), deadline, &bodyStart, &bodyInHeaders);
-    if (headerLen < 0) {
-        if (reuseSocket) {
-            rCloseSocket(sp);
-            rResetSocket(sp);
-        }
-        return false;
-    }
-    // Parse Content-Length
-    contentLen = parseContentLength(headers, (size_t) bodyStart);
-    if (contentLen < 0 || contentLen > expectedSize * 2) {
-        if (reuseSocket) {
-            rCloseSocket(sp);
-            rResetSocket(sp);
-        }
-        return false;
-    }
-    // Read body
-    body = rAlloc((size_t) (contentLen + 1));
-    bodyRead = 0;
-
-    // Copy any body data that was read with headers
-    if (bodyInHeaders > 0) {
-        memcpy(body, headers + bodyStart, (size_t) bodyInHeaders);
-        bodyRead = bodyInHeaders;
-    }
-
-    // Read remaining body data
-    while (bodyRead < contentLen) {
-        nbytes = rReadSocket(sp, body + bodyRead, (size_t) (contentLen - bodyRead), deadline);
-        if (nbytes <= 0) {
-            rFree(body);
-            if (reuseSocket) {
-                rCloseSocket(sp);
-                rResetSocket(sp);
-            }
-            return false;
-        }
-        bodyRead += nbytes;
-    }
-    rFree(body);
-    return true;
 }
 
 /*
@@ -287,228 +91,187 @@ static bool executeRawRequest(RSocket **spPtr, cchar *request, cchar *host, int 
    Tests: 1KB, 10KB, 100KB, 1MB files using duration-based testing
    This provides the fastest possible client for accurate server benchmarking
  */
-static void benchStaticFilesRaw(Ticks duration, bool recordResults, cchar *host, int port, bool useTls)
+static void benchStaticFilesRaw(Ticks duration, cchar *host, int port, bool useTls)
 {
-    FileClass   *fc;
-    BenchResult *results[8];    // 4 file classes x 2 (warm + cold)
-    RSocket     *sp;
-    Ticks       startTime, elapsed, groupStart, groupDuration, deadline;
-    char        name[64], request[512];
-    bool        success, reuseSocket;
-    int         classIndex, warmCold;
-    double      totalUnits;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    FileClass     *fc;
+    Ticks         groupStart, groupDuration, startTime;
+    char          desc[80], name[64], request[512];
+    int           classIndex, warm;
 
-    sp = NULL;
-
-    // Calculate total weighted units (considering multipliers and warm/cold)
-    totalUnits = 0;
-    for (int i = 0; fileClasses[i].name; i++) {
-        totalUnits += fileClasses[i].multiplier;
-    }
-    totalUnits *= 2;                   // Account for warm and cold
+    SFMT(desc, "Benchmarking static files (Raw %s)...", useTls ? "HTTPS" : "HTTP");
+    initBenchContext(bctx, useTls ? "Raw HTTPS" : "Raw HTTP", desc);
+    setupTotalUnits(bctx, duration, true);
 
     // Run both warm (reuse socket) and cold (new socket each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseSocket = (warmCold == 0); // 0=warm, 1=cold
-        cchar *suffix = reuseSocket ? "raw_warm" : "raw_cold";
-        cchar *connection = reuseSocket ? "keep-alive" : "close";
-        int   resultOffset = reuseSocket ? 0 : 4;
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *suffix = warm ? "raw_warm" : "raw_cold";
+        cchar *connection = warm ? "keep-alive" : "close";
+        int   resultOffset = warm ? 0 : 4;
+
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
+        }
 
         // Initialize results for this test type
         for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            snprintf(name, sizeof(name), "%s_%s", fc->name, suffix);
-            results[resultOffset + classIndex] = recordResults ? createBenchResult(name) : NULL;
+            SFMT(name, "%s_%s", fc->name, suffix);
+            bctx->results[resultOffset + classIndex] = bctx->recordResults ? createBenchResult(name) : NULL;
         }
-        // Allocate socket for warm tests (reused across all requests)
-        if (reuseSocket) {
-            sp = rAllocSocket();
-            if (useTls) {
-                rSetTls(sp);
-            }
-            rSetSocketLinger(sp, 0);
-        }
+
+        // Create socket connection context
+        ctx = createSocketCtx(warm, URL_TIMEOUT_MS, host, port, useTls);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
+
         // Run tests for each file class
         for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            // Allocate time proportionally based on multiplier
-            groupDuration = (Ticks) (duration * fc->multiplier / totalUnits);
-            if (groupDuration < MIN_GROUP_DURATION_MS) {
-                groupDuration = MIN_GROUP_DURATION_MS;
+            groupDuration = getGroupDuration(fc);
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", fc->name, groupDuration / 1000.0);
             }
             groupStart = rGetTicks();
+            bctx->classIndex = classIndex;
+            bctx->bytes = fc->size;
 
             // Pre-format HTTP request
-            snprintf(request, sizeof(request),
-                     "GET /%s HTTP/1.1\r\n"
-                     "Host: %s\r\n"
-                     "Connection: %s\r\n"
-                     "\r\n",
-                     fc->file, host, connection);
+            SFMT(request,
+                 "GET /%s HTTP/1.1\r\n"
+                 "Host: %s\r\n"
+                 "Connection: %s\r\n"
+                 "X-SEQ: %d\r\n"
+                 "\r\n",
+                 fc->file, host, connection, bctx->seq++);
 
             while (rGetTicks() - groupStart < groupDuration) {
                 startTime = rGetTicks();
-                deadline = startTime + URL_TIMEOUT_MS;
-
-                success = executeRawRequest(&sp, request, host, port, useTls, reuseSocket, deadline, fc->size);
-
-                if (recordResults) {
-                    elapsed = rGetTicks() - startTime;
-                    recordRequest(results[resultOffset + classIndex], success, elapsed, fc->size);
+                result = executeRawRequest(ctx, request, fc->size);
+                if (!processResponse(bctx, &result, fc->file, startTime)) {
+                    return;
                 }
             }
+            if (bctx->fatalError) break;
         }
-        // Cleanup socket
-        if (sp) {
-            rFreeSocket(sp);
-            sp = NULL;
-        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 8, useTls ? "static_files_raw_https" : "static_files_raw_http");
-    }
+    finishBenchContext(bctx, 8, useTls ? "static_files_raw_https" : "static_files_raw_http");
 }
 
 /*
    Benchmark static file serving with keep-alive vs cold connections
    Tests: 1KB, 10KB, 100KB, 1MB files using duration-based testing
  */
-static void benchStaticFiles(Ticks duration, bool recordResults)
+static void benchStaticFiles(Ticks duration)
 {
-    FileClass   *fc;
-    BenchResult *results[8];  // 4 file classes x 2 (warm + cold)
-    Url         *up;
-    Ticks       startTime, elapsed, groupStart, groupDuration;
-    char        url[256], name[64];
-    bool        reuseConnection;
-    int         classIndex, warmCold, status;
-    double      totalUnits;
+    FileClass     *fc;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    Ticks         startTime, groupStart, groupDuration;
+    char          url[256], name[64];
+    int           classIndex, warm;
 
-    up = NULL;
-
-    // Calculate total weighted units (considering multipliers and warm/cold)
-    totalUnits = 0;
-    for (int i = 0; fileClasses[i].name; i++) {
-        totalUnits += fileClasses[i].multiplier;
-    }
-    totalUnits *= 2;                       // Account for warm and cold
+    initBenchContext(bctx, "Static file", "Benchmarking static files (URL library)...");
+    setupTotalUnits(bctx, duration, true);
 
     // Run both warm (reuse connection) and cold (new connection each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseConnection = (warmCold == 0); // 0=warm, 1=cold
-        cchar *suffix = reuseConnection ? "warm" : "cold";
-        int   resultOffset = reuseConnection ? 0 : 4;
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *suffix = warm ? "warm" : "cold";
+        int   resultOffset = warm ? 0 : 4;
 
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
+        }
         // Initialize results for this test type
         for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            snprintf(name, sizeof(name), "%s_%s", fc->name, suffix);
-            results[resultOffset + classIndex] = recordResults ? createBenchResult(name) : NULL;
+            SFMT(name, "%s_%s", fc->name, suffix);
+            bctx->results[resultOffset + classIndex] = bctx->recordResults ? createBenchResult(name) : NULL;
         }
 
-        // Allocate URL for warm tests (reused across all requests)
-        if (reuseConnection) {
-            up = urlAlloc(URL_NO_LINGER);
-            urlSetTimeout(up, URL_TIMEOUT_MS);
-        }
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
 
         // Run tests for each file class
         for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            // Allocate time proportionally based on multiplier
-            groupDuration = (Ticks) (duration * fc->multiplier / totalUnits);
-            if (groupDuration < MIN_GROUP_DURATION_MS) {
-                groupDuration = MIN_GROUP_DURATION_MS;
+            groupDuration = getGroupDuration(fc);
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", fc->name, groupDuration / 1000.0);
             }
             groupStart = rGetTicks();
+            bctx->classIndex = classIndex;
+            bctx->bytes = fc->size;
 
             while (rGetTicks() - groupStart < groupDuration) {
-                // Allocate URL for cold tests
-                if (!reuseConnection) {
-                    up = urlAlloc(URL_NO_LINGER);
-                    urlSetTimeout(up, URL_TIMEOUT_MS);
-                }
-
                 startTime = rGetTicks();
-                status = urlFetch(up, "GET", SFMT(url, "%s/%s", HTTP, fc->file), NULL, 0, NULL);
-                urlGetResponse(up);  // Consume response to enable connection reuse
-
-                if (recordResults) {
-                    elapsed = rGetTicks() - startTime;
-                    recordRequest(results[resultOffset + classIndex], status == 200, elapsed, fc->size);
-                }
-
-                // Free URL for cold tests
-                if (!reuseConnection) {
-                    urlClose(up);
-                    urlFree(up);
+                result = executeRequest(ctx, "GET", SFMT(url, "%s/%s", HTTP, fc->file), NULL, 0, NULL);
+                if (!processResponse(bctx, &result, url, startTime)) {
+                    return;
                 }
             }
+            if (bctx->fatalError) break;
         }
-        // Cleanup URL for warm tests
-        if (reuseConnection && up) {
-            urlClose(up);
-            urlFree(up);
-            up = NULL;
-        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 8, "static_files");
-    }
+
+    finishBenchContext(bctx, 8, "static_files");
 }
 
 /*
-   Benchmark file uploads with keep-alive vs cold connections
-   Tests: 1KB, 10KB, 100KB file uploads using PUT with duration-based testing
+   Benchmark PUT requests with keep-alive vs cold connections
+   Tests: 1KB, 10KB, 100KB, 1MB files using PUT with duration-based testing
  */
-static void benchUploads(Ticks duration, bool recordResults)
+static void benchPut(Ticks duration)
 {
-    BenchResult *results[6];  // 3 file classes x 2 (warm + cold)
-    Url         *up;
-    Ticks       startTime, elapsed, groupStart, groupDuration;
-    FileClass   *fc;
-    ssize       fileSize;
-    char        path[256], url[256], name[64], *fileData;
-    bool        reuseConnection;
-    int         classIndex, warmCold, status, counter;
-    double      totalUnits;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    Ticks         startTime, groupStart, groupDuration;
+    FileClass     *fc;
+    ssize         fileSize;
+    char          path[256], url[256], name[64], headers[128], *fileData;
+    int           classIndex, warm, counter;
 
-    // Use first 3 file classes for uploads (1KB, 10KB, 100KB)
-    // Skip 1MB to keep upload tests reasonable
-
-    up = NULL;
-
-    // Calculate total weighted units (3 file classes, warm + cold)
-    totalUnits = 0;
-    for (int i = 0; i < 3 && fileClasses[i].name; i++) {
-        totalUnits += fileClasses[i].multiplier;
-    }
-    totalUnits *= 2;                       // Account for warm and cold
+    initBenchContext(bctx, "PUT upload", "Benchmarking PUT uploads...");
+    setupTotalUnits(bctx, duration, true);
 
     // Run both warm (reuse connection) and cold (new connection each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseConnection = (warmCold == 0); // 0=warm, 1=cold
-        cchar *suffix = reuseConnection ? "warm" : "cold";
-        int   resultOffset = reuseConnection ? 0 : 3;
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *suffix = warm ? "warm" : "cold";
+        int   resultOffset = warm ? 0 : 4;
 
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
+        }
         // Initialize results for this test type
-        for (classIndex = 0; classIndex < 3 && fileClasses[classIndex].name; classIndex++) {
+        for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            snprintf(name, sizeof(name), "%s_%s", fc->name, suffix);
-            results[resultOffset + classIndex] = recordResults ? createBenchResult(name) : NULL;
+            SFMT(name, "%s_%s", fc->name, suffix);
+            bctx->results[resultOffset + classIndex] = bctx->recordResults ? createBenchResult(name) : NULL;
         }
-        // Allocate URL for warm tests (reused across all requests)
-        if (reuseConnection) {
-            up = urlAlloc(URL_NO_LINGER);
-            urlSetTimeout(up, URL_TIMEOUT_MS);
-        }
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
+
         // Run tests for each file class
-        for (classIndex = 0; classIndex < 3 && fileClasses[classIndex].name; classIndex++) {
+        for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
             fc = &fileClasses[classIndex];
-            // Allocate time proportionally based on multiplier
-            groupDuration = (Ticks) (duration * fc->multiplier / totalUnits);
-            if (groupDuration < MIN_GROUP_DURATION_MS) {
-                groupDuration = MIN_GROUP_DURATION_MS;
+            groupDuration = getGroupDuration(fc);
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", fc->name, groupDuration / 1000.0);
             }
             fileData = rReadFile(SFMT(path, "site/%s", fc->file), (size_t*) &fileSize);
             if (!fileData) {
@@ -516,67 +279,161 @@ static void benchUploads(Ticks duration, bool recordResults)
             }
             groupStart = rGetTicks();
             counter = 0;
+            bctx->classIndex = classIndex;
+            bctx->bytes = fileSize;
 
             while (rGetTicks() - groupStart < groupDuration) {
-                // Allocate URL for cold tests
-                if (!reuseConnection) {
-                    up = urlAlloc(URL_NO_LINGER);
-                    urlSetTimeout(up, URL_TIMEOUT_MS);
-                }
-
+                SFMT(url, "%s/upload/bench-%d-%d.txt", HTTP, getpid(), counter);
+                SFMT(headers, "X-Sequence: %d\r\n", bctx->seq++);
                 startTime = rGetTicks();
-                snprintf(url, sizeof(url), "%s/upload/bench-%d-%d.txt", HTTP, getpid(), counter);
-                status = urlFetch(up, "PUT", url, fileData, (size_t) fileSize, NULL);
-                urlGetResponse(up);  // Consume response to enable connection reuse
-                elapsed = rGetTicks() - startTime;
-
-                if (recordResults) {
-                    recordRequest(results[resultOffset + classIndex], status == 201 || status == 204, elapsed,
-                                  fileSize);
+                result = executeRequest(ctx, "PUT", url, fileData, (size_t) fileSize, headers);
+                if (!processResponse(bctx, &result, url, startTime)) {
+                    rFree(fileData);
+                    return;
                 }
-
-                // Delete the uploaded file to prevent buildup
-                urlFetch(up, "DELETE", url, NULL, 0, NULL);
-                urlGetResponse(up);
-
+                // Delete the uploaded file directly to prevent buildup
+                unlink(SFMT(path, "site/upload/bench-%d-%d.txt", getpid(), counter));
                 counter++;
-
-                // Free URL for cold tests
-                if (!reuseConnection) {
-                    urlClose(up);
-                    urlFree(up);
-                }
             }
+            if (bctx->fatalError) break;
             rFree(fileData);
         }
-        // Cleanup URL for warm tests
-        if (reuseConnection && up) {
-            urlClose(up);
-            urlFree(up);
-            up = NULL;
+        if (bctx->fatalError) break;
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
+    }
+    finishBenchContext(bctx, 8, "put");
+}
+
+/*
+   Benchmark multipart/form-data uploads with keep-alive vs cold connections
+   Tests: 1KB, 10KB, 100KB, 1MB files using duration-based testing
+ */
+static void benchMultipartUpload(Ticks duration)
+{
+    ConnectionCtx *ctx;
+    FileClass     *fc;
+    Url           *up;
+    RBuf          *buf;
+    RequestResult result;
+    Ticks         startTime, groupStart, groupDuration;
+    char          url[256], filepath[256], headers[256], name[64], *boundary, *fileData;
+    ssize         fileSize;
+    int           classIndex, warm, counter;
+
+    initBenchContext(bctx, "Multipart upload", "Benchmarking multipart uploads...");
+    setupTotalUnits(bctx, duration, true);
+
+    // Run both warm (reuse connection) and cold (new connection each time) tests
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *suffix = warm ? "warm" : "cold";
+        int   resultOffset = warm ? 0 : 4;
+
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
         }
+        // Initialize results for this test type
+        for (classIndex = 0; classIndex < 4 && fileClasses[classIndex].name; classIndex++) {
+            fc = &fileClasses[classIndex];
+            SFMT(name, "%s_%s", fc->name, suffix);
+            bctx->results[resultOffset + classIndex] = bctx->recordResults ? createBenchResult(name) : NULL;
+        }
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
+
+        // Run tests for each file class
+        for (classIndex = 0; classIndex < 4 && fileClasses[classIndex].name; classIndex++) {
+            fc = &fileClasses[classIndex];
+
+            // Allocate time proportionally based on multiplier
+            groupDuration = (Ticks) (bctx->duration * fc->multiplier / bctx->totalUnits);
+            if (groupDuration < MIN_GROUP_DURATION_MS) {
+                groupDuration = MIN_GROUP_DURATION_MS;
+            }
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", fc->name, groupDuration / 1000.0);
+            }
+            // Read file data for this size class
+            fileData = rReadFile(SFMT(filepath, "site/%s", fc->file), (size_t*) &fileSize);
+            if (!fileData) {
+                continue;
+            }
+            groupStart = rGetTicks();
+            counter = 0;
+            boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+            bctx->classIndex = classIndex;
+            bctx->bytes = fileSize;
+
+            while (rGetTicks() - groupStart < groupDuration) {
+                // Build multipart/form-data request
+                buf = rAllocBuf((size_t)(fileSize + 1024));
+                rPutToBuf(buf,
+                          "--%s\r\n"
+                          "Content-Disposition: form-data; name=\"description\"\r\n"
+                          "\r\n"
+                          "benchmark upload\r\n"
+                          "--%s\r\n"
+                          "Content-Disposition: form-data; name=\"file\"; filename=\"bench-mp-%d-%d.txt\"\r\n"
+                          "Content-Type: text/plain\r\n"
+                          "\r\n",
+                          boundary, boundary, getpid(), counter);
+                rPutBlockToBuf(buf, fileData, (size_t) fileSize);
+                rPutToBuf(buf, "\r\n--%s--\r\n", boundary);
+
+                SFMT(headers,
+                     "Content-Type: multipart/form-data; boundary=%s\r\nX-Sequence: %d\r\n",
+                     boundary, bctx->seq++);
+
+                // Upload file
+                up = getConnection(ctx);
+                startTime = rGetTicks();
+                SFMT(url, "%s/test/upload/", HTTP);
+                result.status = urlFetch(up, "POST", url, rGetBufStart(buf), rGetBufLength(buf), headers);
+                urlGetResponse(up);
+                rFreeBuf(buf);
+
+                if (!processResponse(bctx, &result, url, startTime)) {
+                    releaseConnection(ctx);
+                    rFree(fileData);
+                    return;
+                }
+
+                // Delete uploaded file immediately to avoid accumulation
+                if (result.success) {
+                    char filepath[128];
+                    unlink(SFMT(filepath, "tmp/bench-mp-%d-%d.txt", getpid(), counter));
+                }
+                releaseConnection(ctx);
+                counter++;
+            }
+            if (bctx->fatalError) break;
+            rFree(fileData);
+        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 6, "uploads");
-    }
+
+    finishBenchContext(bctx, 8, "multipart_upload");
 }
 
 /*
    Benchmark action handlers
    Tests: Simple action, JSON action with warm/cold connections using duration-based testing
  */
-static void benchActions(Ticks duration, bool recordResults)
+static void benchActions(Ticks duration)
 {
-    BenchResult *results[4];  // 2 actions x 2 (warm + cold)
-    Url         *up;
-    RBuf        *responseBuf;
-    Ticks       startTime, elapsed, groupStart, groupDuration;
-    char        url[256], name[64];
-    bool        reuseConnection;
-    int         warmCold, actionIndex, status, resultOffset;
-    double      totalUnits;
-    cchar       *suffix;
-    ssize       bytes;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    Ticks         startTime, groupStart, groupDuration;
+    char          url[256], name[64];
+    int           warm, actionIndex, resultOffset;
+    cchar         *suffix;
 
     // Used in URLs
     cchar *actions[] = { "success", "show", NULL };
@@ -584,193 +441,176 @@ static void benchActions(Ticks duration, bool recordResults)
     // Used in results
     cchar *actionNames[] = { "simple", "json" };
 
-    up = NULL;
-
-    // Calculate total weighted units (2 actions x 2 conditions = 4 equal tests)
-    totalUnits = 4.0;
+    initBenchContext(bctx, "Action", "Benchmarking action handlers...");
 
     // Run both warm (reuse connection) and cold (new connection each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseConnection = (warmCold == 0);  // 0=warm, 1=cold
-        suffix = reuseConnection ? "warm" : "cold";
-        resultOffset = reuseConnection ? 0 : 2;
+    for (warm = 1; warm >= 0; warm--) {
+        suffix = warm ? "warm" : "cold";
+        resultOffset = warm ? 0 : 2;
 
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
+        }
         // Initialize results for both actions
         for (actionIndex = 0; actions[actionIndex]; actionIndex++) {
-            snprintf(name, sizeof(name), "%s_%s", actionNames[actionIndex], suffix);
-            results[resultOffset + actionIndex] = initResult(name, recordResults);
+            SFMT(name, "%s_%s", actionNames[actionIndex], suffix);
+            bctx->results[resultOffset + actionIndex] = initResult(name, bctx->recordResults, NULL);
         }
-
-        // Allocate URL for warm tests (reused across all requests)
-        if (reuseConnection) {
-            up = urlAlloc(URL_NO_LINGER);
-            urlSetTimeout(up, URL_TIMEOUT_MS);
-        }
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
 
         // Test each action
         for (actionIndex = 0; actions[actionIndex]; actionIndex++) {
-            // Allocate time equally across all test cases
-            groupDuration = (Ticks) (duration / totalUnits);
-            if (groupDuration < MIN_GROUP_DURATION_MS) {
-                groupDuration = MIN_GROUP_DURATION_MS;
+            // Allocate time equally across all test cases (4 total: 2 actions × 2 warm/cold)
+            groupDuration = calcEqualDuration(duration, 4);
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", actionNames[actionIndex], groupDuration / 1000.0);
             }
             groupStart = rGetTicks();
+            bctx->classIndex = actionIndex;
+
             while (rGetTicks() - groupStart < groupDuration) {
-                // Allocate URL for cold tests
-                if (!reuseConnection) {
-                    up = urlAlloc(URL_NO_LINGER);
-                    urlSetTimeout(up, URL_TIMEOUT_MS);
-                }
-
                 startTime = rGetTicks();
-                status = urlFetch(up, "GET", SFMT(url, "%s/test/%s", HTTP, actions[actionIndex]), NULL, 0, NULL);
-                responseBuf = urlGetResponseBuf(up);
-
-                if (recordResults) {
-                    elapsed = rGetTicks() - startTime;
-                    bytes = responseBuf ? (ssize) rGetBufLength(responseBuf) : 0;
-                    recordRequest(results[resultOffset + actionIndex], status == 200, elapsed, bytes);
-                }
-
-                // Free URL for cold tests
-                if (!reuseConnection) {
-                    urlClose(up);
-                    urlFree(up);
+                result = executeRequest(ctx, "GET", SFMT(url, "%s/test/%s", HTTP, actions[actionIndex]),
+                                        NULL, 0, NULL);
+                bctx->bytes = result.bytes;
+                if (!processResponse(bctx, &result, url, startTime)) {
+                    return;
                 }
             }
+            if (bctx->fatalError) break;
         }
-        // Cleanup URL for warm tests
-        if (reuseConnection && up) {
-            urlClose(up);
-            urlFree(up);
-            up = NULL;
-        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 4, "actions");
-    }
+    finishBenchContext(bctx, 4, "actions");
 }
 
 /*
    Benchmark authenticated routes with digest authentication
    Tests: Digest auth with session reuse, cold auth using duration-based testing
  */
-static void benchAuth(Ticks duration, bool recordResults)
+static void benchAuth(Ticks duration)
 {
-    BenchResult *results[2];
-    Url         *up;
-    Ticks       startTime, elapsed, groupStart;
-    char        url[256];
-    bool        reuseConnection;
-    int         warmCold, status;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    Url           *up;
+    Ticks         startTime, groupStart;
+    char          url[256], desc[80];
+    int           warm;
 
-    up = NULL;
+    initBenchContext(bctx, "Auth", "Benchmarking digest authentication...");
 
     // Run both warm (reuse connection) and cold (new connection each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseConnection = (warmCold == 0);  // 0=warm, 1=cold
-        cchar *name = reuseConnection ? "digest_with_session" : "digest_cold";
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *name = warm ? "digest_with_session" : "digest_cold";
 
         // Initialize result for this test type
-        results[warmCold] = initResult(name, recordResults);
+        SFMT(desc, "  Running %s tests for %.1f seconds...", warm ? "warm" : "cold", (duration / 2) / 1000.0);
+        bctx->results[!warm] = initResult(name, bctx->recordResults, desc);
 
-        // Allocate URL for warm tests (reused across all requests)
-        if (reuseConnection) {
-            up = urlAlloc(URL_NO_LINGER);
-        }
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->classIndex = !warm;
+
         groupStart = rGetTicks();
         while (rGetTicks() - groupStart < duration / 2) {
-            // Allocate URL for cold tests
-            if (!reuseConnection) {
-                up = urlAlloc(URL_NO_LINGER);
-            }
-            urlSetTimeout(up, URL_TIMEOUT_MS);
+            // Get connection from context
+            up = getConnection(ctx);
             urlSetAuth(up, "bench", "password", "digest");
-            startTime = rGetTicks();
-            status = urlFetch(up, "GET", SFMT(url, "%s/auth/secret.html", HTTP), NULL, 0, NULL);
-            urlGetResponse(up);  // Consume response to enable connection reuse
-            elapsed = rGetTicks() - startTime;
 
-            if (recordResults) {
-                recordRequest(results[warmCold], status == 200, elapsed, up->rxLen);
-            }
-            // Free URL for cold tests
-            if (!reuseConnection) {
-                urlClose(up);
-                urlFree(up);
+            startTime = rGetTicks();
+            result.status = urlFetch(up, "GET", SFMT(url, "%s/auth/secret.html", HTTP), NULL, 0, NULL);
+            urlGetResponse(up);  // Consume response to enable connection reuse
+            bctx->bytes = up->rxLen;
+            releaseConnection(ctx);
+
+            if (!processResponse(bctx, &result, url, startTime)) {
+                return;
             }
         }
-        // Cleanup URL for warm tests
-        if (reuseConnection && up) {
-            urlClose(up);
-            urlFree(up);
-            up = NULL;
-        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 2, "auth");
-    }
+    finishBenchContext(bctx, 2, "auth");
 }
 
 /*
    Benchmark HTTPS performance
-   Tests: TLS handshakes, session reuse using duration-based testing
+   Tests: 1KB, 10KB, 100KB, 1MB files with TLS handshakes and session reuse
  */
-static void benchHTTPS(Ticks duration, bool recordResults)
+static void benchHTTPS(Ticks duration)
 {
-    BenchResult *results[2];
-    Url         *up;
-    Ticks       startTime, elapsed, groupStart;
-    char        url[256];
-    bool        reuseConnection;
-    int         warmCold, status;
+    FileClass     *fc;
+    ConnectionCtx *ctx;
+    RequestResult result;
+    Ticks         startTime, groupStart, groupDuration;
+    char          url[256], name[64];
+    int           classIndex, warm;
 
-    up = NULL;
+    initBenchContext(bctx, "HTTPS", "Benchmarking HTTPS (URL library)...");
+    setupTotalUnits(bctx, duration, true);
 
     // Run both warm (reuse connection) and cold (new connection each time) tests
-    for (warmCold = 0; warmCold < 2; warmCold++) {
-        reuseConnection = (warmCold == 0);  // 0=warm, 1=cold
-        cchar *name = reuseConnection ? "https_session_reuse" : "https_cold_handshake";
+    for (warm = 1; warm >= 0; warm--) {
+        cchar *suffix = warm ? "warm" : "cold";
+        int   resultOffset = warm ? 0 : 4;
 
-        // Initialize result for this test type
-        results[warmCold] = initResult(name, recordResults);
+        if (bctx->recordResults) {
+            tinfo("  Running %s tests...", warm ? "warm" : "cold");
+        }
+        // Initialize results for this test type
+        for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
+            fc = &fileClasses[classIndex];
+            SFMT(name, "%s_%s", fc->name, suffix);
+            bctx->results[resultOffset + classIndex] = bctx->recordResults ? createBenchResult(name) : NULL;
+        }
 
-        // Allocate URL for warm tests (reused across all requests)
-        if (reuseConnection) {
-            up = urlAlloc(URL_NO_LINGER);
-            urlSetTimeout(up, URL_TIMEOUT_MS);
-        }
-        groupStart = rGetTicks();
-        while (rGetTicks() - groupStart < duration / 2) {
-            // Allocate URL for cold tests
-            if (!reuseConnection) {
-                up = urlAlloc(URL_NO_LINGER);
-                urlSetTimeout(up, URL_TIMEOUT_MS);
-            }
-            startTime = rGetTicks();
-            status = urlFetch(up, "GET", SFMT(url, "%s/static/1K.txt", HTTPS), NULL, 0, NULL);
-            urlGetResponse(up);  // Consume response to enable connection reuse
+        // Create connection context
+        ctx = createConnectionCtx(warm, URL_TIMEOUT_MS);
+        bctx->connCtx = ctx;
+        bctx->resultOffset = resultOffset;
 
-            if (recordResults) {
-                elapsed = rGetTicks() - startTime;
-                recordRequest(results[warmCold], status == 200, elapsed, up->rxLen);
+        // Run tests for each file class
+        for (classIndex = 0; fileClasses[classIndex].name; classIndex++) {
+            fc = &fileClasses[classIndex];
+            // Allocate time proportionally based on multiplier
+            groupDuration = (Ticks) (bctx->duration * fc->multiplier / bctx->totalUnits);
+            if (groupDuration < MIN_GROUP_DURATION_MS) {
+                groupDuration = MIN_GROUP_DURATION_MS;
             }
-            // Free URL for cold tests
-            if (!reuseConnection) {
-                urlClose(up);
-                urlFree(up);
+            if (bctx->recordResults) {
+                tinfo("    Testing %s for %.1f seconds...", fc->name, groupDuration / 1000.0);
             }
+            groupStart = rGetTicks();
+            bctx->classIndex = classIndex;
+            bctx->bytes = fc->size;
+
+            while (rGetTicks() - groupStart < groupDuration) {
+                startTime = rGetTicks();
+                result = executeRequest(ctx, "GET", SFMT(url, "%s/%s", HTTPS, fc->file), NULL, 0, NULL);
+                if (!processResponse(bctx, &result, url, startTime)) {
+                    return;
+                }
+            }
+            if (bctx->fatalError) break;
         }
-        // Cleanup URL for warm tests
-        if (reuseConnection && up) {
-            urlClose(up);
-            urlFree(up);
-            up = NULL;
-        }
+        if (bctx->fatalError) break;
+
+        // Cleanup connection context
+        freeConnectionCtx(ctx);
+        bctx->connCtx = NULL;
     }
-    if (recordResults) {
-        finalizeResults(results, 2, "https");
-    }
+    finishBenchContext(bctx, 8, "https");
 }
 
 /*
@@ -780,7 +620,6 @@ typedef struct {
     BenchResult *result;
     Ticks startTime;
     int messagesRemaining;
-    bool recordResults;
     RFiber *fiber;
 } WebSocketBenchData;
 
@@ -803,7 +642,7 @@ static void webSocketBenchCallback(WebSocket *ws, int event, cchar *data, size_t
     } else if (event == WS_EVENT_MESSAGE) {
         // Message echoed back - record timing
         elapsed = rGetTicks() - benchData->startTime;
-        if (benchData->recordResults) {
+        if (benchData->result) {
             recordRequest(benchData->result, true, elapsed, (ssize) len);
         }
         // Send next message if we have more to send
@@ -812,10 +651,13 @@ static void webSocketBenchCallback(WebSocket *ws, int event, cchar *data, size_t
             webSocketSend(ws, "Benchmark message %d", benchData->messagesRemaining);
             benchData->messagesRemaining--;
         } else {
-            // Done - close connection
+            // Done - send close message (fiber will resume on WS_EVENT_CLOSE)
             webSocketSendClose(ws, WS_STATUS_OK, "Benchmark complete");
-            rResumeFiber(benchData->fiber, 0);
         }
+
+    } else if (event == WS_EVENT_CLOSE || event == WS_EVENT_ERROR) {
+        // Connection closed or error - resume fiber
+        rResumeFiber(benchData->fiber, 0);
     }
 }
 
@@ -823,71 +665,72 @@ static void webSocketBenchCallback(WebSocket *ws, int event, cchar *data, size_t
    Benchmark WebSocket operations
    Tests: Message roundtrip time with echo server
  */
-static void benchWebSockets(Ticks duration, bool recordResults)
+static void benchWebSockets(Ticks duration)
 {
-    BenchResult        *result;
+    RequestResult      result;
     WebSocketBenchData benchData;
-    Url                *up;
+    ConnectionCtx      *ctx;
     char               *url, ubuf[80];
-    int                status;
-    Ticks              startTime;
+    Ticks              startTime, reqStart;
 
-    result = initResult("websocket_echo", recordResults);
+    char desc[80];
+
+    initBenchContext(bctx, "WebSocket", "Benchmarking WebSockets...");
+    SFMT(desc, "  Running echo tests for %.1f seconds...", duration / 1000.0);
+    bctx->results[0] = initResult("websocket_echo", bctx->recordResults, desc);
     startTime = rGetTicks();
+
+    // WebSockets always use cold connections (new connection per upgrade)
+    ctx = createConnectionCtx(false, URL_TIMEOUT_MS);
+    bctx->connCtx = ctx;
+    bctx->bytes = 0;
 
     while (rGetTicks() - startTime < duration) {
         // Prepare benchmark data
         benchData.messagesRemaining = 10;  // Send 10 messages per connection
-        benchData.recordResults = recordResults;
-        benchData.result = result;
+        benchData.result = bctx->results[0];
         benchData.startTime = 0;
         benchData.fiber = rGetFiber();
 
         // Create new WebSocket connection for each batch
-        up = urlAlloc(URL_NO_LINGER /* | URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_HEADERS */);
-        urlSetTimeout(up, URL_TIMEOUT_MS);
-        url = sreplace(SFMT(ubuf, "%s/test/ws", HTTP), "http", "ws");
+        url = sreplace(SFMT(ubuf, "%s/test/ws/", HTTP), "http", "ws");
 
-        status = urlFetch(up, "GET", url, NULL, 0, NULL);
-        if (status == 101) {
-            // Upgrade successful - activate WebSocket with callback
-            urlWebSocketAsync(up, (WebSocketProc) webSocketBenchCallback, &benchData);
-            // Wait till connection is closed or fiber resumed
-            urlWait(up);
+        reqStart = rGetTicks();
+        result.status = urlWebSocket(url, (WebSocketProc) webSocketBenchCallback, &benchData, NULL);
 
-        } else if (recordResults && result) {
-            result->errors++;
+        if (!processResponse(bctx, &result, url, reqStart)) {
+            rFree(url);
+            ttrue(false, "TESTME_STOP: Stopping benchmark due to WebSocket error");
+            return;
         }
         rFree(url);
-        urlClose(up);
-        urlFree(up);
     }
-    if (recordResults && result) {
-        calculateStats(result);
-        printBenchResult(result);
-        saveBenchGroup("websockets", &result, 1);
-        freeBenchResult(result);
-    }
+    freeConnectionCtx(ctx);
+    finishBenchContext(bctx, 1, "websockets");
 }
 
 /*
    Benchmark mixed workload - realistic traffic pattern
    70% GET requests, 20% actions, 10% uploads
  */
-static void benchMixed(Ticks duration, bool recordResults)
+static void benchMixed(Ticks duration)
 {
-    BenchResult *result;
-    Url         *up;
-    Ticks       startTime, elapsed, groupStart;
-    char        url[256];
-    char        body[1024];
-    int         status, cycle, reqType;
-    ssize       bodyLen;
+    ConnectionCtx *ctx;
+    RequestResult reqResult;
+    Url           *up;
+    Ticks         startTime, groupStart;
+    char          url[256], body[1024], desc[80];
+    ssize         bodyLen;
+    int           cycle, reqType;
 
-    result = initResult("mixed_workload", recordResults);
-    up = urlAlloc(0);
-    urlSetTimeout(up, URL_TIMEOUT_MS);
+    initBenchContext(bctx, "Mixed", "Benchmarking mixed workload...");
+    SFMT(desc, "  Running mixed tests for %.1f seconds...", duration / 1000.0);
+    bctx->results[0] = initResult("mixed_workload", bctx->recordResults, desc);
+    ctx = createConnectionCtx(true, URL_TIMEOUT_MS);
+    bctx->connCtx = ctx;
+    up = getConnection(ctx);
 
+    // @@ Change this to read the 1K.txt file
     // Fill upload body with test data
     for (bodyLen = 0; bodyLen < (ssize) sizeof(body) - 1; bodyLen++) {
         body[bodyLen] = 'A' + (bodyLen % 26);
@@ -898,61 +741,50 @@ static void benchMixed(Ticks duration, bool recordResults)
     cycle = 0;
 
     while (rGetTicks() - groupStart < duration) {
-        // Determine request type based on cycle (70% GET, 20% action, 10% upload)
-        // Pattern: G G G G G G G A A U (10 requests = 7 GET + 2 action + 1 upload)
+        /*
+            Determine request type based on cycle (70% GET, 20% action, 10% upload)
+            Pattern: G G G G G G G A A U (10 requests = 7 GET + 2 action + 1 upload)
+         */
         reqType = cycle % 10;
-
         startTime = rGetTicks();
 
         if (reqType < 7) {
             // 70% - GET static file (alternate between file sizes)
             if (cycle % 4 == 0) {
-                status = urlFetch(up, "GET", SFMT(url, "%s/static/1K.txt", HTTP), NULL, 0, NULL);
+                reqResult.status = urlFetch(up, "GET", SFMT(url, "%s/static/1K.txt", HTTP), NULL, 0, NULL);
             } else if (cycle % 4 == 1) {
-                status = urlFetch(up, "GET", SFMT(url, "%s/static/10K.txt", HTTP), NULL, 0, NULL);
+                reqResult.status = urlFetch(up, "GET", SFMT(url, "%s/static/10K.txt", HTTP), NULL, 0, NULL);
             } else {
-                status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
+                reqResult.status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
             }
             urlGetResponse(up);
-            elapsed = rGetTicks() - startTime;
-            if (recordResults) {
-                recordRequest(result, status == 200, elapsed, up->rxLen);
-            }
+            bctx->bytes = up->rxLen;
 
         } else if (reqType < 9) {
             // 20% - Action handler (alternate between simple(success) and json(show))
             if (cycle % 2 == 0) {
-                status = urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
+                reqResult.status = urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
             } else {
-                status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);
+                reqResult.status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);
             }
             urlGetResponse(up);
-            elapsed = rGetTicks() - startTime;
-            if (recordResults) {
-                recordRequest(result, status == 200, elapsed, up->rxLen);
-            }
+            bctx->bytes = up->rxLen;
 
         } else {
             // 10% - Upload (PUT request)
-            status = urlFetch(up, "PUT", SFMT(url, "%s/upload/bench-%d.txt", HTTP, getpid()), body, (size_t) bodyLen,
-                              NULL);
+            reqResult.status = urlFetch(up, "PUT", SFMT(url, "%s/upload/bench-%d.txt", HTTP, getpid()),
+                                        body, (size_t) bodyLen, NULL);
             urlGetResponse(up);
-            elapsed = rGetTicks() - startTime;
-            if (recordResults) {
-                recordRequest(result, status == 200 || status == 201 || status == 204, elapsed, bodyLen);
-            }
+            bctx->bytes = bodyLen;
+        }
+        if (!processResponse(bctx, &reqResult, url, startTime)) {
+            return;
         }
         urlClose(up);
         cycle++;
     }
-    urlFree(up);
-
-    if (recordResults) {
-        calculateStats(result);
-        printBenchResult(result);
-        saveBenchGroup("mixed", &result, 1);
-        freeBenchResult(result);
-    }
+    freeConnectionCtx(ctx);
+    finishBenchContext(bctx, 1, "mixed");
 }
 
 /*
@@ -961,30 +793,46 @@ static void benchMixed(Ticks duration, bool recordResults)
  */
 static void runSoakTest(void)
 {
-    Ticks duration = getSoakDuration();
+    Ticks totalSoakDuration, perGroupDuration;
+    int   numGroups = 8;
 
+    totalSoakDuration = getSoakDuration();
+    perGroupDuration = totalSoakDuration / numGroups;
+
+    // Note: No minimum duration enforced - soak is for warmup only
+    bctx->recordResults = false;
     tinfo("Soak phase: Warming up all code paths...");
-    tinfo("  Running static file requests (%lld secs)...", (long long) duration / TPS);
-    benchStaticFiles(duration, false);
+    tinfo("  Running static file requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchStaticFiles(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running HTTPS requests (%lld secs)...", (long long) duration / TPS);
-    benchHTTPS(duration, false);
+    tinfo("  Running HTTPS requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchHTTPS(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running WebSocket requests (%lld secs)...", (long long) duration / TPS);
-    benchWebSockets(duration, false);
+    tinfo("  Running WebSocket requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchWebSockets(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running upload requests (%lld secs)...", (long long) duration / TPS);
-    benchUploads(duration, false);
+    tinfo("  Running PUT requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchPut(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running auth requests (%lld secs)...", (long long) duration / TPS);
-    benchAuth(duration, false);
+    tinfo("  Running multipart uploads (%.1f secs)...", perGroupDuration / 1000.0);
+    benchMultipartUpload(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running action requests (%lld secs)...", (long long) duration / TPS);
-    benchActions(duration, false);
+    tinfo("  Running auth requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchAuth(perGroupDuration);
+    if (bctx->fatalError) return;
 
-    tinfo("  Running mixed workload (%lld secs)...", (long long) duration / TPS);
-    benchMixed(duration, false);
+    tinfo("  Running action requests (%.1f secs)...", perGroupDuration / 1000.0);
+    benchActions(perGroupDuration);
+    if (bctx->fatalError) return;
 
+    tinfo("  Running mixed workload (%.1f secs)...", perGroupDuration / 1000.0);
+    benchMixed(perGroupDuration);
+    if (bctx->fatalError) return;
     tinfo("Soak phase complete - all code paths warmed");
 }
 
@@ -995,19 +843,33 @@ static void testBenchmarkStatic(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Static File Serving (%lld secs) ===", (long long) duration / TPS);
-    benchStaticFiles(duration, true);
+    benchStaticFiles(duration);
 }
 
 /*
-   Test: Benchmark file uploads
+   Test: Benchmark PUT requests
  */
-static void testBenchmarkUploads(void)
+static void testBenchmarkPut(void)
 {
     Ticks duration = getBenchDuration();
 
-    tinfo("=== Benchmarking File Uploads (%lld secs) ===", (long long) duration / TPS);
-    benchUploads(duration, true);
+    bctx->recordResults = true;
+    tinfo("=== Benchmarking PUT Requests (%lld secs) ===", (long long) duration / TPS);
+    benchPut(duration);
+}
+
+/*
+   Test: Benchmark multipart upload requests
+ */
+static void testBenchmarkMultipartUpload(void)
+{
+    Ticks duration = getBenchDuration();
+
+    bctx->recordResults = true;
+    tinfo("=== Benchmarking Multipart Uploads (%lld secs) ===", (long long) duration / TPS);
+    benchMultipartUpload(duration);
 }
 
 /*
@@ -1017,8 +879,9 @@ static void testBenchmarkAuth(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Authentication (%lld secs) ===", (long long) duration / TPS);
-    benchAuth(duration, true);
+    benchAuth(duration);
 }
 
 /*
@@ -1028,8 +891,9 @@ static void testBenchmarkHTTPS(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking HTTPS (%lld secs) ===", (long long) duration / TPS);
-    benchHTTPS(duration, true);
+    benchHTTPS(duration);
 }
 
 /*
@@ -1039,8 +903,9 @@ static void testBenchmarkActions(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Action Handlers (%lld secs) ===", (long long) duration / TPS);
-    benchActions(duration, true);
+    benchActions(duration);
 }
 
 /*
@@ -1050,8 +915,9 @@ static void testBenchmarkMixed(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Mixed Workload (%lld secs) ===", (long long) duration / TPS);
-    benchMixed(duration, true);
+    benchMixed(duration);
 }
 
 /*
@@ -1061,8 +927,9 @@ static void testBenchmarkWebSockets(void)
 {
     Ticks duration = getBenchDuration();
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking WebSockets (%lld secs) ===", (long long) duration / TPS);
-    benchWebSockets(duration, true);
+    benchWebSockets(duration);
 }
 
 /*
@@ -1088,8 +955,9 @@ static void testBenchmarkStaticRawHTTP(void)
         port = 80;
     }
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Static Files (Raw HTTP) (%lld secs) ===", (long long) duration / TPS);
-    benchStaticFilesRaw(duration, true, host, port, false);
+    benchStaticFilesRaw(duration, host, port, false);
     rFree(host);
 }
 
@@ -1116,8 +984,116 @@ static void testBenchmarkStaticRawHTTPS(void)
         port = 443;
     }
 
+    bctx->recordResults = true;
     tinfo("=== Benchmarking Static Files (Raw HTTPS) (%lld secs) ===", (long long) duration / TPS);
-    benchStaticFilesRaw(duration, true, host, port, true);
+    benchStaticFilesRaw(duration, host, port, true);
+    rFree(host);
+}
+
+/*
+   Test: Benchmark using wrk tool for maximum raw throughput
+   Invokes external wrk benchmarking tool if available
+ */
+static void testBenchmarkWrk(void)
+{
+    char         *host, *portStr, cmd[1024], tmpfile[256], *output, *line;
+    int          port, rc;
+    BenchResult  *result;
+    double       reqPerSec, avgLatency;
+
+    // Parse HTTP endpoint for host and port
+    if (!HTTP || !scontains(HTTP, "://")) {
+        tinfo("Skipping wrk benchmark - invalid endpoint");
+        return;
+    }
+    host = sclone(HTTP + 7);  // Skip "http://"
+    portStr = schr(host, ':');
+    if (portStr) {
+        *portStr = '\0';
+        port = atoi(portStr + 1);
+    } else {
+        port = 80;
+    }
+
+    tinfo("=== Benchmarking with wrk (Maximum Raw Throughput) ===");
+
+    // Check if wrk is available
+    rc = system("command -v wrk >/dev/null 2>&1");
+    if (rc != 0) {
+        tinfo("SKIP: wrk not installed - install from https://github.com/wg/wrk");
+        rFree(host);
+        return;
+    }
+
+    tinfo("Target: http://%s:%d/static/1K.txt", host, port);
+    tinfo("Threads: 12, Connections: 40, Duration: 30s");
+    printf("\n");
+
+    // Run wrk benchmark and capture output to temp file
+    SFMT(tmpfile, "/tmp/wrk-bench-%d.txt", getpid());
+    SFMT(cmd, "wrk -t12 -c40 -d30s http://%s:%d/static/1K.txt 2>&1 | tee %s",
+         host, port, tmpfile);
+    rc = system(cmd);
+
+    if (rc != 0) {
+        tinfo("Warning: wrk command failed with exit code %d", rc);
+        rFree(host);
+        return;
+    }
+
+    printf("\n");
+
+    // Read and parse wrk output
+    output = rReadFile(tmpfile, NULL);
+    if (!output) {
+        tinfo("Warning: Could not read wrk output");
+        rFree(host);
+        return;
+    }
+    // Parse key metrics from wrk output
+    reqPerSec = 0;
+    avgLatency = 0;
+
+    // Look for "Requests/sec: 12345.67"
+    line = scontains(output, "Requests/sec:");
+    if (line) {
+        reqPerSec = stof(line + 13);  // Skip "Requests/sec:"
+    }
+
+    // Look for "Latency     1.23ms" (wrk formats with whitespace padding)
+    line = scontains(output, "Latency");
+    if (line) {
+        // Skip past "Latency" and whitespace to get to the number
+        char *p = line + 7;  // Skip "Latency"
+        while (*p && (*p == ' ' || *p == '\t')) p++;
+        avgLatency = stof(p);
+        // Check if it's in microseconds (us) or milliseconds (ms)
+        if (scontains(p, "us")) {
+            avgLatency /= 1000.0;  // Convert microseconds to milliseconds
+        }
+    }
+
+    // Create benchmark result
+    result = createBenchResult("max_raw_throughput");
+    result->requestsPerSec = reqPerSec;
+    result->avgTime = avgLatency;
+    result->iterations = (int)(reqPerSec * 30);  // Approximate: req/sec * 30 seconds
+    result->totalTime = 30000;  // 30 seconds in milliseconds
+    result->minTime = 0;
+    result->maxTime = 0;
+    result->p95Time = 0;
+    result->p99Time = 0;
+    result->bytesTransferred = result->iterations * 1024;  // Approximate: 1KB per request
+    result->errors = 0;
+
+    // Print and save results
+    printBenchResult(result);
+    saveBenchGroup("max_throughput", &result, 1);
+    freeBenchResult(result);
+
+    // Cleanup
+    unlink(tmpfile);
+    rFree(output);
     rFree(host);
 }
 
@@ -1137,17 +1113,24 @@ static void fiberMain(void *data)
         return;
     }
 
+    // Check for TESTME_STOP flag
+    if (getenv("TESTME_STOP")) {
+        bctx->stopOnErrors = true;
+        tinfo("TESTME_STOP: Will stop immediately on any request error");
+    }
+
     // Check for TESTME_CLASS to run a single benchmark class
     testClass = getenv("TESTME_CLASS");
     if (testClass && *testClass) {
         // Validate test class
         if (!smatch(testClass, "static") && !smatch(testClass, "https") &&
             !smatch(testClass, "raw_http") && !smatch(testClass, "raw_https") &&
-            !smatch(testClass, "uploads") && !smatch(testClass, "auth") &&
-            !smatch(testClass, "actions") && !smatch(testClass, "mixed") &&
-            !smatch(testClass, "websockets")) {
+            !smatch(testClass, "put") && !smatch(testClass, "multipart") &&
+            !smatch(testClass, "auth") && !smatch(testClass, "actions") &&
+            !smatch(testClass, "mixed") && !smatch(testClass, "websockets") &&
+            !smatch(testClass, "max_throughput")) {
             tinfo("Error: Invalid TESTME_CLASS='%s'", testClass);
-            tinfo("Valid values: static, https, raw_http, raw_https, uploads, auth, actions, mixed, websockets");
+            tinfo("Valid values: static, https, raw_http, raw_https, put, multipart, auth, actions, mixed, websockets, max_throughput");
             rFree(HTTP);
             rFree(HTTPS);
             rStop();
@@ -1167,11 +1150,12 @@ static void fiberMain(void *data)
 
         // Run targeted soak for this class
         duration = getSoakDuration();
-        tinfo("=== Phase 1: Soak - %s (%lld secs) ===", testClass, (long long) duration / TPS);
+        bctx->recordResults = false;
+        tinfo("=== Phase 1: Soak - %s (%.1f secs) ===", testClass, duration / 1000.0);
         if (smatch(testClass, "static")) {
-            benchStaticFiles(duration, false);
+            benchStaticFiles(duration);
         } else if (smatch(testClass, "https")) {
-            benchHTTPS(duration, false);
+            benchHTTPS(duration);
         } else if (smatch(testClass, "raw_http")) {
             host = sclone(HTTP + 7);
             portStr = schr(host, ':');
@@ -1181,7 +1165,7 @@ static void fiberMain(void *data)
             } else {
                 port = 80;
             }
-            benchStaticFilesRaw(duration, false, host, port, false);
+            benchStaticFilesRaw(duration, host, port, false);
             rFree(host);
         } else if (smatch(testClass, "raw_https")) {
             host = sclone(HTTPS + 8);
@@ -1192,19 +1176,25 @@ static void fiberMain(void *data)
             } else {
                 port = 443;
             }
-            benchStaticFilesRaw(duration, false, host, port, true);
+            benchStaticFilesRaw(duration, host, port, true);
             rFree(host);
-        } else if (smatch(testClass, "uploads")) {
-            benchUploads(duration, false);
+        } else if (smatch(testClass, "put")) {
+            benchPut(duration);
+        } else if (smatch(testClass, "multipart")) {
+            benchMultipartUpload(duration);
         } else if (smatch(testClass, "auth")) {
-            benchAuth(duration, false);
+            benchAuth(duration);
         } else if (smatch(testClass, "actions")) {
-            benchActions(duration, false);
+            benchActions(duration);
         } else if (smatch(testClass, "mixed")) {
-            benchMixed(duration, false);
+            benchMixed(duration);
         } else if (smatch(testClass, "websockets")) {
-            benchWebSockets(duration, false);
+            benchWebSockets(duration);
+        } else if (smatch(testClass, "max_throughput")) {
+            // No soak phase for max_throughput - it's an independent benchmark tool
         }
+        if (bctx->fatalError) goto done;
+        recordInitialMemory();
         printf("\n");
 
         // Run the benchmark
@@ -1217,8 +1207,10 @@ static void fiberMain(void *data)
             testBenchmarkStaticRawHTTP();
         } else if (smatch(testClass, "raw_https")) {
             testBenchmarkStaticRawHTTPS();
-        } else if (smatch(testClass, "uploads")) {
-            testBenchmarkUploads();
+        } else if (smatch(testClass, "put")) {
+            testBenchmarkPut();
+        } else if (smatch(testClass, "multipart")) {
+            testBenchmarkMultipartUpload();
         } else if (smatch(testClass, "auth")) {
             testBenchmarkAuth();
         } else if (smatch(testClass, "actions")) {
@@ -1227,17 +1219,21 @@ static void fiberMain(void *data)
             testBenchmarkMixed();
         } else if (smatch(testClass, "websockets")) {
             testBenchmarkWebSockets();
+        } else if (smatch(testClass, "max_throughput")) {
+            testBenchmarkWrk();
         }
+        if (bctx->fatalError) goto done;
 
         // Save results
         tinfo("=== Phase 3: Analysis ===");
+        recordFinalMemory();
         saveFinalResults();
 
     } else {
         // Run all benchmarks
         // Configure duration from TESTME_DURATION
-        // Active test groups: static, HTTPS, raw HTTP, raw HTTPS, uploads, auth, actions, mixed, websockets (9 groups)
-        configureDuration(9);
+        // Active test groups: static, HTTPS, raw HTTP, raw HTTPS, uploads, multipart, auth, actions, mixed, websockets, wrk (11 groups)
+        configureDuration(11);
 
         printf("\n");
         printf("=========================================\n");
@@ -1251,23 +1247,54 @@ static void fiberMain(void *data)
         // Phase 1: Soak (warm up)
         tinfo("=== Phase 1: Soak ===");
         runSoakTest();
+        if (bctx->fatalError) goto done;
+        recordInitialMemory();
         printf("\n");
 
         // Phase 2: Benchmarks (measurement)
         tinfo("=== Phase 2: Benchmarks ===");
+        testBenchmarkWrk();
+        if (bctx->fatalError) goto done;
         testBenchmarkStatic();
+        if (bctx->fatalError) goto done;
         testBenchmarkHTTPS();
+        if (bctx->fatalError) goto done;
         testBenchmarkStaticRawHTTP();
+        if (bctx->fatalError) goto done;
         testBenchmarkStaticRawHTTPS();
+        if (bctx->fatalError) goto done;
         testBenchmarkWebSockets();
-        testBenchmarkUploads();
+        if (bctx->fatalError) goto done;
+        testBenchmarkPut();
+        if (bctx->fatalError) goto done;
+        testBenchmarkMultipartUpload();
+        if (bctx->fatalError) goto done;
         testBenchmarkAuth();
+        if (bctx->fatalError) goto done;
         testBenchmarkActions();
+        if (bctx->fatalError) goto done;
         testBenchmarkMixed();
+        if (bctx->fatalError) goto done;
 
         // Phase 3: Save results
         tinfo("=== Phase 3: Analysis ===");
+        recordFinalMemory();
         saveFinalResults();
+    }
+
+done:
+
+    // Check for errors and emit final pass/fail status
+    printf("\n");
+    printf("=========================================\n");
+    if (bctx->totalErrors > 0) {
+        printf("BENCHMARK RESULT: FAILED (%d errors)\n", bctx->totalErrors);
+        printf("=========================================\n");
+        ttrue(false, "Benchmark suite completed with %d total errors", bctx->totalErrors);
+    } else {
+        printf("BENCHMARK RESULT: PASSED (no errors)\n");
+        printf("=========================================\n");
+        ttrue(true, "Benchmark suite completed successfully with no errors");
     }
 
     rFree(HTTP);
@@ -1283,7 +1310,7 @@ int main(void)
     rInit(fiberMain, 0);
     rServiceEvents();
     rTerm();
-    return 0;
+    return (bctx->fatalError || bctx->totalErrors > 0) ? 1 : 0;
 }
 
 /*

@@ -16,5 +16,8 @@ rm -f bench-auth-debug.log
 # Clean up upload benchmark directory
 rm -rf site/upload/* 2>/dev/null || true
 
+# Clean up multipart upload files in tmp directory (use find to handle large counts)
+find tmp -name 'bench-mp-*.txt' -delete 2>/dev/null || true
+
 # Note: Keep web.log for debugging if tests fail
 # TestMe will handle log preservation based on test results

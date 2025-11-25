@@ -40,7 +40,7 @@ static void testControlCharacters(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Null character in path (%00)
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%00file.html", HTTP), NULL, 0, NULL);
@@ -75,7 +75,7 @@ static void testSpecialCharacters(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: HTML special characters < >
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%3Cscript%%3E.html", HTTP), NULL, 0, NULL);
@@ -106,7 +106,7 @@ static void testInvalidUTF8Sequences(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Invalid UTF-8 continuation byte
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%80invalid.html", HTTP), NULL, 0, NULL);
@@ -136,7 +136,7 @@ static void testSpaceHandling(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: URL-encoded space (%20) - should work
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%20file.html", HTTP), NULL, 0, NULL);
@@ -164,7 +164,7 @@ static void testPercentEncodingEdgeCases(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Incomplete percent sequence (%)
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%.html", HTTP), NULL, 0, NULL);
@@ -200,7 +200,7 @@ static void testQueryStringSpecialChars(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Normal query string with special chars
     status = urlFetch(up, "GET", SFMT(url, "%s/test/echo?key=value&foo=bar", HTTP), NULL, 0, NULL);
@@ -231,7 +231,7 @@ static void testFragmentIdentifiers(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: URI with fragment (#anchor)
     // Note: Fragments should not be sent to server (client-side only)
@@ -253,7 +253,7 @@ static void testReservedCharacters(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Colon in path (after first segment)
     status = urlFetch(up, "GET", SFMT(url, "%s/test:file.html", HTTP), NULL, 0, NULL);
@@ -279,7 +279,7 @@ static void testNormalizationAttacks(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Mixed encoding in same path
     status = urlFetch(up, "GET", SFMT(url, "%s/test%%2F%%252Ffile", HTTP), NULL, 0, NULL);
@@ -307,7 +307,7 @@ static void testLongURIPaths(void)
     int    status, i;
     size_t len;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Very long valid path (under limit)
     len = 4096;
@@ -339,11 +339,11 @@ static void testValidURIsNotRejected(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Normal ASCII filename
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     // Test 2: Hyphen and underscore (valid)
     urlClose(up);

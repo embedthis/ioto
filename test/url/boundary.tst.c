@@ -53,13 +53,12 @@ static void testBoundaryLeak()
     forms = rAllocHash(0, 0);
     rAddName(forms, "test", "value", 0);
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // First request: Upload (allocates boundary)
     urlStart(up, "POST", SFMT(url, "%s/test/upload", HTTP));
     rc = urlUpload(up, files, forms, NULL);
     ttrue(rc == 0);
-printf("AT %d\n", __LINE__);
 
     // Verify boundary was set
     ttrue(up->boundary != NULL);
@@ -78,7 +77,6 @@ printf("AT %d\n", __LINE__);
     urlStart(up, "POST", SFMT(url, "%s/test/upload", HTTP));
     rc = urlUpload(up, files, forms, NULL);
     ttrue(rc == 0);
-printf("AT %d\n", __LINE__);
 
     urlFree(up);
     rFree(files);
@@ -107,10 +105,9 @@ static void testAuthRetryWithPostData()
 
     tinfo("Testing auth retry with header augmentation");
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", NULL);  // Auto-detect
 
-printf("AT %d\n", __LINE__);
     /*
         GET request with explicit Content-Type header
         This tests that auth retry handles existing headers correctly
@@ -119,7 +116,6 @@ printf("AT %d\n", __LINE__);
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP),
                      NULL, 0, "Accept: text/html\r\n");
 
-printf("AT %d\n", __LINE__);
     ttrue(status == 200);
     response = urlGetResponse(up);
     ttrue(response != NULL);
@@ -142,9 +138,8 @@ static void testAuthRetryWithHeaders()
     cchar   *response;
 
     tinfo("Testing auth retry with explicit headers");
-printf("AT %d\n", __LINE__);
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "basic");
 
     // Request with explicit headers (no augmentation needed)
@@ -157,7 +152,6 @@ printf("AT %d\n", __LINE__);
     ttrue(scontains(response, "Basic Authentication Success"));
     urlFree(up);
 
-printf("AT %d\n", __LINE__);
     tinfo("Auth retry with headers test passed");
 }
 
@@ -174,9 +168,8 @@ static void testAuthRetryComplex()
 
     tinfo("Testing complex auth retry scenario");
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
-printf("AT %d\n", __LINE__);
 
     /*
         GET with multiple custom headers
@@ -185,7 +178,6 @@ printf("AT %d\n", __LINE__);
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP),
                      NULL, 0, "X-Custom: value\r\nAccept: text/html\r\n");
 
-printf("AT %d\n", __LINE__);
     ttrue(status == 200);
     response = urlGetResponse(up);
     ttrue(response != NULL);
@@ -215,8 +207,6 @@ static void testMultipleUploadCycles()
         tfail("Cannot create temp file name");
         return;
     }
-    printf("AT %d\n", __LINE__);
-
     if (rWriteFile(file1, "Cycle test", 10, 0644) < 0) {
         tfail("Cannot create test file");
         rFree(file1);
@@ -226,8 +216,7 @@ static void testMultipleUploadCycles()
     files = rAllocList(0, 0);
     rAddItem(files, file1);
 
-    up = urlAlloc(0);
-    printf("AT %d\n", __LINE__);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Multiple cycles of upload -> GET -> upload
     for (i = 0; i < 3; i++) {
@@ -248,7 +237,6 @@ static void testMultipleUploadCycles()
     // Clean up
     unlink(file1);
     rFree(file1);
-    printf("AT %d\n", __LINE__);
 
     tinfo("Multiple upload cycles test passed");
 }

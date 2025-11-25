@@ -82,7 +82,7 @@ static void testConnectionLimitEnforcement(void)
     successCount = 0;
     count = CONNECTION_LIMIT;
     for (i = 0; i < count; i++) {
-        connections[i] = urlAlloc(0);
+        connections[i] = urlAlloc(URL_NO_LINGER);
 
         status = urlFetch(connections[i], "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
 
@@ -119,7 +119,7 @@ static void testRapidConnectionCycling(void)
     char url[128];
     int  status, i, successCount, failCount;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     successCount = 0;
     failCount = 0;
 
@@ -142,7 +142,7 @@ static void testRapidConnectionCycling(void)
         Some failures are acceptable under stress
      */
     tgti(successCount, 6);
-    ttrue(failCount < 3);
+    tlti(failCount, 3);
     urlFree(up);
 }
 
@@ -155,7 +155,7 @@ static void testSlowRequestHeader(void)
     int     port, rc;
     ssize   nbytes;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     /*
         Test: Send request headers slowly (slowloris-style attack simulation)
@@ -221,7 +221,7 @@ static void testRequestTimeout(void)
     cchar   *scheme, *host, *path, *query, *hash;
     int     port, rc, status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     /*
         Test: Incomplete request should timeout
@@ -282,11 +282,11 @@ static void testConcurrentRequests(void)
         Use urlStart/urlFinalize to initiate requests without blocking,
         then wait for all responses
      */
-    up1 = urlAlloc(0);
-    up2 = urlAlloc(0);
-    up3 = urlAlloc(0);
-    up4 = urlAlloc(0);
-    up5 = urlAlloc(0);
+    up1 = urlAlloc(URL_NO_LINGER);
+    up2 = urlAlloc(URL_NO_LINGER);
+    up3 = urlAlloc(URL_NO_LINGER);
+    up4 = urlAlloc(URL_NO_LINGER);
+    up5 = urlAlloc(URL_NO_LINGER);
 
     // Initiate all requests without waiting for responses (overlapped)
     rc = startRequest(up1, SFMT(url, "%s/index.html", HTTP));
@@ -331,7 +331,7 @@ static void testMalformedRequestHandling(void)
     char url[128], *longQuery;
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Request with invalid method (should be rejected quickly)
     status = urlFetch(up, "INVALID", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -357,7 +357,7 @@ static void testRepeatedErrorRequests(void)
     char url[128];
     int  status, i, errorCount;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     errorCount = 0;
 
     /*
@@ -373,7 +373,7 @@ static void testRepeatedErrorRequests(void)
         urlClose(up);
     }
     // All should return 404 (adjusted for 5 iterations)
-    teqi(errorCount, 5);
+    teqi(errorCount, 5);  // All requests should return 404
     urlFree(up);
 }
 
@@ -383,7 +383,7 @@ static void testResourceCleanupUnderStress(void)
     char url[128];
     int  status, i, successCount;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     successCount = 0;
 
     /*
@@ -409,7 +409,7 @@ static void testEmptyRequestHandling(void)
     int  status;
 
     // Test: Request with minimal data (just GET /)
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/", HTTP), NULL, 0, NULL);
     // Should handle gracefully
     ttrue(status >= 200 && status < 500);
@@ -422,7 +422,7 @@ static void testRecoveryAfterErrors(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Server recovers from bad request
     status = urlFetch(up, "GET", SFMT(url, "%s/../../../../etc/passwd", HTTP), NULL, 0, NULL);
@@ -442,7 +442,7 @@ static void testNormalOperationNotAffected(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Verify normal operations still work efficiently
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

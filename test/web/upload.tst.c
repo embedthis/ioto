@@ -28,7 +28,7 @@ static void uploadBasic(void)
     char  url[128];
     int   rc;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     files = rAllocList(0, 0);
     rAddItem(files, "site/data/test1.txt");
 
@@ -70,7 +70,7 @@ static int upload(cchar *srcPath)
     bool  match;
 
     match = 1;
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     files = rAllocList(0, 0);
     rAddItem(files, srcPath);
 

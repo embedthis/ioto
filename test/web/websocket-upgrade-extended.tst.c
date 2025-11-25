@@ -40,7 +40,7 @@ static void testBasicWebSocketUpgrade(void)
     int   status;
     cchar *upgrade, *connection, *accept;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Valid WebSocket upgrade request
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -81,7 +81,7 @@ static void testMissingSecWebSocketKey(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Upgrade without Sec-WebSocket-Key (required)
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -101,7 +101,7 @@ static void testMissingSecWebSocketVersion(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Upgrade without Sec-WebSocket-Version (required)
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -121,7 +121,7 @@ static void testInvalidWebSocketKey(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Key too short
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -161,7 +161,7 @@ static void testUnsupportedVersion(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Old WebSocket version (8)
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -192,7 +192,7 @@ static void testProtocolSelection(void)
     int   status;
     cchar *protocol;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Request with sub-protocol list
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -224,7 +224,7 @@ static void testExtensionNegotiation(void)
     int   status;
     cchar *extensions;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Request with extension (permessage-deflate)
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -255,7 +255,7 @@ static void testOriginValidation(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Valid origin
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -287,7 +287,7 @@ static void testCaseSensitivity(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Mixed case in Upgrade header
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -307,7 +307,7 @@ static void testMissingUpgradeHeader(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Missing Upgrade header
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -326,7 +326,7 @@ static void testMissingConnectionHeader(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Missing Connection header
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -345,7 +345,7 @@ static void testInvalidHTTPMethod(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: WebSocket upgrade must use GET method
     status = urlFetch(up, "POST", SFMT(url, "%s/ws/", HTTP), NULL, 0,

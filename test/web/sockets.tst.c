@@ -22,7 +22,7 @@ static void testWebSocketUpgrade()
     int   status;
     cchar *upgrade, *connection;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test WebSocket upgrade request
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -50,7 +50,7 @@ static void testWebSocketInvalidUpgrade()
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test invalid WebSocket upgrade (missing required headers)
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
@@ -69,7 +69,7 @@ static void testWebSocketProtocolSelection()
     int   status;
     cchar *protocol;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test WebSocket with protocol selection
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,

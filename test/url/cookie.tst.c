@@ -22,7 +22,7 @@ static void testSetCookie()
     char   *cookie;
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request a URL that sets cookies (may not be supported by test server)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/cookie?name=test&value=cookie-value", HTTP), 0, 0, 0);
@@ -42,7 +42,7 @@ static void testMultipleCookies()
     char   *cookie1, *cookie2;
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request URL that sets multiple cookies
     status = urlFetch(up, "GET", SFMT(url, "%s/test/cookie?name=first&value=value1", HTTP), 0, 0, 0);
@@ -68,7 +68,7 @@ static void testCookieWithAttributes()
     char   *cookie;
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test cookie with path, domain, secure attributes
     status = urlFetch(up, "GET", SFMT(url, "%s/test/cookie?name=secure&value=secret&path=/test&secure=true", HTTP), 0, 0, 0);
@@ -87,7 +87,7 @@ static void testSendCookies()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // First, set a cookie
     status = urlFetch(up, "GET", SFMT(url, "%s/test/cookie?name=session&value=12345", HTTP), 0, 0, 0);
@@ -113,7 +113,7 @@ static void testCookieEdgeCases()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test cookie with special characters
     status = urlFetch(up, "GET", SFMT(url, "%s/test/cookie?name=special&value=a%%20b%%3Dc", HTTP), 0, 0, 0);

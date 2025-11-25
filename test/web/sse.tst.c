@@ -37,7 +37,7 @@ static void highLevelAPI()
     char url[128];
     int  rc;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     count = 0;
     expected = 2;
     rc = urlWebSocket(SFMT(url, "%s/test/ws/", WS), onEvent, NULL, NULL);
@@ -55,7 +55,7 @@ static void lowLevelAPI()
     count = 0;
     expected = 10;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     rc = urlStart(up, "GET", SFMT(url, "%s/test/ws/", WS));
     ttrue(rc == 0);
 

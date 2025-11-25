@@ -37,7 +37,7 @@ static void testDirectoryRedirect(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request directory without trailing slash should redirect to add slash
     // Most web servers redirect /dir to /dir/ for directory listings
@@ -63,7 +63,7 @@ static void test302TemporaryRedirect(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Note: Redirect configuration is disabled in test web.json5
     // This test validates the redirect mechanism if enabled
@@ -91,7 +91,7 @@ static void test301PermanentRedirect(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 301 redirect handling (if configured)
     // 301 indicates resource has permanently moved
@@ -115,7 +115,7 @@ static void testRedirectWithQueryString(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request with query string - redirect should preserve it
     status = urlFetch(up, "GET", SFMT(url, "%s/upload?test=value&foo=bar", HTTP), NULL, 0, NULL);
@@ -140,7 +140,7 @@ static void test307TemporaryRedirectPreservesMethod(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // 307 is like 302 but explicitly preserves the HTTP method
     // POST to redirected resource should stay POST (unlike 302 which may become GET)
@@ -165,7 +165,7 @@ static void testLocationHeaderFormat(void)
     int   status;
     cchar *location;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test that Location headers are properly formatted
     status = urlFetch(up, "GET", SFMT(url, "%s/upload", HTTP), NULL, 0, NULL);
@@ -191,7 +191,7 @@ static void testRedirectStatusCodes(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test that 3xx responses are handled correctly by URL client
     // Even if server doesn't issue redirects, client should handle them

@@ -27,7 +27,7 @@ static void post()
     int    status;
 
     // up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Post to a static file
     len = 80 * 1024;
@@ -35,14 +35,14 @@ static void post()
     memset(body, 'a', len);
     status = urlFetch(up, "POST", SFMT(url, "%s/index.html", HTTP), body, len,
                       "Content-Type: text/plain\r\n");
-    ttrue(status == 200);
+    teqi(status, 200);
     response = urlGetResponse(up);
     tcontains(response, "<title>index.html</title>");
 
     //  Post to a form
     json = urlJson(up, "POST", SFMT(url, "%s/test/show", HTTP), "hello world", 11,
                    "Content-Type: text/plain\r\n");
-    ttrue(json);
+    tnotnull(json);
     tcontains(jsonGet(json, 0, "body", 0), "hello world");
 
     rFree(body);

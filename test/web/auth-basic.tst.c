@@ -27,7 +27,7 @@ static void testBasic(void)
     }
 
     // Test 1: Public access (no auth required)
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     tinfo("Testing HTTPS endpoint: %s/index.html", HTTPS);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTPS), NULL, 0, NULL);
     tinfo("Received HTTPS status: %d", status);
@@ -38,7 +38,7 @@ static void testBasic(void)
         Test 2: Protected resource without credentials (should get 401)
         Note: Routes need to be configured in web.json5 for full testing
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
     // Will be 404 until routes are configured - this is expected for now
     if (status == 401) {
@@ -57,7 +57,7 @@ static void testBasic(void)
     /*
         Test 3: alice with SHA256 password (admin role) accessing /basic/
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 200, "alice (SHA256) should access /basic/");
@@ -67,7 +67,7 @@ static void testBasic(void)
         Test 4: alice (admin) with Basic auth accessing /admin/ (Digest-only route)
         NOTE: URL client auto-upgrades from Basic to Digest when challenged
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 200, "alice (auto-upgraded to Digest) should access /admin/");
@@ -76,7 +76,7 @@ static void testBasic(void)
     /*
         Test 5: bob with MD5 password (user role) accessing /basic/
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 200, "bob (MD5) should access /basic/");
@@ -86,7 +86,7 @@ static void testBasic(void)
         Test 6: bob (user role) accessing /admin/ with Basic auth
         NOTE: /admin/ route is digest-only, so Basic auth should get 401
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 401, "bob (Basic auth) should get 401 for /admin/ (Digest-only route)");
@@ -95,7 +95,7 @@ static void testBasic(void)
     /*
         Test 7: ralph with Bcrypt password (user role) accessing /basic/
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "ralph", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 200, "ralph (Bcrypt) should access /basic/");
@@ -104,7 +104,7 @@ static void testBasic(void)
     /*
         Test 8: Wrong password should be rejected
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "wrongpassword", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
     ttrue(status == 401, "Wrong password should return 401");
@@ -132,7 +132,7 @@ static void testBasicTlsRequired(void)
     /*
         Test: Basic auth over HTTP should return 403 when requireTlsForBasic is true
      */
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 403, "Basic auth over HTTP should return 403 when TLS is required");

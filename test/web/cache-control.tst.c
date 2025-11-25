@@ -36,7 +36,7 @@ static void testLastModifiedHeader(void)
     int   status;
     cchar *lastModified;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Static files should include Last-Modified header
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -62,7 +62,7 @@ static void testETagHeader(void)
     int   status;
     cchar *etag;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Static files should include ETag header for cache validation
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -84,7 +84,7 @@ static void testCacheControlHeader(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request static file
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -119,7 +119,7 @@ static void testNoCacheDirective(void)
     int   status;
     cchar *cacheControl, *pragma;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request with Pragma: no-cache (HTTP/1.0 compatibility)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Pragma: no-cache\r\n");
@@ -150,7 +150,7 @@ static void testConditionalGetWithCache(void)
     int   status;
     cchar *etag, *lastModified;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // First request - get caching headers
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -186,7 +186,7 @@ static void testMaxAgeDirective(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request static file
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -211,7 +211,7 @@ static void testExpiresHeader(void)
     int   status;
     cchar *expires, *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request static file
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -245,7 +245,7 @@ static void testVaryHeader(void)
     int   status;
     cchar *vary;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request with Accept-Encoding
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Accept-Encoding: gzip, br\r\n");
@@ -271,7 +271,7 @@ static void testCacheControlOnDynamicContent(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Dynamic content (action handler) should have appropriate caching
     status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);
@@ -298,7 +298,7 @@ static void testStaticAssetCaching(void)
     int   status;
     cchar *cacheControl, *expires;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request CSS file from /static/ route
     status = urlFetch(up, "GET", SFMT(url, "%s/static/style.css", HTTP), NULL, 0, NULL);
@@ -332,7 +332,7 @@ static void testStaticAssetCaching(void)
     status = urlFetch(up, "GET", SFMT(url, "%s/static/index.html", HTTP), NULL, 0, NULL);
     teqi(status, 200);
     cacheControl = urlGetHeader(up, "Cache-Control");
-    ttrue(cacheControl == NULL);
+    tnull(cacheControl);
 
     urlFree(up);
 }
@@ -349,7 +349,7 @@ static void testAPICaching(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request API content (will get 404 but should still have cache headers)
     status = urlFetch(up, "GET", SFMT(url, "%s/api/data", HTTP), NULL, 0, NULL);
@@ -381,7 +381,7 @@ static void testPrivateNoCaching(void)
     int   status;
     cchar *cacheControl, *pragma, *expires;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request private content (will get 404 but should still have cache headers)
     status = urlFetch(up, "GET", SFMT(url, "%s/private/data", HTTP), NULL, 0, NULL);
@@ -427,7 +427,7 @@ static void testUserPrivateCache(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request user-specific content (will get 404 but should still have cache headers)
     status = urlFetch(up, "GET", SFMT(url, "%s/user/profile", HTTP), NULL, 0, NULL);
@@ -454,7 +454,7 @@ static void testRouteWithoutCacheConfig(void)
     int   status;
     cchar *cacheControl;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Request from route without cache config (should use default behavior)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);

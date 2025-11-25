@@ -24,7 +24,7 @@ static void testSetBasicAuth()
 {
     Url *up;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test setting basic auth
     urlSetAuth(up, "user1", "pass1", "basic");
@@ -58,7 +58,7 @@ static void testBasicAuthHeader()
     char    *encoded;
 
     // Test manual Basic auth header generation
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "testuser", "testpass", "basic");
 
     // The auth header should be automatically added when fetching
@@ -83,7 +83,7 @@ static void testManualBasicAuthHeader()
     char    *authHeader;
 
     // Test with manual Authorization header
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     // Manually create Basic auth header: user:password = dXNlcjpwYXNzd29yZA==
     authHeader = "Authorization: Basic dXNlcjpwYXNzd29yZA==\r\n";
     status = urlFetch(up, "GET", SFMT(url, "%s/", HTTP), 0, 0, authHeader);
@@ -100,7 +100,7 @@ static void testBasicAuthCombinations()
     char *encoded;
 
     // Test empty password
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "user", "", "basic");
     tmatch(up->username, "user");
     tmatch(up->password, "");
@@ -128,7 +128,7 @@ static void testNoAuthHeaderOverride()
     char    *authHeader;
 
     // Set auth via urlSetAuth but also provide explicit Authorization header
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "user1", "pass1", "basic");
     // Explicit header should take precedence
     authHeader = "Authorization: Basic dXNlcjpwYXNzd29yZA==\r\n";

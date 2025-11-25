@@ -23,7 +23,7 @@ static void keepAliveTest(void)
     char url[128];
     int  i;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     json1 = urlJson(up, "GET", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);
     conn1 = jsonGetInt(json1, 0, "connection", -1);
     count1 = jsonGetInt(json1, 0, "count", -1);

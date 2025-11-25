@@ -62,8 +62,8 @@ The benchmark suite measures seven key performance areas:
 ### Result Files
 
 Results are automatically saved to:
-- **AI/benchmarks/latest.json5** - Machine-readable JSON5 format
-- **AI/benchmarks/latest.md** - Human-readable markdown table
+- **doc/benchmarks/latest.json5** - Machine-readable JSON5 format
+- **doc/benchmarks/latest.md** - Human-readable markdown table
 
 ### Key Metrics
 
@@ -158,7 +158,7 @@ tm --duration 300 bench
 - Calculates statistics (min/max/avg/p95/p99)
 - Computes requests per second
 - Generates JSON and markdown results
-- Saves to `AI/benchmarks/`
+- Saves to `doc/benchmarks/`
 
 ### Phase 6: Cleanup (cleanup.sh)
 - Stops web server gracefully
@@ -219,11 +219,11 @@ cd test/bench
 tm --duration 300000 bench
 
 # Review results
-cat ../../AI/benchmarks/latest.md
+cat ../../doc/benchmarks/latest.md
 
 # Save as version baseline
-cp ../../AI/benchmarks/latest.json5 ../../AI/benchmarks/v1.0.0.json5
-cp ../../AI/benchmarks/latest.md ../../AI/benchmarks/v1.0.0.md
+cp ../../doc/benchmarks/latest.json5 ../../doc/benchmarks/v1.0.0.json5
+cp ../../doc/benchmarks/latest.md ../../doc/benchmarks/v1.0.0.md
 ```
 
 #### Comparing Against Baseline
@@ -235,7 +235,7 @@ Manual comparison workflow:
 tm --duration 30000 bench
 
 # Compare key metrics
-diff ../../AI/benchmarks/v1.0.0.md ../../AI/benchmarks/latest.md
+diff ../../doc/benchmarks/v1.0.0.md ../../doc/benchmarks/latest.md
 ```
 
 #### Comparison Criteria
@@ -253,14 +253,14 @@ cd test/bench
 tm --duration 300 bench
 
 # 2. Review results
-cat ../../AI/benchmarks/latest.md
+cat ../../doc/benchmarks/latest.md
 
 # 3. Compare against previous release
-diff ../../AI/benchmarks/v1.0.0.md ../../AI/benchmarks/latest.md
+diff ../../doc/benchmarks/v1.0.0.md ../../doc/benchmarks/latest.md
 
 # 4. If acceptable, save as new baseline
-cp ../../AI/benchmarks/latest.json5 ../../AI/benchmarks/v1.1.0.json5
-cp ../../AI/benchmarks/latest.md ../../AI/benchmarks/v1.1.0.md
+cp ../../doc/benchmarks/latest.json5 ../../doc/benchmarks/v1.1.0.json5
+cp ../../doc/benchmarks/latest.md ../../doc/benchmarks/v1.1.0.md
 
 # 5. Update release notes with performance changes
 # Document any significant improvements or regressions
@@ -317,8 +317,8 @@ cd test/bench
 ### Results Missing
 
 Check these locations:
-- `AI/benchmarks/latest.json5` - Machine-readable
-- `AI/benchmarks/latest.md` - Human-readable
+- `doc/benchmarks/latest.json5` - Machine-readable
+- `doc/benchmarks/latest.md` - Human-readable
 - `test/bench/web.log` - Server logs (errors only)
 
 ### High Error Rates
@@ -485,7 +485,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: benchmark-results
-          path: AI/benchmarks/latest.*
+          path: doc/benchmarks/latest.*
 ```
 
 ### Performance Gates
@@ -523,7 +523,7 @@ test/bench/
     │   └── secret.html
     └── test.json
 
-AI/benchmarks/
+doc/benchmarks/
 ├── latest.json5           # Latest results (machine-readable)
 ├── latest.md              # Latest results (human-readable)
 ├── v1.0.0.json5          # Baseline for version 1.0.0

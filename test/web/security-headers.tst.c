@@ -38,7 +38,7 @@ static void testCRLFInjectionInCustomHeader(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: CRLF in custom header value
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
@@ -67,7 +67,7 @@ static void testResponseSplittingAttempt(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Attempt to inject response splitting via query parameter
     // (if server reflects query params in response headers)
@@ -91,7 +91,7 @@ static void testHeaderNameValidation(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Header name with space
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
@@ -120,7 +120,7 @@ static void testNullByteInHeaders(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Null byte in header value
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
@@ -143,11 +143,11 @@ static void testSecurityHeadersPresent(void)
     int   status;
     cchar *header;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Get a normal response and check for security headers
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     // Test 1: X-Content-Type-Options header
     header = urlGetHeader(up, "X-Content-Type-Options");
@@ -176,7 +176,7 @@ static void testSecurityHeadersPresent(void)
     header = urlGetHeader(up, "Server");
     if (header) {
         // Should be present but not reveal version details
-        ttrue(slen(header) > 0);
+        tgti(slen(header), 0);
         // Should not contain version numbers (optional check)
     }
 
@@ -190,16 +190,16 @@ static void testContentSecurityPolicyHeader(void)
     int   status;
     cchar *csp;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     // Check for Content-Security-Policy header
     csp = urlGetHeader(up, "Content-Security-Policy");
     if (csp) {
         // If present, should have some directives
-        ttrue(slen(csp) > 0);
+        tgti(slen(csp), 0);
 
         // Common directives: default-src, script-src, etc.
         ttrue(scontains(csp, "default-src") != NULL ||
@@ -210,7 +210,7 @@ static void testContentSecurityPolicyHeader(void)
     // Also check for CSP-Report-Only variant
     csp = urlGetHeader(up, "Content-Security-Policy-Report-Only");
     if (csp) {
-        ttrue(slen(csp) > 0);
+        tgti(slen(csp), 0);
     }
 
     urlFree(up);
@@ -223,7 +223,7 @@ static void testHTTPSSecurityHeaders(void)
     int   status;
     cchar *hsts;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Only test HTTPS security headers if HTTPS is available
     if (HTTPS && scontains(HTTPS, "https")) {
@@ -255,7 +255,7 @@ static void testMultipleHeaderInjection(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Attempt to inject multiple headers at once
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
@@ -271,18 +271,18 @@ static void testHeaderValueWhitespace(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Leading/trailing whitespace in header value (valid)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
                       "X-Custom:   value with spaces   \r\n");
-    ttrue(status == 200);
+    teqi(status, 200);
 
     // Test 2: Tabs in header value
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
                       "X-Custom: value\twith\ttabs\r\n");
-    ttrue(status == 200);
+    teqi(status, 200);
 
     urlFree(up);
 }
@@ -293,12 +293,12 @@ static void testEmptyHeaderValue(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Empty header value (valid)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
                       "X-Custom: \r\n");
-    ttrue(status == 200);
+    teqi(status, 200);
 
     urlFree(up);
 }
@@ -310,7 +310,7 @@ static void testVeryLongHeaderValue(void)
     int    status;
     size_t len;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Very long header value (should be within limits)
     len = 8192;

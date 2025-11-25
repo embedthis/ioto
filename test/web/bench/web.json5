@@ -66,7 +66,7 @@
             { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
 
             // WebSocket routes
-            { match: '/ws/', methods: ['GET'], handler: 'action' },
+            // { match: '/ws/', methods: ['GET'], handler: 'action' },
 
             // Catch all for static files
             { /* Catch all */ },

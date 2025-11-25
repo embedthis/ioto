@@ -18,23 +18,17 @@ static char    *HTTPS;
 static void testPutMethod()
 {
     Url     *up;
-    Json    *json;
-    char    url[128];
-    char    *data = "{\"id\": 123, \"name\": \"test\"}";
+    char    url[128], *response;
+    char    *data = "Hello World";
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
-    status = urlFetch(up, "PUT", SFMT(url, "%s/test/show", HTTP),
-                     data, 0, "Content-Type: application/json\r\n");
+    status = urlFetch(up, "PUT", SFMT(url, "%s/test/put", HTTP), data, 0, NULL);
     ttrue(status == 200);
 
-    json = urlGetJsonResponse(up);
-    tmatch(jsonGet(json, 0, "method", 0), "PUT");
-    tmatch(jsonGet(json, 0, "form.id", 0), "123");
-    tmatch(jsonGet(json, 0, "form.name", 0), "test");
-    jsonFree(json);
-
+    response = urlGetResponse(up);
+    teqi((int) stoi(response), slen(data));
     urlFree(up);
 }
 
@@ -45,7 +39,7 @@ static void testDeleteMethod()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "DELETE", SFMT(url, "%s/test/show", HTTP), 0, 0, 0);
     ttrue(status == 200);
@@ -64,7 +58,7 @@ static void testHeadMethod()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "HEAD", SFMT(url, "%s/test/show", HTTP), 0, 0, 0);
     ttrue(status == 200);
@@ -87,7 +81,7 @@ static void testPatchMethod()
     char    *data = "{\"name\": \"updated\"}";
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "PATCH", SFMT(url, "%s/test/show", HTTP),
                      data, 0, "Content-Type: application/json\r\n");
@@ -108,7 +102,7 @@ static void testOptionsMethod()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "OPTIONS", SFMT(url, "%s/test/show", HTTP), 0, 0, 0);
     ttrue(status == 200);
@@ -129,7 +123,7 @@ static void testInvalidMethod()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test with invalid HTTP method
     status = urlFetch(up, "INVALID", SFMT(url, "%s/test/show", HTTP), 0, 0, 0);

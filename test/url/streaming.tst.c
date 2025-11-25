@@ -23,7 +23,7 @@ static void testStreamingRead()
     ssize   bytesRead, totalRead = 0;
     int     rc, status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Request a large file for streaming
     rc = urlStart(up, "GET", SFMT(url, "%s/size/10K.txt", HTTP));
@@ -55,7 +55,7 @@ static void testStreamingWrite()
     cchar   *chunk3 = "Third chunk";
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);
@@ -93,7 +93,7 @@ static void testLargeUpload()
     }
     largeData[size] = '\0';
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);
@@ -122,7 +122,7 @@ static void testStreamingWithBufferLimit()
     ssize   bytesRead, totalRead = 0;
     int     rc;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetBufLimit(up, limit);
 
     rc = urlStart(up, "GET", SFMT(url, "%s/size/10K.txt", HTTP));
@@ -148,7 +148,7 @@ static void testZeroSizeRead()
     ssize   bytesRead;
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);
@@ -171,7 +171,7 @@ static void testFormatWrite()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);

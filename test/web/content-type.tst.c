@@ -39,14 +39,14 @@ static void testHTMLMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // HTML files should have text/html content type
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     contentType = urlGetHeader(up, "Content-Type");
-    ttrue(contentType != NULL);
+    tnotnull(contentType);
     tcontains(contentType, "text/html");
 
     // May include charset
@@ -64,18 +64,18 @@ static void testCSSMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // CSS files should have text/css content type
     status = urlFetch(up, "GET", SFMT(url, "%s/styles.css", HTTP), NULL, 0, NULL);
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         tcontains(contentType, "text/css");
     } else {
         // File may not exist
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     urlFree(up);
@@ -88,19 +88,19 @@ static void testJavaScriptMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // JavaScript files should have application/javascript or text/javascript
     status = urlFetch(up, "GET", SFMT(url, "%s/app.js", HTTP), NULL, 0, NULL);
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         // Accept either application/javascript or text/javascript (both valid)
-        ttrue(scontains(contentType, "javascript") != NULL);
+        tnotnull(scontains(contentType, "javascript"));
     } else {
         // File may not exist
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     urlFree(up);
@@ -113,18 +113,18 @@ static void testJSONMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // JSON files should have application/json
     status = urlFetch(up, "GET", SFMT(url, "%s/data.json", HTTP), NULL, 0, NULL);
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         tcontains(contentType, "application/json");
     } else {
         // File may not exist
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     urlFree(up);
@@ -137,18 +137,18 @@ static void testTextMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Plain text files
     status = urlFetch(up, "GET", SFMT(url, "%s/test.txt", HTTP), NULL, 0, NULL);
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         tcontains(contentType, "text/plain");
     } else {
         // File may not exist
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     // XML files
@@ -157,11 +157,11 @@ static void testTextMimeTypes(void)
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         // Accept application/xml or text/xml
-        ttrue(scontains(contentType, "xml") != NULL);
+        tnotnull(scontains(contentType, "xml"));
     } else {
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     urlFree(up);
@@ -174,7 +174,7 @@ static void testImageMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test various image formats
     struct {
@@ -197,11 +197,11 @@ static void testImageMimeTypes(void)
 
         if (status == 200) {
             contentType = urlGetHeader(up, "Content-Type");
-            ttrue(contentType != NULL);
+            tnotnull(contentType);
             tcontains(contentType, tests[i].expectedType);
         } else {
             // Image file may not exist - that's acceptable
-            ttrue(status == 404);
+            teqi(status, 404);
         }
     }
 
@@ -215,7 +215,7 @@ static void testFontMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test font file formats
     struct {
@@ -235,13 +235,13 @@ static void testFontMimeTypes(void)
 
         if (status == 200) {
             contentType = urlGetHeader(up, "Content-Type");
-            ttrue(contentType != NULL);
+            tnotnull(contentType);
             // Font MIME types may vary (font/woff vs application/font-woff)
             ttrue(scontains(contentType, tests[i].expectedPrefix) != NULL ||
                   scontains(contentType, "application/") != NULL);
         } else {
             // Font file may not exist
-            ttrue(status == 404);
+            teqi(status, 404);
         }
     }
 
@@ -255,7 +255,7 @@ static void testMediaMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test audio/video formats
     struct {
@@ -276,11 +276,11 @@ static void testMediaMimeTypes(void)
 
         if (status == 200) {
             contentType = urlGetHeader(up, "Content-Type");
-            ttrue(contentType != NULL);
+            tnotnull(contentType);
             tcontains(contentType, tests[i].expectedPrefix);
         } else {
             // Media file may not exist
-            ttrue(status == 404);
+            teqi(status, 404);
         }
     }
 
@@ -294,7 +294,7 @@ static void testBinaryMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test binary file formats
     struct {
@@ -313,11 +313,11 @@ static void testBinaryMimeTypes(void)
 
         if (status == 200) {
             contentType = urlGetHeader(up, "Content-Type");
-            ttrue(contentType != NULL);
+            tnotnull(contentType);
             tcontains(contentType, tests[i].expectedType);
         } else {
             // Binary file may not exist
-            ttrue(status == 404);
+            teqi(status, 404);
         }
     }
 
@@ -330,7 +330,7 @@ static void testUnknownExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Create file with unknown extension
@@ -354,7 +354,7 @@ static void testMultipleDots(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Files with multiple dots should use final extension
@@ -375,7 +375,7 @@ static void testCaseInsensitiveExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Extensions should be case-insensitive
@@ -400,7 +400,7 @@ static void testNoExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Files without extension should get default MIME type
@@ -422,17 +422,17 @@ static void testContentTypeHeaderFormat(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Verify Content-Type header format is correct
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     contentType = urlGetHeader(up, "Content-Type");
-    ttrue(contentType != NULL);
+    tnotnull(contentType);
 
     // Should be type/subtype format
-    ttrue(scontains(contentType, "/") != NULL);
+    tnotnull(scontains(contentType, "/"));
 
     // Should not have leading/trailing whitespace
     ttrue(contentType[0] != ' ' && contentType[0] != '\t');
@@ -452,14 +452,14 @@ static void testCharsetHandling(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Text files should include charset when appropriate
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 200);
+    teqi(status, 200);
 
     contentType = urlGetHeader(up, "Content-Type");
-    ttrue(contentType != NULL);
+    tnotnull(contentType);
 
     // HTML should have charset (typically utf-8)
     tcontains(contentType, "text/html");
@@ -473,13 +473,13 @@ static void testCharsetHandling(void)
 
     if (status == 200) {
         contentType = urlGetHeader(up, "Content-Type");
-        ttrue(contentType != NULL);
+        tnotnull(contentType);
         tcontains(contentType, "image/png");
         // Should not have charset for images
-        ttrue(scontains(contentType, "charset") == NULL);
+        tnull(scontains(contentType, "charset"));
     } else {
         // Image may not exist
-        ttrue(status == 404);
+        teqi(status, 404);
     }
 
     urlFree(up);

@@ -22,7 +22,7 @@ static void testSession(void)
     char  *cookie, url[128];
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     /*
         Create a token and store it in the session
@@ -54,7 +54,7 @@ static void testSessionPersistence()
     char *cookie, url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Create a session
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session/create", HTTP), NULL, 0, NULL);
@@ -85,7 +85,7 @@ static void testSessionCookieAttributes()
     char *cookie, *setCookie, url[128];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Create a session and check Set-Cookie header
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session/create", HTTP), NULL, 0, NULL);
@@ -113,14 +113,14 @@ static void testMultipleSessions()
     int  status;
 
     //  Create two separate sessions
-    up1 = urlAlloc(0);
+    up1 = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up1, "GET", SFMT(url, "%s/test/session/create", HTTP), NULL, 0, NULL);
     teqi(status, 200);
     token1 = sclone(urlGetResponse(up1));
     cookie1 = sclone(urlGetCookie(up1, WEB_SESSION_COOKIE));
     tnotnull(cookie1);
 
-    up2 = urlAlloc(0);
+    up2 = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up2, "GET", SFMT(url, "%s/test/session/create", HTTP), NULL, 0, NULL);
     teqi(status, 200);
     token2 = sclone(urlGetResponse(up2));
@@ -128,8 +128,8 @@ static void testMultipleSessions()
     tnotnull(cookie2);
 
     //  Verify sessions are different
-    ttrue(!smatch(cookie1, cookie2));
-    ttrue(!smatch(token1, token2));
+    tfalse(smatch(cookie1, cookie2));
+    tfalse(smatch(token1, token2));
 
     //  Verify each session works independently
     urlClose(up1);

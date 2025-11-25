@@ -27,7 +27,7 @@ static void streamRequest()
     ssize nbytes, total;
     int   i, rc;
 
-    up = urlAlloc(0);   // URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
+    up = urlAlloc(URL_NO_LINGER);   // URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
 
     //  This request is streamed here, but buffered in the server
     rc = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
@@ -67,7 +67,7 @@ static void streamAtServer()
     ssize nbytes, total;
     int   i, rc;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  The server will stream the receipt
     rc = urlStart(up, "POST", SFMT(url, "%s/stream/test/stream", HTTP));
@@ -105,7 +105,7 @@ static void streamResponse()
     ssize count, nbytes;
     int   status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     //  Stream response
     status = urlFetch(up, "POST", SFMT(url, "%s/test/bulk?count=1000", HTTP), NULL, 0, NULL);

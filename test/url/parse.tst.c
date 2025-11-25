@@ -20,7 +20,7 @@ static void parseUrl()
     Url     *up;  
     int     rc;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     rc = urlParse(up, NULL);
     ttrue(rc < 0);
 

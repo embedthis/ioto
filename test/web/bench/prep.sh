@@ -24,7 +24,7 @@ mkdir -p site/upload
 mkdir -p tmp
 
 # Create directory for benchmark results
-mkdir -p ../../AI/benchmarks
+mkdir -p ../../doc/benchmarks
 
 # Create benchmark-specific test files in static directory
 make-files 20 site/static/1K.txt      # 1KB

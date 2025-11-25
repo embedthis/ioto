@@ -36,7 +36,7 @@ static void testHeaderSizeLimit(void)
     size_t hlen;
     int    status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     SFMT(url, "%s/index.html", HTTP);
     // Test 1: Normal header (well under limit) should succeed
     status = urlFetch(up, "GET", url, NULL, 0, "X-Test-Header: normal value\r\n");
@@ -55,7 +55,7 @@ static void testHeaderSizeLimit(void)
     rFree(header);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
-    teqi(status, 413);
+    teqi(status, 413);  // 413 Payload Too Large
     rFree(headers);
 
     urlFree(up);
@@ -69,7 +69,7 @@ static void testMultipleHeaders(void)
     char *headers;
     int  status, i;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Many small headers that fit within 10K total limit
     buf = rAllocBuf(0);
@@ -81,6 +81,7 @@ static void testMultipleHeaders(void)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
     teqi(status, 200);
     rFree(headers);
+    urlClose(up);
 
     /*
         Test 2: Many headers exceeding 10K limit
@@ -93,7 +94,6 @@ static void testMultipleHeaders(void)
     }
     headers = rBufToStringAndFree(buf);
 
-    urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
     size_t totalSize = slen(headers);
     if (totalSize < 10240) {
@@ -114,7 +114,7 @@ static void testBodySizeLimit(void)
     int    status;
     size_t bodySize;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: POST with body under 100K limit should succeed
     bodySize = 50 * 1024;  // 50K
@@ -151,7 +151,7 @@ static void testUploadSizeLimit(void)
     int    status, pid;
     size_t uploadSize;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     /*
@@ -165,7 +165,6 @@ static void testUploadSizeLimit(void)
 
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/limit-test-%d.dat", HTTP, pid),
                       uploadData, uploadSize, "Content-Type: application/octet-stream\r\n");
-    rPrintf("@@ STATUS %d, %s\n", status, urlGetError(up) ? urlGetError(up) : "no error");
     ttrue(status == 201 || status == 204);
     rFree(uploadData);
     urlClose(up);
@@ -190,7 +189,7 @@ static void testURILength(void)
     int    status;
     size_t targetLen;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test 1: Normal URI should work
     status = urlFetch(up, "GET", SFMT(base, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -228,7 +227,7 @@ static void testQueryStringLimit(void)
     char *url;
     int  status, i;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Large query string
     buf = rAllocBuf(0);
@@ -264,7 +263,7 @@ static void testBoundaryConditions(void)
     int    status;
     size_t exactLimit;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Test: Body at exact 100K limit
     exactLimit = 100 * 1024;  // Exactly 100K

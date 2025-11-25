@@ -14,7 +14,7 @@ static void createUrl()
 {
     Url    *up;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     ttrue(up != 0);
     urlFree(up);
 }

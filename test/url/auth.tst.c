@@ -27,7 +27,7 @@ static void testBasicAuthSuccess()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -55,7 +55,7 @@ static void testBasicAuthFailure()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "wrongpassword", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -75,7 +75,7 @@ static void testDigestSHA256Success()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
 
@@ -97,7 +97,7 @@ static void testDigestMD5Success()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest-md5/secret.html", HTTP), NULL, 0, NULL);
 
@@ -117,7 +117,7 @@ static void testDigestAuthFailure()
     char    url[128];
     int     status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "wrongpassword", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
 
@@ -138,7 +138,7 @@ static void testAuthAutoDetect()
     cchar   *response;
 
     // Test auto-detection with Basic auth endpoint
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", NULL);  // Auto-detect
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -160,7 +160,7 @@ static void testRoleBasedAccess()
     int     status;
 
     // Bob (user role) should not be able to access admin area
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
 
@@ -171,7 +171,7 @@ static void testRoleBasedAccess()
     urlFree(up);
 
     // Alice (admin role) should be able to access admin area
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
 
@@ -191,17 +191,22 @@ static void testNonceReuse()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
+    fprintf(stderr, "AT %d\n", __LINE__);
     urlSetAuth(up, "alice", "password", "digest");
 
     // First request - performs 401 challenge
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
+    fprintf(stderr, "AT %d\n", __LINE__);
 
     // Second request - should reuse nonce (no 401)
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
+    fprintf(stderr, "AT %d\n", __LINE__);
     ttrue(status == 200);
+    fprintf(stderr, "AT %d\n", __LINE__);
     response = urlGetResponse(up);
+    fprintf(stderr, "AT %d\n", __LINE__);
     ttrue(response != NULL);
 
     // Verify nonce count incremented
@@ -214,19 +219,19 @@ static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
         tinfo("HTTP=%s, HTTPS=%s", HTTP ? HTTP : "NULL", HTTPS ? HTTPS : "NULL");
-        tinfo("Testing Basic authentication - success");
+        tinfo("Testing Basic authentication - success case");
         testBasicAuthSuccess();
 
-        tinfo("Testing Basic authentication - failure");
+        tinfo("Testing Basic authentication - fail case");
         testBasicAuthFailure();
 
-        tinfo("Testing Digest SHA-256 authentication - success");
+        tinfo("Testing Digest SHA-256 authentication - success case");
         testDigestSHA256Success();
 
-        tinfo("Testing Digest MD5 authentication - success");
+        tinfo("Testing Digest MD5 authentication - success case");
         testDigestMD5Success();
 
-        tinfo("Testing Digest authentication - failure");
+        tinfo("Testing Digest authentication - fail case");
         testDigestAuthFailure();
 
         tinfo("Testing authentication auto-detection");

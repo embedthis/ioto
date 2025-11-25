@@ -20,7 +20,7 @@ static void errorUrl()
     Url    *up;
     int    status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     status = urlFetch(up, "GET", "https://UNKNOWN-1237811.com/", 0, 0, 0);
     ttrue(status < 404);
     ttrue(scontains(urlGetError(up), "Cannot find address of UNKNOWN"));

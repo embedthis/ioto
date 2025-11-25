@@ -39,7 +39,7 @@ static void testSingleFileUpload(void)
     char url[128], headers[256], *boundary, body[1024], filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Create multipart/form-data request with single file
@@ -78,7 +78,7 @@ static void testMultipleFileUploads(void)
     char url[128], headers[256], *boundary, filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Create multipart/form-data request with multiple files
@@ -137,7 +137,7 @@ static void testUploadWithFormData(void)
     char url[128], headers[256], *boundary, filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Upload file along with regular form fields
@@ -188,7 +188,7 @@ static void testEmptyFileUpload(void)
     char url[128], headers[256], *boundary, body[1024], filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Upload empty file (zero bytes)
@@ -223,7 +223,7 @@ static void testFilenameWithSpaces(void)
     char url[128], headers[256], *boundary, body[1024], filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Upload file with spaces in filename
@@ -260,7 +260,7 @@ static void testBinaryFileUpload(void)
     char binaryData[256];
     int  status, pid, i;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -305,7 +305,7 @@ static void testLargeFormData(void)
     char url[128], headers[256], *boundary, filepath[256];
     int  status, pid, i;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -355,7 +355,7 @@ static void testMissingFilename(void)
     char url[128], headers[256], *boundary, body[1024];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Upload without filename attribute
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -382,7 +382,7 @@ static void testInvalidBoundary(void)
     char url[128], headers[256], *boundary, body[1024];
     int  status;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
 
     // Send data with no valid parts but proper termination
     boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
@@ -410,7 +410,7 @@ static void testContentTypeVariations(void)
     char url[128], headers[256], *boundary, body[1024], filepath[256];
     int  status, pid;
 
-    up = urlAlloc(0);
+    up = urlAlloc(URL_NO_LINGER);
     pid = getpid();
 
     // Test various Content-Type values in multipart sections
