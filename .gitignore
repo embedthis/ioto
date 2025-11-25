@@ -64,3 +64,4 @@ typings
 upload-*.tmp
 valgrind.out
 xcode-sample
+.testme

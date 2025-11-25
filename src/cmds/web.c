@@ -262,7 +262,11 @@ static void start(void)
 #endif
 
     //  Start listening and accepting connections
-    webStartHost(host);
+    if (webStartHost(host) < 0) {
+        rError("web", "Cannot start host");
+        rStop();
+        return;
+    }
 
 #if ME_UNIX_LIKE
     //  Drop root privileges after binding to privileged ports
