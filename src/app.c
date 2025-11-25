@@ -3,6 +3,7 @@
  */
 
 /********************************** Includes **********************************/
+#undef APP
 
 #include "ioto.h"
 
@@ -10,7 +11,7 @@
 #define HEADER(x)    STRINGIFY(x)
 
 #ifndef APP
-    #define APP blank
+    #define APP unit
 #endif
 
 /* *INDENT-OFF* */
