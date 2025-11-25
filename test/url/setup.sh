@@ -5,21 +5,20 @@
 
 set -m
 
-ENDPOINT=`json 'web.listen[0]' web.json5`
-if [ -z "$ENDPOINT" ] ; then
-    echo "Cannot get listen endpoint" >&2
+ENDPOINT=`json web.listen[0] web.json5`
+if [ -z "$ENDPOINT" ]; then
+    echo "Error: Cannot get endpoint from web.json5" >&2
     exit 1
 fi
 
-if url -q ${ENDPOINT}/ >/dev/null 2>&1; then
+if curl -s ${ENDPOINT}/ >/dev/null 2>&1; then
     echo "Web is already running on ${ENDPOINT}"
     sleep 999999 &
-    PID=$!
 else
     echo "Starting web"
     web --trace web.log:all:all &
-    PID=$!
 fi
+PID=$!
 
 cleanup() {
     kill $PID 2>/dev/null

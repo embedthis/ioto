@@ -10,9 +10,9 @@
         _show: '',
     },
     tls: {
-        authority: 'certs/ca.crt',
-        certificate: 'certs/test.crt',
-        key: 'certs/test.key',
+        authority: '../certs/ca.crt',
+        certificate: '../certs/test.crt',
+        key: '../certs/test.key',
         renegotiate: true,
         ticket: true,
         verify: {
@@ -42,14 +42,48 @@
             maxFrame: '100K',
             maxMessage: '100K',
         },
-        listen: ['http://localhost:4150', 'https://localhost:4151'],
+        listen: ['http://localhost:3890', 'https://localhost:3891'],
         index: 'index.html',
         auth: {
-            roles: ['user', 'admin', 'owner', 'super'],
+            realm: 'Test Realm',
+            authType: 'digest',
+            algorithm: 'SHA-256',
+            secret: 'test-secret-1234567890abcdef',
+            autoLogin: false,
+            roles: {
+                public: [],
+                user: ['view', 'read'],
+                admin: ['user', 'edit', 'delete'],
+            },
+            // This authentication is for test purposes only. NEVER ship this configuration.
+            users: {
+                alice: {
+                    // password: 'password' (SHA-256 hash with prefix)
+                    password: 'SHA256:11c66702489123a02c7dd0860e47fc4989bb0805ba5835fbbb36f316ec83eb83',
+                    role: 'admin'
+                },
+                bob: {
+                    // password: 'password' (MD5 hash with prefix)
+                    password: 'MD5:123b28ffae9fdec0c8e4b9dc92deb9bc',
+                    role: 'user'
+                },
+            },
             login: '/api/public/login',
             logout: '/api/public/logout',
         },
         routes: [
+            //  Basic authentication routes
+            { match: '/basic/', authType: 'basic', role: 'user', handler: 'file' },
+
+            //  Digest authentication routes (SHA-256 by default)
+            { match: '/digest/', authType: 'digest', role: 'user', handler: 'file' },
+
+            //  MD5 digest authentication (legacy)
+            { match: '/digest-md5/', authType: 'digest', algorithm: 'MD5', role: 'user', handler: 'file' },
+
+            //  Admin-only area (requires admin role)
+            { match: '/admin/', authType: 'digest', role: 'admin', handler: 'file' },
+
             //  Trailing "/" matches prefix only
             { match: '/test/', handler: 'action', methods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'PATCH'] },
             { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
@@ -69,7 +103,7 @@
             validateUTF: false,
         },
         upload: {
-            dir: './tmp',
+            dir: 'tmp',
         },
     },
 }

@@ -10,8 +10,8 @@
 
 /*********************************** Locals ***********************************/
 
-static cchar    *HTTP;
-static cchar    *HTTPS;
+static char    *HTTP;
+static char    *HTTPS;
 
 /************************************ Code ************************************/
 
@@ -23,8 +23,6 @@ static void errorUrl()
     up = urlAlloc(0);
     status = urlFetch(up, "GET", "https://UNKNOWN-1237811.com/", 0, 0, 0);
     ttrue(status < 404);
-    print("Error: %s", urlGetError(up));
-    print("Response: %s", urlGetResponse(up));
     ttrue(scontains(urlGetError(up), "Cannot find address of UNKNOWN"));
     urlFree(up);
 }

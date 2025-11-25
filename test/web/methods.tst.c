@@ -25,7 +25,6 @@ static void checkMethods()
 
     up = urlAlloc(0);
 
-#if 0
     // standard get
     status = urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
@@ -49,8 +48,6 @@ static void checkMethods()
     // Post
     status = urlFetch(up, "POST", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
-
-#endif
 
     // PUT
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/temp.dat", HTTP), NULL, 0, NULL);

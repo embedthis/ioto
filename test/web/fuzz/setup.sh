@@ -61,7 +61,7 @@ else
     echo "Waiting for server to be ready..."
     for i in {1..30}; do
         if curl -s ${ENDPOINT}/ >/dev/null 2>&1; then
-            echo "Server is ready"
+            # echo "Server is ready"
             break
         fi
         sleep 0.5

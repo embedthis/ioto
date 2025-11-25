@@ -18,30 +18,25 @@ make-files() {
     fi
 }
 
-mkdir -p certs site tmp
+mkdir -p tmp
 
-if [ ! -f ./certs/test.crt ] ; then
-    cp ../../certs/*.crt ./certs
-    cp ../../certs/*.key ./certs
-fi
+# Create 100-byte test files for range and conditional request tests
+# range-test.txt - read-only tests
+# range-test-write.txt - write tests (PUT/DELETE)
+for file in site/range-test.txt site/range-test-write.txt; do
+    printf '0123456789%.0s' {1..10} > "$file" 2>/dev/null || {
+        # Fallback for shells without brace expansion
+        printf '0123456789' > "$file"
+        for i in 1 2 3 4 5 6 7 8 9; do
+            printf '0123456789' >> "$file"
+        done
+    }
+done
 
-if [ ! -f site/1K.txt ] ; then
-    cat >site/index.html <<!EOF
-<html><head><title>index.html</title></head>
-<body>Hello /index.html</body>
-</html> 
-!EOF
-    make-files 20 site/1K.txt
-    make-files 205 site/10K.txt
-    make-files 512 site/25K.txt
-fi
-
-# ../../bin/make-files 2050 site/100K.txt
-# ../../bin/make-files 10250 site/500K.txt
-# ../../bin/make-files 21000 site/1M.txt
-# ../../bin/make-files 210000 site/10M.txt
-
-killall web 2>&1 >/dev/null
-
-rm -f ./log.txt
-exit 0
+make-files 20 site/size/1K.txt
+make-files 205 site/size/10K.txt
+make-files 512 site/size/25K.txt
+make-files 2050 site/size/100K.txt
+make-files 10250 site/size/500K.txt
+make-files 21000 site/size/1M.txt
+make-files 210000 site/size/10M.txt

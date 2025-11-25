@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   TestMe cleanup script
 #
@@ -8,4 +8,7 @@ if [ "${TESTME_SUCCESS}" = "1" ]; then
 else
     cat web.log
 fi
-rm -f *.log tmp/*
+
+rm -f tmp/*
+rm -f site/range-test-write.txt
+rm -rf site/upload/*

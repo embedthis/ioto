@@ -9,6 +9,6 @@
         prep: './prep.sh',
         setup: './setup.sh',
         cleanup: './cleanup.sh',
-        healthcheck: { url: 'http://localhost:4150/index.html' },
+        healthcheck: { url: 'http://localhost:3890/index.html' },
     },
 }

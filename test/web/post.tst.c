@@ -19,12 +19,12 @@ static char *HTTPS;
 
 static void post()
 {
-    Url   *up;
-    Json  *json;
-    cchar *response;
-    char  *body, url[128];
-    ssize len;
-    int   status;
+    Url    *up;
+    Json   *json;
+    cchar  *response;
+    char   *body, url[128];
+    size_t len;
+    int    status;
 
     // up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
     up = urlAlloc(0);

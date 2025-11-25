@@ -5,14 +5,14 @@
 #   Compile the fuzz library before tests run
 #
 
-mkdir -p .testme
-cp -r ../../../certs ../../certs
+mkdir -p .testme tmp
+rm -fr tmp/*
 
 #
 #  Build the server with ASAN
 #
 #CFLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
 #LDFLAGS='-fsanitize=address,undefined' \
-#make -C ../../.. clean build
+#make -C ../.. clean build
 #
-#echo "Ioto rebuilt with ASAN"
+#echo " Server rebuilt with ASAN"

@@ -10,8 +10,8 @@
 
 /*********************************** Locals ***********************************/
 
-static cchar    *HTTP;
-static cchar    *HTTPS;
+static char    *HTTP;
+static char    *HTTPS;
 
 /************************************ Code ************************************/
 
@@ -27,6 +27,7 @@ static void seriesUrl()
     ttrue(status == 200);
     response = urlGetResponse(up);
     ttrue(scontains(urlGetHeader(up, "Connection"), "keep-alive"));
+    urlClose(up);
 
     //  Should use keep alive to reuse same socket
     status = urlFetch(up, "GET", SFMT(url, "%s/size/1K.txt", HTTP), 0, 0, 0);

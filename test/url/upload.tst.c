@@ -10,8 +10,8 @@
 
 /*********************************** Locals ***********************************/
 
-static cchar    *HTTP;
-static cchar    *HTTPS;
+static char    *HTTP;
+static char    *HTTPS;
 
 /************************************ Code ************************************/
 
@@ -34,11 +34,11 @@ static void testWriteFile()
     if (rWriteFile(tempFile, testContent, slen(testContent), 0644) < 0) {
         tfail("Cannot create test file");
         rFree(tempFile);
-        unlink(tempFile);
         return;
     }
 
     up = urlAlloc(0);
+
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);
 

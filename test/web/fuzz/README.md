@@ -10,13 +10,18 @@ cd test/fuzz
 tm
 
 # Run specific fuzzer
-tm http
+tm http-proto
+tm tls-proto
+tm url-path
 
 # Run with verbose output
 tm -v
 
 # Run with custom iterations
 tm -i 50000
+
+# Run with a duration
+tm --duration 300 http-proto
 ```
 
 ## Overview

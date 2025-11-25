@@ -25,7 +25,8 @@
     Fuzzing configuration
  */
 typedef struct FuzzConfig {
-    int iterations;             // Number of test iterations
+    int duration;               // Test duration in milliseconds (0 = use iterations)
+    int iterations;             // Number of test iterations (used if duration == 0)
     int timeout;                // Per-test timeout in milliseconds
     int parallel;               // Number of parallel workers
     uint seed;                  // Random seed (0 = time-based)

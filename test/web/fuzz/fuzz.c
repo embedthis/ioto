@@ -127,7 +127,9 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
     size_t corpusLen, len;
     cchar  *input;
     char   *mutated;
-    int    i;
+    Ticks  deadline, now;
+    int    i, maxIterations;
+    bool   useDuration;
 
     if (!runner->oracle) {
         rError("fuzz", "No test oracle configured");
@@ -137,11 +139,25 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
         rError("fuzz", "Empty corpus - add at least one test case");
         return -1;
     }
-    for (i = 0; i < runner->config.iterations; i++) {
+    useDuration = (runner->config.duration > 0);
+    if (useDuration) {
+        deadline = runner->stats.startTime + runner->config.duration;
+        maxIterations = INT_MAX;
+    } else {
+        deadline = 0;
+        maxIterations = runner->config.iterations;
+    }
+    for (i = 0; i < maxIterations; i++) {
+        if (useDuration) {
+            now = rGetTicks();
+            if (now >= deadline) {
+                break;
+            }
+        }
         if (runner->config.randomize) {
             input = fuzzGetRandomCorpus(runner, &corpusLen);
         } else {
-            input = rGetItem(runner->corpus, i);
+            input = rGetItem(runner->corpus, i % rGetListLength(runner->corpus));
             corpusLen = slen(input);
         }
         if (!input) continue;
@@ -189,9 +205,16 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
             }
             runner->crashed = false;
         }
-        if (runner->config.verbose && (i % 100) == 0 && i > 0) {
-            rInfo("fuzz", "Iteration %d/%d - Crashes: %d (unique: %d)",
-                  i, runner->config.iterations, runner->stats.crashes, runner->stats.unique);
+        rFree(mutated);
+        if (runner->config.verbose && (i % 1000) == 0) {
+            if (useDuration) {
+                Ticks elapsed = rGetTicks() - runner->stats.startTime;
+                rInfo("fuzz", "Iterations: %d, Elapsed: %.1fs - Crashes: %d (unique: %d)",
+                      i, (double) elapsed / 1000.0, runner->stats.crashes, runner->stats.unique);
+            } else {
+                rInfo("fuzz", "Iterations: %d/%d - Crashes: %d (unique: %d)",
+                      i, runner->config.iterations, runner->stats.crashes, runner->stats.unique);
+            }
         }
     }
 
@@ -579,9 +602,9 @@ static char *fuzzUnescapeString(cchar *str, size_t *outLen)
  */
 static uint hex2int(char c)
 {
-    if (c >= '0' && c <= '9') return (uint)(c - '0');
-    if (c >= 'a' && c <= 'f') return (uint)(c - 'a' + 10);
-    if (c >= 'A' && c <= 'F') return (uint)(c - 'A' + 10);
+    if (c >= '0' && c <= '9') return (uint) (c - '0');
+    if (c >= 'a' && c <= 'f') return (uint) (c - 'a' + 10);
+    if (c >= 'A' && c <= 'F') return (uint) (c - 'A' + 10);
     return 0;
 }
 

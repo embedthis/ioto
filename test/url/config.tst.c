@@ -10,8 +10,8 @@
 
 /*********************************** Locals ***********************************/
 
-static cchar    *HTTP;
-static cchar    *HTTPS;
+static char    *HTTP;
+static char    *HTTPS;
 
 /************************************ Code ************************************/
 
@@ -108,6 +108,7 @@ static void testProtocol()
     urlSetProtocol(up, 0);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);
+    urlClose(up);
 
     // Set protocol to HTTP/1.1
     urlSetProtocol(up, 1);

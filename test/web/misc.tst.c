@@ -12,8 +12,8 @@
 
 static char *HTTP;
 static char *HTTPS;
-static int   count = 0;
-static int   expected = 0;
+static int  count = 0;
+static int  expected = 0;
 
 /************************************ Code ************************************/
 

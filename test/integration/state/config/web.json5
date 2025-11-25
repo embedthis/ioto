@@ -1,6 +1,12 @@
 {
     auth: {
-        roles: ['user', 'admin', 'owner', 'super'],
+        roles: {
+            public: [],
+            user: [],
+            admin: ['user'],
+            owner: ['admin'],
+            super: ['owner']
+        },
     },
     documents: '@site',
     limits: {

@@ -12,12 +12,12 @@
         format: '%S: %T: %M',
         types: 'error,info,trace',
         sources: 'all,!mbedtls',
-        // _show: 'hH',  // Debug flag disabled for production security
+        // show: 'hH',  // Debug flag disabled for production security
     },
     tls: {
-        authority: 'certs/ca.crt',
-        certificate: 'certs/test.crt',
-        key: 'certs/test.key',
+        authority: '../certs/ca.crt',
+        certificate: '../certs/test.crt',
+        key: '../certs/test.key',
         _verify: {
             client: false,
             issuer: false,
@@ -68,7 +68,39 @@
     },
     web: {
         auth: {
-            roles: ['user', 'admin', 'owner', 'super'],
+            realm: 'Test Realm',
+            authType: 'digest',
+            algorithm: 'SHA-256',
+            secret: 'test-secret-1234567890abcdef',
+            // SECURITY: Require TLS for Basic authentication to prevent password exposure
+            // Basic auth sends credentials in base64 (not encrypted), making it vulnerable
+            // to network sniffing attacks if sent over plain HTTP
+            requireTlsForBasic: true,
+            roles: {
+                public: [],
+                user: ['view', 'read'],
+                admin: ['user', 'edit', 'delete'],
+                owner: ['admin', 'billing', 'manage'],
+                super: ['owner', 'super-admin']
+            },
+            // This authentication is for test purposes only. NEVER ship this configuration.
+            users: {
+                alice: {
+                    // password: 'password' (SHA-256 hash with prefix)
+                    password: 'SHA256:11c66702489123a02c7dd0860e47fc4989bb0805ba5835fbbb36f316ec83eb83',
+                    role: 'admin'
+                },
+                bob: {
+                    // password: 'password' (MD5 hash with prefix)
+                    password: 'MD5:123b28ffae9fdec0c8e4b9dc92deb9bc',
+                    role: 'user'
+                },
+                ralph: {
+                    // password: 'password' (Bcrypt with BF1 prefix)
+                    password: 'BF1:00128:ErbpOzVtv19JV20U:+i8PT5V/4GiR9Ti6NhoEkVG99dG78GuP',
+                    role: 'user'
+                }
+            },
             login: '/api/public/login',
             logout: '/api/public/logout',
         },
@@ -82,7 +114,7 @@
             'Access-Control-Expose-Headers': 'X-XSRF-TOKEN',
             'X-Content-Type-Options': 'nosniff',
             'X-Frame-Options': 'SAMEORIGIN',
-            'X-XSS-Protection': '1; mode=black',
+            'X-XSS-Protection': '1; mode=block',
             'Referrer-Policy': 'same-origin',
         },
         index: 'index.html',
@@ -90,31 +122,83 @@
             buffer: '64K',
             body: '100K',
             connections: '100',
-            fibers: 20,
+            digest: '1000',
             header: '10K',
             sessions: '200',
             upload: '20MB',
             maxFrame: '100K',
             maxMessage: '100K',
+            requests: '1000',
         },
-        listen: ['http://localhost:3150', 'https://localhost:3151'],
+        listen: ['http://localhost:4240', 'https://localhost:4241'],
         _redirect: [
-            { status: 302, to: 'https://:3151' },
+            { status: 302, to: 'https://:4241' },
             { status: 302, from: 'http', to: '?redirected' },
-            { status: 302, to: 'https://hostname:3151' },
+            { status: 302, to: 'https://hostname:4241' },
             { status: 302, to: 'https://hostname' },
         ],
         routes: [
+            //  Pre-compressed content test route
+            { match: '/compressed/', handler: 'file', compressed: true, methods: ['GET', 'HEAD'] },
+
+            //  Authentication routes (SHA-256 by default)
+            { match: '/basic/', authType: 'basic', role: 'user', handler: 'file' },
+            { match: '/digest/', authType: 'digest', role: 'user', handler: 'file' },
+            { match: '/digest-md5/', authType: 'digest', algorithm: 'MD5', role: 'user', handler: 'file' },
+            { match: '/admin/', authType: 'digest', role: 'admin', handler: 'file' },
+
             //  Trailing "/" matches prefix and allows extra path
             { match: '/test/sig/', handler: 'action', validate: true, role: 'public' },
             { match: '/test/session/', handler: 'action' },
             { match: '/test/xsrf/', handler: 'action', xsrf: true },
             { match: '/test/', handler: 'action' },
-            // Upload data goes to test/upload
+
+            // Upload data goes to site/upload
             { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
-            { match: '/trace/', methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
+
             { match: '/stream/', trim: '/stream', stream: true, handler: 'action' },
             { match: '/ws/', methods: ['GET'], handler: 'action' },
+
+            { match: '/trace/', methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
+
+            //  Allow PUT/DELETE for conditional request tests
+            { match: '/range-test.txt', methods: ['DELETE', 'GET', 'PUT'] },
+            { match: '/range-test-write.txt', methods: ['DELETE', 'GET', 'PUT'] },
+
+            //  Cache control test routes
+            {
+                match: '/static/',
+                handler: 'file',
+                cache: {
+                    maxAge: '1week',
+                    directives: 'public',
+                    extensions: ['css', 'js', 'png', 'jpg', 'svg', 'woff2']
+                }
+            },
+            {
+                match: '/api/',
+                handler: 'action',
+                cache: {
+                    maxAge: '5mins',
+                    directives: 'private, must-revalidate'
+                }
+            },
+            {
+                match: '/private/',
+                handler: 'action',
+                cache: {
+                    directives: 'no-cache, no-store'
+                }
+            },
+            {
+                match: '/user/',
+                handler: 'action',
+                cache: {
+                    maxAge: '10mins',
+                    directives: 'private'
+                }
+            },
+
             { /* Catch all */ },
         ],
         sessions: {
@@ -127,8 +211,9 @@
             strict: true,
         },
         timeouts: {
-            parse: '60 secs',
+            digest: '60 secs',
             inactivity: '300 secs',
+            parse: '60 secs',
             request: '10 mins',
             session: '5 mins',
             tls: '1day',

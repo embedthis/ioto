@@ -69,17 +69,17 @@ static void testContentLength()
 
 static void testLargeBody()
 {
-    Url  *up;
-    Json *json;
-    char url[128];
-    char *largeData;
-    size_t size = 1024 * 5;    // 5KB (smaller for testing)
+    Url    *up;
+    Json   *json;
+    char   url[128];
+    char   *largeData;
+    size_t size = 1024 * 5;     // 5KB (smaller for testing)
 
     up = urlAlloc(0);
 
     // Create large test data
     largeData = rAlloc(size + 1);
-    for (int i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         largeData[i] = 'A' + (i % 26);
     }
     largeData[size] = '\0';

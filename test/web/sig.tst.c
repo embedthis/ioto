@@ -39,12 +39,12 @@ static Json *invoke(Url *up, cchar *test, int status, int line, cchar *fmt, ...)
     jsonFree(json);
 
     urlClose(up);
-    response = urlJson(up, "POST", SFMT(url, "%s/test/sig/controller/%s", HTTP, test), body, (size_t) -1, NULL);
+    response = urlJson(up, "POST", SFMT(url, "%s/test/sig/controller/%s", HTTP, test), body, 0, NULL);
     rFree(data);
 
     if (urlGetStatus(up) != status) {
-        rError("web", "Error at line %d, status %d (expected %d): %s", line, urlGetStatus(up), status, urlGetResponse(
-                   up));
+        rError("web", "Error at line %d, status %d (expected %d): %s", line, urlGetStatus(up), status,
+               urlGetResponse(up));
         jsonFree(response);
         response = 0;
         urlClose(up);

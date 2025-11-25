@@ -10,8 +10,8 @@
 
 /*********************************** Locals ***********************************/
 
-static cchar    *HTTP;
-static cchar    *HTTPS;
+static char    *HTTP;
+static char    *HTTPS;
 
 /************************************ Code ************************************/
 
@@ -38,6 +38,7 @@ static void testStreamingRead()
         totalRead += bytesRead;
         ttrue(bytesRead <= (ssize)(sizeof(buffer) - 1));
     }
+
     ttrue(totalRead > 1000);  // Should have read substantial data
     ttrue(urlGetStatus(up) == 200);
 

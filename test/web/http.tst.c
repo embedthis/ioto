@@ -144,7 +144,7 @@ static void testInvalidRequests()
 
     // Test path traversal attempt
     status = urlFetch(up, "GET", SFMT(url, "%s/test/../../../etc/passwd", HTTP), NULL, 0, NULL);
-    ttrue(status < 0);  // Abortive close for traversal attempt
+    teqi(status, 400);
 
     // Test nonexistent file
     status = urlFetch(up, "GET", SFMT(url, "%s/nonexistent.html", HTTP), NULL, 0, NULL);

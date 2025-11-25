@@ -31,7 +31,15 @@
             { match: '/trace/', methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
             { match: '/stream/', trim: '/stream', stream: true, handler: 'action' },
             { match: '/ws/', methods: ['GET'], handler: 'action' },
+
+            //  Allow GET/HEAD for range request tests
+            { match: '/range-test.txt', methods: ['GET', 'HEAD'] },
+            { match: '/range-test-write.txt', methods: ['GET', 'HEAD'] },
+
             { /* Catch all */ },
         ],
+        upload: {
+            dir: './tmp',
+        }
     }
 }
