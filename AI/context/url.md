@@ -65,6 +65,9 @@ cchar *urlGetHeader(Url *up, cchar *header);  // Get response header
 // Streaming
 ssize urlRead(Url *up, char *buf, ssize bufsize);  // Read response data
 int urlWrite(Url *up, cvoid *buf, ssize size);     // Write request data
+
+// Authentication
+void urlSetAuth(Url *up, cchar *username, cchar *password, cchar *authType);
 ```
 
 ## Module Features
@@ -75,7 +78,13 @@ int urlWrite(Url *up, cvoid *buf, ssize size);     // Write request data
 - Server-Sent Events (SSE) with callbacks
 
 **Authentication:**
-- Basic, Digest, OAuth support
+- HTTP Basic authentication with automatic base64 encoding
+- HTTP Digest authentication with RFC 2617 and RFC 7616 compliance
+  - Supports MD5 (RFC 2617) and SHA-256 (RFC 7616) hash algorithms
+  - Auto-selects algorithm from server's WWW-Authenticate header
+  - Validates and rejects unsupported algorithms
+- Automatic 401 retry - automatically parses WWW-Authenticate header and retries
+- Manual Authorization header support via `urlSetAuth()`
 - Cookie management and sessions
 
 **Configuration:**
@@ -101,6 +110,22 @@ Url *up = urlAlloc(0);
 urlFetch(up, "GET", "https://example.com/file", NULL, 0, NULL);
 while ((len = urlRead(up, buffer, sizeof(buffer))) > 0) {
     processData(buffer, len);
+}
+urlFree(up);
+
+// HTTP Basic Authentication
+up = urlAlloc(0);
+urlSetAuth(up, "username", "password", "basic");
+char *response = urlGet("https://api.example.com/protected", NULL);
+urlFree(up);
+
+// HTTP Digest Authentication with automatic challenge-response
+up = urlAlloc(0);
+urlSetAuth(up, "user", "pass", NULL);  // Auto-detect auth type from server challenge
+int status = urlFetch(up, "GET", "https://api.example.com/protected", NULL, 0, NULL);
+// On 401, library automatically parses WWW-Authenticate, calculates digest, and retries
+if (status == 200) {
+    response = urlGetResponse(up);
 }
 urlFree(up);
 ```

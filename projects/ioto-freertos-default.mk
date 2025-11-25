@@ -3,7 +3,7 @@
 #
 
 NAME                  := ioto
-VERSION               := 2.8.1
+VERSION               := 2.9.0
 PROJECT               := ioto-freertos-default
 PROFILE               ?= dev
 ARCH                  ?= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/mips.*/mips/')
@@ -41,6 +41,7 @@ endif
 #
 # Settings
 #
+ME_APP                ?= \"unit\"
 ME_AUTHOR             ?= \"Embedthis Software.\"
 ME_BUILD              ?= \"build\"
 ME_COM_CRYPT          ?= 1
@@ -54,7 +55,7 @@ ME_COM_URL            ?= 1
 ME_COM_WEB            ?= 1
 ME_COM_WEBSOCK        ?= 1
 ME_COMPANY            ?= \"embedthis\"
-ME_COMPATIBLE         ?= \"2.8\"
+ME_COMPATIBLE         ?= \"2.9\"
 ME_COMPILER_FORTIFY   ?= 1
 ME_COMPILER_HAS_ATOMIC ?= 1
 ME_COMPILER_HAS_ATOMIC64 ?= 1
@@ -90,7 +91,7 @@ ME_TITLE              ?= \"Ioto\"
 ME_TLS                ?= \"openssl\"
 ME_TUNE               ?= \"size\"
 ME_USER               ?= \"ioto\"
-ME_VERSION            ?= \"2.8.1\"
+ME_VERSION            ?= \"2.9.0\"
 ME_WEB_AUTH           ?= 1
 ME_WEB_LIMITS         ?= 1
 ME_WEB_SESSIONS       ?= 1
@@ -756,6 +757,7 @@ $(BUILD)/obj/url.o: \
 #   urlLib.o
 #
 DEPS_50 += $(BUILD)/inc/url.h
+DEPS_50 += $(BUILD)/inc/crypt.h
 DEPS_50 += $(BUILD)/inc/websock.h
 
 $(BUILD)/obj/urlLib.o: \

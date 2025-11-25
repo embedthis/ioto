@@ -1,0 +1,1333 @@
+<h1>DB API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a62dc7214015a96f5ae4ece57c7912652" class="nameRef">dbAddCallback</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a598628879246940c2425fca4d6d10be4" class="ref">DbCallbackProc</a> proc, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, void *arg, int events)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a database change trigger callback.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a0ba4f9dcda8a04dbf819d379c5045a19" class="nameRef">dbAddContext</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add global context properties.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a817a2b32085360202e18676ca84987e6" class="nameRef">dbClose</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Close a database.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a55d7a82902fbc1e80478bcb9531d7e80" class="nameRef">dbCompact</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Compact database storage.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1a27a81f8aa063986c0daed0e7e444618a" class="nameRef">dbCreate</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create a new item.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a7ec73d8b6004733d7d06ba092b6e70f7" class="nameRef">dbField</a>(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a field value from an item as a string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#db_8h_1ac5c48a1aa891b0d314edb51b058b9010" class="nameRef">dbFieldBool</a>(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a field value from an item as a boolean.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a></td><td><a href="#db_8h_1a7a4127d0731ee682422c9e0b9c5227f7" class="nameRef">dbFieldDate</a>(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a field value from an item as a date.</td></tr>
+<tr class="apiDef"><td class="apiType">double</td><td><a href="#db_8h_1a93fac43e0a7ac5b4c94876481db1724f" class="nameRef">dbFieldDouble</a>(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a field value from an item as a double.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a></td><td><a href="#db_8h_1adf6c90c797efa314f03c8788ce146a56" class="nameRef">dbFieldNumber</a>(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a field value from an item as a number (64 bit).</td></tr>
+<tr class="apiDef"><td class="apiType">RList *</td><td><a href="#db_8h_1a19555163a4a3737d5d950725778c0fab" class="nameRef">dbFind</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Find matching items in the database.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1af4e1cd95a0b85bfc359c38972507c6a4" class="nameRef">dbFindOne</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Find the first matching item.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1a223bfe562a1114462739b20a76779020" class="nameRef">dbGet</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read a matching item from the database.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#db_8h_1a9c2f71d0b5a0b32593eb431eadad2b4e" class="nameRef">dbGetBool</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a field value from an item as a boolean.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a></td><td><a href="#db_8h_1ac33ea5574cf2527147ca17b20678f177" class="nameRef">dbGetDate</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a field value from an item as a date.</td></tr>
+<tr class="apiDef"><td class="apiType">double</td><td><a href="#db_8h_1ac135bd9fcbde2bc6002843612b45cae1" class="nameRef">dbGetDouble</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, double defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a field value from an item as a double.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a68c645819afd433401b549ea0d2b9265" class="nameRef">dbGetError</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get an error message for the most recent API call.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a6cdd3662fa173ff72d3a6fe6e0d264b0" class="nameRef">dbGetField</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a field from a matching item from the database.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_db_model" class="ref">DbModel</a> *</td><td><a href="#db_8h_1abe843d70029f9ca78a6a4460705b281f" class="nameRef">dbGetItemModel</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a345f346d42b058bfb29a4e0ea2123bcc" class="ref">CDbItem</a> *item)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the model object for a data item.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_db_model" class="ref">DbModel</a> *</td><td><a href="#db_8h_1ab0bcccd61b81665fc0de2c47328cccae" class="nameRef">dbGetModel</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the model object for a model name.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a></td><td><a href="#db_8h_1a01f96a2511bdb4a7c4964090a0b8ed8e" class="nameRef">dbGetNum</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a field value from an item as a number.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a1ae9db148e4a74ad7db872abe80fc2f0" class="nameRef">dbGetSortKey</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the primary sort key field name.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#db_8h_1adc0ed3ef07f0a5d2efdb8aad23332724" class="nameRef">dbGetUID</a>(<a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Generate a unique identifier of specified length.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#db_8h_1a7705cd7aab47118a54d239bee10e14ca" class="nameRef">dbGetULID</a>(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> when)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Generate a Universally Unique Lexicographically Sortable Identifier (ULID).</td></tr>
+<tr class="apiDef"><td class="apiType">const Json *</td><td><a href="#db_8h_1a0292a25ed09d2e3f3b18b24d96e29714" class="nameRef">dbJson</a>(const DbItem *item)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get JSON object representing a database item.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#db_8h_1a60f05028c4277da6f8ea7aa5e3b38ab5" class="nameRef">dbListToString</a>(RList *list)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert item list to JSON string representation.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#db_8h_1afe8e76b8ac0e2f2a1841a643c0dd08e3" class="nameRef">dbLoadData</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load data from JSON file into database.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#db_8h_1ae834092f3e68479ce446b05e20db8e00" class="nameRef">dbLoadDataItems</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="json.html#struct_json" class="ref">Json</a> *json, <a href="json.html#struct_json_node" class="ref">JsonNode</a> *parent)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load data from JSON object into database.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1aeb13510a378a3e4598fd77efc7c8067f" class="nameRef">dbNext</a>(<a href="#struct_db" class="ref">Db</a> *db, RList *list)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the next key when using paginated find requests.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_db" class="ref">Db</a> *</td><td><a href="#db_8h_1ad003155773acce338a9f216f1ee5311d" class="nameRef">dbOpen</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *schema, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Open a database.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a10f326596d6f85468744ce9b078d8766" class="nameRef">dbPrint</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Print all database items to stdout.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a594fe18fa786f6b0d361224c084f2345" class="nameRef">dbPrintItem</a>(const DbItem *item)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Print database item to stdout.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a013362efa50faca8a44d39c956feeea2" class="nameRef">dbPrintProperties</a>(<a href="json.html#struct_json" class="ref">Json</a> *properties)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Print JSON properties to stdout.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#db_8h_1a638bab0da2242ac85b939ca38ed39cb6" class="nameRef">dbPropsToJson</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *props[])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a list of keyword / value pairs into a JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#db_8h_1a60fb164a45e6836efe1e8eb66c96044d" class="nameRef">dbRemove</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove matching items in the database.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a6d6b5e56611f20c162353aebe76ab12a" class="nameRef">dbRemoveCallback</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a598628879246940c2425fca4d6d10be4" class="ref">DbCallbackProc</a> proc, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a database change trigger callback.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#db_8h_1afdd1b3998e9c685368fc6e46c000aaf1" class="nameRef">dbRemoveExpired</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> notify)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove expired database items.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#db_8h_1a6d9af9a8f9db7599aaed5e80d023cf5f" class="nameRef">dbSave</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *filename)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Save the database.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1adb79d1cd9d2c92ebc841a9ab7d0ae463" class="nameRef">dbSetBool</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value as a boolean.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1a36ef1c2a6986e71ff015525221d98194" class="nameRef">dbSetDate</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value as a date.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1ac79a13ad877d793b1a967a0781ff418a" class="nameRef">dbSetDouble</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, double value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value as a double.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1a8c4926ebc5d7b210f9a655bf7745176c" class="nameRef">dbSetField</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#db_8h_1a5d1f0b847cc1a7f6b9af132b8f9768da" class="nameRef">dbSetJournalParams</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure database journaling parameters.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1ab3e318da0fc9f0f3ca79cc85f8205222" class="nameRef">dbSetNum</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value as a number.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1ae8a7c4c0767d9a6ceedc96d1e20a82d5" class="nameRef">dbSetString</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a database item field value as a string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a8be65a6182e50bcec490e0179a1f96c4" class="nameRef">dbString</a>(const DbItem *item, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert database item to JSON string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#db_8h_1a1c86c71cf195d693cecc83409c0794da" class="nameRef">dbStringToJson</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a string into Json properties.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#db_8h_1a199036fe1d8df7ebba445e14b656710f" class="nameRef">dbType</a>(<a href="#struct_db" class="ref">Db</a> *db)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the type field of database items.</td></tr>
+<tr class="apiDef"><td class="apiType">const DbItem *</td><td><a href="#db_8h_1ae50a9f63cbeecd020973a67e405cce04" class="nameRef">dbUpdate</a>(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update an item.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_db" class="nameRef">Db</a></td><td class="apiBrief">Main database instance structure.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#db_8h_1a598628879246940c2425fca4d6d10be4" class="nameRef">DbCallbackProc</a></td><td class="apiBrief">Database change notification callback.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_db_item" class="nameRef">DbItem</a></td><td class="apiBrief">Database items stored in RB indexes.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_db_model" class="nameRef">DbModel</a></td><td class="apiBrief">Database model schema definition.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_db_params" class="nameRef">DbParams</a></td><td class="apiBrief">Database parameters.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a540d97c133f81cf3d6ab3da55f02fcab" class="nameRef">DB_INMEM</a>&nbsp;&nbsp;&nbsp;-2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Don&apos;t persist change to storage - preserve in memory only.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a67783038fa195e408a72a367e6fc2c55" class="nameRef">DB_JSON</a>&nbsp;&nbsp;&nbsp;dbStringToJson(__VA_ARGS__)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Macro for supplying API properties as a string in JSON format.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a08c2da7b4a86fa837b2bde5ff372d30d" class="nameRef">DB_MAX_ITEM</a>&nbsp;&nbsp;&nbsp;(256 * 1024)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum database item length.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a4335c87dea52561d3a2d9fec86fc21fb" class="nameRef">DB_MAX_KEY</a>&nbsp;&nbsp;&nbsp;1024</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum sort key length.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a69497b5e485696815049be8023f01a6d" class="nameRef">DB_MAX_LOG_AGE</a>&nbsp;&nbsp;&nbsp;(60 * TPS)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum age of log file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a29ee8ecb87f3a9137f9aa7ced8d95ffb" class="nameRef">DB_MAX_LOG_SIZE</a>&nbsp;&nbsp;&nbsp;(1024 * 1024)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum journal size.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1abdc2b79f21ab2fa38ad3e15452e22c59" class="nameRef">DB_NODELAY</a>&nbsp;&nbsp;&nbsp;-1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Don&apos;t delay, persist immediately.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a49ea76dcc0b1cb8cfedcee5847c979d2" class="nameRef">DB_OPEN_RESET</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Reset (erase) database on open.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1a718a3b5bbc61286511cf431bd41e05ce" class="nameRef">DB_PARAMS</a>&nbsp;&nbsp;&nbsp;<initializer>((<ref refid="struct_db_params" kindref="compound">DbParams</ref>[]){ { .zero = 0, __VA_ARGS__ } })</initializer></td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Macro for supplying API parameters.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1abb1dd1472a3f3cfb4b680ceaf578087c" class="nameRef">DB_PROPS</a>&nbsp;&nbsp;&nbsp;dbPropsToJson((cchar*[]) { __VA_ARGS__, NULL })</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Macro for supplying API properties as key/value pairs.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#db_8h_1aa93c9dfd74135e8e29a17235a0d8b138" class="nameRef">DB_READ_ONLY</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Database flags.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="db_8h_1a598628879246940c2425fca4d6d10be4"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void(* DbCallbackProc) (void *arg, struct Db *db, struct DbModel *model, struct DbItem *item, struct DbParams *params, cchar *cmd, int events)
+  </div>
+  <div class="apiDetail">
+<p>Database change notification callback.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Called when database items are modified, allowing applications to respond to data changes. Callbacks can be registered for specific events and models to enable features like cloud synchronization, audit logging, or cache invalidation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">arg</td><td>User-defined argument provided when registering the callback.</td></tr>
+    <tr><td class="param">db</td><td>Database instance where the change occurred.</td></tr>
+    <tr><td class="param">model</td><td>Schema model describing the item&apos;s structure and validation rules.</td></tr>
+    <tr><td class="param">item</td><td>Database item that was modified.</td></tr>
+    <tr><td class="param">params</td><td>API parameters used in the operation that triggered the change.</td></tr>
+    <tr><td class="param">cmd</td><td>Type of change operation: &quot;create&quot;, &quot;update&quot;, or &quot;remove&quot;.</td></tr>
+    <tr><td class="param">events</td><td>Event types that triggered this callback: DB_ON_CHANGE, DB_ON_COMMIT, or both.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_db"></a>
+<div class="api">
+  <div class="prototype">Db</div>
+  <div class="apiDetail">
+<p>Main database instance structure.</p>
+    <dl><dt><b>Description</b>:</dt><dd>High-performance NoSQL embedded database inspired by DynamoDB design principles. Stores JSON documents with schema-based validation and efficient red/black tree indexing. Provides transaction journaling for crash recovery, configurable persistence policies, and optional cloud synchronization capabilities. Designed for embedded applications requiring fast local data access with minimal memory footprint.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">RList *</td><td>callbacks</td><td>
+Database change notification triggers.
+</td></tr>
+<tr><td class="param">RHash *</td><td>changes</td><td>
+Hash of pending changes.
+</td></tr>
+<tr><td class="param">int</td><td>code</td><td>
+API error code.
+</td></tr>
+<tr><td class="param">REvent</td><td>commitEvent</td><td>
+Timeout for commit event.
+</td></tr>
+<tr><td class="param">Json *</td><td>context</td><td>
+Global context properties applied to all API operations.
+</td></tr>
+<tr><td class="param">Ticks</td><td>due</td><td>
+When delayed commits are due.
+</td></tr>
+<tr><td class="param">char *</td><td>error</td><td>
+API error message.
+</td></tr>
+<tr><td class="param">int</td><td>flags</td><td>
+Database configuration flags (reserved for future use).
+</td></tr>
+<tr><td class="param">FILE *</td><td>journal</td><td>
+Journal file descriptor.
+</td></tr>
+<tr><td class="param">Ticks</td><td>journalCreated</td><td>
+When journal file recreated.
+</td></tr>
+<tr><td class="param">bool</td><td>journalError</td><td>
+Journal I/O error.
+</td></tr>
+<tr><td class="param">REvent</td><td>journalEvent</td><td>
+Timeout for journal save.
+</td></tr>
+<tr><td class="param">char *</td><td>journalPath</td><td>
+On-disk journal filename.
+</td></tr>
+<tr><td class="param">size_t</td><td>journalSize</td><td>
+Current size of journal file.
+</td></tr>
+<tr><td class="param">Ticks</td><td>maxJournalAge</td><td>
+Maximum age of journal file before saving.
+</td></tr>
+<tr><td class="param">size_t</td><td>maxJournalSize</td><td>
+Maximum size of the journal before saving.
+</td></tr>
+<tr><td class="param">RHash *</td><td>models</td><td>
+List of schema models.
+</td></tr>
+<tr><td class="param">bool</td><td>needSave</td><td>
+Database needs saving.
+</td></tr>
+<tr><td class="param">char *</td><td>path</td><td>
+On-disk path.
+</td></tr>
+<tr><td class="param">RbTree *</td><td>primary</td><td>
+Red/black tree primary index.
+</td></tr>
+<tr><td class="param">Json *</td><td>schema</td><td>
+Database schema defining models, fields, and validation rules.
+</td></tr>
+<tr><td class="param">bool</td><td>servicing</td><td>
+Servicing database.
+</td></tr>
+<tr><td class="param">bool</td><td>timestamps</td><td>
+Maintain created/updated timestamps (if in schema).
+</td></tr>
+<tr><td class="param">cchar *</td><td>type</td><td>
+Name of the field used to identify item types in the schema.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_db_item"></a>
+<div class="api">
+  <div class="prototype">DbItem</div>
+  <div class="apiDetail">
+<p>Database items stored in RB indexes.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">uint</td><td>allocatedName</td><td>
+The name is allocated and must be freed when removed.
+</td></tr>
+<tr><td class="param">uint</td><td>allocatedValue</td><td>
+The value is allocated and must be freed when removed.
+</td></tr>
+<tr><td class="param">uint</td><td>delayed</td><td>
+Update to journal and cloud delayed.
+</td></tr>
+<tr><td class="param">Json *</td><td>json</td><td>
+Parsed JSON value of the item, takes precedence over value.
+</td></tr>
+<tr><td class="param">char *</td><td>key</td><td>
+Indexed name of the item. 
+Used as the sort key.
+</td></tr>
+<tr><td class="param">char *</td><td>value</td><td>
+Text value of the item (JSON string), may be stale if json set.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<a name="struct_db_model"></a>
+<div class="api">
+  <div class="prototype">DbModel</div>
+  <div class="apiDetail">
+<p>Database model schema definition.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Defines an application entity type with its supported fields, validation rules, and behavior. Models provide schema validation, field type checking, and control persistence and synchronization policies for groups of related items.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">Time</td><td>delay</td><td>
+Time to delay before committing changes.
+</td></tr>
+<tr><td class="param">cchar *</td><td>expiresField</td><td>
+Name of the TTL field.
+</td></tr>
+<tr><td class="param">RHash *</td><td>fields</td><td>
+Hash of model fields.
+</td></tr>
+<tr><td class="param">uint</td><td>mem</td><td>
+Keep model in-memory and not persisted to storage.
+</td></tr>
+<tr><td class="param">cchar *</td><td>name</td><td>
+Name of the model.
+</td></tr>
+<tr><td class="param">uint</td><td>sync</td><td>
+Sync model items to the cloud.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_db_params"></a>
+<div class="api">
+  <div class="prototype">DbParams</div>
+  <div class="apiDetail">
+<p>Database parameters.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">cvoid *</td><td>arg</td><td>
+Argument to where callback.
+</td></tr>
+<tr><td class="param">bool</td><td>bypass</td><td>
+Bypass changes.
+</td></tr>
+<tr><td class="param">int</td><td>delay</td><td>
+Delay before commmiting changes (Delay in msec, -1 == nocommit).
+</td></tr>
+<tr><td class="param">cchar *</td><td>index</td><td>
+Index name. 
+Default to &quot;primary&quot;. Currently only supports &quot;primary&quot;.
+</td></tr>
+<tr><td class="param">int</td><td>limit</td><td>
+Limit the number of returned or removed items.
+</td></tr>
+<tr><td class="param">bool</td><td>log</td><td>
+Emit trace information to the log.
+</td></tr>
+<tr><td class="param">bool</td><td>mem</td><td>
+Update in memory only.
+</td></tr>
+<tr><td class="param">cchar *</td><td>next</td><td>
+Pagination token starting point for the next page of results.
+</td></tr>
+<tr><td class="param">bool</td><td>upsert</td><td>
+Update on create if present. 
+Create on update if missing.
+</td></tr>
+<tr><td class="param">DbWhere</td><td>where</td><td>
+Where query expression callback.
+</td></tr>
+<tr><td class="param">bool</td><td>zero</td><td>
+Internal: force zero initialization.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="db_8h_1a62dc7214015a96f5ae4ece57c7912652"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbAddCallback
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a598628879246940c2425fca4d6d10be4" class="ref">DbCallbackProc</a> proc, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, void *arg, int events)
+  </div>
+  <div class="apiDetail">
+<p>Add a database change trigger callback.</p>
+    <dl><dt><b>Description</b>:</dt><dd>When database items are changed, the trigger callbacks are invoked to notify regarding the change.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">proc</td><td>Database trigger function.</td></tr>
+    <tr><td class="param">model</td><td>Target model. If null, then match all models.</td></tr>
+    <tr><td class="param">arg</td><td>Argument to pass to the trigger function.</td></tr>
+    <tr><td class="param">events</td><td>Events of interest. Set to DB_ON_CHANGE, DB_ON_COMMIT (or both).</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a0ba4f9dcda8a04dbf819d379c5045a19"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbAddContext
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)
+  </div>
+  <div class="apiDetail">
+<p>Add global context properties.</p>
+    <dl><dt><b>Description</b>:</dt><dd>A global context property can be added to the set of properties supplied to each API. These property values are added at the top level only. Dotted notation is not supported.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">name</td><td>Name of the property.</td></tr>
+    <tr><td class="param">value</td><td>Property value to set.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a817a2b32085360202e18676ca84987e6"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbClose
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Close a database.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will immediately save any unsaved changes and then close the database.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a55d7a82902fbc1e80478bcb9531d7e80"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbCompact
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Compact database storage.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Optimizes database storage by converting parsed JSON items back to compact string representations. This reduces memory usage and improves storage efficiency by eliminating redundant parsed JSON structures while preserving all data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a27a81f8aa063986c0daed0e7e444618a"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbCreate
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Create a new item.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Create a new item of the required model type.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model entity to create. The model determines the valid set of properties for the created item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to create. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ bool upsert : 1; // Update on create if present. Create on update if missing. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The created database item. The <a class="ref" href="#struct_db_item">DbItem</a> &quot;name&quot; property is the indexed key value. The value &quot;json&quot; property contains the item values as a cached JSON object. Caller must not free the returned item. Returns null on errors. Use dbGetError to retrieve an error message.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a7ec73d8b6004733d7d06ba092b6e70f7"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbField
+(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a field value from an item as a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use to examine an item returned via dbGet or other APIs that return items.</dd></dl>
+    <dl><dt></dt><dd>: WARNING: This function returns a pointer to a string that is part of the <a class="ref" href="#struct_db_item">DbItem</a> structure. Subsequent updates to the item will invalidate the pointer.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from other APIs.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the field to examine.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a string. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ac5c48a1aa891b0d314edb51b058b9010"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    dbFieldBool
+(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a field value from an item as a boolean.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use to examine an item returned via dbGet or other APIs that return items. Will return true if the item field value is set to &quot;true&quot; or &quot;1&quot;.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from other APIs.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the field to examine.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a boolean.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a7a4127d0731ee682422c9e0b9c5227f7"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a>
+    dbFieldDate
+(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a field value from an item as a date.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use to examine an item returned via dbGet or other APIs that return items. This requires that the date value be stored as an ISO date string.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from other APIs.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the field to examine.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a date in a Time value. This is the time in milliseconds since Jan 1 1970.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a93fac43e0a7ac5b4c94876481db1724f"></a>
+<div class="api">
+  <div class="prototype">
+    double
+    dbFieldDouble
+(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a field value from an item as a double.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use to examine an item returned via dbGet or other APIs that return items. Converts numeric field values to double precision floating point format.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from other APIs.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the field to examine.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a double.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1adf6c90c797efa314f03c8788ce146a56"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a>
+    dbFieldNumber
+(const DbItem *item, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a field value from an item as a number (64 bit).</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use to examine an item returned via dbGet or other APIs that return items.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from other APIs.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the field to examine.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a 64 bit integer.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a19555163a4a3737d5d950725778c0fab"></a>
+<div class="api">
+  <div class="prototype">
+    RList *
+    dbFind
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Find matching items in the database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing item properties to match. Use the macro DB_PROP(name, value,
+   ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12 Wishbury
+   lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ int limit; // Limit the number of returned or removed items. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/>
+ cchar *next; // Next pagination token to use as the starting point for the next page of results. <br/>
+ DbWhere where; // Where query expression callback function. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A list of matching items. Items can be enumerated or accessed using ITERATE_ITEMS, rGetNextItem and rGetItem. Caller must free the result using rFreeList.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1af4e1cd95a0b85bfc359c38972507c6a4"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbFindOne
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Find the first matching item.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing item properties to match. Use the macro DB_PROP(name, value,
+   ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12 Wishbury
+   lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/>
+ DbWhere where; // Where query expression callback function. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The first matching item. Returns null if no match found.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a223bfe562a1114462739b20a76779020"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbGet
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Read a matching item from the database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name, value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12 Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The matching database item. The <a class="ref" href="#struct_db_item">DbItem</a> &quot;name&quot; property is the indexed key. The value &quot;json&quot; property contains the item values as a cached JSON object. If null, the &quot;value&quot; property contains the item&apos;s value as an unparsed JSON string. Use dbField to access the individual field values in the item. Caller must not free the returned item.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a9c2f71d0b5a0b32593eb431eadad2b4e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    dbGetBool
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a field value from an item as a boolean.</p>
+    <dl><dt><b>Description</b>:</dt><dd>If the field is not found, the default value is returned. Use dbGetField if you must know if the field is missing.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to return.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the field is not found.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a boolean.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ac33ea5574cf2527147ca17b20678f177"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a>
+    dbGetDate
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a field value from an item as a date.</p>
+    <dl><dt><b>Description</b>:</dt><dd>If the field is not found, the default value is returned. Use dbGetField if you must know if the field is missing.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to return.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the field is not found.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a date of seconds since epoch (Jan 1 1970).</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ac135bd9fcbde2bc6002843612b45cae1"></a>
+<div class="api">
+  <div class="prototype">
+    double
+    dbGetDouble
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, double defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a field value from an item as a double.</p>
+    <dl><dt><b>Description</b>:</dt><dd>If the field is not found, the default value is returned. Use dbGetField if you must know if the field is missing.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to return.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the field is not found.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a double.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a68c645819afd433401b549ea0d2b9265"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbGetError
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Get an error message for the most recent API call.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A static error message string. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a6cdd3662fa173ff72d3a6fe6e0d264b0"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbGetField
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Get a field from a matching item from the database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to return.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A string containing the required field in the data item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1abe843d70029f9ca78a6a4460705b281f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_db_model" class="ref">DbModel</a> *
+    dbGetItemModel
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a345f346d42b058bfb29a4e0ea2123bcc" class="ref">CDbItem</a> *item)
+  </div>
+  <div class="apiDetail">
+<p>Get the model object for a data item.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">item</td><td>Data item with a model type field.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A model instance.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ab0bcccd61b81665fc0de2c47328cccae"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_db_model" class="ref">DbModel</a> *
+    dbGetModel
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)
+  </div>
+  <div class="apiDetail">
+<p>Get the model object for a model name.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">name</td><td>Model name.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A model instance.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a01f96a2511bdb4a7c4964090a0b8ed8e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a>
+    dbGetNum
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a field value from an item as a number.</p>
+    <dl><dt><b>Description</b>:</dt><dd>If the field is not found, the default value is returned. Use dbGetField if you must know if the field is missing.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to return.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the field is not found.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The field value as a number.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a1ae9db148e4a74ad7db872abe80fc2f0"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbGetSortKey
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Get the primary sort key field name.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Returns the name of the field used as the primary sort key for database items. This field determines the ordering of items in the primary index.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Name of the sort key field. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1adc0ed3ef07f0a5d2efdb8aad23332724"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    dbGetUID
+(<a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)
+  </div>
+  <div class="apiDetail">
+<p>Generate a unique identifier of specified length.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Creates a random unique identifier string of the requested size. Uses cryptographically secure random number generation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">size</td><td>Length of the generated UID string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Newly allocated UID string. Caller must free with rFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a7705cd7aab47118a54d239bee10e14ca"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    dbGetULID
+(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> when)
+  </div>
+  <div class="apiDetail">
+<p>Generate a Universally Unique Lexicographically Sortable Identifier (ULID).</p>
+    <dl><dt><b>Description</b>:</dt><dd>Creates a ULID based on the specified timestamp. ULIDs are 26-character case-insensitive strings that encode both timestamp and randomness, providing sortable unique identifiers.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">when</td><td>Timestamp to embed in the ULID (milliseconds since epoch).</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Newly allocated ULID string. Caller must free with rFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a0292a25ed09d2e3f3b18b24d96e29714"></a>
+<div class="api">
+  <div class="prototype">
+    const Json *
+    dbJson
+(const DbItem *item)
+  </div>
+  <div class="apiDetail">
+<p>Get JSON object representing a database item.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieve the parsed JSON representation of a database item. The returned JSON object provides access to all item fields and values.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from dbCreate, dbGet, dbFind or dbUpdate.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON object containing item data. This is an internal reference - caller must NOT modify or free. Returns NULL if item is invalid.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a60f05028c4277da6f8ea7aa5e3b38ab5"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    dbListToString
+(RList *list)
+  </div>
+  <div class="apiDetail">
+<p>Convert item list to JSON string representation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Serializes a list of database items into a JSON string format. Useful for exporting query results or transmitting data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">list</td><td>List of <a class="ref" href="#struct_db_item">DbItem</a> objects returned from dbFind.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Newly allocated JSON string containing the serialized items. Caller must free with rFree. Returns NULL if list is empty or invalid.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1afe8e76b8ac0e2f2a1841a643c0dd08e3"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    dbLoadData
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Load data from JSON file into database.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Loads JSON data from a file into the database. Existing items with matching keys will be overwritten. This operation is useful for loading initial state data, test fixtures, or restoring database content from backups.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    <tr><td class="param">path</td><td>Path to JSON data file to load.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ae834092f3e68479ce446b05e20db8e00"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    dbLoadDataItems
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="json.html#struct_json" class="ref">Json</a> *json, <a href="json.html#struct_json_node" class="ref">JsonNode</a> *parent)
+  </div>
+  <div class="apiDetail">
+<p>Load data from JSON object into database.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Loads JSON data from a parsed JSON object into the database. Existing items with matching keys will be overwritten. This operation processes data items from the specified parent node in the JSON structure.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    <tr><td class="param">json</td><td>Parsed JSON object containing data to load.</td></tr>
+    <tr><td class="param">parent</td><td>Parent JSON node containing the data items to load.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1aeb13510a378a3e4598fd77efc7c8067f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbNext
+(<a href="#struct_db" class="ref">Db</a> *db, RList *list)
+  </div>
+  <div class="apiDetail">
+<p>Get the next key when using paginated find requests.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">list</td><td>A list returned from a prior dbFind request.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A reference into the last item returned in the list.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ad003155773acce338a9f216f1ee5311d"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_db" class="ref">Db</a> *
+    dbOpen
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *schema, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Open a database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Filename for from which to load and save the database when calling dbSave. On open, an initial load is performed from the file at path.</td></tr>
+    <tr><td class="param">schema</td><td>OneTable data schema describing the indexes and data models.</td></tr>
+    <tr><td class="param">flags</td><td>Reserved. Set to zero.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a10f326596d6f85468744ce9b078d8766"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbPrint
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Print all database items to stdout.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Outputs a formatted representation of all items in the database to standard output. Useful for debugging and examining database contents during development.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a594fe18fa786f6b0d361224c084f2345"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbPrintItem
+(const DbItem *item)
+  </div>
+  <div class="apiDetail">
+<p>Print database item to stdout.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Outputs a formatted representation of a database item to standard output. Useful for debugging and development.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from dbCreate, dbGet, dbFind or dbUpdate.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a013362efa50faca8a44d39c956feeea2"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbPrintProperties
+(<a href="json.html#struct_json" class="ref">Json</a> *properties)
+  </div>
+  <div class="apiDetail">
+<p>Print JSON properties to stdout.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Outputs a formatted representation of JSON properties to standard output. Useful for debugging and examining property values during development.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">properties</td><td>JSON object containing properties to display.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a638bab0da2242ac85b939ca38ed39cb6"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    dbPropsToJson
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *props)
+  </div>
+  <div class="apiDetail">
+<p>Convert a list of keyword / value pairs into a JSON object.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">props</td><td>NULL terminated array of keyword / value pairs.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A JSON object containing the supplied property values.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a60fb164a45e6836efe1e8eb66c96044d"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    dbRemove
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Remove matching items in the database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for matching items.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. int limit; // Limit the number of items to remove. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A count of the number of items removed.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a6d6b5e56611f20c162353aebe76ab12a"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbRemoveCallback
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="#db_8h_1a598628879246940c2425fca4d6d10be4" class="ref">DbCallbackProc</a> proc, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Remove a database change trigger callback.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">proc</td><td>Database trigger function.</td></tr>
+    <tr><td class="param">model</td><td>Target model. If null, then match all models.</td></tr>
+    <tr><td class="param">arg</td><td>Argument to pass to the trigger function.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1afdd1b3998e9c685368fc6e46c000aaf1"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    dbRemoveExpired
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> notify)
+  </div>
+  <div class="apiDetail">
+<p>Remove expired database items.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Removes items from the database that have exceeded their TTL (time-to-live) expiration. Items are considered expired when their TTL field value is less than the current time. This operation helps maintain database efficiency by automatically cleaning up stale data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    <tr><td class="param">notify</td><td>Set to true to invoke registered callback notifiers for each removed item.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of items removed, or negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a6d9af9a8f9db7599aaed5e80d023cf5f"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    dbSave
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *filename)
+  </div>
+  <div class="apiDetail">
+<p>Save the database.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance.</td></tr>
+    <tr><td class="param">filename</td><td>Optional filename to save data to. If set to NULL, the data is saved to the name given when opening the database via dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1adb79d1cd9d2c92ebc841a9ab7d0ae463"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetBool
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value as a boolean.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a36ef1c2a6986e71ff015525221d98194"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetDate
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value as a date.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ac79a13ad877d793b1a967a0781ff418a"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetDouble
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, double value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value as a double.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a8c4926ebc5d7b210f9a655bf7745176c"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetField
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Update a field in an existing item. The item must already exist. This sets the field value to the string value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a5d1f0b847cc1a7f6b9af132b8f9768da"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    dbSetJournalParams
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)
+  </div>
+  <div class="apiDetail">
+<p>Configure database journaling parameters.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Sets the journaling behavior for database persistence. The journal records changes before they are written to the main database file, providing crash recovery capability. Changes are automatically committed when either the delay time expires or the journal reaches the maximum size limit.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned from dbOpen.</td></tr>
+    <tr><td class="param">delay</td><td>Maximum time in milliseconds to delay before committing journal changes to the persistent database file.</td></tr>
+    <tr><td class="param">size</td><td>Maximum journal file size in bytes before flushing to the persistent database file.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ab3e318da0fc9f0f3ca79cc85f8205222"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetNum
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value as a number.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ae8a7c4c0767d9a6ceedc96d1e20a82d5"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbSetString
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fieldName, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update a database item field value as a string.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">fieldName</td><td>Name of the item field to set.</td></tr>
+    <tr><td class="param">value</td><td>Value to assign to the item&apos;s field.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to match. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a8be65a6182e50bcec490e0179a1f96c4"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbString
+(const DbItem *item, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Convert database item to JSON string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Serializes a database item into a JSON string with specified formatting options.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">item</td><td>Database item returned from dbCreate, dbGet, dbFind or dbUpdate.</td></tr>
+    <tr><td class="param">flags</td><td>Formatting options: JSON_HUMAN (pretty-printed), JSON_JSON (strict JSON), JSON_JSON5 (JSON5 format), or other jsonToString flags.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON string representation. This is an internal reference - caller must not free. Returns NULL if item is invalid.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a1c86c71cf195d693cecc83409c0794da"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    dbStringToJson
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Parse a string into Json properties.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Arguments to fmt.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A JSON object containing the supplied property values.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1a199036fe1d8df7ebba445e14b656710f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    dbType
+(<a href="#struct_db" class="ref">Db</a> *db)
+  </div>
+  <div class="apiDetail">
+<p>Get the type field of database items.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The type field used by database items. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="db_8h_1ae50a9f63cbeecd020973a67e405cce04"></a>
+<div class="api">
+  <div class="prototype">
+    const DbItem *
+    dbUpdate
+(<a href="#struct_db" class="ref">Db</a> *db, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *model, <a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#struct_db_params" class="ref">DbParams</a> *params)
+  </div>
+  <div class="apiDetail">
+<p>Update an item.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">db</td><td>Database instance returned via dbOpen.</td></tr>
+    <tr><td class="param">model</td><td>Name of the schema model for the item. Set to NULL if no model is required.</td></tr>
+    <tr><td class="param">props</td><td>JSON object containing the item properties to update. Use the macro DB_PROP(name,
+   value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to provide the properties as a JSON/5 string. For example: DB_PROP(&quot;name&quot;, name, &quot;address&quot;, &quot;12
+   Wishbury lane&quot;) or DB_JSON(&quot;{role: &apos;user&apos;}&quot;). If a model is provided, the properties are validated against the model and unknown property names will not be written to the database.</td></tr>
+    <tr><td class="param">params</td><td>List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify. <br/>
+ cchar *index; // Name of the index to use. Defaults to &quot;primary&quot;. Currently only supports &quot;primary&quot;. <br/></td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The updated item. Caller must not free. Returns null on errors. Use dbGetError to retrieve an error message.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

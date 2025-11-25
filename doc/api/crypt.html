@@ -1,0 +1,827 @@
+<h1>Crypt API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#crypt_8h_1a96bcefb0f66a265557fff0f7c99cfddb" class="nameRef">cryptCheckPassword</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *plainTextPassword, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *passwordHash)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check a plain-text password against a password hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a8dea26dc950d5f737fa7a01ad0670575" class="nameRef">cryptDecode64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode a base64 encoded string.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a637b9c1fe21be329ce333717ce76cb9e" class="nameRef">cryptDecode64Block</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> *len, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode a base64 encoded block with length and flags.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a765cd8bc3639224fefd4f02dd63d2341" class="nameRef">cryptEncode64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Encode a string using base64 encoding.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a138525835dd1856e268d8a7462f330bb" class="nameRef">cryptEncode64Block</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Encode a binary block using base64 encoding.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a53bb3111cc4fe66a452a4d96b8807e7b" class="nameRef">cryptGetFileMd5</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get an MD5 string hash for a file.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a886e279558eac905982ec9dd01782150" class="nameRef">cryptGetFileSha1</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA1 hash for the contents of a file.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a3918a05bafca23a9912c399d6e947c16" class="nameRef">cryptGetFileSha256</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA256 hash for the contents of a file.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a8c107169b8cb7ead2f11c2d81dfdf9bc" class="nameRef">cryptGetMd5</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get an MD5 hash for a block and return a string hash.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a5c7ebf3c45e3df4afe99ba08fb3ef3f4" class="nameRef">cryptGetMd5Block</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_MD5_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get an MD5 hash for a block and return a binary hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1adb726a491b0fa8e2bc37ce9986c5fad3" class="nameRef">cryptGetPassword</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prompt)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read a password from the console.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#crypt_8h_1a6cd24c6b94d4f79a6cd7fccc4601b56e" class="nameRef">cryptGetRandomBytes</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *buf, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> block)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get random data.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a4047347e2e6e53f8a39aad675082bb5c" class="nameRef">cryptGetSha1</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA1 hash for a block and return a string hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1ae786caa0cde54ecaa954d942fa4d76be" class="nameRef">cryptGetSha1Base64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA1 hash for a string and return a base-64 encoded string hash.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1ad4ee271e1feff819da43822116175237" class="nameRef">cryptGetSha1Block</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_SHA1_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA1 hash for a block and return a binary hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1abde7e28e339f858f5984d92617e816ee" class="nameRef">cryptGetSha1WithPrefix</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *buf, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get an SHA1 checksum with optional prefix string and buffer length.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1ac3cdc3af39c23c51f54657f60398d359" class="nameRef">cryptGetSha256</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA256 hash for a block and return a string hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1ab26fceda09f1d911e1b286689b61530a" class="nameRef">cryptGetSha256Base64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA256 hash for a string and return a base-64 encoded string hash.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1aa56209733ebcbec4ae64e09f5d0eee60" class="nameRef">cryptGetSha256Block</a>(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_SHA256_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a SHA256 hash for a block and return a binary hash.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1aebc7d09c661fe1a2e19738ba112cc11c" class="nameRef">cryptID</a>(<a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Generate a random ID.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1aabe5454eb87a299d478ea0cc1135aa64" class="nameRef">cryptMakePassword</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, int saltLength, int rounds)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Make a password using the Blowfish cipher (Bcrypt).</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#crypt_8h_1a9a277c9e2e62fdbffe1fb6254e17f4fe" class="nameRef">cryptMatch</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *a, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *b)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Compare two strings in constant time.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1ae0cae400d4b28a3d03f53e34bf136b88" class="nameRef">cryptMd5Finalize</a>(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> digest[CRYPT_MD5_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level MD5 hashing API to finalize an MD5 hash computation and return a binary hash result.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a0d217a57513e28700a69600bed88b933" class="nameRef">cryptMd5HashToString</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_MD5_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert an MD5 hash to a hex string.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a1135be8b80de92fe9b9d8a6da3fdd374" class="nameRef">cryptMd5Init</a>(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level MD5 hashing API to initialize an MD5 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1aa04454757dca0b25d3e14831d53196b2" class="nameRef">cryptMd5Update</a>(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a91ad9478d81a7aaf2593e8d9c3d06a14" class="ref">uint</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level MD5 hashing API to update an MD5 hash computation with a block of data.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a7742c343112244cc446d4d4f2ff278c1" class="nameRef">cryptSha1Finalize</a>(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *hash)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA1 hashing API to finalize a SHA1 hash computation and return a binary result.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a83956f0f4b84417522b9646a514fb91b" class="nameRef">cryptSha1HashToString</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_SHA1_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a SHA1 hash to a string.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a3dc6d9d22efd38e017efdb0cd64e7794" class="nameRef">cryptSha1Init</a>(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA1 hashing API to initialize a SHA1 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a7ae7d251949f78996bda26efd546ad48" class="nameRef">cryptSha1Start</a>(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA1 hashing API to start a SHA1 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1ad85de9409c2c9cc221ed6a3fc04a3075" class="nameRef">cryptSha1Term</a>(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA1 hashing API to terminate a SHA1 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1adc751b05b3ed850f242bbe32f282b4b9" class="nameRef">cryptSha1Update</a>(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx, <a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA1 hashing API to update a SHA1 hash computation with input data.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1ab5d1517a627c8de16e9a67e1353b7ba9" class="nameRef">cryptSha256Finalize</a>(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_SHA256_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA256 hashing API to finalize a SHA256 hash computation and return a binary result.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#crypt_8h_1a49ad5fadb0d63c9405e8fcf9e5adb730" class="nameRef">cryptSha256HashToString</a>(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash[CRYPT_SHA256_SIZE])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a SHA256 hash to a string.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1af0a0ee43a4a120dc41dbb5869e4ec9af" class="nameRef">cryptSha256Init</a>(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA256 hashing API to initialize a SHA256 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1adc8663fabfe111cde3738063d33b78f4" class="nameRef">cryptSha256Start</a>(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA256 hashing API to start a SHA256 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1af096d297af6dfeb0e9474aef54499af0" class="nameRef">cryptSha256Term</a>(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA256 hashing API to terminate a SHA256 hash computation.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#crypt_8h_1a7d85f2226ac376d647c2e67c8d9bd1de" class="nameRef">cryptSha256Update</a>(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx, <a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level SHA256 hashing API to update a SHA256 hash computation with input data.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_crypt_md5" class="nameRef">CryptMd5</a></td><td class="apiBrief">MD5 computation block.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_crypt_sha1" class="nameRef">CryptSha1</a></td><td class="apiBrief">SHA1 computation block.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_crypt_sha256" class="nameRef">CryptSha256</a></td><td class="apiBrief">SHA256 computation block.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1a2f2887ab7c3456ae5c4445e06b309841" class="nameRef">CRYPT_BLOWFISH</a>&nbsp;&nbsp;&nbsp;&quot;BF1&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Blowfish hash algorithm identifier tag.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1ad554a0daff7b758e482022e5e8d1f50b" class="nameRef">CRYPT_BLOWFISH_ROUNDS</a>&nbsp;&nbsp;&nbsp;128</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default number of computation rounds.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1af2a70c573a5d5ad2835bbdeba75fa4b6" class="nameRef">CRYPT_BLOWFISH_SALT_LENGTH</a>&nbsp;&nbsp;&nbsp;16</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default length of salt text in bytes.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1a61b5edd98629b0d6ff60daef795de236" class="nameRef">CRYPT_DECODE_TOKEQ</a>&nbsp;&nbsp;&nbsp;1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Decode base64 blocks up to a NULL or equals character.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1ab94ca3b5513e3c4395fdab47bdf69d62" class="nameRef">CRYPT_MD5_SIZE</a>&nbsp;&nbsp;&nbsp;16</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Size of MD5 hash in bytes.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1a6a3d3dc930650f3c457ec3e1c0771bf1" class="nameRef">CRYPT_SHA1_SIZE</a>&nbsp;&nbsp;&nbsp;20</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Size of SHA1 hash in bytes.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#crypt_8h_1ab6eeb8810d9ea2699dac3bc77ed85f39" class="nameRef">CRYPT_SHA256_SIZE</a>&nbsp;&nbsp;&nbsp;32</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Size of SHA256 hash in bytes.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="struct_crypt_md5"></a>
+<div class="api">
+  <div class="prototype">CryptMd5</div>
+  <div class="apiDetail">
+<p>MD5 computation block.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">uint</td><td>state[4]</td><td>
+MD5 hashing state.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<a name="struct_crypt_sha1"></a>
+<div class="api">
+  <div class="prototype">CryptSha1</div>
+  <div class="apiDetail">
+<p>SHA1 computation block.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+    </table></dd></dl>
+  </div>
+</div>
+<a name="struct_crypt_sha256"></a>
+<div class="api">
+  <div class="prototype">CryptSha256</div>
+  <div class="apiDetail">
+<p>SHA256 computation block.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">uint32</td><td>state[8]</td><td>
+SHA256 computation state.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="crypt_8h_1a96bcefb0f66a265557fff0f7c99cfddb"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    cryptCheckPassword
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *plainTextPassword, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *passwordHash)
+  </div>
+  <div class="apiDetail">
+<p>Check a plain-text password against a password hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Verify a plain-text password against a previously computed Bcrypt hash. Uses constant-time comparison to prevent timing attacks.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">plainTextPassword</td><td>Input plain-text password to verify. Must not be NULL.</td></tr>
+    <tr><td class="param">passwordHash</td><td>Hash previously computed via cryptMakePassword. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the password matches the hash, false otherwise.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a8dea26dc950d5f737fa7a01ad0670575"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptDecode64
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)
+  </div>
+  <div class="apiDetail">
+<p>Decode a base64 encoded string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a Base64 encoded string back to its original form. This routine is null tolerant.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">str</td><td>Base64 encoded string to decode. May be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Null-terminated decoded string. Returns empty string if str is NULL. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a637b9c1fe21be329ce333717ce76cb9e"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptDecode64Block
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> *len, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Decode a base64 encoded block with length and flags.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a Base64 encoded string back to binary data with precise length control.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Base64 encoded string to decode. Must not be NULL.</td></tr>
+    <tr><td class="param">len</td><td>Pointer to receive the length of the decoded block. Must not be NULL.</td></tr>
+    <tr><td class="param">flags</td><td>Decoding flags. Use CRYPT_DECODE_TOKEQ to stop decoding at &apos;=&apos; or end of block.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Decoded binary data. Caller must free. The length is returned via *len.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a765cd8bc3639224fefd4f02dd63d2341"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptEncode64
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)
+  </div>
+  <div class="apiDetail">
+<p>Encode a string using base64 encoding.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a null-terminated string to Base64 encoded format. This routine is null tolerant.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">str</td><td>Null-terminated string to encode. May be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Base64 encoded string. Returns empty string if str is NULL. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a138525835dd1856e268d8a7462f330bb"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptEncode64Block
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> len)
+  </div>
+  <div class="apiDetail">
+<p>Encode a binary block using base64 encoding.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert binary data to Base64 encoded format. Suitable for encoding arbitrary binary data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Binary data block to encode. Must not be NULL.</td></tr>
+    <tr><td class="param">len</td><td>Length of the block in bytes. Must be &gt;= 0.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Base64 encoded string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a53bb3111cc4fe66a452a4d96b8807e7b"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetFileMd5
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Get an MD5 string hash for a file.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute MD5 hash for the entire contents of a file. MD5 is provided for backwards compatibility and is not recommended for new applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Filename of the file to hash. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Returns NULL if file cannot be read. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a886e279558eac905982ec9dd01782150"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetFileSha1
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA1 hash for the contents of a file.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA1 hash for the entire contents of a file.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Filename of the file to hash. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Returns NULL if file cannot be read. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a3918a05bafca23a9912c399d6e947c16"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetFileSha256
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA256 hash for the contents of a file.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA256 hash for the entire contents of a file.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Filename of the file to hash. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Returns NULL if file cannot be read. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a8c107169b8cb7ead2f11c2d81dfdf9bc"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetMd5
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Get an MD5 hash for a block and return a string hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute MD5 hash for binary data and return as hexadecimal string. MD5 is provided for backwards compatibility and is not recommended for new applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a5c7ebf3c45e3df4afe99ba08fb3ef3f4"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptGetMd5Block
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Get an MD5 hash for a block and return a binary hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute MD5 hash for binary data and store result in provided array. MD5 is provided for backwards compatibility and is not recommended for new applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    <tr><td class="param">hash</td><td>Array to receive the 16-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1adb726a491b0fa8e2bc37ce9986c5fad3"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetPassword
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prompt)
+  </div>
+  <div class="apiDetail">
+<p>Read a password from the console.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Used by utility programs to read passwords from the console with echo disabled. Suitable for interactive password entry in command-line applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">prompt</td><td>Password user prompt to display. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The input password string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a6cd24c6b94d4f79a6cd7fccc4601b56e"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    cryptGetRandomBytes
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *buf, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> block)
+  </div>
+  <div class="apiDetail">
+<p>Get random data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Fill a buffer with cryptographically secure random data from the system&apos;s random number generator.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">buf</td><td>Result buffer to hold the random data. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Size of the buffer in bytes. Must be &gt; 0.</td></tr>
+    <tr><td class="param">block</td><td>Set to true to use blocking random generator that guarantees high-entropy random data even when system entropy is low.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success, negative on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a4047347e2e6e53f8a39aad675082bb5c"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetSha1
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA1 hash for a block and return a string hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA1 hash for binary data and return as hexadecimal string. SHA1 provides better security than MD5 but SHA256 is recommended for new applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the data block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ae786caa0cde54ecaa954d942fa4d76be"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetSha1Base64
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA1 hash for a string and return a base-64 encoded string hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA1 hash for string data and return as Base64 encoded string.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">s</td><td>String to hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the string in bytes. If &lt;= 0, string is treated as null-terminated.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A Base64 encoded string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ad4ee271e1feff819da43822116175237"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptGetSha1Block
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA1 hash for a block and return a binary hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA1 hash for binary data and store result in provided array. SHA1 provides better security than MD5 but SHA256 is recommended for new applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the data block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    <tr><td class="param">hash</td><td>Array to receive the 20-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1abde7e28e339f858f5984d92617e816ee"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetSha1WithPrefix
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *buf, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix)
+  </div>
+  <div class="apiDetail">
+<p>Get an SHA1 checksum with optional prefix string and buffer length.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA1 hash for binary data and return as hexadecimal string with optional prefix.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">buf</td><td>Buffer to checksum. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Size of the buffer in bytes.</td></tr>
+    <tr><td class="param">prefix</td><td>String prefix to insert at the start of the result. May be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>An allocated string containing the prefixed SHA1 checksum. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ac3cdc3af39c23c51f54657f60398d359"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetSha256
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA256 hash for a block and return a string hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA256 hash for binary data and return as hexadecimal string. SHA256 is the recommended hash algorithm for new applications requiring cryptographic security.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the data block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ab26fceda09f1d911e1b286689b61530a"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptGetSha256Base64
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA256 hash for a string and return a base-64 encoded string hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA256 hash for string data and return as Base64 encoded string.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">s</td><td>String to hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the string in bytes. If &lt;= 0, string is treated as null-terminated.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A Base64 encoded string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1aa56209733ebcbec4ae64e09f5d0eee60"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptGetSha256Block
+(<a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Get a SHA256 hash for a block and return a binary hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compute SHA256 hash for binary data and store result in provided array. SHA256 is the recommended hash algorithm for new applications requiring cryptographic security.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">block</td><td>Block of data for which to compute the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the data block in bytes. If -1, block is treated as null-terminated string.</td></tr>
+    <tr><td class="param">hash</td><td>Array to receive the 32-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1aebc7d09c661fe1a2e19738ba112cc11c"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptID
+(<a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> size)
+  </div>
+  <div class="apiDetail">
+<p>Generate a random ID.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Generate a random alphanumeric identifier string of specified length. Uses cryptographically secure random data for ID generation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">size</td><td>Size of the ID string to generate. Must be &gt; 0.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The random ID string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1aabe5454eb87a299d478ea0cc1135aa64"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptMakePassword
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, int saltLength, int rounds)
+  </div>
+  <div class="apiDetail">
+<p>Make a password using the Blowfish cipher (Bcrypt).</p>
+    <dl><dt><b>Description</b>:</dt><dd>Create a secure password hash using the Bcrypt algorithm with configurable salt and rounds. Higher round counts increase security but require more computation time.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">password</td><td>Input plain-text password to hash. Must not be NULL.</td></tr>
+    <tr><td class="param">saltLength</td><td>Length of random salt to generate. Recommended minimum is 16 bytes.</td></tr>
+    <tr><td class="param">rounds</td><td>Number of computation rounds. Default is 128. Higher values are slower but more secure.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The computed password hash string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a9a277c9e2e62fdbffe1fb6254e17f4fe"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    cryptMatch
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *a, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *b)
+  </div>
+  <div class="apiDetail">
+<p>Compare two strings in constant time.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Compare two strings using constant-time comparison to prevent timing attacks. Both strings must be the same length. Use for comparing sensitive data like passwords or tokens.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">a</td><td>First string to compare. Must not be NULL.</td></tr>
+    <tr><td class="param">b</td><td>Second string to compare. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the strings match, false otherwise.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ae0cae400d4b28a3d03f53e34bf136b88"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptMd5Finalize
+(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> digest)
+  </div>
+  <div class="apiDetail">
+<p>Low level MD5 hashing API to finalize an MD5 hash computation and return a binary hash result.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Finalize the hash computation and produce the final 16-byte MD5 hash.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>MD5 context previously used with cryptMd5Init and cryptMd5Update. Must not be NULL.</td></tr>
+    <tr><td class="param">digest</td><td>Array to receive the 16-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a0d217a57513e28700a69600bed88b933"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptMd5HashToString
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Convert an MD5 hash to a hex string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a binary MD5 hash result to hexadecimal string representation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">hash</td><td>Previously computed 16-byte MD5 hash. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a1135be8b80de92fe9b9d8a6da3fdd374"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptMd5Init
+(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level MD5 hashing API to initialize an MD5 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Initialize the MD5 context for incremental hash computation. Use this for hashing data in multiple chunks.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>MD5 context structure to initialize. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1aa04454757dca0b25d3e14831d53196b2"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptMd5Update
+(<a href="#struct_crypt_md5" class="ref">CryptMd5</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *block, <a href="osdep.html#osdep_8h_1a91ad9478d81a7aaf2593e8d9c3d06a14" class="ref">uint</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Low level MD5 hashing API to update an MD5 hash computation with a block of data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Update the hash computation with input data. Can be called multiple times to hash data incrementally.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>MD5 context previously initialized with cryptMd5Init. Must not be NULL.</td></tr>
+    <tr><td class="param">block</td><td>Input data block to add to the hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the input block in bytes.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a7742c343112244cc446d4d4f2ff278c1"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha1Finalize
+(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *hash)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA1 hashing API to finalize a SHA1 hash computation and return a binary result.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Finalize the hash computation and produce the final 20-byte SHA1 hash.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA1 context previously used with cryptSha1Init and cryptSha1Update. Must not be NULL.</td></tr>
+    <tr><td class="param">hash</td><td>Array to receive the 20-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a83956f0f4b84417522b9646a514fb91b"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptSha1HashToString
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Convert a SHA1 hash to a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a binary SHA1 hash result to hexadecimal string representation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">hash</td><td>20-byte binary hash result from cryptGetSha1Block. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a3dc6d9d22efd38e017efdb0cd64e7794"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha1Init
+(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA1 hashing API to initialize a SHA1 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Initialize the SHA1 context structure for incremental hash computation. Use this for hashing data in multiple chunks.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA1 context structure to initialize. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a7ae7d251949f78996bda26efd546ad48"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha1Start
+(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA1 hashing API to start a SHA1 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Start the hash computation after initialization. Call after cryptSha1Init.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA1 context previously initialized with cryptSha1Init. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ad85de9409c2c9cc221ed6a3fc04a3075"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha1Term
+(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA1 hashing API to terminate a SHA1 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Terminate (conclude) the hash computation and clear sensitive data from memory. This erases in-memory state and should be the final step in computing a hash.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA1 context previously used for hashing. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1adc751b05b3ed850f242bbe32f282b4b9"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha1Update
+(<a href="#struct_crypt_sha1" class="ref">CryptSha1</a> *ctx, <a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA1 hashing API to update a SHA1 hash computation with input data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Update the hash computation with a block of data. Can be called multiple times to hash data incrementally.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA1 context previously started with cryptSha1Start. Must not be NULL.</td></tr>
+    <tr><td class="param">block</td><td>Block of data to hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the input block in bytes.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1ab5d1517a627c8de16e9a67e1353b7ba9"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha256Finalize
+(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA256 hashing API to finalize a SHA256 hash computation and return a binary result.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Finalize the hash computation and produce the final 32-byte SHA256 hash.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA256 context previously used with cryptSha256Init and cryptSha256Update. Must not be NULL.</td></tr>
+    <tr><td class="param">hash</td><td>Array to receive the 32-byte binary hash result. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a49ad5fadb0d63c9405e8fcf9e5adb730"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    cryptSha256HashToString
+(<a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> hash)
+  </div>
+  <div class="apiDetail">
+<p>Convert a SHA256 hash to a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a binary SHA256 hash result to hexadecimal string representation.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">hash</td><td>32-byte binary hash result from cryptGetSha256Block. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A hexadecimal string representation of the hash. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1af0a0ee43a4a120dc41dbb5869e4ec9af"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha256Init
+(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA256 hashing API to initialize a SHA256 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Initialize the SHA256 context structure for incremental hash computation. Use this for hashing data in multiple chunks.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA256 context structure to initialize. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1adc8663fabfe111cde3738063d33b78f4"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha256Start
+(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA256 hashing API to start a SHA256 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Start the hash computation after initialization. Call after cryptSha256Init.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA256 context previously initialized with cryptSha256Init. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1af096d297af6dfeb0e9474aef54499af0"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha256Term
+(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA256 hashing API to terminate a SHA256 hash computation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Terminate (conclude) the hash computation and clear sensitive data from memory. This erases in-memory state and should be the final step in computing a hash.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA256 context previously used for hashing. Must not be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="crypt_8h_1a7d85f2226ac376d647c2e67c8d9bd1de"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    cryptSha256Update
+(<a href="#struct_crypt_sha256" class="ref">CryptSha256</a> *ctx, <a href="osdep.html#osdep_8h_1ad5d9ae5e2ea7e75aa605e36485987fc2" class="ref">cuchar</a> *block, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> length)
+  </div>
+  <div class="apiDetail">
+<p>Low level SHA256 hashing API to update a SHA256 hash computation with input data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Update the hash computation with a block of data. Can be called multiple times to hash data incrementally.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ctx</td><td>SHA256 context previously started with cryptSha256Start. Must not be NULL.</td></tr>
+    <tr><td class="param">block</td><td>Block of data to hash. Must not be NULL.</td></tr>
+    <tr><td class="param">length</td><td>Length of the input block in bytes.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

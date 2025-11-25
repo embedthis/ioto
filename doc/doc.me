@@ -1,0 +1,13 @@
+/*
+    doc.me -- Documentation build file
+ */
+
+Me.load({
+    targets: {
+        api: {
+            action: `
+                apidoc('api/ioto.dox', '${TOP}/include/ioto.h', 'IOTO')
+            `,
+        },
+    },
+})

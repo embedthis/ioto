@@ -1,0 +1,1280 @@
+<h1>URL API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="#struct_url" class="ref">Url</a> *</td><td><a href="#url_8h_1a1da23f06ad07d00f3121c4cb85ef8e83" class="nameRef">urlAlloc</a>(int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a URL object.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a82ca1db143e28a861a667b9801b69c5d" class="nameRef">urlClose</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Close the underlying network socket associated with the URL object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a20c19a833a69cc9a44dca776f9dafa27" class="nameRef">urlError</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *message, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the URL internal error message.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a54f8dc5ff096c1b6e4ee8a805f47d9eb" class="nameRef">urlFetch</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a URL.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a203bd33dd64f29743d74439b452f9b42" class="nameRef">urlFinalize</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Finalize the request.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1adec04fc772b190e00ed04821e4d4e8c0" class="nameRef">urlFree</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a URL object and all resources.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#url_8h_1a4488b10f08bcd7c87a5f4a4146c5c277" class="nameRef">urlGet</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a URL using a HTTP GET request.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#url_8h_1a9a85ae88753197cf5e2e54b53cd54022" class="nameRef">urlGetCookie</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a cookie from the response headers.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#url_8h_1a50363421fc4cc4c412fd0c570e309cbf" class="nameRef">urlGetError</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the URL internal error message.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a44ff092af2b96fc4389cb8790b33ed8e" class="nameRef">urlGetEvents</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg, char *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get Server-Sent Events from a URL.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#url_8h_1a1b76bff41cf4db68783f633dfe2e4d82" class="nameRef">urlGetHeader</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *header)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a response HTTP header from the parsed response headers.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#url_8h_1aee7b0ac45d211379352cf6bf76d81ad8" class="nameRef">urlGetJson</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a HTTP GET request and return parsed JSON.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#url_8h_1aa5a39da415e0992b9dd506ef0e6982c2" class="nameRef">urlGetJsonResponse</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the response to a URL request as a JSON object tree.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#url_8h_1a663ad6e49aacb9b0f5e51b155dff308c" class="nameRef">urlGetResponse</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the response to a URL request as a string.</td></tr>
+<tr class="apiDef"><td class="apiType">RBuf *</td><td><a href="#url_8h_1ab0c6b1302203d3e1776bb9215441dc88" class="nameRef">urlGetResponseBuf</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the response to a URL request in a buffer.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a19bf405768b5920db121a38c369a8e52" class="nameRef">urlGetStatus</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the HTTP response status code for a request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="websock.html#struct_web_socket" class="ref">WebSocket</a> *</td><td><a href="#url_8h_1a0cbe1deaf2fc8d58a94c3bc53745eae7" class="nameRef">urlGetWebSocket</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the WebSocket object for a URL request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#url_8h_1a704f1496cd111cab0d339201fb0e16fa" class="nameRef">urlJson</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Fetch a URL and return a JSON response if the HTTP request is successful.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a723ff27454c41d8c156e6bcd12c95772" class="nameRef">urlParse</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a URL into its constituent components in the <a class="ref" href="#struct_url">Url</a> structure.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#url_8h_1aeafeaf37734581e7e7c893084e1d1bd4" class="nameRef">urlParseAuthChallenge</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse the authentication challenge from the response headers.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#url_8h_1ab005d6998de2b4234b609c5cd71c98d5" class="nameRef">urlPost</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a HTTP POST request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#url_8h_1a834b17f23e55ecca76ce3bd79de4b9c0" class="nameRef">urlPostJson</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a HTTP POST request and return parsed JSON.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#url_8h_1a425989665b11ffaedad95ba34ce69b49" class="nameRef">urlRead</a>(<a href="#struct_url" class="ref">Url</a> *up, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level read routine to read response data for a request.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a5257067a4f8bd91569c856cc7a6d0db8" class="nameRef">urlSetBufLimit</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> limit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum number of bytes to buffer from the response.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1af57ad474ed78a5d44413e3132bcca774" class="nameRef">urlSetCerts</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ca, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *cert, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *revoke)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define the certificates to use with TLS connections.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1aed6954373834c0e2ee06b2a136b7654c" class="nameRef">urlSetCiphers</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ciphers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the list of available ciphers to use for TLS connections.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1ac69ca91726fe39156e48544d08ba1f03" class="nameRef">urlSetDefaultTimeout</a>(<a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the default request timeout to use for future URL instances.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a680715ad0109296e1acb29f1abca1661" class="nameRef">urlSetFlags</a>(<a href="#struct_url" class="ref">Url</a> *up, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the URL flags for request tracing and protocol control.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a7a3eaf6aa3f313c579fd233ed44d332f" class="nameRef">urlSetMaxRetries</a>(<a href="#struct_url" class="ref">Url</a> *up, int maxRetries)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum number of retries for SSE requests.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1aed5c5c5e8c58fc3acfaf5c520f906522" class="nameRef">urlSetProtocol</a>(<a href="#struct_url" class="ref">Url</a> *up, int protocol)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the HTTP protocol to use.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1acf5120b588a4d6e244c8141b6c76bbca" class="nameRef">urlSetStatus</a>(<a href="#struct_url" class="ref">Url</a> *up, int status)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the HTTP response status code.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1aa376be90cce3345633f1552a783d1812" class="nameRef">urlSetTimeout</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the request timeout to use for the specific URL object.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a192b95298d355f323c76414785f91545" class="nameRef">urlSetVerify</a>(<a href="#struct_url" class="ref">Url</a> *up, int verifyPeer, int verifyIssuer)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Control verification of TLS connections.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a427e10b68acd57c5ecf7dbcfea5f816a" class="nameRef">urlSseAsync</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define an SSE async callback.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1aa1a31a22955af894083eb1786cb59157" class="nameRef">urlSseWait</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Wait for Server-Sent Events.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a54e3a2b4dd3ec60d098d721309fbf6f0" class="nameRef">urlStart</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a <a class="ref" href="#struct_url">Url</a> request.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a76a77d5ed1ea5889bb390f293042896e" class="nameRef">urlUpload</a>(<a href="#struct_url" class="ref">Url</a> *up, RList *files, <a href="r.html#struct_r_hash" class="ref">RHash</a> *forms, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Upload files in a multipart/form-data request.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1ab53de225f2a8cfb94ffcf2d21435c838" class="nameRef">urlWait</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Wait for the connection to be closed.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a0b87aba8a4710165696a2a33f464ca95" class="nameRef">urlWebSocket</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a simple WebSocket request.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1aa78b27cc2d979165a087fd11ce4b3cd9" class="nameRef">urlWebSocketAsync</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define async WebSocket callbacks.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#url_8h_1aa633def28993db5d0f1b5bae676c9de3" class="nameRef">urlWrite</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write body data for a request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#url_8h_1a7f34822ed647e6fb28240dc07dd4b3e7" class="nameRef">urlWriteFile</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write a file contents for a request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#url_8h_1ab902c7fdb5565fbe8ecebf6e34f07a1f" class="nameRef">urlWriteFmt</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write formatted body data for a request.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a1b793312151453242c192d712cb699dc" class="nameRef">urlWriteHeaders</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write request headers using a printf style formatted pattern.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_url" class="nameRef">Url</a></td><td class="apiBrief"><a class="ref" href="#struct_url">Url</a> request object.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#url_8h_1af920211d30093c686003511cb05e312c" class="nameRef">UrlSseProc</a></td><td class="apiBrief">URL SSE callback.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a7d93a859fb10d1b518bcf856e19b1ad8" class="nameRef">URL_CODE_ACCEPTED</a>&nbsp;&nbsp;&nbsp;202</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has been accepted and processing is continuing.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a3116a0fdd4b316be0d84ea84c18f170f" class="nameRef">URL_CODE_BAD_GATEWAY</a>&nbsp;&nbsp;&nbsp;502</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server cannot act as a gateway for the given request.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ab3ea61909395c495d6960c6420375cce" class="nameRef">URL_CODE_BAD_METHOD</a>&nbsp;&nbsp;&nbsp;405</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request HTTP method was not supported by the resource.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1af8311a3483b0af310970a8c281a9879e" class="nameRef">URL_CODE_BAD_REQUEST</a>&nbsp;&nbsp;&nbsp;400</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request is malformed.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a99e24e955fa18bc5fa542016f670b79d" class="nameRef">URL_CODE_BAD_VERSION</a>&nbsp;&nbsp;&nbsp;505</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server does not support the HTTP protocol version.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a8ed30bc3ffcb5f11054a0a7d3ec9806c" class="nameRef">URL_CODE_CONFLICT</a>&nbsp;&nbsp;&nbsp;409</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request had a conflict in the request headers and URI.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a1a7683d5c37147d6a706a2e831a3f20b" class="nameRef">URL_CODE_CONTINUE</a>&nbsp;&nbsp;&nbsp;100</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Continue with request, only parial content transmitted.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a7dedc7941910b7c934df768fd1844681" class="nameRef">URL_CODE_CREATED</a>&nbsp;&nbsp;&nbsp;201</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has completed and a new resource was created.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a75c204eff1a7c0c135e97d94117f0cf7" class="nameRef">URL_CODE_EXPECTATION_FAILED</a>&nbsp;&nbsp;&nbsp;417</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server cannot satisfy the Expect header requirements.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ad6736e60e18a2aae2f3948f33ae66cb6" class="nameRef">URL_CODE_FORBIDDEN</a>&nbsp;&nbsp;&nbsp;403</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request was legal, but the server refuses to process.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1abf299ed6371e29602838680e5bd6dec0" class="nameRef">URL_CODE_GATEWAY_TIMEOUT</a>&nbsp;&nbsp;&nbsp;504</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server gateway timed out waiting for the upstream server.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ac5cac1cebc65fa58ac96399dc149adb3" class="nameRef">URL_CODE_GONE</a>&nbsp;&nbsp;&nbsp;410</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested resource is no longer available.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a768460ca84bab37aa17af09bab795f88" class="nameRef">URL_CODE_IM_A_TEAPOT</a>&nbsp;&nbsp;&nbsp;418</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Short and stout error code (RFC 2324).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a94346eaf944d93d7e63c817289cfb10a" class="nameRef">URL_CODE_INSUFFICIENT_STORAGE</a>&nbsp;&nbsp;&nbsp;507</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server has insufficient storage to complete the request.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ae73490e2ead5022394d7ecff390c9111" class="nameRef">URL_CODE_INTERNAL_SERVER_ERROR</a>&nbsp;&nbsp;&nbsp;500</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Server processing or configuration error.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1af028811707c0a8550b7a4f431f3a781f" class="nameRef">URL_CODE_LENGTH_REQUIRED</a>&nbsp;&nbsp;&nbsp;411</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request did not specify a required content length.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a3ff8a7df7520ef6a6ca62f79bf9e60e8" class="nameRef">URL_CODE_MOVED_PERMANENTLY</a>&nbsp;&nbsp;&nbsp;301</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested URI has moved permanently to a new location.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a064df7b12db237e69228d84c7af3a38d" class="nameRef">URL_CODE_MOVED_TEMPORARILY</a>&nbsp;&nbsp;&nbsp;302</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The URI has moved temporarily to a new location.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a03f2218471f17e84dd0be61fc05e091a" class="nameRef">URL_CODE_NO_CONTENT</a>&nbsp;&nbsp;&nbsp;204</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has completed and there is no response to send.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a94400c1ffdfca434e835f2d40491a736" class="nameRef">URL_CODE_NO_RESPONSE</a>&nbsp;&nbsp;&nbsp;444</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The connection was closed with no response to the client.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a16240eb5b9f06ad05e52c2e50b20101a" class="nameRef">URL_CODE_NOT_ACCEPTABLE</a>&nbsp;&nbsp;&nbsp;406</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested resource cannot generate the required content.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1abf45bcf4cec8cc3c0b381d1fe6a4b881" class="nameRef">URL_CODE_NOT_AUTHORITATIVE</a>&nbsp;&nbsp;&nbsp;203</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has completed but content may be from another source.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a732dcd0547a6c2cbf467f56ba7c5261d" class="nameRef">URL_CODE_NOT_FOUND</a>&nbsp;&nbsp;&nbsp;404</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested resource was not found.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1adcfbb319b0be6ab7665de685a878f3c2" class="nameRef">URL_CODE_NOT_IMPLEMENTED</a>&nbsp;&nbsp;&nbsp;501</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server does not recognize the request or method.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ad64e1d27619457f2cd2041baa4556606" class="nameRef">URL_CODE_NOT_MODIFIED</a>&nbsp;&nbsp;&nbsp;304</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested resource has changed since the last request.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ac822a89eaa493b61fe7984c94088a6c2" class="nameRef">URL_CODE_OK</a>&nbsp;&nbsp;&nbsp;200</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request completed successfully.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a0ea4c5208998d9f82d28a47451910e77" class="nameRef">URL_CODE_PARTIAL</a>&nbsp;&nbsp;&nbsp;206</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has completed and is returning parial content.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a37af50104b25cda88d6d7c17e4319189" class="nameRef">URL_CODE_PAYMENT_REQUIRED</a>&nbsp;&nbsp;&nbsp;402</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Reserved for future use.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a9bdecb8b8ff3e75a99ace8f02db8ba82" class="nameRef">URL_CODE_PERMANENT_REDIRECT</a>&nbsp;&nbsp;&nbsp;308</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has been permanently redirected to a new location.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1af6db18ee16ab9ff0f2c28c92a2398c96" class="nameRef">URL_CODE_PRECOND_FAILED</a>&nbsp;&nbsp;&nbsp;412</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server cannot satisfy one of the request preconditions.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a86bbdee1e5842d179ea562970a6eeb98" class="nameRef">URL_CODE_RANGE_NOT_SATISFIABLE</a>&nbsp;&nbsp;&nbsp;416</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request content range does not exist for the resource.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1af81fc030c4af63d72eac0baf2434886e" class="nameRef">URL_CODE_REQUEST_TIMEOUT</a>&nbsp;&nbsp;&nbsp;408</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server timed out waiting for the request to complete.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1aa2f4e4b3fa5c37b255ed1bcf7eb2f5b5" class="nameRef">URL_CODE_REQUEST_TOO_LARGE</a>&nbsp;&nbsp;&nbsp;413</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request is too large for the server to process.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a99a1f9497915849f661f5280aadea42d" class="nameRef">URL_CODE_REQUEST_URL_TOO_LARGE</a>&nbsp;&nbsp;&nbsp;414</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request URI is too long for the server to process.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a6a380eec95a6bebb1003f3ec9d2eece9" class="nameRef">URL_CODE_RESET</a>&nbsp;&nbsp;&nbsp;205</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request has completed with no content.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ae01685c0dd4167a3dd0823712fc7da2b" class="nameRef">URL_CODE_SEE_OTHER</a>&nbsp;&nbsp;&nbsp;303</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested URI can be found at another URI location.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1aef423d22b749a65c3d739634016764af" class="nameRef">URL_CODE_SERVICE_UNAVAILABLE</a>&nbsp;&nbsp;&nbsp;503</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The server is currently unavailable or overloaded.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a83303e05a231696357368a789fe39e62" class="nameRef">URL_CODE_SWITCHING</a>&nbsp;&nbsp;&nbsp;101</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Switching protocols.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a1e985073a1678b29b08eba8631163efc" class="nameRef">URL_CODE_TEMPORARY_REDIRECT</a>&nbsp;&nbsp;&nbsp;307</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request should be repeated at another URI location.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a1e15cb5b08e6d378f7c7587df5bcdc9c" class="nameRef">URL_CODE_UNAUTHORIZED</a>&nbsp;&nbsp;&nbsp;401</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Authentication for the request has failed.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a4ef07347fc23a3e3c7cee58eb1249efb" class="nameRef">URL_CODE_UNSUPPORTED_MEDIA_TYPE</a>&nbsp;&nbsp;&nbsp;415</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The request media type is not supported by the server or resource.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a73d106d23080785cfb519be0ab4a09cb" class="nameRef">URL_CODE_USE_PROXY</a>&nbsp;&nbsp;&nbsp;305</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>The requested resource must be accessed via the location proxy.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a9ddfe34489aaeda4a246515e2ff150de" class="nameRef">URL_HTTP_0</a>&nbsp;&nbsp;&nbsp;0x20</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Use HTTP/1.0.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a048eea740d7ce2dd6aa294ac5e120f94" class="nameRef">URL_NO_LINGER</a>&nbsp;&nbsp;&nbsp;0x40</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Use no linger and issue RST on close instead of FIN.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ad9e786499d3643bd0278e302b3b53c9f" class="nameRef">URL_SHOW_NONE</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Trace nothing.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ace0f74fadfe7aac824d904c742ef9808" class="nameRef">URL_SHOW_REQ_BODY</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Trace request body.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a30ba77c06ce6a7ed542a387d0b7351e5" class="nameRef">URL_SHOW_REQ_HEADERS</a>&nbsp;&nbsp;&nbsp;0x4</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Trace request headers.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1ae2e9f4509fe4b85f459120c6d63fe190" class="nameRef">URL_SHOW_RESP_BODY</a>&nbsp;&nbsp;&nbsp;0x8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Trace response body.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#url_8h_1a8182b5450e707186bf16d24d1c335a1b" class="nameRef">URL_SHOW_RESP_HEADERS</a>&nbsp;&nbsp;&nbsp;0x10</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Trace response headers.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="url_8h_1af920211d30093c686003511cb05e312c"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void(* UrlSseProc) (struct Url *up, ssize id, cchar *event, cchar *data, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>URL SSE callback.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">id</td><td>Event ID.</td></tr>
+    <tr><td class="param">event</td><td>Type of event.</td></tr>
+    <tr><td class="param">data</td><td>Associated data.</td></tr>
+    <tr><td class="param">arg</td><td>User argument.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_url"></a>
+<div class="api">
+  <div class="prototype">Url</div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_url">Url</a> request object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The <a class="ref" href="#struct_url">Url</a> service is a streaming HTTP request client. This service requires the use of fibers from the portable runtime.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">REvent</td><td>abortEvent</td><td>
+Abort event.
+</td></tr>
+<tr><td class="param">char *</td><td>boundary</td><td>
+HTTP request method. 
+Multipart mime upload file boundary.
+</td></tr>
+<tr><td class="param">size_t</td><td>bufLimit</td><td>
+Maximum number of bytes to buffer from the response.
+</td></tr>
+<tr><td class="param">uint</td><td>certsDefined</td><td>
+Certificates have been defined.
+</td></tr>
+<tr><td class="param">uint</td><td>chunked</td><td>
+Request is using transfer chunk encoding.
+</td></tr>
+<tr><td class="param">uint</td><td>close</td><td>
+Connection should be closed on completion of the current request.
+</td></tr>
+<tr><td class="param">Ticks</td><td>deadline</td><td>
+Request time limit expiry deadline.
+</td></tr>
+<tr><td class="param">char *</td><td>error</td><td>
+Error message for internal errors, not HTTP errors.
+</td></tr>
+<tr><td class="param">RFiber *</td><td>fiber</td><td>
+Fiber.
+</td></tr>
+<tr><td class="param">uint</td><td>finalized</td><td>
+The request body has been fully written.
+</td></tr>
+<tr><td class="param">int</td><td>flags</td><td>
+Alloc flags.
+</td></tr>
+<tr><td class="param">uint</td><td>gotResponse</td><td>
+Response has been read.
+</td></tr>
+<tr><td class="param">cchar *</td><td>hash</td><td>
+Request hash portion.
+</td></tr>
+<tr><td class="param">cchar *</td><td>host</td><td>
+Request host.
+</td></tr>
+<tr><td class="param">uint</td><td>inCallback</td><td>
+SSE callback is in progress.
+</td></tr>
+<tr><td class="param">ssize</td><td>lastEventId</td><td>
+Last event ID (SSE).
+</td></tr>
+<tr><td class="param">uint</td><td>linger</td><td>
+Connection should be kept alive for subsequent requests.
+</td></tr>
+<tr><td class="param">uint</td><td>maxRetries</td><td>
+Maximum of retries for SSE.
+</td></tr>
+<tr><td class="param">uint</td><td>needFree</td><td>
+Free the URL object.
+</td></tr>
+<tr><td class="param">uint</td><td>nonblock</td><td>
+Don&apos;t block in SSE callback.
+</td></tr>
+<tr><td class="param">cchar *</td><td>path</td><td>
+Request path without leading &quot;/&quot; and query/ref.
+</td></tr>
+<tr><td class="param">int</td><td>port</td><td>
+Request port.
+</td></tr>
+<tr><td class="param">uint</td><td>protocol</td><td>
+Use HTTP/1.0 without keep-alive. 
+Defaults to HTTP/1.1.
+</td></tr>
+<tr><td class="param">cchar *</td><td>query</td><td>
+Request query portion.
+</td></tr>
+<tr><td class="param">cchar *</td><td>redirect</td><td>
+Redirect location.
+</td></tr>
+<tr><td class="param">char *</td><td>response</td><td>
+Response as a string.
+</td></tr>
+<tr><td class="param">RBuf *</td><td>responseBuf</td><td>
+Buffer to hold complete response.
+</td></tr>
+<tr><td class="param">uint</td><td>retries</td><td>
+Number of retries for SSE.
+</td></tr>
+<tr><td class="param">RBuf *</td><td>rx</td><td>
+Buffer for progressive reading response data.
+</td></tr>
+<tr><td class="param">RBuf *</td><td>rxHeaders</td><td>
+Buffer for Rx headers.
+</td></tr>
+<tr><td class="param">ssize</td><td>rxLen</td><td>
+Length of rx body.
+</td></tr>
+<tr><td class="param">size_t</td><td>rxRemaining</td><td>
+Remaining rx data to read from the socket.
+</td></tr>
+<tr><td class="param">cchar *</td><td>scheme</td><td>
+Request scheme.
+</td></tr>
+<tr><td class="param">RSocket *</td><td>sock</td><td>
+Network socket.
+</td></tr>
+<tr><td class="param">uint</td><td>sse</td><td>
+SSE request.
+</td></tr>
+<tr><td class="param">void *</td><td>sseArg</td><td>
+SSE callback argument.
+</td></tr>
+<tr><td class="param">UrlSseProc</td><td>sseProc</td><td>
+SSE callback.
+</td></tr>
+<tr><td class="param">int</td><td>status</td><td>
+Response (rx) status.
+</td></tr>
+<tr><td class="param">Ticks</td><td>timeout</td><td>
+Request timeout.
+</td></tr>
+<tr><td class="param">RBuf *</td><td>txHeaders</td><td>
+Buffer for Tx headers.
+</td></tr>
+<tr><td class="param">ssize</td><td>txLen</td><td>
+Length of tx body.
+</td></tr>
+<tr><td class="param">uint</td><td>upgraded</td><td>
+WebSocket upgrade has been completed.
+</td></tr>
+<tr><td class="param">char *</td><td>url</td><td>
+Request URL.
+</td></tr>
+<tr><td class="param">char *</td><td>urlbuf</td><td>
+Parsed and tokenized URL.
+</td></tr>
+<tr><td class="param">WebSocket *</td><td>webSocket</td><td>
+WebSocket object.
+</td></tr>
+<tr><td class="param">uint</td><td>wroteHeaders</td><td>
+Tx headers have been written.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="url_8h_1a1da23f06ad07d00f3121c4cb85ef8e83"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_url" class="ref">Url</a> *
+    urlAlloc
+(int flags)
+  </div>
+  <div class="apiDetail">
+<p>Allocate a URL object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>A URL object represents a network connection on which one or more HTTP client requests may be issued one at a time.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">flags</td><td>Set flags to URL_SHOW_REQ_HEADERS | URL_SHOW_REQ_BODY | URL_SHOW_RESP_HEADERS | URL_SHOW_RESP_BODY. Defaults to 0. Can also call urlSetFlags to set flags.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The url object.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a82ca1db143e28a861a667b9801b69c5d"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlClose
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Close the underlying network socket associated with the URL object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is not normally necessary to invoke unless you want to force the socket connection to be recreated before issuing a subsequent request. Does not free the URL object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to close. Function is null tolerant.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a20c19a833a69cc9a44dca776f9dafa27"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlError
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *message, ...)
+  </div>
+  <div class="apiDetail">
+<p>Set the URL internal error message.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine is used to set the URL internal error message. Use $urlGetError to get the error message.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">message</td><td>Printf style message format string.</td></tr>
+    <tr><td class="param">...</td><td>Message arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative status code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a54f8dc5ff096c1b6e4ee8a805f47d9eb"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlFetch
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a URL.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine issues a HTTP request with optional body data and returns the HTTP status code. This routine will return after the response status and headers have been read and before the response body data has been read. Use $urlRead or $urlGetResponse to read the response body data. This routine will block the current fiber while waiting for the request to respond. Other fibers continue to run.</dd></dl>
+IMPORTANT - URI ENCODING FOR DIGEST AUTHENTICATION: When using Digest authentication with URIs containing special characters (spaces, %, #, etc.), the application must ensure the URL parameter is properly encoded as it will appear in the HTTP Request-Line. The library uses the URI &quot;as-is&quot; for digest HA2 calculation per RFC 7616 Section 3.4.3. Mismatch between client and server URI encoding will cause authentication failure
+Example: Use &quot;https://example.com/path%20with%20spaces&quot; not &quot;https://example.com/path with spaces&quot;
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">method</td><td>HTTP method verb.</td></tr>
+    <tr><td class="param">url</td><td>HTTP URL to fetch. For Digest authentication, this must be properly URL-encoded to match the Request-Line format. The application is responsible for URL encoding.</td></tr>
+    <tr><td class="param">data</td><td>Body data for request. Set to NULL if none.</td></tr>
+    <tr><td class="param">size</td><td>Size of body data for request. Set to 0 if none. If set to zero and data is provided, it is assumed to be a string and the size is calculated.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Response HTTP status code. Use urlGetResponse or urlRead to read the response.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a203bd33dd64f29743d74439b452f9b42"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlFinalize
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Finalize the request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine finalizes the request and signifies that the entire request including any request body data has been sent to the server. This routine MUST be called at the end of writing the request body (if any). It will read the response status and headers before returning. If using WebSockets, this should be called before calling urlWebSocketAsync to verify the WebSocket handshake. Internally, this function is implemented by calling urlWrite with a NULL buffer. This call is idempotent.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td><a class="ref" href="#struct_url">Url</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1adec04fc772b190e00ed04821e4d4e8c0"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlFree
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Free a URL object and all resources.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Releases all memory and closes any network connections associated with the URL object. After calling this function, the URL object is invalid and must not be used.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to free. Function is null tolerant.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a4488b10f08bcd7c87a5f4a4146c5c277"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    urlGet
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Get a URL using a HTTP GET request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will issue a HTTP GET request to the specified URL. If the HTTP status is 200, this will return the response body. This routine will block the current fiber while waiting for the request to complete. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Response body if successful, otherwise null. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a9a85ae88753197cf5e2e54b53cd54022"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    urlGetCookie
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)
+  </div>
+  <div class="apiDetail">
+<p>Get a cookie from the response headers.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Extracts a specific cookie value from the HTTP response headers. The request must have been completed and response headers received.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object containing the response headers.</td></tr>
+    <tr><td class="param">name</td><td>Cookie name to retrieve.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The cookie value. Returns NULL if not found. Caller must free the returned string.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a50363421fc4cc4c412fd0c570e309cbf"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    urlGetError
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the URL internal error message.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Errors are defined for unexpected errors. HTTP requests that respond with a non-200 status do not set the error message.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The URL error message for the most recent request. Returns NULL if no error message defined. Caller must NOT free this message.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a44ff092af2b96fc4389cb8790b33ed8e"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlGetEvents
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg, char *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Get Server-Sent Events from a URL.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Establish a connection to receive SSE events and invoke the callback for each event. This is a blocking call that runs until the connection closes.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">uri</td><td>URL to get events from (<ulink url="http://">http://</ulink> or <ulink url="https://">https://</ulink>).</td></tr>
+    <tr><td class="param">proc</td><td>Callback function to invoke for received SSE events.</td></tr>
+    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a1b76bff41cf4db68783f633dfe2e4d82"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    urlGetHeader
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *header)
+  </div>
+  <div class="apiDetail">
+<p>Get a response HTTP header from the parsed response headers.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">header</td><td>HTTP header name. This can be any case. For example: &quot;Authorization&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The value of the HTTP header. Returns NULL if not defined. Caller must NOT free the returned string.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aee7b0ac45d211379352cf6bf76d81ad8"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    urlGetJson
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Issue a HTTP GET request and return parsed JSON.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will issue a HTTP GET request to the specified URL and if successful, will return the parsed response body.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Parsed JSON response. If the request does not return a HTTP 200 status code or the response is not JSON, the request returns NULL. Caller must free via jsonFree().</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aa5a39da415e0992b9dd506ef0e6982c2"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    urlGetJsonResponse
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the response to a URL request as a JSON object tree.</p>
+    <dl><dt><b>Description</b>:</dt><dd>After issuing urlFetch, urlGet or urlPost, this routine may be called to read and parse the response as a JSON object. This call should only be used when the response is a valid JSON UTF-8 string. This routine buffers the entire response body and creates the parsed JSON tree. <br/><br/>
+ This routine will block the current fiber while waiting for the request to complete. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The response body as parsed JSON object. Caller must free the result via jsonFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a663ad6e49aacb9b0f5e51b155dff308c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    urlGetResponse
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the response to a URL request as a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>After issuing urlFetch, urlGet or urlPost, this routine may be called to read, buffer and return the response body. This call should only be used when the response is a valid UTF-8 string. Otherwise, use urlRead to read the response body. As this routine buffers the entire response body, it should only be used for relatively small requests. Otherwise, the memory footprint of the application may be larger than desired. <br/><br/>
+ This routine will block the current fiber while waiting for the request to complete. Other fibers continue to run. <br/><br/>
+ If receiving a binary response, use urlGetResponseBuf instead.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object containing the response data.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The response body as a null-terminated string. Caller must NOT free. Will return an empty string on errors.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1ab0c6b1302203d3e1776bb9215441dc88"></a>
+<div class="api">
+  <div class="prototype">
+    RBuf *
+    urlGetResponseBuf
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the response to a URL request in a buffer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>After issuing urlFetch, urlGet or urlPost, this routine may be called to read, buffer and return the response body. Unlike urlGetResponse, this works with both text and binary response data. As this routine buffers the entire response body, it should only be used for relatively small requests. <br/><br/>
+ This routine will block the current fiber while waiting for the request to complete. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object containing the response data.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The response body as runtime buffer. Returns NULL on errors. Caller must NOT free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a19bf405768b5920db121a38c369a8e52"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlGetStatus
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the HTTP response status code for a request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will finalize the request if not already finalized.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The HTTP status code for the most recently completed request.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a0cbe1deaf2fc8d58a94c3bc53745eae7"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="websock.html#struct_web_socket" class="ref">WebSocket</a> *
+    urlGetWebSocket
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Get the WebSocket object for a URL request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieve the underlying WebSocket object after a successful WebSocket upgrade. The URL object must have completed a WebSocket handshake.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object with established WebSocket connection.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The WebSocket object for the URL request. Returns NULL if no WebSocket connection.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a704f1496cd111cab0d339201fb0e16fa"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    urlJson
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Fetch a URL and return a JSON response if the HTTP request is successful.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine issues a HTTP request and reads and parses the response into a JSON object tree. This routine will block the current fiber while waiting for the request to complete. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">method</td><td>HTTP method verb.</td></tr>
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    <tr><td class="param">data</td><td>Body data for request. Set to NULL if none.</td></tr>
+    <tr><td class="param">size</td><td>Size of body data for request. Set to 0 if none.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;. If the headers are not provided, a headers value of &quot;Content-Type: application/json\r\n&quot; is used.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Parsed JSON response. If the request does not return a HTTP 200 status code or the response is not JSON, the request returns NULL. Use urlGetError to get any error string and urlGetStatus to get the HTTP status code. Caller must free via jsonFree().</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a723ff27454c41d8c156e6bcd12c95772"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlParse
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url)
+  </div>
+  <div class="apiDetail">
+<p>Parse a URL into its constituent components in the <a class="ref" href="#struct_url">Url</a> structure.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will parse URLs or URL portions. It will use default values for missing components. For example: &apos;<ulink url="http://&apos;">http://&apos;</ulink> will use localhost as the host, port 80 and a path of &apos;/&apos;. If passed &apos;a-string&apos;, it wll interpret this as the path portion and use &apos;http&apos; as the scheme and &apos;localhost&apos; as the host. If passed &apos;:4100/&apos; it will interpret this as the path portion and use &apos;http&apos; as the scheme and &apos;localhost&apos; as the host and port 4100. This should not be manually called while a URL request is in progress as it will invalidate the current request.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">url</td><td><a class="ref" href="#struct_url">Url</a> to parse.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if the url parses successfully.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aeafeaf37734581e7e7c893084e1d1bd4"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    urlParseAuthChallenge
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Parse the authentication challenge from the response headers.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will parse the authentication challenge from the response headers.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the authentication challenge is parsed successfully.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1ab005d6998de2b4234b609c5cd71c98d5"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    urlPost
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Issue a HTTP POST request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will issue a HTTP POST request to the specified URL with the optional body data. Regardless of the HTTP status, this will return the response body.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    <tr><td class="param">data</td><td>Body data for request. Set to NULL if none.</td></tr>
+    <tr><td class="param">size</td><td>Size of body data for request.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    <tr><td class="param">...</td><td>Headers arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Response body if successful, otherwise null. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a834b17f23e55ecca76ce3bd79de4b9c0"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    urlPostJson
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Issue a HTTP POST request and return parsed JSON.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will issue a HTTP POST request to the specified URL with the optional body data. If successful, it will return the parsed response body.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    <tr><td class="param">data</td><td>Body data for request. Set to NULL if none.</td></tr>
+    <tr><td class="param">len</td><td>Size of body data for request.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Parsed JSON response. If the request does not return a HTTP 200 status code or the response is not JSON, the request returns NULL. Caller must free via jsonFree().</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a425989665b11ffaedad95ba34ce69b49"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    urlRead
+(<a href="#struct_url" class="ref">Url</a> *up, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)
+  </div>
+  <div class="apiDetail">
+<p>Low level read routine to read response data for a request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine may be called to progressively read response data. It should not be called if using $urlGetResponse directly or indirectly via urlGet, urlPost, urlPostJson or urlJson. This routine will block the current fiber if necessary. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">buf</td><td>Buffer to read into.</td></tr>
+    <tr><td class="param">bufsize</td><td>Size of the buffer.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes read. Returns &lt; 0 on errors. Returns 0 when there is no more data to read.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a5257067a4f8bd91569c856cc7a6d0db8"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetBufLimit
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> limit)
+  </div>
+  <div class="apiDetail">
+<p>Set the maximum number of bytes to buffer from the response.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will limit the number of bytes that can be buffered from the response. If using urlRead, this limit will not apply. Use this to prevent excessive memory consumption for large responses.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">limit</td><td>Maximum number of bytes to buffer. Set to 0 for unlimited buffering.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1af57ad474ed78a5d44413e3132bcca774"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetCerts
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ca, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *cert, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *revoke)
+  </div>
+  <div class="apiDetail">
+<p>Define the certificates to use with TLS connections.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure TLS client certificates for secure connections. All parameters are optional. Use NULL for any certificate parameter not required.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">ca</td><td>Certificate authority bundle to verify server certificates. PEM format.</td></tr>
+    <tr><td class="param">key</td><td>Private key for client certificate authentication. PEM format.</td></tr>
+    <tr><td class="param">cert</td><td>Client certificate for authentication. PEM format.</td></tr>
+    <tr><td class="param">revoke</td><td>Certificate revocation list. PEM format.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aed6954373834c0e2ee06b2a136b7654c"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetCiphers
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ciphers)
+  </div>
+  <div class="apiDetail">
+<p>Set the list of available ciphers to use for TLS connections.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure the cipher suites available for TLS negotiation. Use standard OpenSSL or MbedTLS cipher suite names.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">ciphers</td><td>Colon-separated list of cipher suites in order of preference.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1ac69ca91726fe39156e48544d08ba1f03"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetDefaultTimeout
+(<a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)
+  </div>
+  <div class="apiDetail">
+<p>Set the default request timeout to use for future URL instances.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This does not change the timeout for existing <a class="ref" href="#struct_url">Url</a> objects. The timeout applies to the entire request including connection establishment, data transfer, and response reading.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">timeout</td><td>Timeout in milliseconds. Set to 0 for no timeout.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a680715ad0109296e1acb29f1abca1661"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetFlags
+(<a href="#struct_url" class="ref">Url</a> *up, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Set the URL flags for request tracing and protocol control.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure debugging output and protocol behavior.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">flags</td><td>Bitwise OR of URL_SHOW_REQ_HEADERS, URL_SHOW_REQ_BODY, URL_SHOW_RESP_HEADERS, URL_SHOW_RESP_BODY, URL_HTTP_0 flags.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a7a3eaf6aa3f313c579fd233ed44d332f"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetMaxRetries
+(<a href="#struct_url" class="ref">Url</a> *up, int maxRetries)
+  </div>
+  <div class="apiDetail">
+<p>Set the maximum number of retries for SSE requests.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure automatic retry behavior for SSE connections that fail or disconnect. The client will automatically attempt to reconnect up to the specified limit.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">maxRetries</td><td>Maximum number of automatic reconnection attempts.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aed5c5c5e8c58fc3acfaf5c520f906522"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetProtocol
+(<a href="#struct_url" class="ref">Url</a> *up, int protocol)
+  </div>
+  <div class="apiDetail">
+<p>Set the HTTP protocol to use.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">protocol</td><td>Set to 0 for HTTP/1.0 or 1 for HTTP/1.1. Defaults to 1.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1acf5120b588a4d6e244c8141b6c76bbca"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetStatus
+(<a href="#struct_url" class="ref">Url</a> *up, int status)
+  </div>
+  <div class="apiDetail">
+<p>Set the HTTP response status code.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Override the HTTP response status. Typically used internally or for testing.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to modify.</td></tr>
+    <tr><td class="param">status</td><td>HTTP status code to set.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aa376be90cce3345633f1552a783d1812"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetTimeout
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)
+  </div>
+  <div class="apiDetail">
+<p>Set the request timeout to use for the specific URL object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The timeout applies to the entire request including connection establishment, data transfer, and response reading. Overrides the default timeout for this URL object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object to configure.</td></tr>
+    <tr><td class="param">timeout</td><td>Timeout in milliseconds. Set to 0 for no timeout.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a192b95298d355f323c76414785f91545"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSetVerify
+(<a href="#struct_url" class="ref">Url</a> *up, int verifyPeer, int verifyIssuer)
+  </div>
+  <div class="apiDetail">
+<p>Control verification of TLS connections.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">verifyPeer</td><td>Set to true to verify the certificate of the remote peer.</td></tr>
+    <tr><td class="param">verifyIssuer</td><td>Set to true to verify the issuer of the peer certificate.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a427e10b68acd57c5ecf7dbcfea5f816a"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    urlSseAsync
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Define an SSE async callback.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure asynchronous Server-Sent Event handling. The callback function will be invoked when SSE events are received from the server.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object with SSE connection.</td></tr>
+    <tr><td class="param">proc</td><td>Callback function to invoke for SSE events.</td></tr>
+    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aa1a31a22955af894083eb1786cb59157"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlSseWait
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Wait for Server-Sent Events.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber waiting for SSE events. Other fibers continue to run. Events will be delivered via the SSE callback if configured.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object with active SSE connection.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a54e3a2b4dd3ec60d098d721309fbf6f0"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlStart
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url)
+  </div>
+  <div class="apiDetail">
+<p>Start a <a class="ref" href="#struct_url">Url</a> request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is a low level API that initiates a connection to a remote HTTP resource. Use $urlWriteHeaders to write headers and $urlWrite to write any request body. Must call $urlFinalize to signify the end of the request body.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">method</td><td>HTTP method verb.</td></tr>
+    <tr><td class="param">url</td><td>HTTP URL to fetch.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a76a77d5ed1ea5889bb390f293042896e"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlUpload
+(<a href="#struct_url" class="ref">Url</a> *up, RList *files, <a href="r.html#struct_r_hash" class="ref">RHash</a> *forms, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Upload files in a multipart/form-data request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This constructs and writes the HTTP request headers for a multipart/form-data request. Use this routine instead of urlWriteHeaders to write headers. Use urlStart to initiate the request before calling urlUpload.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object for the request.</td></tr>
+    <tr><td class="param">files</td><td>List of filenames to upload. May be NULL if no files.</td></tr>
+    <tr><td class="param">forms</td><td>Hash of key/value form values to add to the request. May be NULL if no form data.</td></tr>
+    <tr><td class="param">headers</td><td>Printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;. May be NULL.</td></tr>
+    <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1ab53de225f2a8cfb94ffcf2d21435c838"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlWait
+(<a href="#struct_url" class="ref">Url</a> *up)
+  </div>
+  <div class="apiDetail">
+<p>Wait for the connection to be closed.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber until the connection closes. Used for SSE and WebSocket connections to keep the connection alive until the remote end closes it.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object with active connection.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero when connection closes normally, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a0b87aba8a4710165696a2a33f464ca95"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlWebSocket
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)
+  </div>
+  <div class="apiDetail">
+<p>Issue a simple WebSocket request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Establishes a WebSocket connection and processes messages until the connection closes. This is a blocking call that will run until the WebSocket is closed.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>WebSocket URL (ws:// or wss://).</td></tr>
+    <tr><td class="param">callback</td><td>Callback function to invoke for received WebSocket messages.</td></tr>
+    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero when connection closes normally, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aa78b27cc2d979165a087fd11ce4b3cd9"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlWebSocketAsync
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Define async WebSocket callbacks.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure asynchronous WebSocket message handling. This will invoke the callback function with an OPEN event initially, then MESSAGE events for received data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object with WebSocket connection.</td></tr>
+    <tr><td class="param">callback</td><td>Callback function to invoke for WebSocket events.</td></tr>
+    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1aa633def28993db5d0f1b5bae676c9de3"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    urlWrite
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)
+  </div>
+  <div class="apiDetail">
+<p>Write body data for a request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine will block the current fiber. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">data</td><td>Buffer of data to write. Set to NULL to finalize the request body.</td></tr>
+    <tr><td class="param">size</td><td>Length of data to write. Set to 0 to calculate the length of data as a null terminated string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes actually written. On errors, returns a negative status code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a7f34822ed647e6fb28240dc07dd4b3e7"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    urlWriteFile
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Write a file contents for a request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine will read the file contents and write to the client. It will block the current fiber. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">path</td><td>File pathname.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes actually written. On errors, returns a negative status code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1ab902c7fdb5565fbe8ecebf6e34f07a1f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    urlWriteFmt
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Write formatted body data for a request.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine will block the current fiber. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Format arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes actually written. On errors, returns a negative status code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="url_8h_1a1b793312151453242c192d712cb699dc"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    urlWriteHeaders
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)
+  </div>
+  <div class="apiDetail">
+<p>Write request headers using a printf style formatted pattern.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This will write the HTTP request line and supplied headers. If Host and/or Content-Length are not supplied, they will be added if known. This routine will add a Transfer-Encoding: chunked header if the Content-Length is not supplied and the request method is not a GET. If the HTTP scheme is ws or wss, this routine will add the WebSocket upgrade headers. Request headers will be traced if the flags have URL_SHOW_REQ_HEADERS set. This routine will block the current fiber. Other fibers continue to run.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td>URL object.</td></tr>
+    <tr><td class="param">headers</td><td>Optional request headers. This parameter is a printf style formatted pattern with following arguments. Individual header lines must be terminated with &quot;\r\n&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

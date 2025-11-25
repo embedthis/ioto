@@ -1,0 +1,1131 @@
+<h1>IOTO API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a11ad9c5a302b8cde32297c976bafa61d" class="nameRef">aws</a>(<a href="url.html#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *service, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *target, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *body, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bodyLen, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Invoke an AWS API request.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a312d65b6783daaf43d8d77d31be4ea41" class="nameRef">awsPutFileToS3</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *bucket, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *filename)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Put a file to AWS S3.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1ad28518fce7cf99945782c8038f52be7a" class="nameRef">awsPutToS3</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *bucket, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> dataLen)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Put a data block to AWS S3.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#ioto_8h_1aa8357568a3bd26c2d51e949c3ad35c7b" class="nameRef">awsSign</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *service, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *target, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *query, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *body, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bodyLen, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>AWS Support.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Json,*</td><td><a href="#ioto_8h_1a637d6165660ba900b6862e0030989020" class="nameRef">ioAPI</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Invoke an <a class="ref" href="#struct_ioto">Ioto</a> REST API.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ioto,*</td><td><a href="#ioto_8h_1ae8e27c690cb69ab39742a6ef1248f3bb" class="nameRef">ioAlloc</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate the <a class="ref" href="#struct_ioto">Ioto</a> global object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a08895c27e48783dc8577215ed9dff61b" class="nameRef">ioAutomation</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *context)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Invoke an automation on the device cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a65f90079dffcaa71443d3cc88b51bb1f" class="nameRef">ioConfig</a>(<a href="json.html#struct_json" class="ref">Json</a> *config)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>User configuration entry point.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool</td><td><a href="#ioto_8h_1a3bbc90ac9c8d46d955c94b4a9f2f7ae9" class="nameRef">ioConnected</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if the device is connected to the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a4af897891c0041222c7e6695452c4f01" class="nameRef">ioFlushSync</a>(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> force)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Flush pending changes to the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a56e9315a33e6acff377975ae2f400d87" class="nameRef">ioFree</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free the <a class="ref" href="#struct_ioto">Ioto</a> global object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#ioto_8h_1a97e1a87488a8809c5bf4b3e139261134" class="nameRef">ioGet</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool</td><td><a href="#ioto_8h_1ae18e52aaf725cc6293da070f4587ff63" class="nameRef">ioGetBool</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a boolean value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#ioto_8h_1a8939c7fc9d73070940a554dacd73a497" class="nameRef">ioGetConfig</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a configuration value as a string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a44f1dbb4232bd4b449345ff0dc593460" class="nameRef">ioGetConfigInt</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a configuration value as an integer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> double</td><td><a href="#ioto_8h_1a38a43d73a5341cc2f17b04cc5c353948" class="nameRef">ioGetMetric</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *metric, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dimensions, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *statistic, int period)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a metric value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> double</td><td><a href="#ioto_8h_1a585a88bde6fb7ac03e254dde8e01e16c" class="nameRef">ioGetNum</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a numeric value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#ioto_8h_1a32d816b8a4500d23433fafb1c6d05418" class="nameRef">ioGetShadow</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a value from the shadow state.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a839f36c85c26bdb0f07727c14afa40eb" class="nameRef">ioInit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1ae3db14c41dc55b98f4806b5d7a209876" class="nameRef">ioInitAI</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the AI service.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1adf19a785c57c22ef1bc9ede43817278a" class="nameRef">ioOnConnect</a>(<a href="r.html#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> fn, void *arg, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> direct)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run function when connected to the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a885499f188b6e0f59e304ee25a582c24" class="nameRef">ioOnConnectOff</a>(<a href="r.html#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> fn, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Disable running function when connected to the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a0798556330ef0bc2c0efc460eee7ef46" class="nameRef">ioRestartWeb</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Restart the web server service.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a79158ab16d6d7364211f0eb206869b17" class="nameRef">ioRun</a>(void *fn)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start <a class="ref" href="#struct_ioto">Ioto</a> services.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1ad15877344c20da38cc82e8eb81a507b8" class="nameRef">ioSaveShadow</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Save the shadow state immediately.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a7c3c971661d98f7f692a274c95f44e9c" class="nameRef">ioSerialize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Device ID serialization.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a13b7a4c10d2093481c087b5a6487fd42" class="nameRef">ioSet</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a string value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a00917b57336553182a61921f49ab0ee8" class="nameRef">ioSetBool</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a boolean value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1aef599b978bee0aa6674c55ec16178ea2" class="nameRef">ioSetMetric</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *metric, double value, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dimensions, int elapsed)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a metric value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a25b42381490c8ba0f0b203b1e442bdae" class="nameRef">ioSetNum</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a numeric value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1afa8bf94c97906af7328512c924038a71" class="nameRef">ioSetShadow</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> save)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a key value in the shadow.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a8925dcc7a74a8045a40a17c2cf303d7d" class="nameRef">ioStart</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>User start entry point.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1ac73cbd292bfd635d3079793783c3c1a9" class="nameRef">ioStartConnect</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Schedule a cloud connection based on the MQTT schedule.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a667674bc6ae2480f2295c791f555988a" class="nameRef">ioStartRuntime</a>(int verbose)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> runtime.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1acb31589d4f159a6711c9bd0fdca96d82" class="nameRef">ioStop</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>User stop entry point.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a2770dc320d50fb7e80a695166398c517" class="nameRef">ioStopRuntime</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Stop the <a class="ref" href="#struct_ioto">Ioto</a> runtime.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a698e2c854b430c0fa8eb46e1ca0d2085" class="nameRef">ioSync</a>(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> when, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> guarantee)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Sync items to and from the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1af1e502bd6ab0b8b5cf22083c43de242b" class="nameRef">ioSyncDown</a>(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> timestamp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Sync items from the cloud down to the device.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a4e94608eeb5819e958409ef6660c4fe7" class="nameRef">ioSyncUp</a>(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> timestamp, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> guarantee)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Sync all items to the cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a4b0a89f88dadb1b5b6fc8ee38afffac5" class="nameRef">ioTerm</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a075cea32bc67c76d297b743c136a6940" class="nameRef">ioTermAI</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the AI service.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a3da2843cb6e6e919fc156c58504d6251" class="nameRef">ioUpload</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Upload a file to the device cloud.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#ioto_8h_1a6f07098c6e7c75be5312a9d847556cd1" class="nameRef">mqttRequest</a>(<a href="mqtt.html#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a MQTT request and wait for a response.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a525f2a7e9025af2e87916763d61de31c" class="nameRef">mqttRequestFree</a>(<a href="mqtt.html#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free MQTT subscriptions created by mqttRequest.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_ioto" class="nameRef">Ioto</a></td><td class="apiBrief"><a class="ref" href="#struct_ioto">Ioto</a> Device Agent control structure.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ad770bc9f59d6926fa5564267635ca7f7" class="nameRef">IO_CERTIFICATE</a>&nbsp;&nbsp;&nbsp;&quot;@certs/ioto.crt&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the AWS thing certificate file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a4a3307e26a46278a8aeb18a94bbc5480" class="nameRef">IO_CONFIG_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/ioto.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Primary <a class="ref" href="#struct_ioto">Ioto</a> config file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a83a4a6114eb4d52fc10a65da61d7d3d5" class="nameRef">IO_DEVICE_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/device.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the device identification config file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a2379b5675f95d4d8c7e0a273b4d6f07c" class="nameRef">IO_KEY</a>&nbsp;&nbsp;&nbsp;&quot;@certs/ioto.key&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the AWS thing key file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a7330baa3f616cfd2e2eb8b9c3b1a4fde" class="nameRef">IO_LOCAL_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/local.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Development overrides.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a430329838b3ffc70cafeff87db03b3b9" class="nameRef">IO_LOG_FILE</a>&nbsp;&nbsp;&nbsp;&quot;ioto.log&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the ioto log file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ace9e806c4ad02f84f5881b7fcd3279ca" class="nameRef">IO_LOG_GROUP</a>&nbsp;&nbsp;&nbsp;&quot;ioto&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>AWS log group name.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a64e4ec81b9d5c93ecf262ebef1e764e4" class="nameRef">IO_LOG_LINGER</a>&nbsp;&nbsp;&nbsp;5000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Delay before flushing log events to the cloud.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a75ea43b1bdb8b839114975a5c56de6b3" class="nameRef">IO_LOG_MAX_EVENTS</a>&nbsp;&nbsp;&nbsp;1000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Max log events to buffer.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1aba71653a2b91c17163fa196501e180de" class="nameRef">IO_LOG_MAX_SIZE</a>&nbsp;&nbsp;&nbsp;32767</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Max size of log events to buffer.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a93142909c9f0aad13b96b2bec4b480e8" class="nameRef">IO_LOG_STREAM</a>&nbsp;&nbsp;&nbsp;&quot;agent&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>AWS log stream name.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a0d2f565b4755c00b71711b15193f0e07" class="nameRef">IO_MAX_URL</a>&nbsp;&nbsp;&nbsp;256</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Sanity length of a URL.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ab53f3640a33f78f073666872307ae696" class="nameRef">IO_MESSAGE_SIZE</a>&nbsp;&nbsp;&nbsp;128 * 1024 * 1024</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum AWS MQTT message size (reduced).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a61de856d2df31cce30d7c62926eb09d3" class="nameRef">IO_PROVISION_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/provision.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the device provisioning state file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a8f8e95912b54f992e6b040da2d1e0090" class="nameRef">IO_REPROVISION</a>&nbsp;&nbsp;&nbsp;(3600)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Time to wait before reprovisioning after blocked connection.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ad5740f43107ad666df54e4712722dfcb" class="nameRef">IO_SAVE_DELAY</a>&nbsp;&nbsp;&nbsp;5000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Delay before saving updated shadow state.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1aaeec0c54868924f5df75a5904c38bfbc" class="nameRef">IO_SHADOW_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@db/shadow.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the persisted AWS shadow state file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a46c3e74cbf11b858464b60cf89c9c42c" class="nameRef">IO_STATE_DIR</a>&nbsp;&nbsp;&nbsp;&quot;state&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>State directory.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a9c53f6db77e8e6975766b28403f806fc" class="nameRef">IO_WEB_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/web.json5&quot;</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Name of the web server config file.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a6dd54a6ced0297e2073472b461e76cf4" class="nameRef">IOTO_DEBUG</a>&nbsp;&nbsp;&nbsp;2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Configure debug trace for development with very verbose output.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ac3265db0e1f94e6b251df1cb8481f0aa" class="nameRef">IOTO_PROD</a>&nbsp;&nbsp;&nbsp;0</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Configure trace for production (minimal).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a1270cc5e6a640b531c496278e5499c71" class="nameRef">IOTO_VERBOSE</a>&nbsp;&nbsp;&nbsp;1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Configure trace for development with verbose output.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="struct_ioto"></a>
+<div class="api">
+  <div class="prototype">Ioto</div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_ioto">Ioto</a> Device Agent control structure.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Main control structure that contains all the state and configuration for the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent. This structure holds references to all enabled services including database, web server, MQTT client, and cloud connectivity components. The global instance is accessible via the &apos;ioto&apos; variable.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">char *</td><td>account</td><td>
+Owning manager accountId (provision.json5).
+</td></tr>
+<tr><td class="param">bool</td><td>aiService</td><td>
+Command line reset.
+</td></tr>
+<tr><td class="param">char *</td><td>api</td><td>
+Device cloud API endpoint.
+</td></tr>
+<tr><td class="param">char *</td><td>apiToken</td><td>
+Device cloud API authentication token.
+</td></tr>
+<tr><td class="param">char *</td><td>app</td><td>
+App name.
+</td></tr>
+<tr><td class="param">char *</td><td>awsAccess</td><td>
+AWS temp creds.
+</td></tr>
+<tr><td class="param">Time</td><td>awsExpires</td><td>
+AWS cred expiry.
+</td></tr>
+<tr><td class="param">char *</td><td>awsRegion</td><td>
+Default AWS region.
+</td></tr>
+<tr><td class="param">char *</td><td>awsSecret</td><td>
+AWS cred secret.
+</td></tr>
+<tr><td class="param">char *</td><td>awsToken</td><td>
+AWS cred token.
+</td></tr>
+<tr><td class="param">Time</td><td>blockedUntil</td><td>
+Time to wait before reprovisioning after blocked connection.
+</td></tr>
+<tr><td class="param">char *</td><td>builder</td><td>
+Builder API endpoint.
+</td></tr>
+<tr><td class="param">char *</td><td>cloud</td><td>
+Builder cloud ID.
+</td></tr>
+<tr><td class="param">bool</td><td>cloudReady</td><td>
+Cloud meta-service.
+</td></tr>
+<tr><td class="param">bool</td><td>cloudService</td><td>
+AI service.
+</td></tr>
+<tr><td class="param">char *</td><td>cloudType</td><td>
+Type of cloud hosting: &quot;hosted&quot;, &quot;dedicated&quot;.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdAccount</td><td>
+Command line override owning manager account for self-claiming.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdAIShow</td><td>
+Command line override for AI request/response trace.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdBuilder</td><td>
+Command line override builder API endpoint.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdCloud</td><td>
+Command line override builder cloud for self-claiming.
+</td></tr>
+<tr><td class="param">char *</td><td>cmdConfigDir</td><td>
+Command line override directory for config files.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdId</td><td>
+Command line override claim ID.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdIotoFile</td><td>
+Command line override path for the ioto.json5 config file.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdProduct</td><td>
+Command line override Product ID Token.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdProfile</td><td>
+Command line override profile.
+</td></tr>
+<tr><td class="param">char *</td><td>cmdStateDir</td><td>
+Command line override directory for state files.
+</td></tr>
+<tr><td class="param">char *</td><td>cmdSync</td><td>
+Command line override directory for state files.
+</td></tr>
+<tr><td class="param">cchar *</td><td>cmdWebShow</td><td>
+Command line override for web request/response trace.
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_json" >Json</a> *</td><td>config</td><td>
+Configuration.
+</td></tr>
+<tr><td class="param">bool</td><td>connected</td><td>
+Connected and synced to the cloud.
+</td></tr>
+<tr><td class="param">bool</td><td>dbService</td><td>
+Connected to the cloud over MQTT, but may not be synced.
+</td></tr>
+<tr><td class="param">char *</td><td>endpoint</td><td>
+Device cloud API endpoint.
+</td></tr>
+<tr><td class="param">char *</td><td>id</td><td>
+Claim ID.
+</td></tr>
+<tr><td class="param">char *</td><td>instance</td><td>
+Manufacturing serialization (factory, auto, none). 
+EC2 instance.
+</td></tr>
+<tr><td class="param">bool</td><td>keyService</td><td>
+Embedded database service.
+</td></tr>
+<tr><td class="param">char *</td><td>lastSync</td><td>
+Last item sync time.
+</td></tr>
+<tr><td class="param">struct IotoLog *</td><td>log</td><td>
+Cloud Watch Log object.
+</td></tr>
+<tr><td class="param">char *</td><td>logDir</td><td>
+Directory for <a class="ref" href="#struct_ioto">Ioto</a> log files.
+</td></tr>
+<tr><td class="param">RList *</td><td>logs</td><td>
+Log file ingestion list.
+</td></tr>
+<tr><td class="param">bool</td><td>logService</td><td>
+AWS IAM key generation.
+</td></tr>
+<tr><td class="param">ssize</td><td>maxSyncSize</td><td>
+Limit of buffered database changes.
+</td></tr>
+<tr><td class="param">bool</td><td>mqttService</td><td>
+Log file ingest to CloudWatch logs.
+</td></tr>
+<tr><td class="param">bool</td><td>nosave</td><td>
+MQTT service.
+</td></tr>
+<tr><td class="param">bool</td><td>noSaveDevice</td><td>
+Do not save. 
+i.e. run in-memory.
+</td></tr>
+<tr><td class="param">char *</td><td>product</td><td>
+Product ID Token.
+</td></tr>
+<tr><td class="param">char *</td><td>profile</td><td>
+Run profile. 
+Defaults to ioto.json5:profile (dev, prod).
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_json" >Json</a> *</td><td>properties</td><td>
+Properties for templates.
+</td></tr>
+<tr><td class="param">bool</td><td>provisioned</td><td>
+Device has been registered.
+</td></tr>
+<tr><td class="param">bool</td><td>provisionService</td><td>
+Provisioned with the cloud.
+</td></tr>
+<tr><td class="param">bool</td><td>ready</td><td>
+Cloud provisioning service.
+</td></tr>
+<tr><td class="param">bool</td><td>registered</td><td>
+Do not save device registration when sourced from environment variables.
+</td></tr>
+<tr><td class="param">bool</td><td>registerService</td><td>
+<a class="ref" href="#struct_ioto">Ioto</a> initialized and ready (may not be connected to the cloud).
+</td></tr>
+<tr><td class="param">REvent</td><td>scheduledConnect</td><td>
+Schedule connection event.
+</td></tr>
+<tr><td class="param">char *</td><td>serializeService</td><td>
+<a class="ref" href="#struct_web" >Web</a> server.
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_json" >Json</a> *</td><td>shadow</td><td>
+Shadow state.
+</td></tr>
+<tr><td class="param">REvent</td><td>shadowEvent</td><td>
+Shadow event.
+</td></tr>
+<tr><td class="param">char *</td><td>shadowName</td><td>
+AWS IoT shadow name.
+</td></tr>
+<tr><td class="param">bool</td><td>shadowService</td><td>
+Device registration service.
+</td></tr>
+<tr><td class="param">char *</td><td>shadowTopic</td><td>
+AWS IoT shadow topic.
+</td></tr>
+<tr><td class="param">Ticks</td><td>syncDue</td><td>
+When due to emit sync changes.
+</td></tr>
+<tr><td class="param">REvent</td><td>syncEvent</td><td>
+Schedule synchronization event.
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_r_hash" >RHash</a> *</td><td>syncHash</td><td>
+Hash of database change records.
+</td></tr>
+<tr><td class="param">FILE *</td><td>syncLog</td><td>
+Sync log file descriptor.
+</td></tr>
+<tr><td class="param">bool</td><td>syncService</td><td>
+AWS IoT core shadows.
+</td></tr>
+<tr><td class="param">ssize</td><td>syncSize</td><td>
+Size of buffered database changes.
+</td></tr>
+<tr><td class="param">bool</td><td>testService</td><td>
+Sync device state to AWS.
+</td></tr>
+<tr><td class="param">bool</td><td>updateService</td><td>
+Test service.
+</td></tr>
+<tr><td class="param">char *</td><td>version</td><td>
+Your software version number (not <a class="ref" href="#struct_ioto">Ioto</a> version).
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_web_host" >WebHost</a> *</td><td>webHost</td><td>
+<a class="ref" href="#struct_web" >Web</a> server host.
+</td></tr>
+<tr><td class="param">bool</td><td>webService</td><td>
+Update service.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="ioto_8h_1a11ad9c5a302b8cde32297c976bafa61d"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    aws
+(<a href="url.html#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *service, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *target, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *body, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bodyLen, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>Invoke an AWS API request.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">up</td><td><a class="ref" href="#struct_url" >Url</a> object allocated via urlAlloc.</td></tr>
+    <tr><td class="param">region</td><td>AWS Region to target.</td></tr>
+    <tr><td class="param">service</td><td>AWS Service name. E.g. &quot;s3&quot;.</td></tr>
+    <tr><td class="param">target</td><td>AWS Target name. If not supplied, this is deduced from the service name and the &quot;x-amz-target&quot; header.</td></tr>
+    <tr><td class="param">body</td><td>Request body data.</td></tr>
+    <tr><td class="param">bodyLen</td><td>Length of the request body.</td></tr>
+    <tr><td class="param">headers</td><td>Format string containing HTTP headers. This format string can use printf embedded tokens that will be expanded to form the HTTP headers. The header format is of the form: &quot;Key:Value\n...&quot; with an extra new line at the end.</td></tr>
+    <tr><td class="param">...</td><td>Headers arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a312d65b6783daaf43d8d77d31be4ea41"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    awsPutFileToS3
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *bucket, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *filename)
+  </div>
+  <div class="apiDetail">
+<p>Put a file to AWS S3.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">region</td><td>AWS Region to target.</td></tr>
+    <tr><td class="param">bucket</td><td>AWS S3 bucket name.</td></tr>
+    <tr><td class="param">key</td><td>AWS S3 bucket key (filename). If set to null, the key is set to the filename.</td></tr>
+    <tr><td class="param">filename</td><td>File name to put to S3.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ad28518fce7cf99945782c8038f52be7a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    awsPutToS3
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *bucket, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> dataLen)
+  </div>
+  <div class="apiDetail">
+<p>Put a data block to AWS S3.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">region</td><td>AWS Region to target.</td></tr>
+    <tr><td class="param">bucket</td><td>AWS S3 bucket name.</td></tr>
+    <tr><td class="param">key</td><td>AWS S3 bucket key (filename).</td></tr>
+    <tr><td class="param">data</td><td>Data block to write to S3.</td></tr>
+    <tr><td class="param">dataLen</td><td>Length of the data block.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1aa8357568a3bd26c2d51e949c3ad35c7b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*
+    awsSign
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *region, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *service, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *target, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *query, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *body, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bodyLen, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)
+  </div>
+  <div class="apiDetail">
+<p>AWS Support.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is suite of AWS helper routines that implement AWS SigV4 signed REST API requests.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>The AWS SDK is big and relatively slow. If you only need a few AWS APIs, you can use the AWS REST APIs and avoid the AWS SDK. This routine processes HTTP request parameters to create a set of signed HTTP headers that can be used with the URL HTTP client.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">region</td><td>AWS Region to target.</td></tr>
+    <tr><td class="param">service</td><td>AWS Service name (s3).</td></tr>
+    <tr><td class="param">target</td><td>AWS Target name. If not supplied, this is deduced from the service name and the x-amz-target header.</td></tr>
+    <tr><td class="param">method</td><td>HTTP method to utilize.</td></tr>
+    <tr><td class="param">path</td><td>URL request path.</td></tr>
+    <tr><td class="param">query</td><td>URL request query.</td></tr>
+    <tr><td class="param">body</td><td>Request body data.</td></tr>
+    <tr><td class="param">bodyLen</td><td>Length of the request body.</td></tr>
+    <tr><td class="param">headers</td><td>Format string containing HTTP headers. This format string can use printf embedded tokens that will be expanded to form the HTTP headers. The header format is of the form: &quot;Key:Value\n...&quot; with an extra new line at the end.</td></tr>
+    <tr><td class="param">...</td><td>Headers arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The HTTP headers to use with a URL HTTP client request. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ae8e27c690cb69ab39742a6ef1248f3bb"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ioto,*
+    ioAlloc
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Allocate the <a class="ref" href="#struct_ioto">Ioto</a> global object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Creates and initializes a new <a class="ref" href="#struct_ioto">Ioto</a> control structure. This is typically called internally by ioInit() and should not be called directly by applications.</dd></dl>
+    <dl><dt>Returns:</dt><dd>A newly allocated <a class="ref" href="#struct_ioto">Ioto</a> structure or NULL on allocation failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a637d6165660ba900b6862e0030989020"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Json,*
+    ioAPI
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data)
+  </div>
+  <div class="apiDetail">
+<p>Invoke an <a class="ref" href="#struct_ioto">Ioto</a> REST API.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">url</td><td>The URL path to invoke. Should not contain the host/tok portion.</td></tr>
+    <tr><td class="param">data</td><td>The data to send.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The response from the API as a json object. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a08895c27e48783dc8577215ed9dff61b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioAutomation
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *context)
+  </div>
+  <div class="apiDetail">
+<p>Invoke an automation on the device cloud.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">name</td><td>The name of the automation to invoke.</td></tr>
+    <tr><td class="param">context</td><td>The context properties to pass to the automation.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on success, -1 on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a65f90079dffcaa71443d3cc88b51bb1f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioConfig
+(<a href="json.html#struct_json" class="ref">Json</a> *config)
+  </div>
+  <div class="apiDetail">
+<p>User configuration entry point.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The ioConfig function is invoked when <a class="ref" href="#struct_ioto">Ioto</a> has read its configuration into ioto-&gt;config and before <a class="ref" href="#struct_ioto">Ioto</a> initializes services. Users can provide their own ioConfig function and link with the <a class="ref" href="#struct_ioto">Ioto</a> library. <a class="ref" href="#struct_ioto">Ioto</a> will then invoke the user&apos;s ioConfig for custom configuration.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">config</td><td>The loaded configuration object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a3bbc90ac9c8d46d955c94b4a9f2f7ae9"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool
+    ioConnected
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Check if the device is connected to the cloud.</p>
+    <dl><dt>Returns:</dt><dd>True if connected, false otherwise.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a4af897891c0041222c7e6695452c4f01"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioFlushSync
+(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> force)
+  </div>
+  <div class="apiDetail">
+<p>Flush pending changes to the cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Database changes are buffered before being flushed to the cloud. This forces all pending changes to be sent to the cloud immediately.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">force</td><td>Set to true to flush items that are not yet due to be synchronized.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a56e9315a33e6acff377975ae2f400d87"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioFree
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Free the <a class="ref" href="#struct_ioto">Ioto</a> global object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Releases all resources associated with the global <a class="ref" href="#struct_ioto">Ioto</a> instance. This is typically called internally by ioTerm() and should not be called directly by applications.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a97e1a87488a8809c5bf4b3e139261134"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*
+    ioGet
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get a value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call retrieves a value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key value to assign a value in the store.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Value Key&apos;s string value. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ae18e52aaf725cc6293da070f4587ff63"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool
+    ioGetBool
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get a boolean value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call retrieves a value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key value to assign a value in the store.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Value Key&apos;s boolean value.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a8939c7fc9d73070940a554dacd73a497"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*
+    ioGetConfig
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a configuration value as a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call is a thin wrapper over jsonGet(ioto-&gt;config, ...) that retrieves a configuration value from the loaded <a class="ref" href="#struct_ioto">Ioto</a> configuration files and returns it as a string.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>Property name to search for. This may include dots for nested properties (e.g., &quot;settings.mode&quot;).</td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the key is not defined. If NULL, an empty string is returned.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>String reference into the config store or defaultValue if not defined. Caller must not free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a44f1dbb4232bd4b449345ff0dc593460"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioGetConfigInt
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a configuration value as an integer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieves an integer configuration value from the loaded <a class="ref" href="#struct_ioto">Ioto</a> configuration files.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>Property name to search for. This may include dots for nested properties (e.g., &quot;settings.mode&quot;).</td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the key is not defined or cannot be converted to an integer.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The integer value from the config store or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a38a43d73a5341cc2f17b04cc5c353948"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> double
+    ioGetMetric
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *metric, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dimensions, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *statistic, int period)
+  </div>
+  <div class="apiDetail">
+<p>Get a metric value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call retrieves a metric from the <a class="ref" href="#struct_ioto">Ioto</a> cloud for this device.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">metric</td><td>Metric name to retrieve from the Embedthis/Device namespace.</td></tr>
+    <tr><td class="param">dimensions</td><td>JSON array of dimensions as a string. Each element is an object that defines the properties of that dimension. The empty object {} denotes All dimensions.</td></tr>
+    <tr><td class="param">statistic</td><td>Statistic type to retrieve: &quot;avg&quot;, &quot;min&quot;, &quot;max&quot;, &quot;count&quot;, or &quot;current&quot;.</td></tr>
+    <tr><td class="param">period</td><td>Number of seconds for the statistic period.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The metric value as a double, or NAN if the metric cannot be found.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a585a88bde6fb7ac03e254dde8e01e16c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> double
+    ioGetNum
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get a numeric value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value Store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call retrieves a value from the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key value to assign a value in the store.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Value Key&apos;s numeric value.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a32d816b8a4500d23433fafb1c6d05418"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*
+    ioGetShadow
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a value from the shadow state.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>Property key value. May contain dots.</td></tr>
+    <tr><td class="param">defaultValue</td><td>Default value to return if the key is not found.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns an allocated string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a839f36c85c26bdb0f07727c14afa40eb"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioInit
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Initializes the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent by creating the global ioto instance, loading configuration, and starting all enabled services. This must be called before using any other <a class="ref" href="#struct_ioto">Ioto</a> APIs.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ae3db14c41dc55b98f4806b5d7a209876"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioInitAI
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Initialize the AI service.</p>
+    <dl><dt>Returns:</dt><dd>Returns 0 on success, or -1 on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1adf19a785c57c22ef1bc9ede43817278a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioOnConnect
+(<a href="r.html#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> fn, void *arg, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> direct)
+  </div>
+  <div class="apiDetail">
+<p>Run function when connected to the cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This calls the supplied function immediately if already connected. Otherwise, when the connection to the cloud is re-established, the function will be invoked. If direct is true, the function may be executed inline without spawning a fiber. If not connected, the function will be run in a fiber when due.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fn</td><td>Function to invoke when connected.</td></tr>
+    <tr><td class="param">arg</td><td>Argument to supply to the function.</td></tr>
+    <tr><td class="param">direct</td><td>Set to true to invoke the function directly without spawning a fiber.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a885499f188b6e0f59e304ee25a582c24"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioOnConnectOff
+(<a href="r.html#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> fn, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Disable running function when connected to the cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Removes a previously registered connection callback function.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fn</td><td>Function to remove from the connection callback list.</td></tr>
+    <tr><td class="param">arg</td><td>Argument that was supplied when the function was registered.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a0798556330ef0bc2c0efc460eee7ef46"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioRestartWeb
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Restart the web server service.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Stops and restarts the web server service. This will close all client connections and reinitialize the web server subsystem.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a79158ab16d6d7364211f0eb206869b17"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioRun
+(void *fn)
+  </div>
+  <div class="apiDetail">
+<p>Start <a class="ref" href="#struct_ioto">Ioto</a> services.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine blocks and services <a class="ref" href="#struct_ioto">Ioto</a> requests until commanded to exit via rStop().</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fn</td><td>Start function. This function is not called. It is used to ensure the build system links with the supplied function only.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ad15877344c20da38cc82e8eb81a507b8"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSaveShadow
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Save the shadow state immediately.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a7c3c971661d98f7f692a274c95f44e9c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSerialize
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Device ID serialization.</p>
+    <dl><dt><b>Description</b>:</dt><dd>If the device.json5 config file does not already have a device ID, this call will allocate a unique device claim ID (10 character UDI) if required. If the ioto.json5 &quot;services.serialize&quot; is set to &quot;auto&quot;, this API will dynamically create a random device ID. If the &quot;serialize&quot; setting is &quot;factory&quot;, this call will invoke the factory serialization service defined via the &quot;api.serialize&quot; URL setting. The resultant deviceId is saved in the config/device.json5 file. WARNING: this blocks <a class="ref" href="#struct_ioto">Ioto</a> if calling the factory service.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a13b7a4c10d2093481c087b5a6487fd42"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSet
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)
+  </div>
+  <div class="apiDetail">
+<p>Set a string value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call defines a string value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device. Uses database sync if available, otherwise uses MQTT messaging.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key to assign in the store.</td></tr>
+    <tr><td class="param">value</td><td>String value to assign to the key.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a00917b57336553182a61921f49ab0ee8"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSetBool
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value)
+  </div>
+  <div class="apiDetail">
+<p>Set a boolean value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call defines a boolean value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device. Uses database sync if available, otherwise uses MQTT messaging.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key to assign in the store.</td></tr>
+    <tr><td class="param">value</td><td>Boolean value to assign to the key.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1aef599b978bee0aa6674c55ec16178ea2"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioSetMetric
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *metric, double value, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dimensions, int elapsed)
+  </div>
+  <div class="apiDetail">
+<p>Set a metric value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call defines a metric in the <a class="ref" href="#struct_ioto">Ioto</a> cloud for this device.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">metric</td><td>Metric name to define in the Embedthis/Device namespace.</td></tr>
+    <tr><td class="param">value</td><td>Metric value as a double.</td></tr>
+    <tr><td class="param">dimensions</td><td>JSON array of dimensions as a string. Each element is an object that defines the properties of that dimension. The empty object {} denotes no dimensions.</td></tr>
+    <tr><td class="param">elapsed</td><td>Number of seconds to buffer metric updates in the cloud before committing to the database. This is an optimization. Set to zero for no buffering.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on success, negative on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a25b42381490c8ba0f0b203b1e442bdae"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioSetNum
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double value)
+  </div>
+  <div class="apiDetail">
+<p>Set a numeric value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call defines a numeric value in the <a class="ref" href="#struct_ioto">Ioto</a> cloud key/value store for this device. Uses database sync if available, otherwise uses MQTT messaging.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>String key to assign in the store.</td></tr>
+    <tr><td class="param">value</td><td>Numeric value to assign to the key.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on success, negative on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1afa8bf94c97906af7328512c924038a71"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSetShadow
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> save)
+  </div>
+  <div class="apiDetail">
+<p>Set a key value in the shadow.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">key</td><td>Property key value. May contain dots.</td></tr>
+    <tr><td class="param">value</td><td>Value to set.</td></tr>
+    <tr><td class="param">save</td><td>Set to true to persist immediately.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a8925dcc7a74a8045a40a17c2cf303d7d"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioStart
+(void )
+  </div>
+  <div class="apiDetail">
+<p>User start entry point.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The ioStart function is invoked when <a class="ref" href="#struct_ioto">Ioto</a> is fully initialized and ready to start. Users can provide their own ioStart and ioStop functions and link with the <a class="ref" href="#struct_ioto">Ioto</a> library. <a class="ref" href="#struct_ioto">Ioto</a> will then invoke the user&apos;s ioStart for custom initialization.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1ac73cbd292bfd635d3079793783c3c1a9"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioStartConnect
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Schedule a cloud connection based on the MQTT schedule.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Schedules a connection attempt to the cloud based on the configured MQTT connection schedule. This will initiate the connection process according to the timing parameters in the configuration.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a667674bc6ae2480f2295c791f555988a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioStartRuntime
+(int verbose)
+  </div>
+  <div class="apiDetail">
+<p>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> runtime.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">verbose</td><td>Set to 1 to enable verbose output. Set to 2 for debug output.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1acb31589d4f159a6711c9bd0fdca96d82"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioStop
+(void )
+  </div>
+  <div class="apiDetail">
+<p>User stop entry point.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The ioStop function is invoked when <a class="ref" href="#struct_ioto">Ioto</a> is shutting down. Users can provide their own ioStop function and link with the <a class="ref" href="#struct_ioto">Ioto</a> library. <a class="ref" href="#struct_ioto">Ioto</a> will then invoke the user&apos;s ioStop for custom shutdown cleanup.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a2770dc320d50fb7e80a695166398c517"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioStopRuntime
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Stop the <a class="ref" href="#struct_ioto">Ioto</a> runtime.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a698e2c854b430c0fa8eb46e1ca0d2085"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSync
+(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> when, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> guarantee)
+  </div>
+  <div class="apiDetail">
+<p>Sync items to and from the cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call can be used to force a sync-up and sync-down of the local database to and from the cloud.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">when</td><td>Retrieve items updated after this time. If when is negative, the call will sync items updated since the last sync.</td></tr>
+    <tr><td class="param">guarantee</td><td>Set to true to perform a reliable sync by waiting for the cloud to send a receipt acknowledgement for each item.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1af1e502bd6ab0b8b5cf22083c43de242b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSyncDown
+(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> timestamp)
+  </div>
+  <div class="apiDetail">
+<p>Sync items from the cloud down to the device.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call can be used to retrieve all items updated after the requested timestamp.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">timestamp</td><td>Retrieve items updated after this time. If timestamp is negative, the call will retrieve items updated since the last sync.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a4e94608eeb5819e958409ef6660c4fe7"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioSyncUp
+(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> timestamp, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> guarantee)
+  </div>
+  <div class="apiDetail">
+<p>Sync all items to the cloud.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call can be used to force a full sync-up of the local database to the cloud.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">timestamp</td><td>Sync items updated after this time.</td></tr>
+    <tr><td class="param">guarantee</td><td>Set to true to perform a reliable sync by waiting for the cloud to send a receipt acknowledgement for each item.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a4b0a89f88dadb1b5b6fc8ee38afffac5"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioTerm
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Terminate the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Shuts down all <a class="ref" href="#struct_ioto">Ioto</a> services, disconnects from the cloud, and releases all resources. This should be called when the application is shutting down.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a075cea32bc67c76d297b743c136a6940"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    ioTermAI
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Terminate the AI service.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a3da2843cb6e6e919fc156c58504d6251"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    ioUpload
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a65f85814a8290f9797005d3b28e7e5fc" class="ref">uchar</a> *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)
+  </div>
+  <div class="apiDetail">
+<p>Upload a file to the device cloud.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Path to the file to upload.</td></tr>
+    <tr><td class="param">buf</td><td>Buffer containing the file data.</td></tr>
+    <tr><td class="param">len</td><td>Length of the file data.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on success, -1 on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a6f07098c6e7c75be5312a9d847556cd1"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*
+    mqttRequest
+(<a href="mqtt.html#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)
+  </div>
+  <div class="apiDetail">
+<p>Issue a MQTT request and wait for a response.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call sends a MQTT message to the <a class="ref" href="#struct_ioto">Ioto</a> service and waits for a response. If the response is not received the call before the timeout expires, the call returns NULL. This call will subscribe for incoming messages on the topic. Use mqttRequestFree if the app does not wish to use mqttRequest again.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">mq</td><td>MQTT connection object.</td></tr>
+    <tr><td class="param">data</td><td>Message data to send.</td></tr>
+    <tr><td class="param">timeout</td><td>Timeout in milliseconds to wait for a response. If timeout is &lt;= 0, a default timeout of 30 seconds is used.</td></tr>
+    <tr><td class="param">topic</td><td>Printf style topic format string. The supplied topic is appended to &apos;ioto/device/DEVICE_ID&apos; before sending.</td></tr>
+    <tr><td class="param">...</td><td>Topic string arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Response message or NULL if the request fails or times out. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="ioto_8h_1a525f2a7e9025af2e87916763d61de31c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    mqttRequestFree
+(<a href="mqtt.html#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)
+  </div>
+  <div class="apiDetail">
+<p>Free MQTT subscriptions created by mqttRequest.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call is optional and should only be used if you use many different topics with mqttRequest.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">mq</td><td>MQTT connection object.</td></tr>
+    <tr><td class="param">topic</td><td>Printf style topic format string used in prior mqttRequest.</td></tr>
+    <tr><td class="param">...</td><td>Topic string arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

@@ -1,0 +1,348 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Db</name>
+    <filename>struct_db.html</filename>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>callbacks</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>af6233bd5a9df032951c6f50dac3f6b1b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>changes</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a9e072a85b55d01625b32f4fb2ff871d5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>code</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a550d72b10ab8076c935a9b3876f8c6e4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>commitEvent</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>add2899a8a077f7c76ea083f5727819d2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>context</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a09b257c04b38b50f81312548bf09b904</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>due</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a7c28f1905eb27562b140ed8c9c2c1e8d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>error</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a37096f5527e3fd1a99abf7e9adbf7f5b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a141587bcab5ea93d6de38b89a0fad966</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>FILE *</type>
+      <name>journal</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>ad4dcbf956cdcfdd5a5823cda3cfad35b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>journalCreated</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>ad9983956ccbbb3a17d0b9b9f2e9016a5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>journalError</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a9e65868a706accdf31b6ab15d3f71a71</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>journalEvent</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a5fc284c77181a7a3cc2f19420d920e60</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>journalPath</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a72eabc24df89a5a0ac6d7c38f1dbccee</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>journalSize</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a0590c0188d258cb08eb15bf4641e38f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>maxJournalAge</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>afc2d9640b6004c5213d3a9a4ed39b488</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maxJournalSize</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>afc4884f7f3fea1583554f56d2b783af3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>models</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a4c6f864e2f727e98b05d914081f1ddef</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>needSave</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a708de125eb4e13221a5a169fc2cc6723</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>path</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a3cb014b1d3de9b74c2284ba5fca75dba</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RbTree *</type>
+      <name>primary</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a2ac42362dc08baf884b9b18ff635bfb3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>schema</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a2c33c9bc4fb8d219ac67a2f3eed7a138</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>servicing</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a89fd86d95474ab56d3296e28f1e97160</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>timestamps</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>a79b99c523e1ff32476bb1767c0c03a6d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>type</name>
+      <anchorfile>struct_db.html</anchorfile>
+      <anchor>ab571d3b00278e6c1812d4b0e4b8ef73a</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>DbItem</name>
+    <filename>struct_db_item.html</filename>
+    <member kind="variable">
+      <type>uint</type>
+      <name>allocatedName</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>ab04a4e7e5f1b7c14449782d3d159e5ca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>allocatedValue</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>acdc98e652f8f1d1573a0735ff040187b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>delayed</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>adfbd8f4c5d7fc651b4639a47b81821fe</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>json</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>a9236e9dcecb2dc699327ca08600050e7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>key</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>ae6b760abbd4dc37ccf950f0c80fac10a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>value</name>
+      <anchorfile>struct_db_item.html</anchorfile>
+      <anchor>add2eccb38c95e587415e4a38576c43dc</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>DbModel</name>
+    <filename>struct_db_model.html</filename>
+    <member kind="variable">
+      <type>Time</type>
+      <name>delay</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a525e68457f3691cce62f0ff37be4a49e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>expiresField</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a5bcb29c570a594a63aef4e6567abd27f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>fields</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a8246e324b8d460966bbbe0004058d9f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>mem</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a2c0c1b0a19be1eaee881e306690b13f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>name</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a62281ee1fc49f2314357955ecc14cb09</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>sync</name>
+      <anchorfile>struct_db_model.html</anchorfile>
+      <anchor>a8be409e1e59f4871556c300aa23833bc</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>DbParams</name>
+    <filename>struct_db_params.html</filename>
+    <member kind="variable">
+      <type>cvoid *</type>
+      <name>arg</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a3000be89dc4c0ae9f940663090442b20</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>bypass</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a3d31409e1b7e58c3e0f76d53e566f0c5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>delay</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>ad97c580c5b56baacc170abe84a7f47b8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>index</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a2aff87f11b1386cf9bf68f3a35f14a05</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>limit</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>aeb2354e90db420c9f8d556664eefde15</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>log</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a0af8b487a15d6344e01b328ac79a23d1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>mem</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>adcff8e1277134ec034a0564cca7f88e3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>next</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a8bb5a8192540a6b6e36f143acace890f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>upsert</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>ab03f7cb4c3d1c2e8063fd2585d3860d5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>DbWhere</type>
+      <name>where</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a5ff558bbd971c112eb6ab936071d8438</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>zero</name>
+      <anchorfile>struct_db_params.html</anchorfile>
+      <anchor>a2648fa5d95ebaab07c2de6ffcf23c195</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

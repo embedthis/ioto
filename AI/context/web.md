@@ -100,3 +100,8 @@ See `AI/README.md` for detailed information about the documentation structure.
 - **Parent Project**: See `../CLAUDE.md` for general build commands, testing procedures, and overall EmbedThis architecture
 - **Sub-Projects**: See `src/*/CLAUDE.md` for specific instructions related to sub-projects
 - **API Documentation**: Generated via `make doc` → `doc/index.html`
+
+## Notes
+- Use `tm --iterations` rather than `TESTME_ITERATIONS=number tm` environment variable
+- Always use /* */ for multiline comments
+- Always use the best TestMe comparison function instead of relying on the generic `ttrue` or `tassert`. More specific TestMe comparison functions can report expected vs actual.

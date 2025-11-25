@@ -1,0 +1,460 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Mqtt</name>
+    <filename>struct_mqtt.html</filename>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>buf</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>aebb1d4ccabbc4501095d5d29ac98949a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>connected</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a21dcedd9365441c7d2208a99114d6a06</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>destroyed</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>aacb35c70102db972a3e80e1bbcdcc178</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>error</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>aa854af827b3927cf0318d9c417af3420</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>errorMsg</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a26235f408d420ef82e31197e1974a0c2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>fiberCount</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a9c68da6d28619e3f2f607bc23836ca33</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttMsg</type>
+      <name>head</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a578d369c1821f6ddd642830e4c7a29c3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>id</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a14ca3c7ae6ded5a32b298f8aada20975</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>keepAlive</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a71ae7d40922464aba489aa5ea507134e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>keepAliveEvent</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a2923b6d8bf338422ea92c78d12603772</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>lastActivity</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>ac729759bbdf8eb9abac0f3aa79d98047</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>mask</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a686ef76de417af47dfc78b09f586ac64</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>masterTopics</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a911d9a7aebe5c2ed65eb9d1d74360029</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maxMessage</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a694b973be9fe27d5da8a7da900b7c502</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>msgTimeout</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a4ff374d48f4bdd84a289f58f0e50589d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>nextId</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a46942496c9bffd2c61e2d111a4619aca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>password</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>ae1c14fbb537725bd00f8bdd7bcbfc843</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttEventProc</type>
+      <name>proc</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a2c705c7ac887aee9f89d837fdd813288</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>processing</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a163e2cb356d474806054d7d1d7ad14ca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RSocket *</type>
+      <name>sock</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>af49cc4b8c4738c74139f5539ed211418</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>subscribedApi</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>af9d3de7b6b4f34ceb09f740522dda7f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>throttle</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a686bdd5913b42ca0b63b2b86419d831c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>throttleLastPub</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>abd541f279c36b0ea01e6eb7004b1f3c8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>throttleMark</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>ae5731d8b5265475338bef600d66f0109</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>timeout</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>aceca3dbaa961206cef452784660d3e15</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>topics</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a0ae1c8930bcf29b5c708c6ccfd827b3f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>username</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>ac4b044a46e86c7314c3d7c4686c45ce9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>willMsg</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a7bf756b702ee859a8d888af6b89bba8c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>willMsgSize</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>ad7aa7da3afd420b90df958de810e8be6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>willTopic</name>
+      <anchorfile>struct_mqtt.html</anchorfile>
+      <anchor>a61b079a68da83c28f6a1b490e85e40aa</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>MqttHdr</name>
+    <filename>struct_mqtt_hdr.html</filename>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_mqtt_hdr.html</anchorfile>
+      <anchor>a1380cba29b159931babcc1bb81a27f51</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>length</name>
+      <anchorfile>struct_mqtt_hdr.html</anchorfile>
+      <anchor>ac77733f566057043f176ec34101891fb</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>MqttMsg</name>
+    <filename>struct_mqtt_msg.html</filename>
+    <member kind="variable">
+      <type>uchar *</type>
+      <name>buf</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a602de85d94dbaa34fcf736cd4041c68f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar *</type>
+      <name>end</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a85058f1c872b6ec11140ad0a034e972a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar *</type>
+      <name>endbuf</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a73393f664ed8e6041fec829683489789</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RFiber *</type>
+      <name>fiber</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a92409ff85a14986117a80bd1410128a2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>hold</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>ac8db07d33e0534d0e4a2c68d04723c82</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>id</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a27fd9aa026b0ccd6a32d3409fb2c6ab7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar</type>
+      <name>inlineBuf</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>ad950d54bb7e97b3a044b2c304e89e742</anchor>
+      <arglist>[MQTT_INLINE_BUF_SIZE]</arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MqttMsg *</type>
+      <name>next</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a86b096fd847a4851cf0aeefab7f0ef31</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MqttMsg *</type>
+      <name>prev</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a5a1044c8cdf79710b9876293ba120107</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>qos</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a854b4186cad072af1aaeab247e86f3f4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>sent</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a9dc7d853b979a2b43f78c51d6addf77f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar *</type>
+      <name>start</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a167ff2c117fcad2d118059d97507b48b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttMsgState</type>
+      <name>state</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>ac548347bce8e10376863e235c7be6a22</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttPacketType</type>
+      <name>type</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a12886ab8d8e54318c1f840984616a6af</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttWaitFlags</type>
+      <name>wait</name>
+      <anchorfile>struct_mqtt_msg.html</anchorfile>
+      <anchor>a90169c4c1fe5a9227ce37ff3bd5fe1da</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>MqttRecv</name>
+    <filename>struct_mqtt_recv.html</filename>
+    <member kind="variable">
+      <type>MqttConnCode</type>
+      <name>code</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a846fc83dc3627c4b9c1e71592e89f263</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cuchar *</type>
+      <name>codes</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a8695c7dade121feec9ab11de559fe81d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>data</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>aea4d4ae4abe7e743a04b8eb70b1175bd</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>dataSize</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a0d372af31f35be9764405d2acb4bb2e7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar</type>
+      <name>dup</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a00475bd50b44cfe652113dd410c5a0ab</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>hasSession</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>ad9a8fdd3b95f0247a80b6bf33a8d5e80</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct MqttHdr</type>
+      <name>hdr</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>aeb33b0455d546735615c44d3d7169f69</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>id</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a80a6bb3647e4b7dff7573e71b904314b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>MqttTopic *</type>
+      <name>matched</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>ab2f34ebc9b24e9890e52514a29285252</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct Mqtt *</type>
+      <name>mq</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>aa9b07abd94dc30ec5878fa2719436f3f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>numCodes</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a3740b8625c67ad4ad8bc80c6c3a1363d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar</type>
+      <name>qos</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>aaf69662117563f90a036c343efb5728a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar</type>
+      <name>retain</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a29064a52977fdecc18d1bc8b454da017</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cuchar *</type>
+      <name>start</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a13429e489d52793bb47b185b70986174</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>topic</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>acd1b544822881e4e4379a4b8d3b0735e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>topicSize</name>
+      <anchorfile>struct_mqtt_recv.html</anchorfile>
+      <anchor>a43c24c84c8eaf7dc7e1acac1f1c335be</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

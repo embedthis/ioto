@@ -1,0 +1,1141 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Web</name>
+    <filename>struct_web.html</filename>
+    <member kind="variable">
+      <type>uint</type>
+      <name>authChecked</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a7a4560435c038fb948eeeebb779e6567</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>authenticated</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ac2b336d8409c948f30804954d58f7b74</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>body</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a776bdf223f2546b2b4b9aed07e18d389</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>buffer</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a14db559d01e85051b59cf576b433639d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>chunked</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4cbdc3d0897c939252553000743bf81b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Offset</type>
+      <name>chunkRemaining</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a620d3d11b2046ddda24fad94ea6eb0de</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>close</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ad362876a78f7bcdb4c62c7bde498092e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int64</type>
+      <name>conn</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a881e6f6b09e1889f92ecf05681810316</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>connectionStarted</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a70ed99827d8d44a7cdc820f1969d7fae</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>contentDisposition</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a3084cc3aabc574b44fde3a3e4a3100d6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>contentType</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aaa242a3400b0dec7b0205474093c30eb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cookie</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ac53a1a0e94ce25dfe572f95ce7b237ab</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int64</type>
+      <name>count</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aa7cc03aa478efae3dd211daeb9d0be6c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebRange *</type>
+      <name>currentRange</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ac84d70f12529288c7d0276c0661f60ab</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>deadline</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a0d17bb483a7024274d3c4bfd524dd832</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>del</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>adfb0d88656ca07560f3f9f18161ada02</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>error</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a0d5370356e9d0bd161680cc21bcfc47c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>etags</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a194d2943882fb720a78cc0bdba995d40</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>exists</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a12bd9deb11d35e08304116fdc82545f5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>ext</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a6ba30e8efe674f626298dd41eed38e6e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RFiber *</type>
+      <name>fiber</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a10e89ce277a99779d39f1de75da49130</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>finalized</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aacbbcc36bf208bd20af17921721b44b5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>formBody</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>af7135f5294cd3312e878379d292e6d4f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>get</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a20d0ee0a72ac47589952e4e67a5d3dbf</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>hash</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a6de56b4dba52b83c5e1ddc79284186be</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>head</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>af8e514b967f8b7d6f61b5c907a2c4de1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebHost *</type>
+      <name>host</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4f5869d2a5cb3e6df8841fbec2197796</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>http10</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a7fc366bc3239b50dba546e519e58b0e9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>ifMatch</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a1f9a9cac5cffc8cff10d708756b15125</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>ifMatchPresent</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a1095f49e3fe1255816f2f9a10bb443a6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>ifModified</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a8ab3284335291b32428b228a4c1730eb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>ifNoneMatch</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ac293bb2f5d6456f463cb44a01e5b30e1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>ifRange</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ad692a46446b0b17dfe77f96961106852</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>ifUnmodified</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a7cc60548faf50fe62faebe900b9a308a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>jsonBody</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a840db83893553fbc416735191667ebca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>lastEventId</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aae3bf60e213e106269b2fd9e540955b2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebListen *</type>
+      <name>listen</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a031a09d4f141587d8a0e4947210c5e0e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>method</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a624c20c0d8ad6f4db60b41e84488de93</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>mime</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a401f9b06ceb11bd42bbb29ef42e77285</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>moreBody</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a59043b960edc9c204c903d0fa861e49a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>options</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a52186dac93b882e293e462028aa7da48</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>origin</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4711a6f16e7b19de8963fb3e1d3b4610</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>path</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a465873eeaa6921502e188887e17c7552</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>post</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a1b3d6c4cfcad04805c37a964361673fa</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>protocol</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ae5aff1c0178f2dbdd22dc51ece91afb8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>put</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a2e23a25a08387196eb2142b9867780ba</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>query</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a8abf94f464e53866d6a3c86ea7b63dd2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>qvars</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a7e8740056b80951e8baf8d306301dad5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>rangeBoundary</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a6a98d57a6a1771f3fcddc66249eaa916</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebRange *</type>
+      <name>ranges</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a6cd381d9e070d459a879ca895c3cd652</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>redirect</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a9ebd8f14f474074ae18d0fde5fde086b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>rmime</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a1e92612c45bb3765cc3fe51d0fad984e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>role</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>addccd709d7b159003909b4567d75de02</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebRoute *</type>
+      <name>route</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a8ea51a6c4c32726e6e1411bc720bd989</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>rx</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>abbf6b6fc36f4964fa09a8840470942c5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>rxHeaders</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ac169ac0204cb1fab0ee945d824a03b09</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>rxLen</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a90685b5bd4a534611b5ca0f001875bfb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>rxRead</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4d49d02188bf0ec143c4b0eda44bbcab</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Offset</type>
+      <name>rxRemaining</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a81cf7d03c577cffdaca7044e3ccd57cd</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>scheme</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4e4785ad2fe6f187d948c079b987ffb5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>secure</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a144e42a7b7aca8762e957a66e2aa3f63</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>securityToken</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>afb7bbcdef4038342e28b2cb818d740d7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct WebSession *</type>
+      <name>session</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a07a426e292eedcf917470c9893a832fb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>signature</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a55f5d9b29d4e9c7e083725d0478eb263</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>time_t</type>
+      <name>since</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a27ee807dfe39d0191e82e4d696aaef6f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>started</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a817473c5a5eb074cea1113a554ffa943</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>status</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a030918ce23b5d23691292eee3a1fe907</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>trace</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aae28ecd3c10e9e528a563be55145f81b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>txHeaders</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a25adb7907ce37243873a6ad3073c0b16</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>txLen</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ad0919ff36ed736f7c4b0ee3eefd2fd35</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Offset</type>
+      <name>txRemaining</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a7acef3b3de30b532f0934322abde6174</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>time_t</type>
+      <name>unmodifiedSince</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a3a145e48fc09e42cf9c6a9a341353160</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>upgrade</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ad0d3311ddd93b37bd9c8955f198e684a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>upgraded</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a59404051df89facf3dbc39a76370440d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>url</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a41be3d941b5977ad8cb76c058768a160</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct WebUser *</type>
+      <name>user</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ae7c3f57d037b3ab22316c3790fc3073c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>username</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a4068d66b8494ba3d9891bda593ee35ec</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>vars</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>ad4cbf4c6d4134795e2067a7fcd39b114</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct WebSocket *</type>
+      <name>webSocket</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a44413c97371444aba91d02c2d4dc556e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>writingHeaders</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>acc76f9e41b88fe1b32d69df468022a07</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>wroteHeaders</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>a3bd45c93babe70c2e1c2ce128b6731a1</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebAction</name>
+    <filename>struct_web_action.html</filename>
+    <member kind="variable">
+      <type>WebProc</type>
+      <name>fn</name>
+      <anchorfile>struct_web_action.html</anchorfile>
+      <anchor>a700415e483f1d33f56c9bed78e774c9d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>match</name>
+      <anchorfile>struct_web_action.html</anchorfile>
+      <anchor>acb2a81cc491549e7592c8ffd34cf8ef5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>role</name>
+      <anchorfile>struct_web_action.html</anchorfile>
+      <anchor>a40ae8f251939240909ba862d3ac36b0e</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebHost</name>
+    <filename>struct_web_host.html</filename>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>actions</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a4caa3198fd70525cfdc8792b064ed360</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>config</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a563673e432428d5cdf3311ef39f9b9b6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>connections</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a67a5847b9175e02e3c1188bba9205fea</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int64</type>
+      <name>connSequence</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a5862f00e0716770ccf911ad60d78b578</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>docs</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aca9e2d0b98ac4b5032e6e7ff0a559f11</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a6f331a04b990cdbb85789b95e2350ecb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>freeConfig</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a83d9e3ecb4045495a09c70e896168f52</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>headers</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a8b0166b5bc595c72c97ffbd2b4ef70a3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebHook</type>
+      <name>hook</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a6d10bdabbc80034cf0490f13016bd4cc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>httpOnly</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a9561d5c4443eace1d664f893bccef831</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>inactivityTimeout</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a98f64784d84a2b6831cacc8995be0272</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>index</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a217656e8dd6c022caa46c322273c0afe</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>ip</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>afbf99a98af5491c8c4568415de3f09a0</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>listeners</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ab07cdc88081939d0e2a5018ad3231c5d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxBody</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a16d53fbb53fc058c1d428c5d380b6aa8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxBuffer</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a2c89987c40d044ad79c0e05782e8520c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxConnections</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a19524517aa73ef15623c32ea0ef99378</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxDigest</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ac7cc5aafa2959a00dc153660db02ec99</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxHeader</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a6df246d0d1a8447491098e8d1b60637a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxRequests</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a702b0b4f26eb847a9b2f607f3c25e75b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxSessions</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a78ec6e75afa3d2baed487bd90e10854c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxUpload</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ade824034ff73754ea23a8e39cc0663cb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maxUploads</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a4ce4642c32808b97e231516e3079537b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>methods</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a181b0769dcccb9f87843bd048e489ecf</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>mimeTypes</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ae7be79a42c6149170aedbd40e23b684f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>name</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a42b4e2c208c2938bc2f705d73f61e275</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>parseTimeout</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aa09193e99a0d7d5b850bd8597817fba6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>redirects</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a894e4ad937667947ef449975161bb19e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>requestTimeout</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aebabb10ebccc181347a328465606689d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>roles</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a09b09da9b808a1ff47fefdfc7b5c31df</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>routes</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ae56eb0110fe144b11393ec0d9605c504</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>sameSite</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ab9a2d7fdab81deea3a60034d9fcbf35d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>sessionCookie</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>abed3b3f4aacadd36e73941ded8028a67</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>sessionEvent</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>adc0cdd68bbd199ad72a4584a11a5e0cc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>sessions</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a55d9f2e36e772b998c6633724f7541c5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>sessionTimeout</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a33001448cc99c433132f72d1692e5c54</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>signatures</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>afb4381c99ed103d9f04ecc78eac7d8b3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>strictSignatures</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aaf4882057df2fd69278298ccef407ed6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>users</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a2a9e7380cd151b5454aa5d077b73fce1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>webs</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aa7015ea4f9f93bf5f95ec0d6e3a4dd35</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>webSocketsEnable</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a19b696e228b6bfa2eabc95614f6a8d1e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>webSocketsMaxFrame</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ac510b3fcd7a7c808714c35aafce49fdb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>webSocketsMaxMessage</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a0488a9c341e7854b439ced071fc95378</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>webSocketsPingPeriod</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>a505a2935408321b678ee7728eef6e17d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>webSocketsProtocol</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>ad02d6ed1e1e2fe1f56ea58427150b1b4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>webSocketsValidateUTF</name>
+      <anchorfile>struct_web_host.html</anchorfile>
+      <anchor>aac20f0ca15b16748de08b8d036689620</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebRange</name>
+    <filename>struct_web_range.html</filename>
+    <member kind="variable">
+      <type>int64</type>
+      <name>end</name>
+      <anchorfile>struct_web_range.html</anchorfile>
+      <anchor>aa78f46ebe7cc6315617e4c86e784dcab</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int64</type>
+      <name>len</name>
+      <anchorfile>struct_web_range.html</anchorfile>
+      <anchor>ab17297a7cae30d1d41b16d634ff7dff6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct WebRange *</type>
+      <name>next</name>
+      <anchorfile>struct_web_range.html</anchorfile>
+      <anchor>aee05ae7646f969c31f67fa82cb32613e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int64</type>
+      <name>start</name>
+      <anchorfile>struct_web_range.html</anchorfile>
+      <anchor>a8ff5046493c5e18190ef6d02fd09cb50</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebRedirect</name>
+    <filename>struct_web_redirect.html</filename>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>from</name>
+      <anchorfile>struct_web_redirect.html</anchorfile>
+      <anchor>a4ca5352ecf0e386345fc4e6165f84402</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>status</name>
+      <anchorfile>struct_web_redirect.html</anchorfile>
+      <anchor>aaa2a1b51fd6dbfd976dca41a43ae551f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>to</name>
+      <anchorfile>struct_web_redirect.html</anchorfile>
+      <anchor>a6e12c83a5e5a99ed4f178cdbc64597a6</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebRoute</name>
+    <filename>struct_web_route.html</filename>
+    <member kind="variable">
+      <type>bool</type>
+      <name>compressed</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a3b8a3817fe75b4094bb665bd1321c2eb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>exact</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a23cb294e43087050b69f6b7a238fc2f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>handler</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>aa1f52c61e14d9674e75e392ccfebbe1d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>match</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a3dc0b78650664340fb43c01258683202</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>methods</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a5564c2e5219fd8a6ffa073fbac7e7bfa</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>redirect</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a476ac6449e29ecc67622831257edd527</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>role</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a58552f98b82aae7bbe2aed83e2463216</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>stream</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>aa4cc03394f7fb82051dd5966d378c579</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>trim</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a473b9c1f4b043cd7a804cb1673d50a63</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>validate</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>aa9f8f89e763d121cc58be45e546c84e5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>xsrf</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>ada800ac21a7669499aca057b9b751638</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebUpload</name>
+    <filename>struct_web_upload.html</filename>
+    <member kind="variable">
+      <type>char *</type>
+      <name>clientFilename</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>a81e094995548d63f676206a55d2df584</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>contentType</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>ac2fcd15fdfd6676a9852dbbe0c18ad30</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>fd</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>a9a40154e108fce2887d4f5f6cb5b692b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>filename</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>a3dcc79267e2dcdf244416e05ede01a30</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>name</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>a70df065e909ba87fb89a6d92f67c9127</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>size</name>
+      <anchorfile>struct_web_upload.html</anchorfile>
+      <anchor>a00646cd59c4e5fb435fafffad677ead6</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>WebUser</name>
+    <filename>struct_web_user.html</filename>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>abilities</name>
+      <anchorfile>struct_web_user.html</anchorfile>
+      <anchor>a2dbbee5f7b9562a43f8c802b228fce13</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>password</name>
+      <anchorfile>struct_web_user.html</anchorfile>
+      <anchor>af68f13546911ef50341a8dfbe9306b1c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>role</name>
+      <anchorfile>struct_web_user.html</anchorfile>
+      <anchor>adb51652a8b7237a90f606fd2cb105f26</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>username</name>
+      <anchorfile>struct_web_user.html</anchorfile>
+      <anchor>ab6d3bf32c228f08868db4df6b2010bb3</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

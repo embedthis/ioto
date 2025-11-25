@@ -3,6 +3,9 @@
  */
 
 /* Settings */
+#ifndef ME_APP
+    #define ME_APP "unit"
+#endif
 #ifndef ME_AUTHOR
     #define ME_AUTHOR "Embedthis Software."
 #endif
@@ -43,7 +46,7 @@
     #define ME_COMPANY "embedthis"
 #endif
 #ifndef ME_COMPATIBLE
-    #define ME_COMPATIBLE "2.8"
+    #define ME_COMPATIBLE "2.9"
 #endif
 #ifndef ME_COMPILER_FORTIFY
     #define ME_COMPILER_FORTIFY 1
@@ -142,7 +145,7 @@
     #define ME_USER "ioto"
 #endif
 #ifndef ME_VERSION
-    #define ME_VERSION "2.8.1"
+    #define ME_VERSION "2.9.0"
 #endif
 #ifndef ME_WEB_AUTH
     #define ME_WEB_AUTH 1
@@ -213,7 +216,7 @@
     #define ME_VAPP_PREFIX "deploy"
 #endif
 #ifndef ME_SRC_PREFIX
-    #define ME_SRC_PREFIX "/usr/src/ioto-2.8.1"
+    #define ME_SRC_PREFIX "/usr/src/ioto-2.9.0"
 #endif
 
 /* Suffixes */
@@ -252,13 +255,13 @@
     #define ME_MAJOR_VERSION 2
 #endif
 #ifndef ME_MINOR_VERSION
-    #define ME_MINOR_VERSION 8
+    #define ME_MINOR_VERSION 9
 #endif
 #ifndef ME_PATCH_VERSION
-    #define ME_PATCH_VERSION 1
+    #define ME_PATCH_VERSION 0
 #endif
 #ifndef ME_VNUM
-    #define ME_VNUM 200080001
+    #define ME_VNUM 200090000
 #endif
 
 /* Components */

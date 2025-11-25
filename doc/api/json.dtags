@@ -1,0 +1,158 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Json</name>
+    <filename>struct_json.html</filename>
+    <member kind="variable">
+      <type>int</type>
+      <name>count</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a89026e30e825eb7ccf2087ec5ddbbcfc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>end</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a220c1c7a1679969a491599a2d711da7d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>error</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>ac015c1c7ce297d203b84976fec117d1c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>flags</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a9bb9e1b7e11e5cf61624fb0bd2cb9398</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>lineNumber</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>aa40a32e5deacc478e31dac1dfbf20e05</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>lock</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a45d2433eeda5386bd33f0bd994e2a8af</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>next</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a7bcf68156e4587963e105f7674568c75</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct JsonNode *</type>
+      <name>nodes</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a717f77ab31f92c3ac6d74de124c5b921</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>path</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>afd0d2044435ee155838cb80d165a9bd4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>property</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>af9f9414616379da004d512adfacb62c0</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>propertyLength</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a899d1590461484d87be228ff72e5e175</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>size</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a84cbc56cf66a6c996cef67d431450164</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>text</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a2b910ba3c92223d8b221939e0bfd6574</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>userFlags</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a09b88744354ea97b7cfe547be9c29d36</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>value</name>
+      <anchorfile>struct_json.html</anchorfile>
+      <anchor>a9eb3e0b6b095b655e171d5b5093c4c18</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>JsonNode</name>
+    <filename>struct_json_node.html</filename>
+    <member kind="variable">
+      <type>uint</type>
+      <name>allocatedName</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>ab03ec176054f2626191720751c8be622</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>allocatedValue</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>a60e602f07ced398e158c3cc065e9b7ed</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>last</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>a5f52c2c6f1c7ff05250c1b24dd61d156</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>name</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>a425dc21b5fb73468012c73670cd4c286</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>type</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>ab79606178fc41314f93d87a44f2ccd6f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>value</name>
+      <anchorfile>struct_json_node.html</anchorfile>
+      <anchor>afbf60ff0e2132c9807a2a23fcdb8acd8</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

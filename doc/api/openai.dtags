@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>OpenAI</name>
+    <filename>struct_open_a_i.html</filename>
+    <member kind="variable">
+      <type>char *</type>
+      <name>endpoint</name>
+      <anchorfile>struct_open_a_i.html</anchorfile>
+      <anchor>a6590077671e01329aa3a34ed4a5ab4f8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_open_a_i.html</anchorfile>
+      <anchor>a909c693c78637d162488159e687b5b92</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>headers</name>
+      <anchorfile>struct_open_a_i.html</anchorfile>
+      <anchor>a4b40155d8ff79d32df2e8f4fed42bb20</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>realTimeEndpoint</name>
+      <anchorfile>struct_open_a_i.html</anchorfile>
+      <anchor>a3837db43bdd918dd51ff9e9f9ed62e9b</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

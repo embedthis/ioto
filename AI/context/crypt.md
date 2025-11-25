@@ -1,11 +1,12 @@
 # Crypt Module - (CRYPT)
 
-Cryptographic library providing Base64, SHA1/SHA256 hashing, and Bcrypt functions for embedded IoT applications.
+Cryptographic library providing Base64, SHA1/SHA256/SHA512 hashing, HMAC-SHA256 message authentication, and Bcrypt functions for embedded IoT applications.
 
 ## Module Features
 
 - Base64 encoding/decoding (`cryptEncode64`, `cryptDecode64`)
-- SHA1 and SHA256 hashing (MD5 disabled for security)
+- SHA1, SHA256, and SHA512 hashing (MD5 disabled for security)
+- HMAC-SHA256 message authentication (RFC 2104 compliant)
 - Bcrypt password hashing with configurable rounds
 - Minimal memory footprint for embedded systems
 - Optional MbedTLS/OpenSSL backend integration
@@ -17,7 +18,9 @@ Control crypto features via environment variables:
 ME_COM_MBEDTLS=1/0      # Enable/disable MbedTLS backend
 ME_COM_OPENSSL=1/0      # Enable/disable OpenSSL backend
 ME_CRYPT_BCRYPT=1/0     # Enable/disable Bcrypt support
+ME_CRYPT_SHA512=1/0     # Enable/disable SHA512 support
 ME_CRYPT_SHA256=1/0     # Enable/disable SHA256 support
+ME_CRYPT_HMAC=1/0       # Enable/disable HMAC-SHA256 support
 ```
 
 Example: `ME_COM_OPENSSL=1 ME_COM_MBEDTLS=0 make`
@@ -43,7 +46,17 @@ test/*.tst.c            # Unit tests for crypto functions
 ### Hash Functions
 - `char *cryptGetSha1(cchar *str)` - SHA1 hash of string
 - `char *cryptGetSha256(cchar *str)` - SHA256 hash of string
+- `char *cryptGetSha512(cchar *str)` - SHA512 hash of string
 - `char *cryptGetSha1Block(cvoid *buf, ssize len)` - SHA1 of binary data
+- `char *cryptGetSha256Block(cvoid *buf, ssize len)` - SHA256 of binary data
+- `char *cryptGetSha512Block(cvoid *buf, ssize len)` - SHA512 of binary data
+
+### HMAC Functions
+- `char *cryptGetHmacSha256(cuchar *key, size_t keylen, cuchar *data, size_t datalen)` - HMAC-SHA256 (hex string)
+- `void cryptGetHmacSha256Block(cuchar *key, size_t keylen, cuchar *data, size_t datalen, uchar output[32])` - HMAC-SHA256 (binary)
+- `char *cryptGetHmacSha256Base64(cuchar *key, size_t keylen, cuchar *data, size_t datalen)` - HMAC-SHA256 (base64)
+- `bool cryptMatchHmacSha256(cuchar hmac1[32], cuchar hmac2[32])` - Constant-time HMAC comparison
+- Low-level API: `cryptHmacSha256Init()`, `cryptHmacSha256Update()`, `cryptHmacSha256Finalize()`, `cryptHmacSha256Term()`
 
 ### Password Functions
 - `char *cryptMakePassword(cchar *password, int saltLength, int rounds)` - Create Bcrypt hash
@@ -58,6 +71,8 @@ testme base64           # Test Base64 encoding/decoding
 testme bcrypt           # Test Bcrypt password functions
 testme sha1             # Test SHA1 hashing
 testme sha256           # Test SHA256 hashing
+testme sha512           # Test SHA512 hashing
+testme hmac-sha256      # Test HMAC-SHA256 message authentication
 ```
 
 ## Distribution

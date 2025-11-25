@@ -1,0 +1,171 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>RFiber</name>
+    <filename>struct_r_fiber.html</filename>
+  </compound>
+  <compound kind="struct">
+    <name>RFile</name>
+    <filename>struct_r_file.html</filename>
+  </compound>
+  <compound kind="struct">
+    <name>RHash</name>
+    <filename>struct_r_hash.html</filename>
+    <member kind="variable">
+      <type>int *</type>
+      <name>buckets</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a658898e2a058c3a162a93fb12e7efd43</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>flags</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a598b392849197bc10818c16e15407291</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHashProc</type>
+      <name>fn</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>ab483749243d06b788172d2f8b396ba2f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>free</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a6d6d328f3099b338a69875407f873681</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>length</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a296d806decb434b466c8b89353e5a6f6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct RName *</type>
+      <name>names</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a305c24d5c23c2d82dfe83d0ae747704e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>numBuckets</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>aa2ddde4d35bb75b3f3522fe8f9cf30db</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>size</name>
+      <anchorfile>struct_r_hash.html</anchorfile>
+      <anchor>a65f8bf4301d1e72a6897ffa6f1acdb0a</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>RLock</name>
+    <filename>struct_r_lock.html</filename>
+  </compound>
+  <compound kind="struct">
+    <name>RName</name>
+    <filename>struct_r_name.html</filename>
+    <member kind="variable">
+      <type>uint</type>
+      <name>custom</name>
+      <anchorfile>struct_r_name.html</anchorfile>
+      <anchor>a0ec590cdb1e625d562ff66a1e4f4a16d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>flags</name>
+      <anchorfile>struct_r_name.html</anchorfile>
+      <anchor>a56d69481f1770586375b06922f75fe3c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>name</name>
+      <anchorfile>struct_r_name.html</anchorfile>
+      <anchor>aef9d8abf3934502296dac3170a0fe646</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>next</name>
+      <anchorfile>struct_r_name.html</anchorfile>
+      <anchor>a945916eb278e04bcfcc10b8ac7541bb6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>void *</type>
+      <name>value</name>
+      <anchorfile>struct_r_name.html</anchorfile>
+      <anchor>af46f2a574586e6b7a8dead2b65ba6306</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>RString</name>
+    <filename>struct_r_string.html</filename>
+  </compound>
+  <compound kind="struct">
+    <name>RWait</name>
+    <filename>struct_r_wait.html</filename>
+    <member kind="variable">
+      <type>cvoid *</type>
+      <name>arg</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>ab88b808b2413ff150fc6945be4331a0e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>deadline</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>ace17e97a616979b2dac1c538795991da</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>eventMask</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>aff1153c07f5f1ea1a7322b5daef2709e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>fd</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>adf33352f896708ec3e7fddda94391d64</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RFiber *</type>
+      <name>fiber</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>a1d0a2c635576187e800748b12c69cfea</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RWaitProc</type>
+      <name>handler</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>a1047e12b44fcf4808a59b73fd4825cfd</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>mask</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>a0e2cf423f6d8bbb83eb803f01ab6f184</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

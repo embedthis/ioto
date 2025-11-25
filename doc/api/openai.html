@@ -1,0 +1,196 @@
+<h1>OpenAI API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1a88389738de29e3fb39a959bd85bbb8ab" class="nameRef">openaiChatCompletion</a>(<a href="json.html#struct_json" class="ref">Json</a> *props)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Chat Completion API.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#openai_8h_1aeeb301344760c6fe6e5328089b9f5aae" class="nameRef">openaiInit</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *endpoint, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="json.html#struct_json" class="ref">Json</a> *config, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1ab69ae1bbfebcaeab0eeb8ae39fff4d2e" class="nameRef">openaiListModels</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>List available <a class="ref" href="#struct_open_a_i">OpenAI</a> models.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="url.html#struct_url" class="ref">Url</a> *</td><td><a href="#openai_8h_1a7a6c8718396de00211e7fd2fd1607fec" class="nameRef">openaiRealTimeConnect</a>(<a href="json.html#struct_json" class="ref">Json</a> *props)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Connect to <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API via WebSocket.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1a8666a2f68ac63d91e32369a02c342d28" class="nameRef">openaiResponses</a>(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b" class="ref">OpenAIAgent</a> agent, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API with agent callbacks.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="url.html#struct_url" class="ref">Url</a> *</td><td><a href="#openai_8h_1a40dba971ad7ed454b572d76ce404f555" class="nameRef">openaiStream</a>(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="url.html#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> callback, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Response API with streaming response handling.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#openai_8h_1ad6d57f39ca9cb53f06dbdbc720c05861" class="nameRef">openaiTerm</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_open_a_i" class="nameRef">OpenAI</a></td><td class="apiBrief"><a class="ref" href="#struct_open_a_i">OpenAI</a> client configuration structure.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b" class="nameRef">OpenAIAgent</a></td><td class="apiBrief"><a class="ref" href="#struct_open_a_i">OpenAI</a> Agent callback function for processing responses.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+  </table>
+<h2>Typedefs</h2>
+<a name="openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b"></a>
+<div class="api">
+  <div class="prototype">
+    typedef char *(* OpenAIAgent) (cchar *name, Json *request, Json *response, void *arg)
+  </div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_open_a_i">OpenAI</a> Agent callback function for processing responses.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This callback is invoked during streaming responses to allow custom processing of agent responses. The callback can modify or augment the response data.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">name</td><td>Agent name identifier.</td></tr>
+    <tr><td class="param">request</td><td>Original JSON request object sent to <a class="ref" href="#struct_open_a_i">OpenAI</a></td></tr>
+    <tr><td class="param">response</td><td>JSON response object received from <a class="ref" href="#struct_open_a_i">OpenAI</a></td></tr>
+    <tr><td class="param">arg</td><td>User-defined argument passed through from the calling function.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Allocated string to be added to the response. Caller must free using rFree. Return NULL if no additional content.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_open_a_i"></a>
+<div class="api">
+  <div class="prototype">OpenAI</div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_open_a_i">OpenAI</a> client configuration structure.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Contains the configuration settings for connecting to <a class="ref" href="#struct_open_a_i">OpenAI</a> services. This structure is managed internally by the library.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">char *</td><td>endpoint</td><td>
+<a class="ref" href="#struct_open_a_i">OpenAI</a> API endpoint URL (default: <ulink url="https://api.openai.com/v1">https://api.openai.com/v1</ulink>).
+</td></tr>
+<tr><td class="param">int</td><td>flags</td><td>
+Configuration flags controlling tracing and behavior.
+</td></tr>
+<tr><td class="param">char *</td><td>headers</td><td>
+HTTP headers including authorization bearer token.
+</td></tr>
+<tr><td class="param">char *</td><td>realTimeEndpoint</td><td>
+Real-time WebSocket endpoint URL for streaming connections.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="openai_8h_1a88389738de29e3fb39a959bd85bbb8ab"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    openaiChatCompletion
+(<a href="json.html#struct_json" class="ref">Json</a> *props)
+  </div>
+  <div class="apiDetail">
+<p>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Chat Completion API.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Submit a synchronous request to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Chat Completion API for text generation. The default model is set to &apos;gpt-4o-mini&apos; if not specified in props. This is a blocking call that returns the complete response.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">props</td><td>JSON object containing Chat Completion API parameters. Common fields include: &apos;messages&apos; (required array), &apos;model&apos;, &apos;max_tokens&apos;, &apos;temperature&apos;, &apos;top_p&apos;, &apos;stream&apos;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON object containing the complete response from <a class="ref" href="#struct_open_a_i">OpenAI</a> Chat Completion API. Response includes &apos;choices&apos; array with generated content. Returns NULL on failure. Caller must free using jsonFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1aeeb301344760c6fe6e5328089b9f5aae"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    openaiInit
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *endpoint, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="json.html#struct_json" class="ref">Json</a> *config, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Initialize the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Initialize the <a class="ref" href="#struct_open_a_i">OpenAI</a> client with endpoint, authentication, and configuration. This must be called before using any other <a class="ref" href="#struct_open_a_i">OpenAI</a> API functions. The library will validate the API key and establish the connection parameters.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">endpoint</td><td><a class="ref" href="#struct_open_a_i">OpenAI</a> API base endpoint URL. Use NULL for default &quot;https://api.openai.com/v1&quot;.</td></tr>
+    <tr><td class="param">key</td><td><a class="ref" href="#struct_open_a_i">OpenAI</a> API key for authentication. Must be a valid API key starting with &quot;sk-&quot;.</td></tr>
+    <tr><td class="param">config</td><td>JSON object containing additional configuration parameters. May be NULL for defaults. Optional fields include timeout settings and custom headers.</td></tr>
+    <tr><td class="param">flags</td><td>Bitmask of AI_SHOW_* flags controlling debug output and tracing behavior.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns 0 on successful initialization. Returns negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1ab69ae1bbfebcaeab0eeb8ae39fff4d2e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    openaiListModels
+(void )
+  </div>
+  <div class="apiDetail">
+<p>List available <a class="ref" href="#struct_open_a_i">OpenAI</a> models.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieve a list of all available models from the <a class="ref" href="#struct_open_a_i">OpenAI</a> API. This includes both <a class="ref" href="#struct_open_a_i">OpenAI</a>&apos;s base models and any fine-tuned models available to your account.</dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON object containing an array of model objects. Each model object includes: &apos;id&apos; (model identifier), &apos;object&apos; (type), &apos;created&apos; (timestamp), &apos;owned_by&apos; (owner). Returns NULL on failure. Caller must free using jsonFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1a7a6c8718396de00211e7fd2fd1607fec"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="url.html#struct_url" class="ref">Url</a> *
+    openaiRealTimeConnect
+(<a href="json.html#struct_json" class="ref">Json</a> *props)
+  </div>
+  <div class="apiDetail">
+<p>Connect to <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API via WebSocket.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Establish a WebSocket connection to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API for bidirectional real-time communication. This enables voice and streaming text interactions with low latency. The connection supports full-duplex communication for interactive applications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">props</td><td>JSON object containing Real-Time API connection parameters. May include &apos;model&apos;, &apos;voice&apos;, &apos;input_audio_format&apos;, &apos;output_audio_format&apos;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Url object representing the active WebSocket connection on success. Returns NULL on connection failure. Use urlClose to terminate the connection.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1a8666a2f68ac63d91e32369a02c342d28"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="json.html#struct_json" class="ref">Json</a> *
+    openaiResponses
+(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b" class="ref">OpenAIAgent</a> agent, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API with agent callbacks.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Submit a request to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API which supports agent-based interactions. The API automatically sets default values: model=&apos;gpt-4o-mini&apos;, truncation=&apos;auto&apos;. Response text is aggregated into &quot;output_text&quot; field for convenient access. Agent callbacks are invoked for processing structured responses.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">props</td><td>JSON object containing Response API parameters. Required fields depend on the specific API endpoint. Common fields include &apos;messages&apos;, &apos;model&apos;, &apos;max_tokens&apos;, &apos;temperature&apos;.</td></tr>
+    <tr><td class="param">agent</td><td>Callback function invoked for each response chunk. May be NULL if no agent processing required.</td></tr>
+    <tr><td class="param">arg</td><td>User-defined argument passed to the agent callback function. May be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON object containing the complete response from <a class="ref" href="#struct_open_a_i">OpenAI</a>. Contains aggregated &quot;output_text&quot; field. Returns NULL on failure. Caller must free using jsonFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1a40dba971ad7ed454b572d76ce404f555"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="url.html#struct_url" class="ref">Url</a> *
+    openaiStream
+(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="url.html#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> callback, void *arg)
+  </div>
+  <div class="apiDetail">
+<p>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Response API with streaming response handling.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Submit a request and receive responses via Server-Sent Events (SSE) streaming. Default values are automatically set: model=&apos;gpt-4o-mini&apos;, truncation=&apos;auto&apos;. The response text is aggregated into &quot;output_text&quot; for convenient access. Streaming allows real-time processing of responses as they arrive.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">props</td><td>JSON object containing Response API parameters. Must include required fields for the target endpoint.</td></tr>
+    <tr><td class="param">callback</td><td>SSE callback function invoked for each streaming chunk. Cannot be NULL.</td></tr>
+    <tr><td class="param">arg</td><td>User-defined argument passed to the callback function. May be NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Url object representing the active streaming connection on success. Returns NULL on failure. Use urlClose to terminate the stream when finished.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="openai_8h_1ad6d57f39ca9cb53f06dbdbc720c05861"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    openaiTerm
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Terminate the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Clean up resources and terminate the <a class="ref" href="#struct_open_a_i">OpenAI</a> client library. This should be called when the application no longer needs <a class="ref" href="#struct_open_a_i">OpenAI</a> services. All active connections and allocated resources will be freed.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>

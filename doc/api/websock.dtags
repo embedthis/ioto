@@ -1,0 +1,266 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>WebSocket</name>
+    <filename>struct_web_socket.html</filename>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>abortEvent</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>aabf3139cb14fee24260ef00f4020c3da</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>buf</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a51bf15b4a2fda79c14ae1d12065e2dee</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebSocketProc</type>
+      <name>callback</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a4d08b933a6c50b54dfa455343aaed10d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>void *</type>
+      <name>callbackArg</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a1d9bb4b1d8a884f99de4959ba11b9af8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>client</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>af612f6b7b8c7f2f2ddfe16bfc046f108</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>clientKey</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a51750582ccb62773e8ad76e728a4dd54</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>closeReason</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>aebb222888f976250aaf53984ab23ecb4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>closeStatus</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a0845553157148dd29d3bd0a5a3140759</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>closing</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a26941142e84fc1349476d6d9a05dfc1a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>void *</type>
+      <name>data</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a5e1063182e9ee0d898c716fe167162cc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uchar</type>
+      <name>dataMask</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>abd6b641250d983bda0912009929224c2</anchor>
+      <arglist>[4]</arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>deadline</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a47c0c9dc5e678c52ac8ab445b4ae9ee0</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>error</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a90e8e2b724bf1ffd9c12de6e0bcef1fc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>errorMessage</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a3a962f673d2e2909d4e347223389a8b6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RFiber *</type>
+      <name>fiber</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>aa850b475d2650ba385f5fd052df6fb05</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>fin</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>ac5bce0f5eb5bda042df545e873377bb5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>frame</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a1632773289d10944571b77f52003d4dc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>frameLength</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a498ce186b4cf619b39fa55c6efe56cae</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>inCallback</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>aa0a7f75db9a0d9f84edce7411968b42a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>maskOffset</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>acf5aead1c886bd6e9a964644c01e35ca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maxFrame</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>ae58f96a182c84adb031ab769f4e59e28</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maxMessage</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>af2d6b8696526e067255704f4cb527859</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>maxPacket</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a7b02db11ff76021c04ca044558fac438</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>messageLength</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a50db57418ca7a7767756261ddca59d7e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>needFree</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a591ddb6cb80f59f934c3d98ae4a92b07</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>opcode</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>aca9c916798130bf51e675e9ec554e5d2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>void *</type>
+      <name>parent</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a13e474b61b45980fd377d2159c2dda9d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>partialUTF</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>af85d0e112be8d9d09988185ef7ec9178</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>pingEvent</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a9acae2dc911454d3da7227e0f39c288c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Time</type>
+      <name>pingPeriod</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>ac3560c87c9823e9d5a1a78e5189c729f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>protocol</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a41c278e1cceeaf44ea9ff047e5a5d6f2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>rxSeq</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a5e5b427b1d37fb83592597b1de005a88</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RSocket *</type>
+      <name>sock</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a898532548fbde96c034b67e1b14a427e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>state</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>ae6bb36885962433ec4e889dff4ae2d88</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>txSeq</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a94145d4f9a0cd99568e3d6c3f4c10e15</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>type</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>a6b311a40ad68d6e4be6fd5f00608f1bb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>validate</name>
+      <anchorfile>struct_web_socket.html</anchorfile>
+      <anchor>abd45f4290123a68bdf1036cc133f0c5c</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

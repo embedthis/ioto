@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>CryptMd5</name>
+    <filename>struct_crypt_md5.html</filename>
+    <member kind="variable">
+      <type>uint</type>
+      <name>state</name>
+      <anchorfile>struct_crypt_md5.html</anchorfile>
+      <anchor>a82b0b6322492304e3e5027636ea8a69a</anchor>
+      <arglist>[4]</arglist>
+    </member>
+  </compound>
+  <compound kind="struct">
+    <name>CryptSha1</name>
+    <filename>struct_crypt_sha1.html</filename>
+  </compound>
+  <compound kind="struct">
+    <name>CryptSha256</name>
+    <filename>struct_crypt_sha256.html</filename>
+    <member kind="variable">
+      <type>uint32</type>
+      <name>state</name>
+      <anchorfile>struct_crypt_sha256.html</anchorfile>
+      <anchor>abe771508f0f673ef33887623a0a62baf</anchor>
+      <arglist>[8]</arglist>
+    </member>
+  </compound>
+</tagfile>

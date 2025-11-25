@@ -1,0 +1,810 @@
+<h1>WEBSOCKETS API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="#struct_web_socket" class="ref">WebSocket</a> *</td><td><a href="#websockets_8h_1ad17335b5ccdd4561eea34bf3d1985e40" class="nameRef">webSocketAlloc</a>(<a href="r.html#struct_r_socket" class="ref">RSocket</a> *sock, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> client)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a new <a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a8ddc6d9337b562d7f2135910406fc3f2" class="nameRef">webSocketAsync</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="#websockets_8h_1a03c8d190f2a208758f10bd8b09f84b35" class="ref">WebSocketProc</a> callback, void *arg, RBuf *buf)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure <a class="ref" href="#struct_web_socket">WebSocket</a> for asynchronous operation with callback.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a7c17479b9c4a0a003cd2759c8175ad37" class="nameRef">webSocketFree</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a <a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#websockets_8h_1a5fbc667af97e596b551041d5cef292b2" class="nameRef">webSocketGetClientKey</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the client key.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#websockets_8h_1ae868af7387e54abbcfe7adbc5a8c3cc0" class="nameRef">webSocketGetCloseReason</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the close reason supplied by the peer.</td></tr>
+<tr class="apiDef"><td class="apiType">void *</td><td><a href="#websockets_8h_1a21d875db7fdcd27a87a3f6061c024d28" class="nameRef">webSocketGetData</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the <a class="ref" href="#struct_web_socket">WebSocket</a> private data.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#websockets_8h_1ac166e46849aa85bfe93511dd27480c2f" class="nameRef">webSocketGetErrorMessage</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the error message for the current message.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1a0c2dbb5d2e82f9dd5dd1c6b827a3157e" class="nameRef">webSocketGetMessageLength</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the message length for the current message.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#websockets_8h_1adcaeab4d089a778ade4b1417e68b5bf5" class="nameRef">webSocketGetOrderlyClosed</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if <a class="ref" href="#struct_web_socket">WebSocket</a> connection was orderly closed by sending an acknowledged close message.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#websockets_8h_1a1808fa73dd3acd962a399865f5a68649" class="nameRef">webSocketGetProtocol</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the selected <a class="ref" href="#struct_web_socket">WebSocket</a> protocol selected by the server.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1af45ad0ff49fa92218a68fa678d11ad49" class="nameRef">webSocketGetState</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the <a class="ref" href="#struct_web_socket">WebSocket</a> state.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#websockets_8h_1a4874dc692a66a77b04d71576d12d4a4c" class="nameRef">webSocketProcess</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Process a packet of data containing webSocket frames and data.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1aac0a78891ab612218327128cd3b82377" class="nameRef">webSocketSelectProtocol</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *protocol)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Select the <a class="ref" href="#struct_web_socket">WebSocket</a> protocol.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1a5c9e0e1b202d709d0e18c61c56ae302a" class="nameRef">webSocketSend</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...) PRINTF_ATTRIBUTE(2</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a UTF-8 text message to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1a9c2076d52f18aadb09744f07d9e097ef" class="nameRef">webSocketSendBlock</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, int type, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *msg, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a message of a given type to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1a364b92e8aa7c4832d8c54372e6724768" class="nameRef">webSocketSendClose</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *reason)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a close message to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#websockets_8h_1a7eccd016dafaef853fea44e75b817f32" class="nameRef">webSocketSendJson</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="json.html#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a json object to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> ssize</td><td><a href="#websockets_8h_1a563761e4a3537cebb1cae5095b979cfe" class="nameRef">webSocketSendString</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *buf)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a string to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a87c6e7413c6161256ce84a9123fe9e23" class="nameRef">webSocketSetClientKey</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *clientKey)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the client key.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a00020d5ad6ac1d7c4c50b9864d2c2bec" class="nameRef">webSocketSetData</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the <a class="ref" href="#struct_web_socket">WebSocket</a> private data.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1ab1eda2380ca555c856d6c39810be8988" class="nameRef">webSocketSetFiber</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="r.html#struct_r_fiber" class="ref">RFiber</a> *fiber)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the <a class="ref" href="#struct_web_socket">WebSocket</a> fiber.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1ab9b9569730546834b96c69e0b38b1cb3" class="nameRef">webSocketSetLimits</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> maxFrame, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> maxMessage)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum frame size and message size.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a0b2683e92087dd2f0617e4629430d04a" class="nameRef">webSocketSetPingPeriod</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> pingPeriod)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the ping period.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#websockets_8h_1a35307f21f96aad3dd485a87ec4ccea1d" class="nameRef">webSocketSetValidateUTF</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> validateUTF)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set whether to validate UTF8 codepoints.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#websockets_8h_1a182d212d2aa605c66bdc46a45efad763" class="nameRef">webSocketWait</a>(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Wait for the <a class="ref" href="#struct_web_socket">WebSocket</a> connection to close.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_web_socket" class="nameRef">WebSocket</a></td><td class="apiBrief"><a class="ref" href="#struct_web_socket">WebSocket</a> WebSockets RFC 6455 implementation for client and server communications.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#websockets_8h_1a03c8d190f2a208758f10bd8b09f84b35" class="nameRef">WebSocketProc</a></td><td class="apiBrief"><a class="ref" href="#struct_web_socket">WebSocket</a> callback procedure invoked when a message is received or the connection is first opened.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1aedf87a3dfdedd525563cb44181ad03b8" class="nameRef">WEB_MORE</a>&nbsp;&nbsp;&nbsp;0x1000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Flag for webSocketSendBlock to indicate there are more frames for this message.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a6283b06665a466fb82fa7a6c741de923" class="nameRef">WS_CLIENT</a>&nbsp;&nbsp;&nbsp;1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Instance executing as a client.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ae47872cfec19248c30861ed325c68a88" class="nameRef">WS_EVENT_CLOSE</a>&nbsp;&nbsp;&nbsp;4</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> connection is closed.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a146a6cc500b4d83be5cdfa3fe938b7aa" class="nameRef">WS_EVENT_ERROR</a>&nbsp;&nbsp;&nbsp;3</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> error is detected.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a35087a7601f174731cb65556a6d9a5f5" class="nameRef">WS_EVENT_MESSAGE</a>&nbsp;&nbsp;&nbsp;1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> full (or last part of) message is received.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a0654979870fc6c16c3620c730ffd206e" class="nameRef">WS_EVENT_OPEN</a>&nbsp;&nbsp;&nbsp;0</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> connection is open.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ab5d26ac47d6546f539607cfcf754f1dd" class="nameRef">WS_EVENT_PARTIAL_MESSAGE</a>&nbsp;&nbsp;&nbsp;2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> partial message is received.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1aaf01d5d211e32f4978e1a9e66bb09b3e" class="nameRef">WS_MAX_CONTROL</a>&nbsp;&nbsp;&nbsp;125</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum bytes in control message.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a339273bb478154d85b35ad45509660f3" class="nameRef">WS_MAX_FRAME</a>&nbsp;&nbsp;&nbsp;131072</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum frame size.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a6d4e7e6cd6b4c89088223c72dc0c3758" class="nameRef">WS_MAX_MESSAGE</a>&nbsp;&nbsp;&nbsp;(1024 * 1024)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum message size, zero for no limit.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a2d7f585a9fdca9b08e3fd35ce78b5b05" class="nameRef">WS_MSG_BINARY</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>webSendBlock type for binary messages.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a186dc650d758ef9f0ee64a85e7cc8af4" class="nameRef">WS_MSG_CLOSE</a>&nbsp;&nbsp;&nbsp;0x8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>webSendBlock type for close message.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a23fc3a8fd718e9b8266fc6a76d2a154a" class="nameRef">WS_MSG_CONT</a>&nbsp;&nbsp;&nbsp;0x0</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Continuation of <a class="ref" href="#struct_web_socket">WebSocket</a> message.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ab855bddef81f4d62e351067a93acfa06" class="nameRef">WS_MSG_CONTROL</a>&nbsp;&nbsp;&nbsp;0x8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Start of control messages.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a1563322ac90329ac3f40a06de988ae36" class="nameRef">WS_MSG_MAX</a>&nbsp;&nbsp;&nbsp;0xB</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Max message type for webSendBlock.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1abb8bb9ec839ba2b9e0fcf0fb2bc0556a" class="nameRef">WS_MSG_MORE</a>&nbsp;&nbsp;&nbsp;0x10</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Use on first call to webSendBlock to indicate more data to follow.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a6f1a33baf9e0cae8bcb9d4783497eb23" class="nameRef">WS_MSG_PING</a>&nbsp;&nbsp;&nbsp;0x9</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>webSendBlock type for ping messages.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1aacf0d8962c712fd88a78245d2606838c" class="nameRef">WS_MSG_PONG</a>&nbsp;&nbsp;&nbsp;0xA</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>webSendBlock type for pong messages.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a9436cb91a2db55a58d85d0ecb340b5d5" class="nameRef">WS_MSG_TEXT</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>webSendBlock type for text messages.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a18cb3fd20505b6ae6433b31e467a2c9a" class="nameRef">WS_SERVER</a>&nbsp;&nbsp;&nbsp;0</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Instance executing as a server.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a02363560e73ebd3d01c09902d2290c4d" class="nameRef">WS_STATE_CLOSED</a>&nbsp;&nbsp;&nbsp;3</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> is closed.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a0463873293d20536a4fa2445af3ca7e9" class="nameRef">WS_STATE_CLOSING</a>&nbsp;&nbsp;&nbsp;2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> is closing.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a2e0dc474d59b4f6362baeb9c3f556523" class="nameRef">WS_STATE_CONNECTING</a>&nbsp;&nbsp;&nbsp;0</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> connection is being established.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a2fe743eb09e44700deb9f6bc1bc5e484" class="nameRef">WS_STATE_OPEN</a>&nbsp;&nbsp;&nbsp;1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> handsake is complete and ready for communications.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1acb030881bbbeb9c19a3856761f814d7c" class="nameRef">WS_STATUS_COMMS_ERROR</a>&nbsp;&nbsp;&nbsp;1006</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>TCP/IP communications error <br/></td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ac954aed2921e88e5f201b9572bb5e4b5" class="nameRef">WS_STATUS_FRAME_TOO_LARGE</a>&nbsp;&nbsp;&nbsp;1004</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Reserved.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ae98979bd33d2d07e78dbbd50e5c4ae5f" class="nameRef">WS_STATUS_GOING_AWAY</a>&nbsp;&nbsp;&nbsp;1001</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Endpoint is going away.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a2ee23d675a50ec7ee63187c28dd488ed" class="nameRef">WS_STATUS_INTERNAL_ERROR</a>&nbsp;&nbsp;&nbsp;1011</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Server terminating due to an internal error.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a2de7d7fd428151413fb71f82f13c039b" class="nameRef">WS_STATUS_INVALID_UTF8</a>&nbsp;&nbsp;&nbsp;1007</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Text message has invalid UTF-8.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a251fe22f34dcff94070116f479350760" class="nameRef">WS_STATUS_MAX</a>&nbsp;&nbsp;&nbsp;5000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum error status (less one).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a7560c62c5427572d179d5b4b229594c1" class="nameRef">WS_STATUS_MESSAGE_TOO_LARGE</a>&nbsp;&nbsp;&nbsp;1009</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Message is too large.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a6969719796c0162edbf061fea625ab50" class="nameRef">WS_STATUS_MISSING_EXTENSION</a>&nbsp;&nbsp;&nbsp;1010</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Unsupported WebSockets extension.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a8b6d7a5967332ae48ef8b128f5f6040e" class="nameRef">WS_STATUS_NO_STATUS</a>&nbsp;&nbsp;&nbsp;1005</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>No status was received from the peer in closing.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ab6e3b70a3b4c05b606253bcd0df39d1a" class="nameRef">WS_STATUS_OK</a>&nbsp;&nbsp;&nbsp;1000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Normal closure.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a9e0caa1e1cc7be6bc03ecb7d7ccedb53" class="nameRef">WS_STATUS_POLICY_VIOLATION</a>&nbsp;&nbsp;&nbsp;1008</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Application level policy violation.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ad90fcc81c6f064d2745fc70752eebdc2" class="nameRef">WS_STATUS_PROTOCOL_ERROR</a>&nbsp;&nbsp;&nbsp;1002</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>WebSockets protocol error.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1ae9da534c8c1af898e510b4573efbd353" class="nameRef">WS_STATUS_TLS_ERROR</a>&nbsp;&nbsp;&nbsp;1015</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>TLS handshake error.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1a68e26444d14de550a69b294150f4903b" class="nameRef">WS_STATUS_UNSUPPORTED_TYPE</a>&nbsp;&nbsp;&nbsp;1003</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Unsupported message data type.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#websockets_8h_1aea527b2900703a26fe8c38d065b4f9e7" class="nameRef">WS_VERSION</a>&nbsp;&nbsp;&nbsp;13</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Current <a class="ref" href="#struct_web_socket">WebSocket</a> specification version.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="websockets_8h_1a03c8d190f2a208758f10bd8b09f84b35"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void(* WebSocketProc) (struct WebSocket *webSocket, int event, cchar *buf, ssize len, void *arg)
+  </div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_web_socket">WebSocket</a> callback procedure invoked when a message is received or the connection is first opened.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">webSocket</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">event</td><td>Event type.</td></tr>
+    <tr><td class="param">buf</td><td>Message buffer holding the message data. On open and close, the buffer is NULL and the length is 0.</td></tr>
+    <tr><td class="param">len</td><td>Length of the message.</td></tr>
+    <tr><td class="param">arg</td><td>User argument.</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<a name="struct_web_socket"></a>
+<div class="api">
+  <div class="prototype">WebSocket</div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_web_socket">WebSocket</a> WebSockets RFC 6455 implementation for client and server communications.</p>
+    <dl><dt><b>Description</b>:</dt><dd>WebSockets is a technology providing interactive communication between a server and client. Normal HTML connections follow a request / response paradigm and do not easily support asynchronous communications or unsolicited data pushed from the server to the client. WebSockets solves this by supporting bi-directional, full-duplex communications over persistent connections. A <a class="ref" href="#struct_web_socket">WebSocket</a> connection is established over a standard HTTP connection and is then upgraded without impacting the original connection. This means it will work with existing networking infrastructure including firewalls and proxies.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">REvent</td><td>abortEvent</td><td>
+Event for connection abortion.
+</td></tr>
+<tr><td class="param">RBuf *</td><td>buf</td><td>
+Buffer for accumulating incoming data.
+</td></tr>
+<tr><td class="param">WebSocketProc</td><td>callback</td><td>
+Event callback function for messages.
+</td></tr>
+<tr><td class="param">void *</td><td>callbackArg</td><td>
+User argument passed to callback.
+</td></tr>
+<tr><td class="param">int</td><td>client</td><td>
+True if client, false if server.
+</td></tr>
+<tr><td class="param">char *</td><td>clientKey</td><td>
+Unique client identifier key.
+</td></tr>
+<tr><td class="param">char *</td><td>closeReason</td><td>
+UTF-8 reason text for connection closure.
+</td></tr>
+<tr><td class="param">int</td><td>closeStatus</td><td>
+Close status code provided by peer.
+</td></tr>
+<tr><td class="param">int</td><td>closing</td><td>
+Connection closing sequence has started.
+</td></tr>
+<tr><td class="param">void *</td><td>data</td><td>
+User-defined private data reference.
+</td></tr>
+<tr><td class="param">uchar</td><td>dataMask[4]</td><td>
+Data masking key for frame processing.
+</td></tr>
+<tr><td class="param">Ticks</td><td>deadline</td><td>
+Timeout deadline for next I/O operation.
+</td></tr>
+<tr><td class="param">int</td><td>error</td><td>
+Error code for last operation.
+</td></tr>
+<tr><td class="param">char *</td><td>errorMessage</td><td>
+Error message text for last operation.
+</td></tr>
+<tr><td class="param">RFiber *</td><td>fiber</td><td>
+Fiber context waiting for close.
+</td></tr>
+<tr><td class="param">int</td><td>fin</td><td>
+Final frame indicator for received packet.
+</td></tr>
+<tr><td class="param">int</td><td>frame</td><td>
+Current message frame processing state.
+</td></tr>
+<tr><td class="param">ssize</td><td>frameLength</td><td>
+Length of current frame being processed.
+</td></tr>
+<tr><td class="param">int</td><td>inCallback</td><td>
+Currently executing in callback function.
+</td></tr>
+<tr><td class="param">int</td><td>maskOffset</td><td>
+Current offset in data masking array.
+</td></tr>
+<tr><td class="param">ssize</td><td>maxFrame</td><td>
+Maximum frame size in bytes.
+</td></tr>
+<tr><td class="param">ssize</td><td>maxMessage</td><td>
+Maximum message size in bytes.
+</td></tr>
+<tr><td class="param">ssize</td><td>maxPacket</td><td>
+Maximum packet size in bytes.
+</td></tr>
+<tr><td class="param">ssize</td><td>messageLength</td><td>
+Total length of current message.
+</td></tr>
+<tr><td class="param">int</td><td>needFree</td><td>
+<a class="ref" href="#struct_web_socket">WebSocket</a> object requires cleanup.
+</td></tr>
+<tr><td class="param">int</td><td>opcode</td><td>
+Opcode of current received message.
+</td></tr>
+<tr><td class="param">void *</td><td>parent</td><td>
+User-defined parent object reference.
+</td></tr>
+<tr><td class="param">int</td><td>partialUTF</td><td>
+Last frame contained partial UTF-8 sequence.
+</td></tr>
+<tr><td class="param">REvent</td><td>pingEvent</td><td>
+Timer event for ping transmission.
+</td></tr>
+<tr><td class="param">Time</td><td>pingPeriod</td><td>
+Interval for sending ping frames.
+</td></tr>
+<tr><td class="param">char *</td><td>protocol</td><td>
+Selected <a class="ref" href="#struct_web_socket">WebSocket</a> sub-protocol.
+</td></tr>
+<tr><td class="param">int</td><td>rxSeq</td><td>
+Incoming packet sequence number (debug).
+</td></tr>
+<tr><td class="param">RSocket *</td><td>sock</td><td>
+Underlying network socket.
+</td></tr>
+<tr><td class="param">int</td><td>state</td><td>
+Current <a class="ref" href="#struct_web_socket">WebSocket</a> protocol state.
+</td></tr>
+<tr><td class="param">int</td><td>txSeq</td><td>
+Outgoing packet sequence number (debug).
+</td></tr>
+<tr><td class="param">int</td><td>type</td><td>
+Accumulated message type for multi-frame messages.
+</td></tr>
+<tr><td class="param">int</td><td>validate</td><td>
+Enable UTF-8 validation for text messages.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="websockets_8h_1ad17335b5ccdd4561eea34bf3d1985e40"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_web_socket" class="ref">WebSocket</a> *
+    webSocketAlloc
+(<a href="r.html#struct_r_socket" class="ref">RSocket</a> *sock, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> client)
+  </div>
+  <div class="apiDetail">
+<p>Allocate a new <a class="ref" href="#struct_web_socket">WebSocket</a> object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine allocates and initializes a new <a class="ref" href="#struct_web_socket">WebSocket</a> object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">sock</td><td>Communication socket.</td></tr>
+    <tr><td class="param">client</td><td>True if the instance is a client, false if it is a server.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The new <a class="ref" href="#struct_web_socket">WebSocket</a> object.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a8ddc6d9337b562d7f2135910406fc3f2"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketAsync
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="#websockets_8h_1a03c8d190f2a208758f10bd8b09f84b35" class="ref">WebSocketProc</a> callback, void *arg, RBuf *buf)
+  </div>
+  <div class="apiDetail">
+<p>Configure <a class="ref" href="#struct_web_socket">WebSocket</a> for asynchronous operation with callback.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine configures the <a class="ref" href="#struct_web_socket">WebSocket</a> for asynchronous operation by setting the event callback function that will be invoked when messages are received or connection events occur. The callback will be called for open, message, error, and close events.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">callback</td><td>Callback function to handle <a class="ref" href="#struct_web_socket">WebSocket</a> events.</td></tr>
+    <tr><td class="param">arg</td><td>User argument passed to the callback function.</td></tr>
+    <tr><td class="param">buf</td><td>Buffer containing pre-read data that may have been received as part of reading the HTTP headers.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a7c17479b9c4a0a003cd2759c8175ad37"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketFree
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Free a <a class="ref" href="#struct_web_socket">WebSocket</a> object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine frees a <a class="ref" href="#struct_web_socket">WebSocket</a> object allocated by webSocketAlloc.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a5fbc667af97e596b551041d5cef292b2"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    webSocketGetClientKey
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the client key.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The client key is a unique identifier for the client.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The client key.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1ae868af7387e54abbcfe7adbc5a8c3cc0"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    webSocketGetCloseReason
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the close reason supplied by the peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The peer may supply a UTF8 messages reason for the closure.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The UTF8 reason string supplied by the peer when closing the <a class="ref" href="#struct_web_socket">WebSocket</a></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a21d875db7fdcd27a87a3f6061c024d28"></a>
+<div class="api">
+  <div class="prototype">
+    void *
+    webSocketGetData
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the <a class="ref" href="#struct_web_socket">WebSocket</a> private data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Get the private data defined with webSocketSetData.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The private data reference.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1ac166e46849aa85bfe93511dd27480c2f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    webSocketGetErrorMessage
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the error message for the current message.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The error message will be set if an error occurs while parsing or processing the message.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The error message. Caller must not free the message.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a0c2dbb5d2e82f9dd5dd1c6b827a3157e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketGetMessageLength
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the message length for the current message.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The message length will be updated as the message frames are received. The message length is only complete when the last frame has been received.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The size of the message.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1adcaeab4d089a778ade4b1417e68b5bf5"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webSocketGetOrderlyClosed
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Test if <a class="ref" href="#struct_web_socket">WebSocket</a> connection was orderly closed by sending an acknowledged close message.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Check whether the <a class="ref" href="#struct_web_socket">WebSocket</a> connection was closed cleanly with proper close handshake sequence, as opposed to an abrupt disconnection.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the <a class="ref" href="#struct_web_socket">WebSocket</a> was orderly closed.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a1808fa73dd3acd962a399865f5a68649"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    webSocketGetProtocol
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the selected <a class="ref" href="#struct_web_socket">WebSocket</a> protocol selected by the server.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieve the <a class="ref" href="#struct_web_socket">WebSocket</a> sub-protocol that was negotiated and selected during the handshake process.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The <a class="ref" href="#struct_web_socket">WebSocket</a> protocol string.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1af45ad0ff49fa92218a68fa678d11ad49"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketGetState
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Get the <a class="ref" href="#struct_web_socket">WebSocket</a> state.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Get the current state of the <a class="ref" href="#struct_web_socket">WebSocket</a> connection.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The <a class="ref" href="#struct_web_socket">WebSocket</a> state. Will be WS_STATE_CONNECTING, WS_STATE_OPEN, WS_STATE_CLOSING or WS_STATE_CLOSED.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a4874dc692a66a77b04d71576d12d4a4c"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    webSocketProcess
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws)
+  </div>
+  <div class="apiDetail">
+<p>Process a packet of data containing webSocket frames and data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine processes a <a class="ref" href="#struct_web_socket">WebSocket</a> packet.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on close, &lt; 0 for error and 1 for message(s) received.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1aac0a78891ab612218327128cd3b82377"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSelectProtocol
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *protocol)
+  </div>
+  <div class="apiDetail">
+<p>Select the <a class="ref" href="#struct_web_socket">WebSocket</a> protocol.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Select the <a class="ref" href="#struct_web_socket">WebSocket</a> protocol for the <a class="ref" href="#struct_web_socket">WebSocket</a> session.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">protocol</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> protocol.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a5c9e0e1b202d709d0e18c61c56ae302a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketSend
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Send a UTF-8 text message to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call invokes webSocketSend with a type of WS_MSG_TEXT. The message must be valid UTF8 as the peer will reject invalid UTF8 messages.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">fmt</td><td>Printf style formatted string.</td></tr>
+    <tr><td class="param">...</td><td>Arguments for the format.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of bytes written.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a9c2076d52f18aadb09744f07d9e097ef"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketSendBlock
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, int type, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *msg, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> len)
+  </div>
+  <div class="apiDetail">
+<p>Send a message of a given type to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This API permits control of message types and message framing. <br/><br/>
+This routine may block for up to the inactivity timeout if the outgoing socket is full. When blocked, other fibers will be allowed to run. <br/><br/>
+This API may split the message into frames such that no frame is larger than the limit &quot;webSocketsFrameSize&quot;. However, if the type has the more flag set by oring the WEB_MORE define to indicate there is more data to complete this entire message, the data provided to this call will not be split into frames and will not be aggregated with previous or subsequent messages. i.e. frame boundaries will be preserved and sent as-is to the peer. <br/><br/></dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">type</td><td>Web socket message type. Choose from WS_MSG_TEXT, WS_MSG_BINARY or WS_MSG_PING. Do not send a WS_MSG_PONG message as it is generated internally by the Web Sockets module. Use webSocketSendClose to send a close message.</td></tr>
+    <tr><td class="param">msg</td><td>Message data buffer to send.</td></tr>
+    <tr><td class="param">len</td><td>Length of msg.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of data message bytes written. Should equal len if successful, otherwise returns a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a364b92e8aa7c4832d8c54372e6724768"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketSendClose
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *reason)
+  </div>
+  <div class="apiDetail">
+<p>Send a close message to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call invokes webSocketSendBlock with a type of WS_MSG_CLOSE. The status and reason are encoded in the message. The reason is an optional UTF8 closure reason message.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">status</td><td>Web socket status.</td></tr>
+    <tr><td class="param">reason</td><td>Optional UTF8 reason text message. The reason must be less than 124 bytes in length.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of data message bytes written. Should equal len if successful, otherwise returns a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a7eccd016dafaef853fea44e75b817f32"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webSocketSendJson
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="json.html#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Send a json object to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call invokes webSocketSendString with a type of WS_MSG_TEXT.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">json</td><td>Json object.</td></tr>
+    <tr><td class="param">nid</td><td>Node id.</td></tr>
+    <tr><td class="param">key</td><td>Key.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of bytes written.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a563761e4a3537cebb1cae5095b979cfe"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> ssize
+    webSocketSendString
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *buf)
+  </div>
+  <div class="apiDetail">
+<p>Send a string to the <a class="ref" href="#struct_web_socket">WebSocket</a> peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call invokes webSocketSendBlock with a type of WS_MSG_TEXT.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">buf</td><td>String to send.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of bytes written.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a87c6e7413c6161256ce84a9123fe9e23"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetClientKey
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *clientKey)
+  </div>
+  <div class="apiDetail">
+<p>Set the client key.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Set the client key for the <a class="ref" href="#struct_web_socket">WebSocket</a> object. This unique identifier is used during the <a class="ref" href="#struct_web_socket">WebSocket</a> handshake process and for client identification.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">clientKey</td><td>Client key string.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a00020d5ad6ac1d7c4c50b9864d2c2bec"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetData
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, void *data)
+  </div>
+  <div class="apiDetail">
+<p>Set the <a class="ref" href="#struct_web_socket">WebSocket</a> private data.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Set private data to be retained by the garbage collector.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">data</td><td>Managed data reference.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1ab1eda2380ca555c856d6c39810be8988"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetFiber
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="r.html#struct_r_fiber" class="ref">RFiber</a> *fiber)
+  </div>
+  <div class="apiDetail">
+<p>Set the <a class="ref" href="#struct_web_socket">WebSocket</a> fiber.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Associate a fiber context with the <a class="ref" href="#struct_web_socket">WebSocket</a> object for cooperative multitasking and blocking operations.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">fiber</td><td>Fiber context to associate.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1ab9b9569730546834b96c69e0b38b1cb3"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetLimits
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> maxFrame, <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a> maxMessage)
+  </div>
+  <div class="apiDetail">
+<p>Set the maximum frame size and message size.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Set the maximum frame size and message size for the <a class="ref" href="#struct_web_socket">WebSocket</a> object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">maxFrame</td><td>Maximum frame size.</td></tr>
+    <tr><td class="param">maxMessage</td><td>Maximum message size.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a0b2683e92087dd2f0617e4629430d04a"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetPingPeriod
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> pingPeriod)
+  </div>
+  <div class="apiDetail">
+<p>Set the ping period.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Configure the interval at which ping frames are automatically sent to keep the connection alive and detect disconnections.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">pingPeriod</td><td>Time interval between ping frames.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a35307f21f96aad3dd485a87ec4ccea1d"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webSocketSetValidateUTF
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> validateUTF)
+  </div>
+  <div class="apiDetail">
+<p>Set whether to validate UTF8 codepoints.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Set whether to validate UTF8 codepoints for the <a class="ref" href="#struct_web_socket">WebSocket</a> object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">validateUTF</td><td>True to validate UTF8 codepoints, false otherwise.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="websockets_8h_1a182d212d2aa605c66bdc46a45efad763"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    webSocketWait
+(<a href="#struct_web_socket" class="ref">WebSocket</a> *ws, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> deadline)
+  </div>
+  <div class="apiDetail">
+<p>Wait for the <a class="ref" href="#struct_web_socket">WebSocket</a> connection to close.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber until the <a class="ref" href="#struct_web_socket">WebSocket</a> connection is closed or the deadline expires. This function allows graceful shutdown handling by waiting for the peer to acknowledge closure.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
+    <tr><td class="param">deadline</td><td>Deadline for the operation.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>0 on close, &lt; 0 for error and 1 for message(s) received.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

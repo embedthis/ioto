@@ -1,0 +1,497 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Ioto</name>
+    <filename>struct_ioto.html</filename>
+    <member kind="variable">
+      <type>char *</type>
+      <name>account</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a81c639cc015974306429446019216467</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>aiService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aa0d73534e15ad611d3eba00f20f3faff</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>api</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>af76ef2052fd9c578c7ed76d3349bd6ea</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>apiToken</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a8d8a9e757e7c2221bdb41cc40f083b7e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>app</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a0a69952569e02d1a2c81e5345bd69eca</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>awsAccess</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aa7959abbbf7456f3f6fde8ad97993f2e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Time</type>
+      <name>awsExpires</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a7ea83657b46ecaec7a8eab6e6a13fc35</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>awsRegion</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ab6e1b6c2d083abb7663ae9d03b9dd780</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>awsSecret</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a049a6f5c5f847166b8a9187f92bd5d90</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>awsToken</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a638b95bc2edeee4f882d5ef5a8a6d218</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Time</type>
+      <name>blockedUntil</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ac7c7746a7ccfe50f8e1f2936c4f42b3a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>builder</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a26b887f8e6318a8fd338a62d6f144723</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cloud</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ae771f440bd3899df5436b6c162ff4230</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>cloudReady</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aa7cd70a74e6396bd43c7458bb6d092a7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>cloudService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ae91ffe4758ea0d504c0ef7135683643d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cloudType</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a5825e495645b9d8fa5fad0cedaa8f314</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdAccount</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a26ccd27ba9f82581516d510b9fa9c55b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdAIShow</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ab1102d2536939ea7ed792431d502deaa</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdBuilder</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a228244f87b11135ab0d57d4f16e00caf</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdCloud</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a79eb0411f00f2a071433ee2c57379fce</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cmdConfigDir</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a4d2386ab09b6f3d6ed561d144ad04b5a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdId</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a2ff7d88827f4454030238d191f93753b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdIotoFile</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a5679cebcee6131d481b21f15b6ad3aa1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdProduct</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a38f1b148f406e9a816f227856a7feb68</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdProfile</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a79a4fc051cf01aeb21a42358f09261c5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cmdStateDir</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a537ce705d21def279d129cd5fedf1f3a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>cmdSync</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a15a548ad030494a6508926f18e1f9713</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>cmdWebShow</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a642da68e1c3e1de95b8d7a488d323ba1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>config</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a9574ef572d89cdc63b8b727d885a1e0a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>connected</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a449c1ea6c337c3edc247ea25cc6bd9c9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>dbService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aae6d36667876af12526e5f98f4f57ec1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>endpoint</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a72329e57d0d87780780583dcea317f8e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>id</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a7d98f32bf994534b5193771874109794</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>instance</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>abc341c2311f95d27d85df175345aff18</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>keyService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a0aa91ab80abc9d40ec447e4cbad17c60</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>lastSync</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a807f391aaf751026041456803de62cb6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>struct IotoLog *</type>
+      <name>log</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a556cd6f2d03fa0be48a6932f1a0d40b9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>logDir</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a00d1adb49279cde61f5224889b0d85a1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RList *</type>
+      <name>logs</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ab92388211d543f158be61efd479d20f5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>logService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>abb3f90ef5239c4b3f795a6cc7efbaddc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>maxSyncSize</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a167c9ffd36ceb8a4480df050b9efc686</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>mqttService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a6830f1d5777497a85dba4c5d42aadef7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>nosave</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a1e09e3f4157a7c8d2fd79ea465eccf53</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>noSaveDevice</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a60833609c5de256ec41d7249833f9681</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>product</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>afb234d58761ffaed2651de9035d41eb5</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>profile</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a7370d2915c49ce631beae33f2f4acf86</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>properties</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ad59edaf7f6351ea200ffb5f18588c0ad</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>provisioned</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a8f03932f39812bab5871cd8981da2535</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>provisionService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ab3254554d5012b4e0f32bc8a83a5040e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>ready</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a36cefae72ea443a8aa22a31297d3e728</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>registered</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a3ae59cc51e7256d6db275ddbaa8ba640</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>registerService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ad7d96f8fdf6de3bc5abfbcff948e753c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>scheduledConnect</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aa9907fc11a251145136a6341886f8ef4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>serializeService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a0db530394e756ff96b07599936b034cc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Json *</type>
+      <name>shadow</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a36b05cd5ba7cfa694222d667689106ac</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>shadowEvent</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a8c7fafca183219a10f815cc60ebc4278</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>shadowName</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a1d33b33f6670f354e2780324d45bce51</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>shadowService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a1474419b60d5ca7865906098a3e0f0f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>shadowTopic</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a8bb931272dec028836a5bdc0d489230f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>syncDue</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aae25400f4aa5e65e0f56e0f8c6cc16d9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>syncEvent</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a9841a70ec39881d42e677f102d4527eb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>syncHash</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a268be1e2a92044f6fd0883c4879ba5f8</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>FILE *</type>
+      <name>syncLog</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>abd50fb3beea3372da0667e618fef7ff3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>syncService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>aed0d4469f52715c815c68106204e6d1e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>syncSize</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a333858b9a5772de5e60e527e83f36175</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>testService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>ae03eeca83ac1851eafbef5a271e584d0</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>updateService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>af1964a6b16eae803c9f98eb9647a4deb</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>version</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a64f8177cecc8ac5da9a9dca3d292fad4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebHost *</type>
+      <name>webHost</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a6ed0a01118e8fd381a2876d9e2d03b51</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>bool</type>
+      <name>webService</name>
+      <anchorfile>struct_ioto.html</anchorfile>
+      <anchor>a417cc1337ce521f1f295bb4936edbff7</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

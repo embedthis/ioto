@@ -1,0 +1,329 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<tagfile doxygen_version="1.9.6">
+  <compound kind="struct">
+    <name>Url</name>
+    <filename>struct_url.html</filename>
+    <member kind="variable">
+      <type>REvent</type>
+      <name>abortEvent</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a09b978a2fd38807d75b9f821d94afc65</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>boundary</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a8e5110511af76a6f4a741deedc9fb4b1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>bufLimit</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a4a7b5f09b98caf180dcc98022f2a42f2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>certsDefined</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ae4f8fde9a937bea59a77e3ba7e8cc93b</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>chunked</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a447f7a554b37fb46248ab16cf818e171</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>close</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a9b42f7e37318a53acded3040ddf8f10f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>deadline</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a0c3bcaf907926e41f9f6212e803bba3d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>error</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a84c270420afdfa64ac8ba3b9cfa323d4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RFiber *</type>
+      <name>fiber</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a114796298d5763844ad51ecea3ae1468</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>finalized</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>aa7722923dbb2e7cb5f0e2764e8c07eb1</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a7a5fb6c17ca48278b463e5266be6451e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>gotResponse</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a2685b6dbeffb0e5e13467dedec157dfa</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>hash</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a6b962f511c83a64c0688820ce71a5ba9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>host</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a12f51c1ceac3d37e33a1bfd60a842bee</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>inCallback</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a4579815b618ef026878cf5368520f966</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>lastEventId</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a167b69016bcff0d9ddd836e7772403b6</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>linger</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a8f787dbfc47cb519ef2bd3f889fca161</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>maxRetries</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a39260fbb39caac882641c9210d0a072e</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>needFree</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a297875272544e1a0930408bfb78ff894</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>nonblock</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ad00d30e61fc5a50e55dbc72955a24bc4</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>path</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a2dbe0e83039031851a223e61abcbc07d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>port</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a728e4d3e8889c956763de32b55b81161</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>protocol</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ae22b4e3cc12dfc9a56cd6be600b1d380</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>query</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a867c8822cef1fc40ae7ae116891a13f9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>redirect</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>abed28bde7ff61bc986afbf39d59977fc</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>response</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a40fcb8b6251f96c881fad5579bdbce45</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>responseBuf</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>acbba65dd7a8cf200bf94a1635a8435d2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>retries</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a1b19628ac8d2dd48b97a3a7bb5067a49</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>rx</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a13931ddf9748a794fefe3e95c84be492</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>rxHeaders</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a868895832662ed16f5bd5941ff40bba3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>rxLen</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a2629bf2ba783b302b362ea547a93f036</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>size_t</type>
+      <name>rxRemaining</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a9b115b546dbf9b503f0e895731dbdbe7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>cchar *</type>
+      <name>scheme</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a2a6b3b7f988a51d4ad23a7220ae5778a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RSocket *</type>
+      <name>sock</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a529ad1e1f55d4f54a011f8a491538590</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>sse</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a5d5088ece0aca06d34566bac8bce92fe</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>void *</type>
+      <name>sseArg</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ae1e36d4174374f8d061460a68fedc563</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>UrlSseProc</type>
+      <name>sseProc</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a1959118209436422276418d3fe3b033c</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>status</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a9b1f8947121259960637d12c01d64480</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>Ticks</type>
+      <name>timeout</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>aa35f4c133c5bf35ca8a3382c61c7ad2a</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RBuf *</type>
+      <name>txHeaders</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>aa57080a6e9e11f66ec0328f00b8778ea</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>ssize</type>
+      <name>txLen</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a0765a87fe67cdd83ea055311379c9d0f</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>upgraded</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a13ac03a7945176f8355f6132bde410ec</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>url</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ae61adb18dbebf226607985817763d3d9</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>char *</type>
+      <name>urlbuf</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a36c9d33f7262c07add34eeae7934aad2</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>WebSocket *</type>
+      <name>webSocket</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>a5ad55e8fa4833283cd0fa007c980841d</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>uint</type>
+      <name>wroteHeaders</name>
+      <anchorfile>struct_url.html</anchorfile>
+      <anchor>ab1bbe6566da477a5842a16547db1d878</anchor>
+      <arglist></arglist>
+    </member>
+  </compound>
+</tagfile>

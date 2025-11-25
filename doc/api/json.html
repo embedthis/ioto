@@ -1,0 +1,1355 @@
+<h1>JSON API</h1>
+<table class="apiIndex" title="Extensions">
+</table>
+<a name="Functions"></a>
+
+<h2>Function Index</h2>
+  <table class="apiIndex" title="Function Index">
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1a797c4874f735df7d461049292bf44711" class="nameRef">jsonAlloc</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a new JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a381efa339d061eb4bc50de700000bc62" class="nameRef">jsonBlend</a>(<a href="#struct_json" class="ref">Json</a> *dest, int did, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dkey, const Json *src, int sid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *skey, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Blend nodes by copying from one <a class="ref" href="#struct_json">Json</a> to another.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a5aa72e3eff9901feafe23d32155e5ac0" class="nameRef">jsonCheckIteration</a>(<a href="#struct_json" class="ref">Json</a> *json, int count, int nid)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if the iteration is valid.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1a758f97fd9b15fbaa7a8d333e2412a069" class="nameRef">jsonClone</a>(const Json *src, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Clone a json object.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#json_8h_1a2b5bc582ece96fc3dbb84247f5495534" class="nameRef">jsonConvert</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a string as JSON or JSON5 and convert into strict JSON string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#json_8h_1a605a6734f6cbc06b03f2319ff836150f" class="nameRef">jsonConvertBuf</a>(char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a string into strict json string in a buffer.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1a7a4e86175640967ff1a2eb2592595c22" class="nameRef">jsonFree</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a JSON object and all associated memory.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#json_8h_1aca6138a5e505ad8f413186b748f9a8a8" class="nameRef">jsonGet</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#json_8h_1ae20da9a6893b60eb456b65b3dbc5d06b" class="nameRef">jsonGetBool</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a boolean.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json_node" class="ref">JsonNode</a> *</td><td><a href="#json_8h_1a1f3531cb62692d2f7557a6f63b41b841" class="nameRef">jsonGetChildNode</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, int nth)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the Nth child node for a json node.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#json_8h_1ac53997d5d27f2dc0fa8c134c45838d1e" class="nameRef">jsonGetClone</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as an allocated string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a></td><td><a href="#json_8h_1af2f10c6141468606b298ff9ed1d298f5" class="nameRef">jsonGetDate</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a date.</td></tr>
+<tr class="apiDef"><td class="apiType">double</td><td><a href="#json_8h_1a7ecb8849e2d752de352a61e0a1872726" class="nameRef">jsonGetDouble</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a double.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#json_8h_1a1a137a9ecf3e4d6de91080027d05c968" class="nameRef">jsonGetError</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the error message from the JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a7763cbc67c0592205471d3ba1bf1a9a3" class="nameRef">jsonGetId</a>(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node ID.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1aa6d14bccfdb6a926354b63d6658e4cb0" class="nameRef">jsonGetInt</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as an integer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#json_8h_1a18a9b37087c2a65339cc856f1282278f" class="nameRef">jsonGetLength</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the length of a property value.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json_node" class="ref">JsonNode</a> *</td><td><a href="#json_8h_1a8e4ab089c86a67ac5c6dff5c2265fc26" class="nameRef">jsonGetNode</a>(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a95ccb53312272e4b02fd8857f1a38e4e" class="nameRef">jsonGetNodeId</a>(const Json *json, <a href="#struct_json_node" class="ref">JsonNode</a> *node)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node object ID.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a></td><td><a href="#json_8h_1a8abc0e9480cdfbd9daf26276bfc7c56e" class="nameRef">jsonGetNum</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a 64-bit integer.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#json_8h_1a142e95480026dc223d94ed1775046f7b" class="nameRef">jsonGetRef</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a string.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1ada3b65456bfca0a48348bc86b204ef4d" class="nameRef">jsonGetType</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the value type for a node.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1af7413f5c53dc9ddee29da6592d8c3714" class="nameRef">jsonGetUserFlags</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get user-defined flags from a JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a></td><td><a href="#json_8h_1ad32a7e3381c7c3797d010de7ed1b0d52" class="nameRef">jsonGetValue</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a json node value as a uint64.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1ac1c22a2091d44fc5b50b3621702fb1cd" class="nameRef">jsonLock</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Lock a json object from further updates.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1a00728931664b0f4ecfeb7b2904243ae9" class="nameRef">jsonParse</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *text, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a json string into a json object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1aa232a41b95321d350d3804edbd292060" class="nameRef">jsonParseFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, char **errorMsg, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Load a JSON object from a filename.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1abe279d110600d174328ca4109b166ff3" class="nameRef">jsonParseFmt</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a formatted string into a json object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1ad5f3d3cecbed347bffb39a3171149c8e" class="nameRef">jsonParseKeep</a>(char *text, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a json string into a json object and assume ownership of the supplied text memory.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="#struct_json" class="ref">Json</a> *</td><td><a href="#json_8h_1a2b68ba6f836a11fb72f483c0f7f578ba" class="nameRef">jsonParseString</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *text, char **errorMsg, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a JSON string into an object tree and return any errors.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1ae491db61dc1615036d752e424c3dee66" class="nameRef">jsonParseText</a>(<a href="#struct_json" class="ref">Json</a> *json, char *text, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a json string into an existing json object.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1af15d9642e83daa09123ca943799a1e7f" class="nameRef">jsonPrint</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Print a JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a1d6fe558075ee145608eaf1c22a3b2b9" class="nameRef">jsonPutToBuf</a>(RBuf *buf, const Json *json, int nid, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a json object to a serialized JSON representation in the given buffer.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1ad028b9d64f95f47bcb74f46dd336e53e" class="nameRef">jsonPutValueToBuf</a>(RBuf *buf, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a string value primitive to a JSON string and add to the given buffer.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a84cce656da3fe4d279b9d0db2f18d91a" class="nameRef">jsonRemove</a>(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a Property from a JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1acfc633df6228e3295e6a04b6da42bc00" class="nameRef">jsonSave</a>(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, int mode, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Save a JSON object to a filename.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1aeebd22fc330c08a802c882d19b16d53a" class="nameRef">jsonSet</a>(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int type)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a key/value in the JSON object with a string value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a8f827a05f77ea1fc5c06ec3e37714cc4" class="nameRef">jsonSetBool</a>(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a property in the JSON object with a boolean value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a473e19c96d686fe08ca18d0acc2ea9f1" class="nameRef">jsonSetDate</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a property in the JSON object with date value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a512bbc3846acbea5f78736a639638157" class="nameRef">jsonSetDouble</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a property with a floating point number value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1ab880ed02269069002942016e4ada602e" class="nameRef">jsonSetFmt</a>(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a key/value in the JSON object with a formatted string value.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1aebb7bf79360ffa19be0d63c7275e02e8" class="nameRef">jsonSetIndent</a>(int indent)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the indent level for compacted output.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a150329781ca2ee57fa66ed36154d2f3b" class="nameRef">jsonSetJsonFmt</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a key in the JSON object with a JSON object value passed as a JSON5 string.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1a75fe916d845c256cbceec847c7d0bb4f" class="nameRef">jsonSetMaxLength</a>(int length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum length of a line for compacted output.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1a1dbb2de72b137d16cc2ea5431e352829" class="nameRef">jsonSetNodeType</a>(<a href="#struct_json_node" class="ref">JsonNode</a> *node, int type)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a node type.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1a6d2ea5e46fc74d016561ffb7c28a514e" class="nameRef">jsonSetNodeValue</a>(<a href="#struct_json_node" class="ref">JsonNode</a> *node, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int type, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Directly update a node value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a0e00046d7406f934aaefa25d626cbf07" class="nameRef">jsonSetNumber</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a property in the JSON object with a numeric value.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#json_8h_1a5ec4660309d55dea8bc8758871de2ac2" class="nameRef">jsonSetString</a>(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update a property in the JSON object with a string value.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1abe353e88b76fd549cd5d27f40c94c841" class="nameRef">jsonSetUserFlags</a>(<a href="#struct_json" class="ref">Json</a> *json, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set user-defined flags on a JSON object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#json_8h_1a9a613620ae8e7541f4a4aa0bf823e568" class="nameRef">jsonString</a>(const Json *json, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Serialize a JSON object into a string.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#json_8h_1abe1d3cb5c8ae2e772f2480db1d2e12d1" class="nameRef">jsonTemplate</a>(<a href="#struct_json" class="ref">Json</a> *json, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> keep)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Expand a string template with ${prop.prop...} references.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#json_8h_1a5d130844f972ecd41ae744fac2c87af7" class="nameRef">jsonToString</a>(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Serialize a JSON object into a string.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#json_8h_1a848b48c87050e40f5ea6404046c6c417" class="nameRef">jsonUnlock</a>(<a href="#struct_json" class="ref">Json</a> *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Unlock a json object to allow updates.</td></tr>
+</table>
+<a name="Typedefs"></a>
+
+<h2>Typedef Index</h2>
+<table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#struct_json" class="nameRef">Json</a></td><td class="apiBrief">JSON Object.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#struct_json_node" class="nameRef">JsonNode</a></td><td class="apiBrief">JSON Node.</td></tr>
+</table>
+<a name="Defines"></a>
+
+<h2>Defines</h2>
+<table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1af4230313ed0c1f56128228c680d8779f" class="nameRef">ITERATE_JSON</a>&nbsp;&nbsp;&nbsp;        int pid = (int) ((parent ? parent : json-&gt;nodes) - json-&gt;nodes), nid = pid + 1, _count = json-&gt;count; \
+        (json-&gt;count &gt; 0) &amp;&amp; json-&gt;nodes &amp;&amp; nid &gt;= 0 &amp;&amp; (nid &lt; json-&gt;nodes[pid].last) &amp;&amp; \
+        (child = &amp;json-&gt;nodes[nid]) != 0; \
+        nid = jsonCheckIteration(json, _count, json-&gt;nodes[nid].last)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Iteration macros for traversing JSON tree children.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1aab62c92a5916acda13fd7f60afa05189" class="nameRef">ITERATE_JSON_ID</a>&nbsp;&nbsp;&nbsp;        int nid = pid + 1, _count = json-&gt;count; \
+        (json-&gt;count &gt; 0) &amp;&amp; json-&gt;nodes &amp;&amp; nid &gt;= 0 &amp;&amp; (nid &lt; json-&gt;nodes[pid].last) &amp;&amp; \
+        (child = &amp;json-&gt;nodes[nid]) != 0; \
+        nid = jsonCheckIteration(json, _count, json-&gt;nodes[nid].last)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Iterate over the children under a node identified by its ID.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a428de3ab08ecee042c292f3876f21149" class="nameRef">ITERATE_JSON_KEY</a>&nbsp;&nbsp;&nbsp;        int parentId = jsonGetId(json, baseId, key), nid = parentId + 1, _count = json-&gt;count; \
+        (json-&gt;count &gt; 0) &amp;&amp; json-&gt;nodes &amp;&amp; nid &gt;= 0 &amp;&amp; (nid &lt; json-&gt;nodes[parentId].last) &amp;&amp; \
+        (child = &amp;json-&gt;nodes[nid]) != 0; \
+        nid = jsonCheckIteration(json, _count, json-&gt;nodes[nid].last)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Iterate over the children under a given key node.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1ac5035506ec55f90113234566f39781a4" class="nameRef">JSON_APPEND</a>&nbsp;&nbsp;&nbsp;0x4</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default behavior: append to existing properties (equivalent to &apos;+&apos;).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a783fbe49e14e77948af141c0581391f6" class="nameRef">JSON_ARRAY</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Array node containing indexed elements as children.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a0c84c360aafb9f606b39431c603c43f3" class="nameRef">JSON_BARE</a>&nbsp;&nbsp;&nbsp;0x4000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: render without quotes or brackets.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1afd80cb6f5b8d383fdfcaf2a13dafaafc" class="nameRef">JSON_CCREATE</a>&nbsp;&nbsp;&nbsp;0x10</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default behavior: conditional create only if not existing (equivalent to &apos;?&apos;).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1aed17088cbe969941e671ed00518837c8" class="nameRef">JSON_COMBINE</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>JSON blending operation flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a6328d418b1e26066de5c873959f58145" class="nameRef">JSON_COMMENT</a>&nbsp;&nbsp;&nbsp;0x4</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Comment node (JSON5 feature, not preserved in output).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a4fb7212cc72db2f512fc30f049f064a6" class="nameRef">JSON_COMPACT</a>&nbsp;&nbsp;&nbsp;0x10</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>JSON rendering flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a68fbfa0d43bad862905279767aa682ee" class="nameRef">JSON_DEBUG</a>&nbsp;&nbsp;&nbsp;0x2000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: enable debug-specific formatting.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1acd97cf102346c4d185f02bc35a56f4df" class="nameRef">JSON_DEFAULT_INDENT</a>&nbsp;&nbsp;&nbsp;4</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default indent level for json text.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a8d0b4eb320da13526813e30327f67935" class="nameRef">JSON_DOUBLE_QUOTES</a>&nbsp;&nbsp;&nbsp;0x20</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Use double quotes for strings and keys.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a60644e6f1772b44bdf034a5af88ad69c" class="nameRef">JSON_ENCODE</a>&nbsp;&nbsp;&nbsp;0x40</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Encode control characters in strings.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1abd79220accf4be66cfce3f9b9b392cfb" class="nameRef">JSON_EXPAND</a>&nbsp;&nbsp;&nbsp;0x80</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Expand ${path.var} template references during rendering.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a0e85cb99b9ac69fda8f49a71157acba6" class="nameRef">JSON_EXPANDING</a>&nbsp;&nbsp;&nbsp;0x8000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal parsing flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1ac74e02aeee5249d98585d229a55a8d18" class="nameRef">JSON_EXPECT_COMMA</a>&nbsp;&nbsp;&nbsp;0x20000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: parsing and expect a comma.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1abd760dc718c9082a538aea149b61413c" class="nameRef">JSON_EXPECT_KEY</a>&nbsp;&nbsp;&nbsp;0x10000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: parsing and expect a property key name.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a03beb3e21b15080d8dab998b4bb317fa" class="nameRef">JSON_EXPECT_VALUE</a>&nbsp;&nbsp;&nbsp;0x40000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: parsing and expect a value.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a83b8fc8f52ff294b89300ef89bba16d1" class="nameRef">JSON_JS</a>&nbsp;&nbsp;&nbsp;(JSON_SINGLE_QUOTES)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Composite formatting flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a5d675b516619b0413c5f096b277a5315" class="nameRef">JSON_JSON5</a>&nbsp;&nbsp;&nbsp;(JSON_SINGLE_QUOTES)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>JSON5 format allowing relaxed syntax.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1aaa05ac0a29a120223698d8bf31ced53b" class="nameRef">JSON_KEY</a>&nbsp;&nbsp;&nbsp;0x1000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal rendering flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a1a9ed271cd689c7b6a5931432f4dfd6e" class="nameRef">JSON_MAX_LINE_LENGTH</a>&nbsp;&nbsp;&nbsp;120</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default Maximum length of a line for compacted output.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a3f1e53fe340b0a64589c9b119ff85b19" class="nameRef">JSON_MULTILINE</a>&nbsp;&nbsp;&nbsp;0x100</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Format output across multiple lines for readability.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1ac25bf7d09d593ac07f356164e2653b12" class="nameRef">JSON_OBJECT</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>JSON node type constants.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a017af4b883599f49741af9535879239a" class="nameRef">JSON_ONE_LINE</a>&nbsp;&nbsp;&nbsp;0x200</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Force all output onto a single line.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a9dcbf171754a55075a51cf0c518a622c" class="nameRef">JSON_OVERWRITE</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default behavior: overwrite existing properties (equivalent to &apos;=&apos;).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1aeb1657d6e6773a0b380abe27c3130085" class="nameRef">JSON_PARSE_FLAGS</a>&nbsp;&nbsp;&nbsp;0xFF000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Internal: parsing flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a0ca8a75110153e1f3ebe0ff06a8f09ba" class="nameRef">JSON_PASS_VALUE</a>&nbsp;&nbsp;&nbsp;0x2</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Transfer string ownership to JSON object (avoids memory copy).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a14d94e334cb30b87632192562fc913f3" class="nameRef">JSON_PRIMITIVE</a>&nbsp;&nbsp;&nbsp;0x10</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Primitive values: true, false, null, undefined, numbers.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a27c69043553efd7854591a6e040ee9ef" class="nameRef">JSON_QUOTE_KEYS</a>&nbsp;&nbsp;&nbsp;0x400</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Always quote object property keys.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a57689c9304f82af5a5b600afb0e4480e" class="nameRef">JSON_REGEXP</a>&nbsp;&nbsp;&nbsp;0x20</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Regular expression literal /pattern/flags (JSON6 feature).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a2270be723b40d00d4cfbe42aac8601e4" class="nameRef">JSON_REMOVE_UNDEF</a>&nbsp;&nbsp;&nbsp;0x20</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Remove properties with undefined (NULL) values during blend.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1ac3f9bd8e46decf3fe63a6ffe88995558" class="nameRef">JSON_REPLACE</a>&nbsp;&nbsp;&nbsp;0x8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default behavior: replace existing properties (equivalent to &apos;-&apos;).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1a7f2faab57e8ec52be8d35549725a0e0e" class="nameRef">JSON_SINGLE_QUOTES</a>&nbsp;&nbsp;&nbsp;0x800</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Use single quotes instead of double quotes.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1ab5153577ebb1ff74e17d7c29fa11bf18" class="nameRef">JSON_STRICT_PARSE</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>JSON parsing flags.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1adea584ac98210649e2edf68941091356" class="nameRef">JSON_STRING</a>&nbsp;&nbsp;&nbsp;0x8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>String value (including ISO date strings stored as strings).</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#json_8h_1acdd53c1dbb00146c388a88f1f03286d9" class="nameRef">ME_JSON_MAX_NODES</a>&nbsp;&nbsp;&nbsp;100000</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum number of elements in json text.</td></tr>
+  </table>
+<h2>Typedefs</h2>
+<a name="struct_json"></a>
+<div class="api">
+  <div class="prototype">Json</div>
+  <div class="apiDetail">
+<p>JSON Object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The primary JSON container structure that holds a parsed JSON tree in memory. This structure provides efficient access to JSON data through a node-based tree representation.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">int</td><td>count</td><td>
+Number of nodes currently used in the tree.
+</td></tr>
+<tr><td class="param">char *</td><td>end</td><td>
+Pointer to one byte past the end of the text buffer.
+</td></tr>
+<tr><td class="param">char *</td><td>error</td><td>
+Detailed error message from parsing failures.
+</td></tr>
+<tr><td class="param">uint</td><td>flags</td><td>
+Internal parser flags (reserved for library use).
+</td></tr>
+<tr><td class="param">int</td><td>lineNumber</td><td>
+Current line number during parsing (for error reporting).
+</td></tr>
+<tr><td class="param">uint</td><td>lock</td><td>
+Lock flag preventing modifications when set.
+</td></tr>
+<tr><td class="param">char *</td><td>next</td><td>
+Current parsing position in the text buffer.
+</td></tr>
+<tr><td class="param">struct <a class="ref" href="#struct_json_node">JsonNode</a> *</td><td>nodes</td><td>
+Array of JSON nodes forming the tree structure.
+</td></tr>
+<tr><td class="param">char *</td><td>path</td><td>
+File path if JSON was loaded from a file (for error reporting).
+</td></tr>
+<tr><td class="param">char *</td><td>property</td><td>
+Internal buffer for building property names during parsing.
+</td></tr>
+<tr><td class="param">size_t</td><td>propertyLength</td><td>
+Current allocated size of the property buffer.
+</td></tr>
+<tr><td class="param">int</td><td>size</td><td>
+Total allocated capacity of the nodes array.
+</td></tr>
+<tr><td class="param">char *</td><td>text</td><td>
+Original JSON text being parsed (will be modified during parsing).
+</td></tr>
+<tr><td class="param">uint</td><td>userFlags</td><td>
+Application-specific flags available for user use.
+</td></tr>
+<tr><td class="param">char *</td><td>value</td><td>
+Cached serialized string result from jsonString() calls.
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="struct_json_node"></a>
+<div class="api">
+  <div class="prototype">JsonNode</div>
+  <div class="apiDetail">
+<p>JSON Node.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Individual node in the JSON tree representing a single property or value. Each node contains a name/value pair and maintains structural information about its position in the tree hierarchy.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">uint</td><td>allocatedName</td><td>
+True if name string was allocated and must be freed by JSON library.
+</td></tr>
+<tr><td class="param">uint</td><td>allocatedValue</td><td>
+True if value string was allocated and must be freed by JSON library.
+</td></tr>
+<tr><td class="param">int</td><td>last</td><td>
+Index + 1 of the last descendant node (defines subtree boundary).
+</td></tr>
+<tr><td class="param">char *</td><td>name</td><td>
+Property name (null-terminated string, NULL for array elements).
+</td></tr>
+<tr><td class="param">uint</td><td>type</td><td>
+Node type: JSON_OBJECT, JSON_ARRAY, JSON_STRING, JSON_PRIMITIVE, etc.
+</td></tr>
+<tr><td class="param">char *</td><td>value</td><td>
+Property value (null-terminated string representation).
+</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<h2>Functions</h2>
+<a name="json_8h_1a797c4874f735df7d461049292bf44711"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonAlloc
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Allocate a new JSON object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Creates a new, empty JSON object ready for parsing or manual construction. The object is allocated using the R runtime and must be freed with jsonFree() when no longer needed. The initial object contains no nodes and is ready to accept JSON text via jsonParseText() or manual node construction via jsonSet() calls.</dd></dl>
+    <dl><dt>Returns:</dt><dd>A newly allocated JSON object, or NULL if allocation fails.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a381efa339d061eb4bc50de700000bc62"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonBlend
+(<a href="#struct_json" class="ref">Json</a> *dest, int did, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dkey, const Json *src, int sid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *skey, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Blend nodes by copying from one <a class="ref" href="#struct_json">Json</a> to another.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This performs an N-level deep clone of the source JSON nodes to be blended into the destination object. By default, this add new object properies and overwrite arrays and string values. The Property combination prefixes: &apos;+&apos;, &apos;=&apos;, &apos;-&apos; and &apos;?&apos; to append, overwrite, replace and conditionally overwrite are supported if the JSON_COMBINE flag is present.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">dest</td><td>Destination json.</td></tr>
+    <tr><td class="param">did</td><td>Base node ID from which to store the copied nodes.</td></tr>
+    <tr><td class="param">dkey</td><td>Destination property name to search for.</td></tr>
+    <tr><td class="param">src</td><td>Source json.</td></tr>
+    <tr><td class="param">sid</td><td>Base node ID from which to copy nodes.</td></tr>
+    <tr><td class="param">skey</td><td>Source property name to search for.</td></tr>
+    <tr><td class="param">flags</td><td>The JSON_COMBINE flag enables Property name prefixes: &apos;+&apos;, &apos;=&apos;, &apos;-&apos;, &apos;?&apos; to append, overwrite, replace and conditionally overwrite key values if not already present. When adding string properies, values will be appended using a space separator. Extra spaces will not be removed on replacement. <br/><br/>
+ Without JSON_COMBINE or for properies without a prefix, the default is to blend objects by creating new properies if not already existing in the destination, and to treat overwrite arrays and strings. Use the JSON_OVERWRITE flag to override the default appending of objects and rather overwrite existing properies. Use the JSON_APPEND flag to override the default of overwriting arrays and strings and rather append to existing properies.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a5aa72e3eff9901feafe23d32155e5ac0"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonCheckIteration
+(<a href="#struct_json" class="ref">Json</a> *json, int count, int nid)
+  </div>
+  <div class="apiDetail">
+<p>Check if the iteration is valid.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td><a class="ref" href="#struct_json">Json</a> object.</td></tr>
+    <tr><td class="param">count</td><td>Prior json count of nodes.</td></tr>
+    <tr><td class="param">nid</td><td>Node id.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Node id if valid, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a758f97fd9b15fbaa7a8d333e2412a069"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonClone
+(const Json *src, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Clone a json object.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">src</td><td>Input json object.</td></tr>
+    <tr><td class="param">flags</td><td>Reserved, set to zero.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The copied JSON tree. Caller must free with jsonFree.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a2b5bc582ece96fc3dbb84247f5495534"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    jsonConvert
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Parse a string as JSON or JSON5 and convert into strict JSON string.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Args for format.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A string. Returns NULL if the text will not parse. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a605a6734f6cbc06b03f2319ff836150f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    jsonConvertBuf
+(char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Convert a string into strict json string in a buffer.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Args for format.</td></tr>
+    <tr><td class="param">buf</td><td>Destination buffer.</td></tr>
+    <tr><td class="param">size</td><td>Size of the destination buffer.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The reference to the buffer.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a7a4e86175640967ff1a2eb2592595c22"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonFree
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Free a JSON object and all associated memory.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Releases all memory associated with a JSON object including the node tree, text buffers, and any allocated strings. After calling this function, the JSON object and all references into it become invalid and must not be used.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>JSON object to free. Can be NULL (no operation performed).</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1aca6138a5e505ad8f413186b748f9a8a8"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    jsonGet
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call returns a reference into the JSON storage. Such references are short-term and may not remain valid if other modifications are made to the JSON tree. Only use the result of this API while no other changes are made to the JSON object. Use jsonGet if you need to retain the queried value. If a key value is NULL or undefined, then the defaultValue will be returned.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a string or defaultValue if not defined. This is a reference into the JSON store. Caller must NOT free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ae20da9a6893b60eb456b65b3dbc5d06b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    jsonGetBool
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a boolean.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a boolean or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a1f3531cb62692d2f7557a6f63b41b841"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json_node" class="ref">JsonNode</a> *
+    jsonGetChildNode
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, int nth)
+  </div>
+  <div class="apiDetail">
+<p>Get the Nth child node for a json node.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieves a specific child node by its index position within a parent node. This is useful for iterating through array elements or object properties in order. The child index is zero-based.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID to examine.</td></tr>
+    <tr><td class="param">nth</td><td>Zero-based index of which child to return.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The Nth child node object for the specified node. Returns NULL if the index is out of range.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ac53997d5d27f2dc0fa8c134c45838d1e"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    jsonGetClone
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as an allocated string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call returns an allocated string as the result. Use jsonGet as a higher performance API if you do not need to retain the queried value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return a copy of the defaultValue. The defaultValue can be NULL in which case the return value will be an allocated empty string.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>An allocated string copy of the key value or defaultValue if not defined. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1af2f10c6141468606b298ff9ed1d298f5"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a>
+    jsonGetDate
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a date.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a date or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a7ecb8849e2d752de352a61e0a1872726"></a>
+<div class="api">
+  <div class="prototype">
+    double
+    jsonGetDouble
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a double.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a double or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a1a137a9ecf3e4d6de91080027d05c968"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    jsonGetError
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Get the error message from the JSON object.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td><a class="ref" href="#struct_json">Json</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The error message. Caller must NOT free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a7763cbc67c0592205471d3ba1bf1a9a3"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonGetId
+(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node ID.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start the search. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The node ID for the specified key.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1aa6d14bccfdb6a926354b63d6658e4cb0"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonGetInt
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as an integer.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as an integer or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a18a9b37087c2a65339cc856f1282278f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    jsonGetLength
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get the length of a property value.</p>
+If an array, return the array length. If an object, return the number of object properties
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td><a class="ref" href="#struct_json">Json</a> object.</td></tr>
+    <tr><td class="param">nid</td><td>Node id.</td></tr>
+    <tr><td class="param">key</td><td>Property name.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Length of the property value, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a8e4ab089c86a67ac5c6dff5c2265fc26"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json_node" class="ref">JsonNode</a> *
+    jsonGetNode
+(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call returns a reference into the JSON storage. Such references are not persistent if other modifications are made to the JSON tree.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start the search. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The node object for the specified key. Returns NULL if not found.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a95ccb53312272e4b02fd8857f1a38e4e"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonGetNodeId
+(const Json *json, <a href="#struct_json_node" class="ref">JsonNode</a> *node)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node object ID.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call returns the node ID for a node. Such references are not persistent if other modifications are made to the JSON tree.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">node</td><td>Node reference.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The node ID.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a8abc0e9480cdfbd9daf26276bfc7c56e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a>
+    jsonGetNum
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a 64-bit integer.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a 64-bit integer or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a142e95480026dc223d94ed1775046f7b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    jsonGetRef
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call is DEPRECATED. Use jsonGet or jsonGetClone instead. This call returns a reference into the JSON storage. Such references are short-term and may not remain valid if other modifications are made to the JSON tree. Only use the result of this API while no other changes are made to the JSON object. Use jsonGet if you need to retain the queried value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a string or defaultValue if not defined. This is a reference into the JSON store. Caller must NOT free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Deprecated.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ada3b65456bfca0a48348bc86b204ef4d"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonGetType
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Get the value type for a node.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Determines the type of a JSON node, which indicates how the value should be interpreted. This is essential for type-safe access to JSON values.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start the search.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The data type. Set to JSON_OBJECT, JSON_ARRAY, JSON_COMMENT, JSON_STRING, JSON_PRIMITIVE or JSON_REGEXP.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1af7413f5c53dc9ddee29da6592d8c3714"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonGetUserFlags
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Get user-defined flags from a JSON object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieves the current value of application-specific flags from the JSON object. These flags are managed entirely by the user application.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>JSON object to query.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Current user flags value (8-bit value).</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ad32a7e3381c7c3797d010de7ed1b0d52"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a>
+    jsonGetValue
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)
+  </div>
+  <div class="apiDetail">
+<p>Get a json node value as a uint64.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Parse the stored value with unit suffixes and returns a number. The following suffixes are supported: sec, secs, second, seconds, min, mins, minute, minutes, hr, hrs, hour, hours, day, days, week, weeks, month, months, year, years, byte, bytes, k, kb, m, mb, g, gb. Also supports the strings: unlimited, infinite, never, forever.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to examine. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to search for. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">defaultValue</td><td>If the key is not defined, return the defaultValue.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The key value as a int64 or defaultValue if not defined.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ac1c22a2091d44fc5b50b3621702fb1cd"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonLock
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Lock a json object from further updates.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call is useful to block all further updates via jsonSet. The jsonGet API returns a references into the JSON tree. Subsequent updates can grow the internal JSON structures and thus move references returned earlier.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>A json object.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a00728931664b0f4ecfeb7b2904243ae9"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonParse
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *text, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Parse a json string into a json object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use this method if you are sure the supplied JSON text is valid or do not need to receive diagnostics of parse failures other than the return value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">text</td><td><a class="ref" href="#struct_json">Json</a> string to parse.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported. Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend. This will make returned references via jsonGet and jsonGetNode stable.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd><a class="ref" href="#struct_json">Json</a> object if successful. Caller must free via jsonFree. Returns null if the text will not parse.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1aa232a41b95321d350d3804edbd292060"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonParseFile
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, char **errorMsg, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Load a JSON object from a filename.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Reads and parses a JSON file from disk into a JSON object tree. This is a convenience function that combines file reading with JSON parsing. If parsing fails, detailed error information is provided.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Filename path containing a JSON string to load.</td></tr>
+    <tr><td class="param">errorMsg</td><td>Error message string set if the parse fails. Caller must not free.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>JSON object tree. Caller must free via jsonFree(). Returns NULL on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1abe279d110600d174328ca4109b166ff3"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonParseFmt
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Parse a formatted string into a json object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convenience function that formats a printf-style string and then parses it as JSON. This is useful for constructing JSON from dynamic values without manual string building.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Args for format.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A json object. Caller must free via jsonFree().</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ad5f3d3cecbed347bffb39a3171149c8e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonParseKeep
+(char *text, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Parse a json string into a json object and assume ownership of the supplied text memory.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is an optimized version of jsonParse that avoids copying the text to be parsed. The ownership of the supplied text is transferred to the <a class="ref" href="#struct_json">Json</a> object and will be freed when jsonFree is called. The caller must not free the text which will be freed by this function. Use this method if you are sure the supplied JSON text is valid or do not need to receive diagnostics of parse failures other than the return value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">text</td><td><a class="ref" href="#struct_json">Json</a> string to parse. Caller must NOT free.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported. Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend. This will make returned references via jsonGet and jsonGetNode stable.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd><a class="ref" href="#struct_json">Json</a> object if successful. Caller must free via jsonFree. Returns null if the text will not parse.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a2b68ba6f836a11fb72f483c0f7f578ba"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="#struct_json" class="ref">Json</a> *
+    jsonParseString
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *text, char **errorMsg, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Parse a JSON string into an object tree and return any errors.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Deserializes a JSON string created into an object. The top level of the JSON string must be an object, array, string, number or boolean value.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">text</td><td>JSON string to deserialize.</td></tr>
+    <tr><td class="param">errorMsg</td><td>Error message string set if the parse fails. Caller must not free.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns a tree of <a class="ref" href="#struct_json">Json</a> objects. Each object represents a level in the JSON input stream. Caller must free errorMsg via rFree on errors.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ae491db61dc1615036d752e424c3dee66"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonParseText
+(<a href="#struct_json" class="ref">Json</a> *json, char *text, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Parse a json string into an existing json object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use this method if you need to have access to the error message if the parse fails.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Existing json object to parse into.</td></tr>
+    <tr><td class="param">text</td><td><a class="ref" href="#struct_json">Json</a> string to parse.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_JSON to parse json, otherwise a relaxed JSON5 syntax is supported. Call jsonLock() to lock the JSON tree to prevent further modification via jsonSet or jsonBlend. This will make returned references via jsonGet and jsonGetNode stable.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd><a class="ref" href="#struct_json">Json</a> object if successful. Caller must free via jsonFree. Returns null if the text will not parse.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1af15d9642e83daa09123ca943799a1e7f"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonPrint
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Print a JSON object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Prints a JSON object in a compact human readable format.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a1d6fe558075ee145608eaf1c22a3b2b9"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonPutToBuf
+(RBuf *buf, const Json *json, int nid, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Convert a json object to a serialized JSON representation in the given buffer.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">buf</td><td>Destination buffer.</td></tr>
+    <tr><td class="param">json</td><td><a class="ref" href="#struct_json">Json</a> object.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to convert. Set to zero for the top level.</td></tr>
+    <tr><td class="param">flags</td><td><a class="ref" href="#struct_json">Json</a> flags.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ad028b9d64f95f47bcb74f46dd336e53e"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonPutValueToBuf
+(RBuf *buf, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Convert a string value primitive to a JSON string and add to the given buffer.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">buf</td><td>Destination buffer.</td></tr>
+    <tr><td class="param">value</td><td>String value to convert.</td></tr>
+    <tr><td class="param">flags</td><td><a class="ref" href="#struct_json">Json</a> flags.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a84cce656da3fe4d279b9d0db2f18d91a"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonRemove
+(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)
+  </div>
+  <div class="apiDetail">
+<p>Remove a Property from a JSON object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Removes one or more properties from a JSON object based on the specified key path. The key path supports dot notation for nested property removal. This operation modifies the JSON tree in place.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">obj</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start searching for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to remove. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1acfc633df6228e3295e6a04b6da42bc00"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSave
+(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, int mode, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Save a JSON object to a filename.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Serializes a JSON object (or a portion of it) to a file on disk. The output format is controlled by the flags parameter. The file is created with the specified permissions mode.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">obj</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start searching for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to save. Set to NULL to save the entire object. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">path</td><td>Filename path to contain the saved JSON string.</td></tr>
+    <tr><td class="param">mode</td><td>File permissions mode (e.g., 0644).</td></tr>
+    <tr><td class="param">flags</td><td>Rendering flags - same as for jsonToString().</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1aeebd22fc330c08a802c882d19b16d53a"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSet
+(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int type)
+  </div>
+  <div class="apiDetail">
+<p>Update a key/value in the JSON object with a string value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call takes a multipart Property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">obj</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>Character string value.</td></tr>
+    <tr><td class="param">type</td><td>Set to JSON_ARRAY, JSON_OBJECT, JSON_PRIMITIVE or JSON_STRING.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a8f827a05f77ea1fc5c06ec3e37714cc4"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetBool
+(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> value)
+  </div>
+  <div class="apiDetail">
+<p>Update a property in the JSON object with a boolean value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call takes a multipart Property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">obj</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>Boolean string value.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a473e19c96d686fe08ca18d0acc2ea9f1"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetDate
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> value)
+  </div>
+  <div class="apiDetail">
+<p>Update a property in the JSON object with date value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call takes a multipart Property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>Date value expressed as a Time (Elapsed milliseconds since Jan 1, 1970).</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a512bbc3846acbea5f78736a639638157"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetDouble
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, double value)
+  </div>
+  <div class="apiDetail">
+<p>Update a property with a floating point number value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call takes a multipart Property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>Double floating point value.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1ab880ed02269069002942016e4ada602e"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetFmt
+(<a href="#struct_json" class="ref">Json</a> *obj, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Update a key/value in the JSON object with a formatted string value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The type of the inserted value is determined from the contents. This call takes a multipart property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">obj</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">fmt</td><td>Printf style format string.</td></tr>
+    <tr><td class="param">...</td><td>Args for format.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1aebb7bf79360ffa19be0d63c7275e02e8"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonSetIndent
+(int indent)
+  </div>
+  <div class="apiDetail">
+<p>Set the indent level for compacted output.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">indent</td><td>Indent level for compacted output.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a150329781ca2ee57fa66ed36154d2f3b"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetJsonFmt
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
+  </div>
+  <div class="apiDetail">
+<p>Update a key in the JSON object with a JSON object value passed as a JSON5 string.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">fmt</td><td>JSON string.</td></tr>
+    <tr><td class="param">...</td><td>Args for format.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a75fe916d845c256cbceec847c7d0bb4f"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonSetMaxLength
+(int length)
+  </div>
+  <div class="apiDetail">
+<p>Set the maximum length of a line for compacted output.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">length</td><td>Maximum length of a line for compacted output.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a1dbb2de72b137d16cc2ea5431e352829"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonSetNodeType
+(<a href="#struct_json_node" class="ref">JsonNode</a> *node, int type)
+  </div>
+  <div class="apiDetail">
+<p>Update a node type.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is an internal API and is subject to change without notice. It offers a higher performance path to update node types.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">node</td><td><a class="ref" href="#struct_json">Json</a> node.</td></tr>
+    <tr><td class="param">type</td><td><a class="ref" href="#struct_json">Json</a> node type.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a6d2ea5e46fc74d016561ffb7c28a514e"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonSetNodeValue
+(<a href="#struct_json_node" class="ref">JsonNode</a> *node, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value, int type, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Directly update a node value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This is an internal API and is subject to change without notice. It offers a higher performance path to update node values.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">node</td><td><a class="ref" href="#struct_json">Json</a> node.</td></tr>
+    <tr><td class="param">value</td><td>String value to update with.</td></tr>
+    <tr><td class="param">type</td><td><a class="ref" href="#struct_json">Json</a> node type.</td></tr>
+    <tr><td class="param">flags</td><td>Set to JSON_PASS_VALUE to transfer ownership of a string. JSON will then free.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a0e00046d7406f934aaefa25d626cbf07"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetNumber
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value)
+  </div>
+  <div class="apiDetail">
+<p>Update a property in the JSON object with a numeric value.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This call takes a multipart Property name and will operate at any level of depth in the JSON object.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>Number to update.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a5ec4660309d55dea8bc8758871de2ac2"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    jsonSetString
+(<a href="#struct_json" class="ref">Json</a> *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)
+  </div>
+  <div class="apiDetail">
+<p>Update a property in the JSON object with a string value.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Parsed JSON object returned by jsonParse.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to start search for key. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to add/update. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">value</td><td>String value.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Positive node id if updated successfully. Otherwise a negative error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1abe353e88b76fd549cd5d27f40c94c841"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonSetUserFlags
+(<a href="#struct_json" class="ref">Json</a> *json, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Set user-defined flags on a JSON object.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Sets application-specific flags in the userFlags field of the JSON object. These flags are reserved for user applications and are not used by the JSON library. Useful for tracking application state or marking JSON objects with custom attributes.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>JSON object to modify.</td></tr>
+    <tr><td class="param">flags</td><td>User-defined flags (8-bit value).</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a9a613620ae8e7541f4a4aa0bf823e568"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *
+    jsonString
+(const Json *json, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Serialize a JSON object into a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Serializes a top level JSON object created via jsonParse into a characters string in JSON format. This serialize the result into the json-&gt;value so the caller does not need to free the result.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">flags</td><td>Serialization flags. Supported flags include JSON_HUMAN for a human-readable multiline format. Use JSON_JSON for a strict JSON format. Use JSON_QUOTES to wrap property names in quotes. Defaults to JSON_HUMAN if set to zero.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns a serialized JSON character string. Caller must NOT free. The string is owned by the json object and will be overwritten by subsequent calls to jsonString. It will be freed when jsonFree is called.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1abe1d3cb5c8ae2e772f2480db1d2e12d1"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    jsonTemplate
+(<a href="#struct_json" class="ref">Json</a> *json, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> keep)
+  </div>
+  <div class="apiDetail">
+<p>Expand a string template with ${prop.prop...} references.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Unexpanded references left as is.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td><a class="ref" href="#struct_json">Json</a> object.</td></tr>
+    <tr><td class="param">str</td><td>String template to expand.</td></tr>
+    <tr><td class="param">keep</td><td>If true, unexpanded references are retained as ${token}, otherwise removed.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>An allocated expanded string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a5d130844f972ecd41ae744fac2c87af7"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    jsonToString
+(const Json *json, int nid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int flags)
+  </div>
+  <div class="apiDetail">
+<p>Serialize a JSON object into a string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Serializes a top level JSON object created via jsonParse into a characters string in JSON format.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>Source json.</td></tr>
+    <tr><td class="param">nid</td><td>Base node ID from which to convert. Set to zero for the top level.</td></tr>
+    <tr><td class="param">key</td><td>Property name to serialize below. This may include &quot;.&quot;. For example: &quot;settings.mode&quot;.</td></tr>
+    <tr><td class="param">flags</td><td>Serialization flags. Supported flags include JSON_JSON5 and JSON_HUMAN. Use JSON_JSON for a strict JSON format. Defaults to JSON_HUMAN if set to zero.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns a serialized JSON character string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="json_8h_1a848b48c87050e40f5ea6404046c6c417"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    jsonUnlock
+(<a href="#struct_json" class="ref">Json</a> *json)
+  </div>
+  <div class="apiDetail">
+<p>Unlock a json object to allow updates.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">json</td><td>A json object.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>

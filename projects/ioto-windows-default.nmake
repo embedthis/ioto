@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 2.8.1
+VERSION               = 2.9.0
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -106,6 +106,9 @@ ME_COM_COMPILER       = 1
 #
 # Settings
 #
+!IFNDEF ME_APP
+ME_APP                = \"unit\"
+!ENDIF
 !IFNDEF ME_AUTHOR
 ME_AUTHOR             = \"Embedthis Software.\"
 !ENDIF
@@ -146,7 +149,7 @@ ME_COM_WEBSOCK        = 1
 ME_COMPANY            = \"embedthis\"
 !ENDIF
 !IFNDEF ME_COMPATIBLE
-ME_COMPATIBLE         = \"2.8\"
+ME_COMPATIBLE         = \"2.9\"
 !ENDIF
 !IFNDEF ME_COMPILER_FORTIFY
 ME_COMPILER_FORTIFY   = 1
@@ -236,7 +239,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IFNDEF ME_VERSION
-ME_VERSION            = \"2.8.1\"
+ME_VERSION            = \"2.9.0\"
 !ENDIF
 !IFNDEF ME_WEB_AUTH
 ME_WEB_AUTH           = 1
@@ -964,6 +967,7 @@ $(BUILD)/obj/url.obj: \
 #   urlLib.obj
 #
 DEPS_49 = $(DEPS_49) $(BUILD)/inc/url.h
+DEPS_49 = $(DEPS_49) $(BUILD)/inc/crypt.h
 DEPS_49 = $(DEPS_49) $(BUILD)/inc/websock.h
 
 $(BUILD)/obj/urlLib.obj: \
