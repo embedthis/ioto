@@ -2,7 +2,8 @@
     Cryptographic library for embedded IoT applications.
 
     The crypt library provides a minimal set of cryptographic functions for connected devices.
-    It provides Base64 encoding/decoding, SHA1/SHA256 hashing, Bcrypt password hashing, and random data generation.
+    It provides Base64 encoding/decoding, SHA1/SHA256/SHA512 hashing, HMAC-SHA256 message authentication,
+    Bcrypt password hashing, and random data generation.
     Designed for minimal memory footprint with optional MbedTLS/OpenSSL backend integration.
     MD5 is provided for legacy backwards compatibility and is not recommended for new applications.
  */
@@ -25,7 +26,7 @@
     #define ME_CRYPT_MAX_PASSWORD 64        /** Maximum password length */
 #endif
 #ifndef ME_CRYPT_MD5
-    #define ME_CRYPT_MD5          0         /** Enable MD5 legacy support */
+    #define ME_CRYPT_MD5          1         /** Enable MD5 legacy support */
 #endif
 #ifndef ME_CRYPT_SHA1
     #define ME_CRYPT_SHA1         1         /** Enable SHA1 hashing support */
@@ -33,8 +34,14 @@
 #ifndef ME_CRYPT_SHA256
     #define ME_CRYPT_SHA256       1         /** Enable SHA256 hashing support */
 #endif
+#ifndef ME_CRYPT_SHA512
+    #define ME_CRYPT_SHA512       1         /** Enable SHA512 hashing support */
+#endif
 #ifndef ME_CRYPT_BCRYPT
     #define ME_CRYPT_BCRYPT       1         /** Enable Bcrypt password hashing */
+#endif
+#ifndef ME_CRYPT_HMAC
+    #define ME_CRYPT_HMAC         1         /** Enable HMAC support */
 #endif
 #ifndef ME_CRYPT_MBEDTLS
     #define ME_CRYPT_MBEDTLS      0         /** Enable MbedTLS backend integration */
@@ -449,6 +456,250 @@ PUBLIC void cryptSha256Start(CryptSha256 *ctx);
     @see cryptSha256Finalize, cryptSha256Init, cryptSha256Start, cryptSha256Term
  */
 PUBLIC void cryptSha256Update(CryptSha256 *ctx, cuchar *block, size_t length);
+#endif
+
+/*********************************** SHA512 ***********************************/
+
+#if ME_CRYPT_SHA512 || DOXYGEN
+
+#define CRYPT_SHA512_SIZE 64                 /**< Size of SHA512 hash in bytes */
+
+/**
+    SHA512 computation block
+    @stability Internal
+ */
+typedef struct CryptSha512 {
+    uint64 count[2];
+    uint64 state[8];            /**< SHA512 computation state */
+    uchar buffer[128];
+} CryptSha512;
+
+/**
+    Get a SHA512 hash for a block and return a binary hash.
+    @description Compute SHA512 hash for binary data and store result in provided array.
+        SHA512 provides stronger security than SHA256 with a larger hash output.
+    @param block Block of data for which to compute the hash. Must not be NULL.
+    @param length Length of the data block in bytes. If -1, block is treated as null-terminated string.
+    @param hash Array to receive the 64-byte binary hash result. Must not be NULL.
+    @stability Evolving
+    @see cryptGetSha512, cryptGetFileSha512
+ */
+PUBLIC void cryptGetSha512Block(cuchar *block, size_t length, uchar hash[CRYPT_SHA512_SIZE]);
+
+/**
+    Get a SHA512 hash for a block and return a string hash.
+    @description Compute SHA512 hash for binary data and return as hexadecimal string.
+        SHA512 provides stronger security than SHA256 with a larger hash output.
+    @param block Block of data for which to compute the hash. Must not be NULL.
+    @param length Length of the data block in bytes. If -1, block is treated as null-terminated string.
+    @return A hexadecimal string representation of the hash. Caller must free.
+    @stability Evolving
+    @see cryptGetSha512Block
+ */
+PUBLIC char *cryptGetSha512(cuchar *block, size_t length);
+
+/**
+    Get a SHA512 hash for a string and return a base-64 encoded string hash.
+    @description Compute SHA512 hash for string data and return as Base64 encoded string.
+    @param s String to hash. Must not be NULL.
+    @param length Length of the string in bytes. If <= 0, string is treated as null-terminated.
+    @return A Base64 encoded string representation of the hash. Caller must free.
+    @stability Evolving
+    @see cryptGetSha512
+ */
+PUBLIC char *cryptGetSha512Base64(cchar *s, size_t length);
+
+/**
+    Get a SHA512 hash for the contents of a file.
+    @description Compute SHA512 hash for the entire contents of a file.
+    @param path Filename of the file to hash. Must not be NULL.
+    @return A hexadecimal string representation of the hash. Returns NULL if file cannot be read. Caller must free.
+    @stability Evolving
+    @see cryptGetSha512, cryptGetSha512Block
+ */
+PUBLIC char *cryptGetFileSha512(cchar *path);
+
+/**
+    Convert a SHA512 hash to a string.
+    @description Convert a binary SHA512 hash result to hexadecimal string representation.
+    @param hash 64-byte binary hash result from cryptGetSha512Block. Must not be NULL.
+    @return A hexadecimal string representation of the hash. Caller must free.
+    @stability Evolving
+    @see cryptGetSha512, cryptGetSha512Block
+ */
+PUBLIC char *cryptSha512HashToString(uchar hash[CRYPT_SHA512_SIZE]);
+
+/**
+    Low level SHA512 hashing API to initialize a SHA512 hash computation.
+    @description Initialize the SHA512 context structure for incremental hash computation.
+        Use this for hashing data in multiple chunks.
+    @param ctx SHA512 context structure to initialize. Must not be NULL.
+    @stability Evolving
+    @see cryptSha512Finalize, cryptSha512Start, cryptSha512Update
+ */
+PUBLIC void cryptSha512Init(CryptSha512 *ctx);
+
+/**
+    Low level SHA512 hashing API to terminate a SHA512 hash computation.
+    @description Terminate (conclude) the hash computation and clear sensitive data from memory.
+        This erases in-memory state and should be the final step in computing a hash.
+    @param ctx SHA512 context previously used for hashing. Must not be NULL.
+    @stability Evolving
+    @see cryptSha512Init, cryptSha512Finalize, cryptSha512Start, cryptSha512Update
+ */
+PUBLIC void cryptSha512Term(CryptSha512 *ctx);
+
+/**
+    Low level SHA512 hashing API to finalize a SHA512 hash computation and return a binary result.
+    @description Finalize the hash computation and produce the final 64-byte SHA512 hash.
+    @param ctx SHA512 context previously used with cryptSha512Init and cryptSha512Update. Must not be NULL.
+    @param hash Array to receive the 64-byte binary hash result. Must not be NULL.
+    @stability Evolving
+    @see cryptSha512Init, cryptSha512Start, cryptSha512Term, cryptSha512Update
+ */
+PUBLIC void cryptSha512Finalize(CryptSha512 *ctx, uchar hash[CRYPT_SHA512_SIZE]);
+
+/**
+    Low level SHA512 hashing API to start a SHA512 hash computation.
+    @description Start the hash computation after initialization. Call after cryptSha512Init.
+    @param ctx SHA512 context previously initialized with cryptSha512Init. Must not be NULL.
+    @stability Evolving
+    @see cryptSha512Finalize, cryptSha512Init, cryptSha512Term, cryptSha512Update
+ */
+PUBLIC void cryptSha512Start(CryptSha512 *ctx);
+
+/**
+    Low level SHA512 hashing API to update a SHA512 hash computation with input data.
+    @description Update the hash computation with a block of data. Can be called multiple times to hash data
+       incrementally.
+    @param ctx SHA512 context previously started with cryptSha512Start. Must not be NULL.
+    @param block Block of data to hash. Must not be NULL.
+    @param length Length of the input block in bytes.
+    @stability Evolving
+    @see cryptSha512Finalize, cryptSha512Init, cryptSha512Start, cryptSha512Term
+ */
+PUBLIC void cryptSha512Update(CryptSha512 *ctx, cuchar *block, size_t length);
+#endif
+
+/******************************** HMAC-SHA256 *********************************/
+
+#if ME_CRYPT_HMAC || DOXYGEN
+
+#define CRYPT_HMAC_SHA256_SIZE 32 /**< Size of HMAC-SHA256 output in bytes */
+#define CRYPT_HMAC_BLOCK_SIZE  64 /**< HMAC block size for SHA256 */
+
+/**
+    HMAC-SHA256 computation context
+    @stability Internal
+ */
+typedef struct CryptHmacSha256 {
+    CryptSha256 sha256;           /**< SHA256 context for computation */
+    uchar opad[64];               /**< Outer padding XOR key (for finalize) */
+} CryptHmacSha256;
+
+/**
+    Get HMAC-SHA256 for data and return as binary output.
+    @description Compute HMAC-SHA256 message authentication code for binary data and store result in provided array.
+        HMAC-SHA256 provides both data integrity and authenticity using a shared secret key.
+        This is the recommended message authentication method for new applications.
+    @param key Secret key for HMAC computation. Must not be NULL.
+    @param keylen Length of key in bytes. Keys longer than 64 bytes will be hashed.
+    @param data Data to authenticate. Must not be NULL.
+    @param datalen Length of data in bytes.
+    @param output Buffer to receive the 32-byte HMAC result. Must not be NULL and pre-allocated.
+    @stability Evolving
+    @see cryptGetHmacSha256, cryptGetHmacSha256Base64
+ */
+PUBLIC void cryptGetHmacSha256Block(cuchar *key, size_t keylen, cuchar *data, size_t datalen,
+                                    uchar output[CRYPT_HMAC_SHA256_SIZE]);
+
+/**
+    Get HMAC-SHA256 for data and return as hexadecimal string.
+    @description Compute HMAC-SHA256 message authentication code for binary data and return as hexadecimal string.
+        HMAC-SHA256 provides both data integrity and authenticity using a shared secret key.
+        This is the recommended message authentication method for new applications.
+    @param key Secret key for HMAC computation. Must not be NULL.
+    @param keylen Length of key in bytes. Keys longer than 64 bytes will be hashed.
+    @param data Data to authenticate. Must not be NULL.
+    @param datalen Length of data in bytes.
+    @return A hexadecimal string representation (64 characters) of the HMAC. Caller must free.
+    @stability Evolving
+    @see cryptGetHmacSha256Block, cryptGetHmacSha256Base64
+ */
+PUBLIC char *cryptGetHmacSha256(cuchar *key, size_t keylen, cuchar *data, size_t datalen);
+
+/**
+    Get HMAC-SHA256 for data and return as base64-encoded string.
+    @description Compute HMAC-SHA256 message authentication code for binary data and return as Base64 encoded string.
+        HMAC-SHA256 provides both data integrity and authenticity using a shared secret key.
+    @param key Secret key for HMAC computation. Must not be NULL.
+    @param keylen Length of key in bytes. Keys longer than 64 bytes will be hashed.
+    @param data Data to authenticate. Must not be NULL.
+    @param datalen Length of data in bytes.
+    @return A Base64 encoded string representation of the HMAC. Caller must free.
+    @stability Evolving
+    @see cryptGetHmacSha256, cryptGetHmacSha256Block
+ */
+PUBLIC char *cryptGetHmacSha256Base64(cuchar *key, size_t keylen, cuchar *data, size_t datalen);
+
+/**
+    Low level HMAC-SHA256 API to initialize computation with secret key.
+    @description Initialize the HMAC-SHA256 context with the secret key for incremental computation.
+        Use this for computing HMAC over data in multiple chunks.
+        Keys longer than 64 bytes are automatically hashed to fit the block size.
+    @param ctx HMAC-SHA256 context structure to initialize. Must not be NULL.
+    @param key Secret key for HMAC computation. Must not be NULL.
+    @param keylen Length of key in bytes.
+    @stability Evolving
+    @see cryptHmacSha256Update, cryptHmacSha256Finalize, cryptHmacSha256Term
+ */
+PUBLIC void cryptHmacSha256Init(CryptHmacSha256 *ctx, cuchar *key, size_t keylen);
+
+/**
+    Low level HMAC-SHA256 API to update computation with additional data.
+    @description Update the HMAC computation with a block of data. Can be called multiple times to process data
+       incrementally.
+    @param ctx HMAC-SHA256 context previously initialized with cryptHmacSha256Init. Must not be NULL.
+    @param data Block of data to add to HMAC computation. Must not be NULL.
+    @param datalen Length of the data block in bytes.
+    @stability Evolving
+    @see cryptHmacSha256Init, cryptHmacSha256Finalize, cryptHmacSha256Term
+ */
+PUBLIC void cryptHmacSha256Update(CryptHmacSha256 *ctx, cuchar *data, size_t datalen);
+
+/**
+    Low level HMAC-SHA256 API to finalize computation and return binary result.
+    @description Finalize the HMAC computation and produce the final 32-byte HMAC-SHA256 result.
+    @param ctx HMAC-SHA256 context previously used with cryptHmacSha256Init and cryptHmacSha256Update. Must not be NULL.
+    @param output Buffer to receive the 32-byte HMAC result. Must not be NULL and pre-allocated.
+    @stability Evolving
+    @see cryptHmacSha256Init, cryptHmacSha256Update, cryptHmacSha256Term
+ */
+PUBLIC void cryptHmacSha256Finalize(CryptHmacSha256 *ctx, uchar output[CRYPT_HMAC_SHA256_SIZE]);
+
+/**
+    Low level HMAC-SHA256 API to terminate computation and clear sensitive data.
+    @description Terminate (conclude) the HMAC computation and clear sensitive data from memory.
+        This zeros the key material and should be the final step after computing an HMAC.
+    @param ctx HMAC-SHA256 context to clean up. Must not be NULL.
+    @stability Evolving
+    @see cryptHmacSha256Init, cryptHmacSha256Update, cryptHmacSha256Finalize
+ */
+PUBLIC void cryptHmacSha256Term(CryptHmacSha256 *ctx);
+
+/**
+    Compare two HMAC-SHA256 values in constant time.
+    @description Performs constant-time comparison of two HMAC-SHA256 values to prevent timing attacks.
+        This function should be used when verifying HMAC signatures to avoid leaking information
+        about the expected HMAC through timing side-channels. Always compares all 32 bytes regardless
+        of where differences occur.
+    @param hmac1 First HMAC value (32 bytes). Must not be NULL.
+    @param hmac2 Second HMAC value (32 bytes). Must not be NULL.
+    @return True if the HMACs match, false otherwise.
+    @stability Evolving
+    @see cryptGetHmacSha256, cryptMatch
+ */
+PUBLIC bool cryptMatchHmacSha256(cuchar hmac1[CRYPT_HMAC_SHA256_SIZE], cuchar hmac2[CRYPT_HMAC_SHA256_SIZE]);
 #endif
 
 /*********************************** bcrypt ***********************************/
