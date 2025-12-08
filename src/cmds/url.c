@@ -31,7 +31,7 @@
     url --save filename /url    # save output
     url --upload /toFile.txt @uploadFile.txt
     url --quiet          # No output. Sames as --show ""
-    url --verbose        # Verbose trace
+    url --verbose        # Verbose trace (not show headers/body)
     url --timeout secs
     url --chunk NN
     url --ciphers ssss
@@ -125,7 +125,7 @@ static char *prepBuffer(size_t size);
 static char *prepHeaders(int count);
 static void progress(Url *up);
 static void report(Time start);
-static void showResponse(Url *up, RBuf *buf);
+static void getResponse(Url *up, bool showBody);
 static void startClients(void);
 static int  usage(void);
 
@@ -170,7 +170,7 @@ static int usage(void)
             "    --user username:password   # Set authentication credentials. Supports Basic and Digest.\n"
 #endif
             "    --verify                   # Validate server certificates when using SSL.\n"
-            "    --verbose                  # Verbose operation.\n"
+            "    --verbose                  # Verbose operation. Module trace and --show Hh.\n"
             "    --version                  # Display the program version.\n"
 #if ME_COM_WEBSOCK
             "    --webSockets               # Upgrade to websockets (if not using ws:// or wss://).\n"
@@ -479,6 +479,7 @@ static int parseArgs(int argc, char **argv)
 
         } else if (smatch(argp, "--verbose") || smatch(argp, "-v")) {
             trace = TRACE_VERBOSE_FILTER;
+            show = URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_HEADERS;
 
         } else if (smatch(argp, "--version") || smatch(argp, "-V")) {
             rPrintf("%s\n", ME_VERSION);
@@ -729,7 +730,6 @@ static void webSocketCallback(WebSocket *ws, int event, cchar *data, size_t len,
 
 static void fiberMain(void *data)
 {
-    RBuf  *buf;
     Url   *up;
     cchar *location;
     char  *headers;
@@ -742,7 +742,7 @@ static void fiberMain(void *data)
         Show body handled locally by this program. 
         No linger to avoid TIME_WAITS when closing the connection. Necessary for load tests and benchmarks.
     */
-    up = urlAlloc((show & ~URL_SHOW_RESP_BODY) | URL_NO_LINGER);
+    up = urlAlloc(show & ~URL_SHOW_RESP_BODY);
 #if URL_SSE
     if (sse) {
         urlSetMaxRetries(up, maxRetries);
@@ -793,14 +793,12 @@ static void fiberMain(void *data)
 
         } else if (webSockets) {
             if (urlGetStatus(up) == URL_CODE_OK) {
-                urlWebSocketAsync(up, (WebSocketProc) webSocketCallback, up);
-                urlWait(up);
+                webSocketRun(urlGetWebSocket(up), (WebSocketProc) webSocketCallback, up, up->rx, up->timeout);
             }
 #if URL_SSE
         } else if (sse) {
             if (urlGetStatus(up) == URL_CODE_OK) {
-                urlSseAsync(up, (UrlSseProc) sseCallback, up);
-                urlWait(up);
+                urlSseRun(up, (UrlSseProc) sseCallback, up, up->rx, up->deadline);
             }
 #endif /* URL_SSE */
         }
@@ -828,11 +826,7 @@ static void fiberMain(void *data)
         }
 #endif
         if (up->error || !(webSockets || sse)) {
-            if ((buf = urlGetResponseBuf(up)) == NULL) {
-                urlError(up, "Cannot read response body");
-            } else if (show & URL_SHOW_RESP_BODY || show == 0) {
-                showResponse(up, buf);
-            }
+            getResponse(up, (show & URL_SHOW_RESP_BODY) || show == 0);
         }
         if (!zero && 400 <= up->status && up->status < 600) {
             success = 0;
@@ -857,27 +851,43 @@ static void fiberMain(void *data)
     }
 }
 
-static void showResponse(Url *up, RBuf *buf)
+static void getResponse(Url *up, bool showBody)
 {
-    size_t bytes;
-    char  *formatted, *response;
+    RBuf   *buf;
+    char   *formatted, *response, data[ME_BUFSIZE];
+    ssize  bytes;
+    size_t len;
 
-    if (!buf) return;
+    buf = showBody ? rAllocBuf(0) : NULL;
+
+    // Read response data - always read to support keep-alive
+    while ((bytes = urlRead(up, data, sizeof(data))) > 0) {
+        if (buf) {
+            rPutBlockToBuf(buf, data, (size_t) bytes);
+        }
+    }
+    if (bytes < 0) {
+        urlError(up, "Cannot read response body");
+        rFreeBuf(buf);
+        return;
+    }
+    if (!showBody) {
+        return;
+    }
+    // Format and output the response
+    len = rGetBufLength(buf);
+    response = rBufToStringAndFree(buf);
     if (makePrintable) {
-        bytes = rGetBufLength(buf);
-        response = snclone(rBufToString(buf), rGetBufLength(buf));
-        formatted = formatOutput(response, &bytes);
+        formatted = formatOutput(response, &len);
         if (formatted != response) {
             rFree(response);
         }
         response = formatted;
-    } else {
-        response = snclone(rBufToString(buf), rGetBufLength(buf));
-        bytes = rGetBufLength(buf);
     }
+
     if (saveFd >= 0) {
-        if (bytes > 0) {
-            write(saveFd, response, (uint) bytes);
+        if (len > 0) {
+            write(saveFd, response, (uint) len);
 #if ME_UNIX_LIKE
             if (isatty(saveFd)) {
                 write(saveFd, "\n", 1);

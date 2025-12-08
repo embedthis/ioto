@@ -733,25 +733,19 @@ PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
 
 #if URL_SSE
 /**
-    Wait for Server-Sent Events.
+    Run the SSE event loop until the connection closes.
     @description Block the current fiber waiting for SSE events. Other fibers continue to run.
-        Events will be delivered via the SSE callback if configured.
-    @param up URL object with active SSE connection
-    @return Zero if successful, negative error code on failure.
-    @stability Evolving
- */
-PUBLIC int urlSseWait(Url *up);
-
-/**
-    Define an SSE async callback.
-    @description Configure asynchronous Server-Sent Event handling. The callback function will be
-        invoked when SSE events are received from the server.
-    @param up URL object with SSE connection
-    @param proc Callback function to invoke for SSE events
+        The callback is invoked for each SSE event received. The loop continues until the
+        connection closes, an error occurs, or the deadline is reached.
+    @param up URL object with established SSE connection (after urlFetch/urlFinalize)
+    @param callback Callback function to invoke for SSE events
     @param arg User argument to pass to the callback function
+    @param buf Buffer containing any pre-read data from HTTP response (can be NULL)
+    @param deadline System time in ticks for timeout (0 for no timeout)
+    @return Zero on orderly close, negative error code on failure.
     @stability Evolving
  */
-PUBLIC void urlSseAsync(Url *up, UrlSseProc proc, void *arg);
+PUBLIC int urlSseRun(Url *up, UrlSseProc callback, void *arg, RBuf *buf, Ticks deadline);
 
 /**
     Get Server-Sent Events from a URL.
@@ -777,18 +771,6 @@ PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, .
  */
 PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
 #endif
-
-#if URL_SSE || ME_COM_WEBSOCK
-/**
-    Wait for the connection to be closed.
-    @description Block the current fiber until the connection closes. Used for SSE and WebSocket connections
-        to keep the connection alive until the remote end closes it.
-    @param up URL object with active connection
-    @return Zero when connection closes normally, negative error code on failure.
-    @stability Evolving
- */
-PUBLIC int urlWait(Url *up);
-#endif /* URL_SSE || ME_COM_WEBSOCK */
 
 #ifdef __cplusplus
 }

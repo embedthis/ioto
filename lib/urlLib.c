@@ -77,7 +77,6 @@ static int fetch(Url *up, cchar *method, cchar *uri, cvoid *data, size_t len, cc
 static ssize getContentLength(cchar *headers, size_t length);
 static char *getHeader(char *line, char **key, char **value, int flags);
 static bool isprintable(cchar *s, size_t len);
-static int startRequest(Url *up);
 static void parseEvents(Url *up);
 static bool parseHeaders(Url *up);
 static int parseResponse(Url *up, size_t size);
@@ -268,20 +267,15 @@ PUBLIC int urlStart(Url *up, cchar *method, cchar *url)
         return R_ERR_BAD_ARGS;
     }
     rFree(up->method);
-    up->method = supper(sclone(method));
     rFree(up->url);
+    up->method = supper(sclone(method));
     up->url = sclone(url);
-    return startRequest(up);
-}
 
-static int startRequest(Url *up)
-{
-    if (!up) {
-        return R_ERR_BAD_ARGS;
-    }
     resetState(up);
     setDeadline(up);
-    connectHost(up);
+    if (connectHost(up) < 0) {
+        return R_ERR_CANT_CONNECT;
+    }
     return up->error ? R_ERR_CANT_CONNECT : 0;
 }
 
@@ -1080,7 +1074,7 @@ PUBLIC int urlParse(Url *up, cchar *uri)
     }
 
     if (*tok == '[' && ((next = strchr(tok, ']')) != 0)) {
-        /* IPv6  [::]:port/url */
+        // IPv6  [::]:port/url 
         up->host = &tok[1];
         *next++ = 0;
         tok = next;
@@ -1089,32 +1083,13 @@ PUBLIC int urlParse(Url *up, cchar *uri)
         // hostname:port/path
         up->host = tok;
         if ((tok = spbrk(tok, ":/")) != 0) {
-            if (*tok == ':') {
-                *tok++ = 0;
-                errno = 0;
-                port = strtol(tok, &end, 10);
-                if (errno == ERANGE || (*end != '\0' && *end != '/')) {
-                    urlError(up, "Invalid port number");
-                    return R_ERR_BAD_STATE;
-                }
-                if (port < 1 || port > 65535) {
-                    urlError(up, "Invalid port number");
-                    return R_ERR_BAD_STATE;
-                }
-                up->port = (int) port;
-                if ((tok = schr(tok, '/')) != 0) {
-                    tok++;
-                } else {
-                    tok = "";
-                }
-            } else {
+            if (*tok != ':') {
                 *tok++ = 0;
             }
-        } else {
-            // Should never happen
-            tok = "";
         }
-    } else if (*tok && *tok == ':') {
+    } 
+    // Parse :port
+    if (tok && *tok == ':') {
         //  :port/path without hostname
         *tok++ = 0;
         errno = 0;
@@ -1134,7 +1109,7 @@ PUBLIC int urlParse(Url *up, cchar *uri)
             tok = "";
         }
     }
-    if (*tok) {
+    if (tok && *tok) {
         up->path = tok;
     }
     if (slen(up->host) > 255) {
@@ -1579,7 +1554,7 @@ PUBLIC int urlWriteHeaders(Url *up, cchar *headers)
         rPutStringToBuf(buf, "\r\n");
     }
     if (up->flags & URL_SHOW_REQ_HEADERS) {
-        rLog("raw", "url", "%s", rBufToString(buf));
+        rLog("raw", "url", "%s\n", rBufToString(buf));
     }
     if (rWriteSocket(up->sock, rBufToString(buf), rGetBufLength(buf), up->deadline) != (ssize) rGetBufLength(buf)) {
         return urlError(up, "Cannot send request");
@@ -1702,19 +1677,6 @@ PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headersFmt, ...
 }
 
 #if ME_COM_WEBSOCK
-
-PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg)
-{
-    if (!up) {
-        return R_ERR_BAD_ARGS;
-    }
-    if (!up->webSocket) {
-        return R_ERR_BAD_STATE;
-    }
-    webSocketAsync(up->webSocket, callback, arg, up->rx);
-    return 0;
-}
-
 /*
     Return zero when closed and a negative error code on errors.
  */
@@ -1734,11 +1696,8 @@ PUBLIC int urlWebSocket(cchar *uri, WebSocketProc callback, void *arg, cchar *he
         if (urlFinalize(up) < 0) {
             return urlError(up, "Cannot finalize request");
         }
-        // Setup callback and invoke connected event
-        urlWebSocketAsync(up, callback, arg);
-
-        if (urlWait(up) < 0) {
-            rDebug("test", "WebSocket error");
+        if (webSocketRun(up->webSocket, callback, arg, up->rx, up->timeout) < 0) {
+            return urlError(up, "WebSocket error");
         }
     } else {
         if (up->error) {
@@ -1921,7 +1880,7 @@ PUBLIC void sseCallback(Url *up)
         }
     }
     if (up->fiber) {
-        rSetWaitHandler(up->sock->wait, 0, 0, 0, 0);
+        rSetWaitHandler(up->sock->wait, 0, 0, 0, 0, 0);
         rResumeFiber(up->fiber, 0);
     }
 }
@@ -2000,66 +1959,61 @@ static void parseEvents(Url *up)
     rFreeBuf(dataBuf);
 }
 
-PUBLIC void urlSseAsync(Url *up, UrlSseProc proc, void *arg)
-{
-    if (!up) {
-        return;
-    }
-    up->sseProc = proc;
-    up->sseArg = arg;
-    up->sse = 1;
-    up->maxRetries = URL_MAX_RETRIES;
-    up->retries = 0;
-
-    if (rGetBufLength(up->rx) > 0) {
-        up->nonblock = 1;
-        sseCallback(up);
-        up->nonblock = 0;
-        if (up->rxRemaining == 0) {
-            //  EOF
-            return;
-        }
-    }
-    rSetWaitHandler(up->sock->wait, (RWaitProc) sseCallback, up, R_READABLE, up->deadline);
-}
-
 /*
-    Timeout waiting for SSE events
+    Run the SSE event loop until the connection closes.
+    Single-fiber model - no coordination with other fibers needed.
+    Returns 0 on orderly close, < 0 on error.
  */
-static void abortWait(Url *up, int mask)
+PUBLIC int urlSseRun(Url *up, UrlSseProc callback, void *arg, RBuf *buf, Ticks deadline)
 {
-    rSetWaitHandler(up->sock->wait, 0, 0, 0, 0);
-    if (up->fiber) {
-        urlError(up, "Timeout waiting for WebSocket events");
-        rResumeFiber(up->fiber, 0);
-    }
-}
+    RBuf  *responseBuf;
+    ssize nbytes;
 
-PUBLIC int urlSseWait(Url *up)
-{
-    if (!up) {
+    if (!up || !callback) {
         return R_ERR_BAD_ARGS;
     }
-    if (up->rxRemaining) {
-        if (rIsMain()) {
-            rServiceEvents();
-            while (rState < R_STOPPING && !up->error) {
-                rWait(rRunEvents());
-                if (rGetTicks() > up->deadline) {
-                    urlError(up, "Timeout waiting for SSE events");
-                    break;
-                }
-            }
+
+    // Configure SSE mode
+    up->sseProc = callback;
+    up->sseArg = arg;
+    up->sse = 1;
+    up->maxRetries = 0;
+    up->retries = 0;
+    if (deadline) {
+        up->deadline = deadline;
+    }
+
+    // Initialize response buffer
+    responseBuf = up->responseBuf;
+    if (!responseBuf) {
+        responseBuf = up->responseBuf = rAllocBuf(ME_BUFSIZE);
+    }
+
+    /* 
+        Note: Unlike WebSocket, we do NOT pre-parse the initial buffer here.
+        The initial rx buffer may contain chunked encoding headers that needs
+        to be processed by urlRead, which handles chunk decoding transparently.
+    */
+    while (!up->error && !up->needFree && up->sock && rState < R_STOPPING) {
+        parseEvents(up);
+        if (up->error || up->needFree || !up->sock) {
+            break;
+        }
+        rCompactBuf(responseBuf);
+        rReserveBufSpace(responseBuf, ME_BUFSIZE);
+        if (rGetBufLength(responseBuf) > up->bufLimit) {
+            urlError(up, "Response too big");
+            break;
+        }
+        if ((nbytes = urlRead(up, responseBuf->end, rGetBufSpace(responseBuf))) > 0) {
+            rAdjustBufEnd(responseBuf, nbytes);
+            rAddNullToBuf(responseBuf);
         } else {
-            up->fiber = rGetFiber();
-            up->abortEvent = rStartEvent((REventProc) abortWait, up, up->deadline);
-            rYieldFiber(0);
-            rStopEvent(up->abortEvent);
-            up->abortEvent = 0;
-            up->fiber = 0;
+            // End of stream (nbytes == 0) or error (nbytes < 0)
+            break;
         }
     }
-    return up->error ? R_ERR_NOT_CONNECTED : 0;
+    return up->error ? R_ERR_CANT_COMPLETE : 0;
 }
 
 PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, ...)
@@ -2082,10 +2036,7 @@ PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, .
         urlFree(up);
         return R_ERR_CANT_COMPLETE;
     }
-    urlSseAsync(up, proc, arg);
-    if (urlWait(up) < 0) {
-        rDebug("test", "GetEvents error");
-    }
+    urlSseRun(up, proc, arg, up->rx, up->deadline);
     urlFree(up);
     rFree(headers);
     return 0;
@@ -2112,25 +2063,6 @@ PUBLIC int urlError(Url *up, cchar *fmt, ...)
     rCloseSocket(up->sock);
     return R_ERR_CANT_COMPLETE;
 }
-
-#if ME_COM_WEBSOCK || URL_SSE
-PUBLIC int urlWait(Url *up)
-{
-    if (!up) {
-        return R_ERR_BAD_ARGS;
-    }
-#if ME_COM_WEBSOCK
-    if (up->webSocket) {
-        return webSocketWait(up->webSocket, up->deadline);
-#endif
-#if URL_SSE
-} else if (up->sse) {
-    return urlSseWait(up);
-#endif
-}
-return 0;
-}
-#endif /* ME_COM_WEBSOCK || URL_SSE */
 
 /******************************** Authentication ********************************/
 #if URL_AUTH
