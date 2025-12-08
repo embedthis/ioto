@@ -70,9 +70,7 @@ typedef struct WebSocket {
     int frame;                                    /**< Current message frame processing state */
     int closing;                                  /**< Connection closing sequence has started */
     int closeStatus;                              /**< Close status code provided by peer */
-    int inCallback;                               /**< Currently executing in callback function */
     int maskOffset;                               /**< Current offset in data masking array */
-    int needFree;                                 /**< WebSocket object requires cleanup */
     int opcode;                                   /**< Opcode of current received message */
     int partialUTF;                               /**< Last frame contained partial UTF-8 sequence */
     int rxSeq;                                    /**< Incoming packet sequence number (debug) */
@@ -93,15 +91,13 @@ typedef struct WebSocket {
     void *data;                                   /**< User-defined private data reference */
     uchar dataMask[4];                            /**< Data masking key for frame processing */
 
-    Ticks deadline;                               /**< Timeout deadline for next I/O operation */
+    Ticks deadline;                               /**< Deadline for I/O operations, computed from timeout */
+    Ticks timeout;                                /**< Timeout for I/O operations in webSocketRun */
     RSocket *sock;                                /**< Underlying network socket */
     Time pingPeriod;                              /**< Interval for sending ping frames */
-    REvent pingEvent;                             /**< Timer event for ping transmission */
-    REvent abortEvent;                            /**< Event for connection abortion */
 
     WebSocketProc callback;                       /**< Event callback function for messages */
     void *callbackArg;                            /**< User argument passed to callback */
-    RFiber *fiber;                                /**< Fiber context waiting for close */
     RBuf *buf;                                    /**< Buffer for accumulating incoming data */
 } WebSocket;
 
@@ -188,28 +184,19 @@ PUBLIC void webSocketFree(WebSocket *ws);
 PUBLIC int webSocketProcess(WebSocket *ws);
 
 /**
-    Configure WebSocket for asynchronous operation with callback
-    @description This routine configures the WebSocket for asynchronous operation by setting the
-        event callback function that will be invoked when messages are received or connection
-        events occur. The callback will be called for open, message, error, and close events.
+    Run the WebSocket event loop until the connection closes
+    @description This function runs the WebSocket event loop that handles reading,
+        processing messages, and sending pings. It blocks until the connection is closed or the
+        the timeout expires.
     @param ws WebSocket object
     @param callback Callback function to handle WebSocket events
     @param arg User argument passed to the callback function
-    @param buf Buffer containing pre-read data that may have been received as part of reading the HTTP headers
+    @param buf Buffer containing pre-read data from HTTP upgrade (may be NULL)
+    @param timeout Timeout for I/O operations (use 0 for no timeout)
+    @return 0 on orderly close, < 0 on error
     @stability Evolving
  */
-PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf);
-
-/**
-    Wait for the WebSocket connection to close
-    @description Block the current fiber until the WebSocket connection is closed or the deadline expires.
-        This function allows graceful shutdown handling by waiting for the peer to acknowledge closure.
-    @param ws WebSocket object
-    @param deadline Deadline for the operation
-    @return 0 on close, < 0 for error and 1 for message(s) received
-    @stability Evolving
- */
-PUBLIC int webSocketWait(WebSocket *ws, Time deadline);
+PUBLIC int webSocketRun(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf, Ticks timeout);
 
 /**
     Get the client key
@@ -381,16 +368,6 @@ PUBLIC void webSocketSetClientKey(WebSocket *ws, cchar *clientKey);
     @stability Evolving
  */
 PUBLIC void webSocketSetData(WebSocket *ws, void *data);
-
-/**
-    Set the WebSocket fiber
-    @description Associate a fiber context with the WebSocket object for cooperative
-        multitasking and blocking operations.
-    @param ws WebSocket object
-    @param fiber Fiber context to associate
-    @stability Evolving
- */
-PUBLIC void webSocketSetFiber(WebSocket *ws, RFiber *fiber);
 
 /**
     Set the ping period

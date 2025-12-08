@@ -105,7 +105,6 @@ static const uchar utfTable[] = {
 static void invokeCallback(WebSocket *ws, int event, cchar *buf, size_t len);
 static int parseMessage(WebSocket *ws);
 static int parseFrame(WebSocket *ws);
-static void sendPing(WebSocket *ws);
 static uint validUTF8(WebSocket *ws, cchar *str, size_t len);
 static bool validateText(WebSocket *ws);
 static int writeFrame(WebSocket *ws, int type, int fin, cuchar *buf, size_t len);
@@ -139,19 +138,6 @@ PUBLIC void webSocketFree(WebSocket *ws)
 {
     if (!ws) return;
 
-    //  SECURITY Acceptable: - Defer free until the callback completes
-    if (ws->inCallback) {
-        ws->needFree = 1;
-        return;
-    }
-    if (ws->pingEvent) {
-        rStopEvent(ws->pingEvent);
-        ws->pingEvent = 0;
-    }
-    if (ws->abortEvent) {
-        rStopEvent(ws->abortEvent);
-        ws->abortEvent = 0;
-    }
     rFreeBuf(ws->buf);
     rFree(ws->clientKey);
     rFree(ws->closeReason);
@@ -162,7 +148,7 @@ PUBLIC void webSocketFree(WebSocket *ws)
 
 /*
     Read data from the socket into the WebSocket buffer
-    Return the number of bytes read
+    Return the number of bytes read, 0 if no data available, < 0 on error
  */
 static ssize readSocket(WebSocket *ws)
 {
@@ -182,108 +168,73 @@ static ssize readSocket(WebSocket *ws)
         return wsError(ws, 0, "Cannot read from socket");
     }
     rAdjustBufEnd(bp, nbytes);
-    return (ssize) rGetBufLength(bp);
+    return nbytes;
 }
 
 static void invokeCallback(WebSocket *ws, int event, cchar *buf, size_t len)
 {
     if (ws->callback) {
-        ws->inCallback = 1;
         ws->callback(ws, event, buf, len, ws->callbackArg);
-        ws->inCallback = 0;
-        if (ws->needFree) {
-            webSocketFree(ws);
-        }
     }
 }
 
 /*
-    Callback invoked when the socket is ready for reading
-    Read the data and process the WebSocket frames and messages
-    If the connection is closed, resume the waiting fiber
+    Run the WebSocket event loop until the connection closes.
+    Single-fiber model - no coordination with other fibers needed.
+    Returns 0 on orderly close, < 0 on error.
  */
-static void waitCallback(WebSocket *ws, int mask)
+PUBLIC int webSocketRun(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf, Ticks timeout)
 {
-    ssize rc;
+    Ticks pingDue;
+    ssize nbytes;
 
-    if ((rc = readSocket(ws)) < 0) {
-        webSocketSendClose(ws, WS_STATUS_COMMS_ERROR, NULL);
-        webSocketProcess(ws);
-    } else if (rc > 0) {
-        webSocketProcess(ws);
-    }
-    if (ws->state == WS_STATE_CLOSED) {
-        if (ws->fiber) {
-            rResumeFiber(ws->fiber, 0);
-        }
-    } else {
-        rSetWaitMask(ws->sock->wait, R_READABLE, ws->deadline);
-    }
-}
-
-/*
-    Define the WebSocket callback and setup an I/O event handler
- */
-PUBLIC void webSocketAsync(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf)
-{
     ws->callback = callback;
     ws->callbackArg = arg;
-    ws->deadline = MAXINT64;
-    ws->fiber = rGetFiber();
 
-    /*
-        First time, process the connected event
-     */
+    // Fire open event
     if (ws->state == WS_STATE_CONNECTING) {
         ws->state = WS_STATE_OPEN;
         invokeCallback(ws, WS_EVENT_OPEN, NULL, 0);
     }
-    if (rGetBufLength(buf) > 0) {
-        invokeCallback(ws, WS_EVENT_MESSAGE, rGetBufStart(buf), rGetBufLength(buf));
+    // Process any buffered data from HTTP upgrade
+    if (buf && rGetBufLength(buf) > 0) {
+        rPutBlockToBuf(ws->buf, rGetBufStart(buf), rGetBufLength(buf));
+        rAdjustBufStart(ws->buf, (ssize) rGetBufLength(buf));
+        webSocketProcess(ws);
     }
-    rSetWaitHandler(ws->sock->wait, (RWaitProc) waitCallback, ws, R_READABLE, 0);
-}
+    pingDue = ws->pingPeriod ? rGetTicks() + ws->pingPeriod : 0;
 
-/*
-    Timeout waiting for WebSocket events
- */
-static void abortWait(WebSocket *ws, int mask)
-{
-    rSetWaitHandler(ws->sock->wait, (RWaitProc) 0, ws, 0, 0);
-    if (ws->fiber) {
-        wsError(ws, 0, "Timeout waiting for WebSocket events");
-        rResumeFiber(ws->fiber, 0);
-    }
-}
+    while (ws->state != WS_STATE_CLOSED && rState < R_STOPPING) {
+        // Send ping if due
+        if (pingDue && rGetTicks() >= pingDue) {
+            webSocketSendBlock(ws, WS_MSG_PING, NULL, 0);
+            pingDue = rGetTicks() + ws->pingPeriod;
+        }
+        ws->deadline = rGetTicks() + timeout;
+        ws->deadline = pingDue ? min(ws->deadline, pingDue) : ws->deadline;
 
-/*
-    Block and wait for the WebSocket connection to close
- */
-PUBLIC int webSocketWait(WebSocket *ws, Time deadline)
-{
-    if (rIsMain()) {
-        rServiceEvents();
-        while (rState < R_STOPPING && ws->state != WS_STATE_CLOSED) {
-            rWait(rRunEvents());
-            if (rGetTicks() > ws->deadline) {
-                wsError(ws, 0, "Timeout waiting for WebSocket events");
+        // Read all available data
+        while ((nbytes = readSocket(ws)) > 0) {
+            webSocketProcess(ws);
+            if (ws->state == WS_STATE_CLOSED) {
                 break;
             }
         }
-    } else {
-        ws->fiber = rGetFiber();
-        ws->abortEvent = rStartEvent((REventProc) abortWait, ws, deadline);
-        rYieldFiber(0);
-        rStopEvent(ws->abortEvent);
-        ws->abortEvent = 0;
-        ws->fiber = 0;
+        if (nbytes < 0) {
+            webSocketSendClose(ws, WS_STATUS_COMMS_ERROR, NULL);
+            break;
+        }
+        if (ws->state == WS_STATE_CLOSED) {
+            break;
+        }
+        if (rWaitForIO(ws->sock->wait, R_READABLE, ws->deadline) < 0) {
+            if (rGetTicks() >= ws->deadline) {
+                wsError(ws, 0, "Timeout waiting for WebSocket data");
+                break;
+            }
+        }
     }
-    return ws->error ? R_ERR_NOT_CONNECTED : 0;
-}
-
-PUBLIC void webSocketSetFiber(WebSocket *ws, RFiber *fiber)
-{
-    ws->fiber = fiber;
+    return ws->error ? -ws->error : 0;
 }
 
 /*
@@ -292,11 +243,6 @@ PUBLIC void webSocketSetFiber(WebSocket *ws, RFiber *fiber)
  */
 PUBLIC int webSocketProcess(WebSocket *ws)
 {
-    if (ws->pingPeriod && !ws->pingEvent) {
-        ws->pingEvent = rStartEvent((REventProc) sendPing, ws, ws->pingPeriod);
-    }
-    // ws->error = 0;
-
     /*
         Process buffered data while we have complete frames
      */
@@ -828,16 +774,6 @@ PUBLIC void webSocketSelectProtocol(WebSocket *ws, cchar *protocol)
 PUBLIC void webSocketSetValidateUTF(WebSocket *ws, bool validateUTF)
 {
     ws->validate = validateUTF;
-}
-
-/*
-    Send a ping. Optimze by sending no data message with it.
- */
-static void sendPing(WebSocket *ws)
-{
-    assert(ws);
-    webSocketSendBlock(ws, WS_MSG_PING, NULL, 0);
-    ws->pingEvent = rStartEvent((REventProc) sendPing, ws, ws->pingPeriod);
 }
 
 /*
