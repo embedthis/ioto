@@ -470,7 +470,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         bp += rc;
     }
     if (!mq->processing) {
-        rSetWaitHandler(mq->sock->wait, (RWaitProc) processMqtt, mq, R_IO, rGetTicks() + MQTT_WAIT_TIMEOUT);
+        rSetWaitHandler(mq->sock->wait, (RWaitProc) processMqtt, mq, R_IO, rGetTicks() + MQTT_WAIT_TIMEOUT, 0);
         mq->processing = 1;
     }
     queueMsg(mq, msg, bp);
@@ -2366,7 +2366,7 @@ PUBLIC void dummyMqtt(void)
 #endif /* ME_COM_MQTT */
 
 /*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
+    Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
