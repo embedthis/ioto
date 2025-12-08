@@ -198,17 +198,17 @@
     #define ME_CPU_ARCH ME_CPU_ALPHA
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm64__) || defined(__aarch64__)
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
     #define ME_CPU "arm64"
     #define ME_CPU_ARCH ME_CPU_ARM64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(_M_ARM)
     #define ME_CPU "arm"
     #define ME_CPU_ARCH ME_CPU_ARM
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__x86_64__) || defined(_M_AMD64)
+#elif defined(__x86_64__) || defined(_M_AMD64) || defined(__amd64__) || defined(__amd64)
     #define ME_CPU "x64"
     #define ME_CPU_ARCH ME_CPU_X64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
@@ -233,14 +233,15 @@
     #define ME_CPU_ARCH ME_CPU_MIPS64
     #define CPU_ENDIAN ME_BIG_ENDIAN
 
-#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc)
+#elif defined(__ppc64__) || defined(__powerpc64__)
+    #define ME_CPU "ppc64"
+    #define ME_CPU_ARCH ME_CPU_PPC64
+    #define CPU_ENDIAN ME_BIG_ENDIAN
+
+#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc) || defined(__POWERPC__)
     #define ME_CPU "ppc"
     #define ME_CPU_ARCH ME_CPU_PPC
     #define CPU_ENDIAN ME_BIG_ENDIAN
-
-#elif defined(__ppc64__)
-    #define CPU "ppc64"
-    #define CPU_ARCH CPU_PPC64
 
 #elif defined(__sparc__)
     #define ME_CPU "sparc"
@@ -258,20 +259,20 @@
     #define ME_CPU_ARCH ME_CPU_SH
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__riscv_32)
-    #define ME_CPU "riscv"
-    #define ME_CPU_ARCH ME_CPU_RISCV
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
-
-#elif defined(__riscv_64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
     #define ME_CPU "riscv64"
     #define ME_CPU_ARCH ME_CPU_RISCV64
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__XTENSA__)
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    #define ME_CPU "riscv"
+    #define ME_CPU_ARCH ME_CPU_RISCV
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
+
+#elif defined(__XTENSA__) || defined(__xtensa__)
     #define ME_CPU "xtensa"
     #define ME_CPU_ARCH ME_CPU_XTENSA
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 #else
     #error "Cannot determine CPU type in osdep.h"
 #endif
@@ -707,6 +708,7 @@
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
         #include    <sys/epoll.h>
     #endif
+    #include    <malloc.h>
     #include    <sys/prctl.h>
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
         #include    <sys/eventfd.h>
@@ -721,6 +723,17 @@
         #include    <sys/sendfile.h>
     #endif
 #endif
+
+/*
+    Sendfile support for zero-copy file transfers
+ */
+#if LINUX && !__UCLIBC__
+    #define ME_HAS_SENDFILE 1
+#elif MACOSX || FREEBSD
+    #define ME_HAS_SENDFILE 1
+#else
+    #define ME_HAS_SENDFILE 0
+#endif
 #if MACOSX
     #include    <stdbool.h>
     #include    <mach-o/dyld.h>
@@ -728,6 +741,7 @@
     #include    <mach/mach_init.h>
     #include    <mach/mach_time.h>
     #include    <mach/task.h>
+    #include    <malloc/malloc.h>
     #include    <libkern/OSAtomic.h>
     #include    <net/if_dl.h>
 #endif
