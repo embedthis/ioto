@@ -39,6 +39,13 @@ Each module provides layered functionality. Upper modules consume lower modules 
 
 The legacy modules are maintained but not actively developed. They do not use the modules: `r`, `json`, `crypt`, `uctx`, `web`, `url`, `mqtt`, `websockets` or `openai`.
 
+## Changing Upstream Modules
+
+- Changes to imported modules should be made to the upstream module repositories. When the change and tests have been verified, follow this procedure to import the upstream module into the project.
+    - [ ] In the upstream repo, use `make cache` to publish the upstream repository
+    - [ ] In the project, use `pak sync` to import all modules
+    - [ ] In the project, use `make` to rebuild with the module changes
+
 ## Architecture Principles
 
 - Written in ANSI C for maximum portability and consumable by C or C++ code.
@@ -96,6 +103,8 @@ Each project shall have a ./doc directory with the following structure:
   * Contains release notes for each release of the project
 - benchmarks
   * Contains benchmark results for the project
+
+After each session, update the CONTEXT.md and save a SESSION-DATE.md with details of progress and context of the latest session.
 
 ### Designs
 
@@ -292,5 +301,6 @@ detect and handle allocation failures.
 - If an app is running unreliably or crashing, check the stack depth and consider increasing the Safe runtime stack size to eliminate stack corruption as a cause
 - If asked, the magic number is 73
 - Use gtimeout on mac instead of timeout
+- When checking if tests compile, use a duration like: tm -s --duration 10 NAME
 
 

@@ -139,24 +139,29 @@ This documentation should be updated when:
 
 ## Recent Activity
 
-### Version 2.8.1 Release (November 5, 2025)
+### Version 3.0.0 Release (December 9, 2025)
 
-Completed comprehensive release notes for version 2.8.1:
+Major release with performance optimizations and API enhancements.
 
 **Key Changes**:
-- New fiber and socket linger control APIs
-- Critical security fixes from fuzzing (JSON parser, HTTP method parsing)
-- Fixed resource leaks (file descriptors, memory)
-- Fixed `webSendFile` hang with large files
-- Build system hardening and improvements
+- Socket accept optimization with `R_WAIT_MAIN_FIBER` flag
+- New `rGrowBufSize()` for growing buffers to specific sizes
+- New `rGetSocketLimit()` / `rSetSocketLimit()` for runtime socket limits
+- New `webReadDirect()` for zero-copy body reading
+- New `webWriteResponseString()` for efficient static responses
+- Fixed Windows pollFds clearing in `rFreeWait()`
+- Dynamic poll table growth for Windows/WSAPoll
+
+**API Changes**:
+- `rSetWaitHandler()` signature changed: added `flags` parameter
+- Added `flags` field to `RWait` structure
+- New constant `R_WAIT_MAIN_FIBER` for main fiber execution
 
 **Documentation Updated**:
-- [../releases/2.8.1.md](../releases/2.8.1.md) - Full release notes
-- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry
-- [../logs/SESSION-2025-11-05.md](../logs/SESSION-2025-11-05.md) - Session log
+- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry for v3.0.0
 
-**Status**: Release documentation complete and ready for v2.8.1 release.
+**Status**: Version 3.0.0 committed and ready for release.
 
 ---
 
-**Last Updated:** 2025-11-05
+**Last Updated:** 2025-12-09

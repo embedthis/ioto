@@ -17,6 +17,20 @@ The **Web Server Module** — a fast, secure, tiny web server for embedded appli
 - API signatures
 - JSON configuration file
 
+### New APIs (v3.0.0)
+
+**Zero-Copy Body Reading:**
+- `webReadDirect(web, &dataPtr, desiredSize)` - Read body data directly from rx buffer without copying
+  - Returns pointer to data in buffer, consumes data internally
+  - Handles both Content-Length and chunked transfer encoding
+  - More efficient for streaming to files or processing large bodies
+
+**Static String Response:**
+- `webWriteResponseString(web, status, msg)` - Write response using static string
+  - Higher performance than `webWriteResponse()` for constant strings
+  - No printf-style formatting overhead
+  - String must be persistent (not freed)
+
 ## Web Module Testing
 
 ### Test Ports and Configuration
@@ -24,8 +38,30 @@ The **Web Server Module** — a fast, secure, tiny web server for embedded appli
 - HTTPS test server: port 4443
 - Test configuration: `./test/web.json5`
 - Test certificates: `../certs/` directory
+- When making changes to tests, you can verify they compile by running `tm -s NAME`.
 
 The unit tests use the `url` HTTP client library to exercise the web server. The `testme` tool launches the web server automatically during test runs.
+
+### Benchmark Testing
+- Benchmark suite: `test/bench/`
+- Run benchmarks: `cd test/bench && tm bench`
+- Run with duration: `tm --duration 30 bench`
+
+### Benchmark Results Location
+Benchmark results are saved to platform-specific directories:
+- `doc/benchmarks/macosx/` - macOS results
+- `doc/benchmarks/linux/` - Linux results
+- `doc/benchmarks/windows/` - Windows results
+
+Within each platform directory:
+- `latest.json5` / `latest.md` - Most recent benchmark run
+- `vX.Y.Z.json5` / `vX.Y.Z.md` - Version-specific baselines
+
+To save a release baseline:
+```bash
+cp doc/benchmarks/macosx/latest.json5 doc/benchmarks/macosx/v1.2.0.json5
+cp doc/benchmarks/macosx/latest.md doc/benchmarks/macosx/v1.2.0.md
+```
 
 ## Web Server Configuration
 
@@ -105,3 +141,4 @@ See `AI/README.md` for detailed information about the documentation structure.
 - Use `tm --iterations` rather than `TESTME_ITERATIONS=number tm` environment variable
 - Always use /* */ for multiline comments
 - Always use the best TestMe comparison function instead of relying on the generic `ttrue` or `tassert`. More specific TestMe comparison functions can report expected vs actual.
+- Use tm -s --duration 0 to do compile tests. A duration of zero will not run any tests.

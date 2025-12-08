@@ -78,6 +78,19 @@ The **Safe Runtime** (R) is the foundational layer providing secure, high-perfor
 | `malloc()/free()` | `rAlloc()/rFree()` |
 | `printf()` | `rPrintf()` |
 
+### New APIs (v3.0.0)
+
+**Buffer Management:**
+- `rGrowBufSize(buf, size)` - Grow buffer to specific size (vs incremental)
+
+**Socket Limits:**
+- `rGetSocketLimit()` - Get maximum active sockets allowed
+- `rSetSocketLimit(limit)` - Set runtime socket limit
+
+**Wait Handler Flags:**
+- `rSetWaitHandler(wp, handler, arg, mask, deadline, flags)` - Added `flags` parameter
+- `R_WAIT_MAIN_FIBER` - Execute handler on main fiber without allocating new fiber
+
 ### Key Behaviors
 
 - R runtime uses centralized memory management with automatic failure detection
