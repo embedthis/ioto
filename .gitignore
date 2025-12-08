@@ -65,3 +65,7 @@ upload-*.tmp
 valgrind.out
 xcode-sample
 .testme
+.test/certs/
+test/integration/state/certs/
+test/r/data/.hidden
+test/web/site/upload/
