@@ -57,6 +57,7 @@ if ($clFound) {
     $compiler = "cl"
     $compilerArgs = @(
         "/DJSON_SOLO=1",
+        "/Fo:bin\",
         "/Fe:bin\json.exe",
         "bin\json.c",
         "advapi32.lib",
