@@ -24,6 +24,14 @@
           <Configuration>Release</Configuration>
           <Platform>x64</Platform>
         </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|arm64">
+          <Configuration>Debug</Configuration>
+          <Platform>arm64</Platform>
+        </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|arm64">
+          <Configuration>Release</Configuration>
+          <Platform>arm64</Platform>
+        </ProjectConfiguration>
   </ItemGroup>
     
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -42,6 +50,16 @@
         <PlatformToolset>v141</PlatformToolset>
       </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+        <ConfigurationType></ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'" Label="Configuration">
+        <ConfigurationType></ConfigurationType>
+        <CharacterSet>NotSet</CharacterSet>
+        <PlatformToolset>v141</PlatformToolset>
+      </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|arm64'" Label="Configuration">
         <ConfigurationType></ConfigurationType>
         <CharacterSet>NotSet</CharacterSet>
         <PlatformToolset>v141</PlatformToolset>
@@ -71,6 +89,16 @@
         <Import Project="release.props" />
         <Import Project="x64.props" />
       </ImportGroup>
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="debug.props" />
+        <Import Project="arm64.props" />
+      </ImportGroup>
+      <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|arm64'" Label="PropertySheets">
+        <Import Project="product.props" />
+        <Import Project="release.props" />
+        <Import Project="arm64.props" />
+      </ImportGroup>      
 
       <PropertyGroup>
         <_ProjectFileVersion>10</_ProjectFileVersion>
@@ -90,6 +118,14 @@
         <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(BinDir)\</OutDir>
         <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ObjDir)\prep\</IntDir>
         <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PreBuildEvent</CustomBuildBeforeTargets>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'">$(ObjDir)\prep\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Debug|arm64'">PreBuildEvent</CustomBuildBeforeTargets>
+
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|arm64'">$(BinDir)\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|arm64'">$(ObjDir)\prep\</IntDir>
+        <CustomBuildBeforeTargets Condition="'$(Configuration)|$(Platform)'=='Release|arm64'">PreBuildEvent</CustomBuildBeforeTargets>
   </PropertyGroup>
 
       <ItemDefinitionGroup>

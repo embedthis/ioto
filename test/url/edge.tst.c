@@ -20,7 +20,7 @@ static void testMalformedUrls()
     Url     *up;
     int     rc;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test various URLs
     rc = urlParse(up, "not-a-url");
@@ -59,7 +59,7 @@ static void testNullParameters()
     int     status;
     cchar   *result;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test NULL URL parameter
     status = urlFetch(up, "GET", NULL, 0, 0, 0);
@@ -105,7 +105,7 @@ static void testVeryLongUrl()
     }
     scopy(&longUrl[urlLen - 20], 20, "/index.html");
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     rc = urlParse(up, longUrl);
     // Should either parse successfully or fail gracefully
@@ -120,7 +120,7 @@ static void testInvalidPorts()
     Url     *up;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test connection to invalid ports
     status = urlFetch(up, "GET", "http://localhost:1/", 0, 0, 0);
@@ -141,7 +141,7 @@ static void testZeroSizeOperations()
     int     status;
     ssize   result;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test zero-size POST
     status = urlFetch(up, "POST", SFMT(url, "%s/test/show", HTTP), "", 0, 0);
@@ -168,7 +168,7 @@ static void testMemoryLimits()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Set very small buffer limit
     urlSetBufLimit(up, 10);
@@ -190,7 +190,7 @@ static void testInvalidStatusCodes()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request a URL that returns 404
     status = urlFetch(up, "GET", SFMT(url, "%s/non-existent-page", HTTP), 0, 0, 0);
@@ -210,7 +210,7 @@ static void testDoubleOperations()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Start request twice
     status = urlStart(up, "GET", SFMT(url, "%s/index.html", HTTP));
@@ -239,7 +239,7 @@ static void testUseAfterClose()
     char    buffer[100];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);

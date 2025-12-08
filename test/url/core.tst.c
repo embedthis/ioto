@@ -20,7 +20,7 @@ static void testBasicAllocation()
     Url     *up;
 
     // Test basic allocation and freeing
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     ttrue(up != 0);
 
     // Test initial state
@@ -37,7 +37,7 @@ static void testParseValidUrls()
     Url     *up;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test basic HTTP URL parsing
     status = urlParse(up, "http://www.example.com/path?query=value#hash");
@@ -64,7 +64,7 @@ static void testParseInvalidUrls()
     Url     *up;
     int     rc;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test malformed URLs
     rc = urlParse(up, NULL);
@@ -104,7 +104,7 @@ static void testConfiguration()
 {
     Url     *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test timeout configuration
     urlSetTimeout(up, 30 * TPS);
@@ -139,7 +139,7 @@ static void testSimpleGet()
     cchar   *response;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test simple GET request
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
@@ -167,7 +167,7 @@ static void testSimplePost()
     char    *data = "test=value";
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test simple POST request
     status = urlFetch(up, "POST", SFMT(url, "%s/test/show", HTTP), data, 0, 0);
@@ -188,7 +188,7 @@ static void testNullSafety()
     ttrue(urlGetHeader(NULL, "test") == 0);
     ttrue(urlGetCookie(NULL, "test") == 0);
 
-    Url *up = urlAlloc(URL_NO_LINGER);
+    Url *up = urlAlloc(0);
 
     // Test NULL parameters with valid object
     ttrue(urlGetHeader(up, NULL) == 0);

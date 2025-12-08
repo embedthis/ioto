@@ -14,7 +14,7 @@ static void testPrecompressedBrotli(void)
     int   status;
 
     //  Request with brotli support
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                       "Accept-Encoding: br, gzip\r\n");
@@ -54,7 +54,7 @@ static void testPrecompressedGzip(void)
     cchar *vary;
 
     //  Request with only gzip support
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/data.json", HTTP), NULL, 0,
                   "Accept-Encoding: gzip, deflate\r\n"), 200);
@@ -73,7 +73,7 @@ static void testNoCompression(void)
     char url[128];
 
     //  Request without compression support
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0, NULL), 200);
     tnull(urlGetHeader(up, "Content-Encoding"));
@@ -88,7 +88,7 @@ static void testPrecompressedFallback(void)
 
     //  Request file that doesn't have compressed version
     //  (assuming uncompressed.txt exists but .gz/.br don't)
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/uncompressed.txt", HTTP), NULL, 0,
                   "Accept-Encoding: br, gzip\r\n"), 200);
@@ -105,7 +105,7 @@ static void testPrecompressedConditional(void)
     int   status;
 
     //  First request to get Last-Modified
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     status = urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                       "Accept-Encoding: gzip\r\n");
     teqi(status, 200);
@@ -130,7 +130,7 @@ static void testPrecompressedDisabled(void)
 
     //  Request to route without compressed flag
     //  (assuming /trace route doesn't have compressed: true)
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0,
                   "Accept-Encoding: gzip\r\n"), 200);
@@ -146,7 +146,7 @@ static void testHeadRequest(void)
     cchar *vary;
 
     //  HEAD request with compression support
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "HEAD", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                   "Accept-Encoding: br, gzip\r\n"), 200);
@@ -166,7 +166,7 @@ static void testQualityValues(void)
 
     //  Test Accept-Encoding with quality values (q-values)
     //  Higher q-value should be preferred
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                   "Accept-Encoding: gzip;q=0.8, br;q=1.0\r\n"), 200);
@@ -182,7 +182,7 @@ static void testMimeType(void)
     cchar *contentType;
 
     //  MIME type should be based on original file extension, not .gz/.br
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                   "Accept-Encoding: gzip\r\n"), 200);
@@ -200,7 +200,7 @@ static void testETag(void)
     cchar *etag;
 
     //  ETag should be present on compressed responses
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                   "Accept-Encoding: gzip\r\n"), 200);
@@ -219,7 +219,7 @@ static void testRangeWithCompression(void)
     int   status;
 
     //  Range requests should work with compressed content
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/compressed/app.js", HTTP), NULL, 0,
                       "Accept-Encoding: gzip\r\nRange: bytes=0-99\r\n");

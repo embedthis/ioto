@@ -40,7 +40,7 @@ static void testSSEConnection(void)
     int   status;
     cchar *contentType, *cacheControl;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Basic SSE connection
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -83,7 +83,7 @@ static void testSSEContentType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE must return text/event-stream
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -117,7 +117,7 @@ static void testSSEWithAcceptHeader(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Request with explicit Accept header for SSE
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -135,7 +135,7 @@ static void testSSEWithoutAcceptHeader(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE request without Accept header
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0, NULL);
@@ -153,7 +153,7 @@ static void testSSEKeepAlive(void)
     int   status;
     cchar *connection;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE should use keep-alive connection
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -181,7 +181,7 @@ static void testSSECacheHeaders(void)
     int   status;
     cchar *cacheControl, *pragma;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE responses should not be cached
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -216,7 +216,7 @@ static void testSSECORS(void)
     int   status;
     cchar *accessControl;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE with CORS headers (if cross-origin)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -247,7 +247,7 @@ static void testSSEMethodRestriction(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: GET should work for SSE
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -277,7 +277,7 @@ static void testSSEWithQueryParameters(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE with query parameters (common pattern for filtering)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream?filter=important&limit=10", HTTP),
@@ -296,7 +296,7 @@ static void testSSEConnectionHeaders(void)
     int   status;
     cchar *transferEncoding;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE should NOT use chunked encoding (or it may, depends on impl)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -324,7 +324,7 @@ static void testSSEWithCustomHeaders(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE with custom request headers
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -343,7 +343,7 @@ static void testSSEWithAuthentication(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: SSE with authentication header
     status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
@@ -362,9 +362,9 @@ static void testSSEMultipleClients(void)
     char url[128];
     int  status1, status2, status3;
 
-    up1 = urlAlloc(URL_NO_LINGER);
-    up2 = urlAlloc(URL_NO_LINGER);
-    up3 = urlAlloc(URL_NO_LINGER);
+    up1 = urlAlloc(0);
+    up2 = urlAlloc(0);
+    up3 = urlAlloc(0);
 
     // Test: Multiple clients connecting to SSE endpoint
     status1 = urlFetch(up1, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,

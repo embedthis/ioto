@@ -38,7 +38,7 @@ static void testBasicFileServing(void)
     int   status;
     cchar *contentType, *contentLength;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Serve HTML file
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -75,7 +75,7 @@ static void testZeroByteFile(void)
     int   status, pid;
     cchar *contentLength, *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Create zero-byte file
@@ -110,7 +110,7 @@ static void testLargeFile(void)
     int    status, pid;
     size_t size;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Create a larger file (50KB - under body limit but larger than typical)
@@ -142,7 +142,7 @@ static void testContentTypeDetection(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test various file extensions
     struct {
@@ -179,7 +179,7 @@ static void testSpecialCharactersInFilenames(void)
     char url[256];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Test spaces in filename (URL encoded as %20)
@@ -214,7 +214,7 @@ static void testDotFiles(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Try to create a dot file (hidden file on Unix)
@@ -245,7 +245,7 @@ static void testFileMetadata(void)
     int   status;
     cchar *lastModified, *etag, *contentLength;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request file and check metadata headers
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -276,7 +276,7 @@ static void testNonExistentFile(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request file that doesn't exist
     status = urlFetch(up, "GET", SFMT(url, "%s/does-not-exist-12345.html", HTTP), NULL, 0, NULL);
@@ -299,7 +299,7 @@ static void testFileCaseSensitivity(void)
     char url[128];
     int  status1, status2;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request file with correct case
     status1 = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -325,8 +325,8 @@ static void testMultipleSimultaneousRequests(void)
     char url[128];
     int  status1, status2;
 
-    up1 = urlAlloc(URL_NO_LINGER);
-    up2 = urlAlloc(URL_NO_LINGER);
+    up1 = urlAlloc(0);
+    up2 = urlAlloc(0);
 
     // Make two simultaneous requests for the same file
     // (In actual practice, these are sequential, but tests server's ability

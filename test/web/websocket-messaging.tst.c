@@ -89,7 +89,7 @@ static void testTextMessageEcho(void)
     int               rc;
 
     memset(&testData, 0, sizeof(testData));
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Perform WebSocket upgrade and run
     rc = urlWebSocket(SFMT(url, "%s/test/ws/", WS), (WebSocketProc) textMessageCallback, &testData, NULL);

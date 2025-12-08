@@ -21,7 +21,7 @@ static void testWebRead()
     Json *json;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test reading request body
     json = urlJson(up, "POST", SFMT(url, "%s/test/show",
@@ -39,7 +39,7 @@ static void testWebWrite()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test writing response data
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -56,7 +56,7 @@ static void testContentLength()
     char  url[128];
     cchar *data;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test content length setting
     data = "123456789012345";  // 15 chars
@@ -75,7 +75,7 @@ static void testLargeBody()
     char   *largeData;
     size_t size = 1024 * 5;     // 5KB (smaller for testing)
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Create large test data
     largeData = rAlloc(size + 1);
@@ -100,7 +100,7 @@ static void testHeaders()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test custom headers in request
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "X-Custom-Header: test-value\r\n");
@@ -117,7 +117,7 @@ static void testFileResponse()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test file serving
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -134,7 +134,7 @@ static void testChunkedTransfer()
     Json *json;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test with chunked data (server handles this internally)
     json = urlJson(up, "POST", SFMT(url, "%s/test/show", HTTP), "test chunked data", (size_t) -1,

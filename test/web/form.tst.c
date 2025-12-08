@@ -23,7 +23,7 @@ static void form()
     Url  *up;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Empty form
     json = urlJson(up, "POST", SFMT(url, "%s/test/show", HTTP), NULL, 0, NULL);

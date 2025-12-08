@@ -241,7 +241,7 @@ static void testInputSanitization()
     Json *json;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test basic echo functionality
     json = urlJson(up, "POST", SFMT(url, "%s/test/show",

@@ -39,7 +39,7 @@ static void testSessionCreation(void)
     int   status;
     cchar *setCookie;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Request that creates a session
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0, NULL);
@@ -70,8 +70,8 @@ static void testSessionIDUniqueness(void)
     int   status1, status2;
     cchar *cookie1, *cookie2;
 
-    up1 = urlAlloc(URL_NO_LINGER);
-    up2 = urlAlloc(URL_NO_LINGER);
+    up1 = urlAlloc(0);
+    up2 = urlAlloc(0);
 
     // Test: Two different sessions should have different IDs
     status1 = urlFetch(up1, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0, NULL);
@@ -101,7 +101,7 @@ static void testSessionFixationPrevention(void)
     int   status;
     cchar *setCookie;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Attempt to fixate session ID
     // Send a request with our own session ID
@@ -130,7 +130,7 @@ static void testCookieSecurityAttributes(void)
     int   status;
     cchar *setCookie;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Session cookie should have security attributes
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0, NULL);
@@ -170,7 +170,7 @@ static void testSessionPersistence(void)
     int   status;
     cchar *setCookie, *sessionId;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Create session
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0, NULL);
@@ -210,7 +210,7 @@ static void testSessionInvalidation(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Session logout/invalidation
     // Create session first
@@ -237,7 +237,7 @@ static void testInvalidSessionID(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Use invalid/malformed session ID
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0,
@@ -255,7 +255,7 @@ static void testEmptySessionID(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Empty session ID
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0,
@@ -273,7 +273,7 @@ static void testMultipleSessionCookies(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Multiple session cookies (potential attack)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0,
@@ -291,7 +291,7 @@ static void testSessionIDInURL(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Session ID in URL (bad practice, should prefer cookies)
     status = urlFetch(up, "GET", SFMT(url, "%s/test/session?session_id=url_based_session", HTTP),
@@ -310,7 +310,7 @@ static void testSessionWithXSRFProtection(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Session with XSRF token
     // Some systems include XSRF tokens with sessions
@@ -339,7 +339,7 @@ static void testConcurrentSessionRequests(void)
     char url[128];
     int  status1, status2, status3;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Multiple requests with same session
     status1 = urlFetch(up, "GET", SFMT(url, "%s/test/session", HTTP), NULL, 0, NULL);

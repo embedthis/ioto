@@ -20,7 +20,7 @@ make-files() {
 # Create dedicated benchmark directory
 mkdir -p site
 mkdir -p site/static
-mkdir -p site/upload
+mkdir -p site/put
 mkdir -p tmp
 
 # Create directory for benchmark results

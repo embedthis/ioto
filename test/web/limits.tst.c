@@ -36,8 +36,8 @@ static void testHeaderSizeLimit(void)
     size_t hlen;
     int    status;
 
-    up = urlAlloc(URL_NO_LINGER);
-    SFMT(url, "%s/index.html", HTTP);
+    up = urlAlloc(0);
+    SFMT(url, "%s/index.html?test=header-size-limit", HTTP);
     // Test 1: Normal header (well under limit) should succeed
     status = urlFetch(up, "GET", url, NULL, 0, "X-Test-Header: normal value\r\n");
     teqi(status, 200);
@@ -54,7 +54,7 @@ static void testHeaderSizeLimit(void)
     headers = sfmt("X-Large-Header: %s\r\n", header);
     rFree(header);
 
-    status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
+    status = urlFetch(up, "GET", SFMT(url, "%s/index.html?test=header-size-limit2", HTTP), NULL, 0, headers);
     teqi(status, 413);  // 413 Payload Too Large
     rFree(headers);
 
@@ -69,7 +69,7 @@ static void testMultipleHeaders(void)
     char *headers;
     int  status, i;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Many small headers that fit within 10K total limit
     buf = rAllocBuf(0);
@@ -78,7 +78,7 @@ static void testMultipleHeaders(void)
     }
     headers = rBufToStringAndFree(buf);
 
-    status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
+    status = urlFetch(up, "GET", SFMT(url, "%s/index.html?test=multiple-headers", HTTP), NULL, 0, headers);
     teqi(status, 200);
     rFree(headers);
     urlClose(up);
@@ -94,7 +94,7 @@ static void testMultipleHeaders(void)
     }
     headers = rBufToStringAndFree(buf);
 
-    status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, headers);
+    status = urlFetch(up, "GET", SFMT(url, "%s/index.html?test=multiple-headers2", HTTP), NULL, 0, headers);
     size_t totalSize = slen(headers);
     if (totalSize < 10240) {
         teqi(status, 200);
@@ -114,7 +114,7 @@ static void testBodySizeLimit(void)
     int    status;
     size_t bodySize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: POST with body under 100K limit should succeed
     bodySize = 50 * 1024;  // 50K
@@ -141,6 +141,7 @@ static void testBodySizeLimit(void)
     rFree(largeBody);
 
     urlFree(up);
+    // rSleep(10);  // Give server time to return to accept loop after 413
 }
 
 static void testUploadSizeLimit(void)
@@ -151,7 +152,7 @@ static void testUploadSizeLimit(void)
     int    status, pid;
     size_t uploadSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     /*
@@ -189,10 +190,10 @@ static void testURILength(void)
     int    status;
     size_t targetLen;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Normal URI should work
-    status = urlFetch(up, "GET", SFMT(base, "%s/index.html", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(base, "%s/index.html?test=uri-length", HTTP), NULL, 0, NULL);
     teqi(status, 200);
 
     /*
@@ -201,14 +202,14 @@ static void testURILength(void)
      */
     targetLen = 8 * 1024;  // 8K URI
     buf = rAllocBuf(0);
-    rPutToBuf(buf, "%s/index.html?", HTTP);
+    rPutToBuf(buf, "%s/index.html?test=uri-length2", HTTP);
 
     while (rGetBufLength(buf) < targetLen - 50) {
         rPutStringToBuf(buf, "param=value&");
     }
     longURI = rBufToStringAndFree(buf);
-
     urlClose(up);
+    
     status = urlFetch(up, "GET", longURI, NULL, 0, NULL);
     /*
         May succeed or fail depending on URI limit (typically 8-16K)
@@ -227,11 +228,11 @@ static void testQueryStringLimit(void)
     char *url;
     int  status, i;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Large query string
     buf = rAllocBuf(0);
-    rPutToBuf(buf, "%s/index.html?", HTTP);
+    rPutToBuf(buf, "%s/index.html?test=query-string-limit", HTTP);
     // Add many query parameters but under the limit
     for (i = 0; i < 100; i++) {
         rPutToBuf(buf, "param%d=value%d&", i, i);
@@ -244,7 +245,7 @@ static void testQueryStringLimit(void)
 
     // Test: Large query string exceeding the limit
     buf = rAllocBuf(0);
-    rPutToBuf(buf, "%s/index.html?", HTTP);
+    rPutToBuf(buf, "%s/index.html?test=query-string-limit3", HTTP);
     for (i = 0; i < 1000; i++) {
         rPutToBuf(buf, "param%d=value%d&", i, i);
     }
@@ -263,7 +264,7 @@ static void testBoundaryConditions(void)
     int    status;
     size_t exactLimit;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Body at exact 100K limit
     exactLimit = 100 * 1024;  // Exactly 100K

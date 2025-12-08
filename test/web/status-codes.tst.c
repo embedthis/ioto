@@ -37,7 +37,7 @@ static void test200OK(void)
     Url  *up;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Standard successful GET request
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
@@ -54,7 +54,7 @@ static void test201Created(void)
     char data[64];
     int  pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // PUT to create a new file should return 201
     pid = getpid();
@@ -76,7 +76,7 @@ static void test204NoContent(void)
     char data[64];
     int  pid, status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     pid = getpid();
     SFMT(data, "test data %d", pid);
@@ -100,7 +100,7 @@ static void test304NotModified(void)
     cchar *lastModified;
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Get Last-Modified header
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -124,7 +124,7 @@ static void test400BadRequest(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Malformed request - invalid range syntax
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Range: bytes=invalid\r\n");
@@ -140,7 +140,7 @@ static void test401Unauthorized(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Access protected resource without credentials (requires HTTPS for basic auth)
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTPS), NULL, 0, NULL);
@@ -156,7 +156,7 @@ static void test403Forbidden(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Try to access admin resource without credentials
     // Admin route requires digest auth with admin role
@@ -173,7 +173,7 @@ static void test404NotFound(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request non-existent file
     status = urlFetch(up, "GET", SFMT(url, "%s/does-not-exist-%d.html", HTTP, getpid()), NULL, 0, NULL);
@@ -189,7 +189,7 @@ static void test405MethodNotAllowed(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // TRACE should be disabled by default
     status = urlFetch(up, "TRACE", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -204,7 +204,7 @@ static void test412PreconditionFailed(void)
     char url[128], data[64];
     int  pid, status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     pid = getpid();
     SFMT(data, "test data %d", pid);
@@ -234,7 +234,7 @@ static void test416RangeNotSatisfiable(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request range beyond file size
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Range: bytes=999999-\r\n");

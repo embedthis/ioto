@@ -22,7 +22,7 @@ static void seriesUrl()
     cchar   *response;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);
     response = urlGetResponse(up);

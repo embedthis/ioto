@@ -25,7 +25,7 @@ static void request()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetProtocol(up, 0);
 
     //  Static fetch

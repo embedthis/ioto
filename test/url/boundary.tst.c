@@ -53,7 +53,7 @@ static void testBoundaryLeak()
     forms = rAllocHash(0, 0);
     rAddName(forms, "test", "value", 0);
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // First request: Upload (allocates boundary)
     urlStart(up, "POST", SFMT(url, "%s/test/upload", HTTP));
@@ -105,7 +105,7 @@ static void testAuthRetryWithPostData()
 
     tinfo("Testing auth retry with header augmentation");
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "alice", "password", NULL);  // Auto-detect
 
     /*
@@ -139,7 +139,7 @@ static void testAuthRetryWithHeaders()
 
     tinfo("Testing auth retry with explicit headers");
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", "basic");
 
     // Request with explicit headers (no augmentation needed)
@@ -168,7 +168,7 @@ static void testAuthRetryComplex()
 
     tinfo("Testing complex auth retry scenario");
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "alice", "password", "digest");
 
     /*
@@ -216,7 +216,7 @@ static void testMultipleUploadCycles()
     files = rAllocList(0, 0);
     rAddItem(files, file1);
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Multiple cycles of upload -> GET -> upload
     for (i = 0; i < 3; i++) {

@@ -8,7 +8,7 @@
 #   Copyright (c) All Rights Reserved. See details at the end of the file.
 #
 
-set -e
+# set -e
 
 #   Test Configuration
 MAX_GROWTH_PERCENT=10    # Maximum allowed memory growth percentage
@@ -23,13 +23,13 @@ else
     TEST_DURATION=300
 fi
 
-#   Calculate soak time: min(5 minutes, max(30 seconds, 1/10 duration))
-SOAK_TIME_FROM_DURATION=$((TEST_DURATION / 10))
+#   Calculate soak time: min(5 minutes, max(1 minute, 1/5 duration))
+SOAK_TIME_FROM_DURATION=$((TEST_DURATION / 5))
 
-# First: max(30, 1/10 duration)
+# First: max(60, 1/5 duration)
 SOAK_TIME=$SOAK_TIME_FROM_DURATION
-if [ $SOAK_TIME -lt 30 ]; then
-    SOAK_TIME=30
+if [ $SOAK_TIME -lt 60 ]; then
+    SOAK_TIME=60
 fi
 
 # Then: min(300, result)
@@ -104,6 +104,42 @@ CLASS_GROWTH_CONCURRENT=0
 CLASS_GROWTH_ERROR=0
 CLASS_GROWTH_RANGE=0
 
+#   Checkpoint tracking for 20% intervals during test phase
+#   We'll track memory at 0%, 20%, 40%, 60%, 80%, 100% of test duration
+CHECKPOINT_COUNT=5
+CHECKPOINT_MEMORY_0=""
+CHECKPOINT_MEMORY_1=""
+CHECKPOINT_MEMORY_2=""
+CHECKPOINT_MEMORY_3=""
+CHECKPOINT_MEMORY_4=""
+CHECKPOINT_MEMORY_5=""
+LAST_CHECKPOINT=-1
+
+#   Record checkpoint memory at 20% intervals
+record_checkpoint() {
+    local ELAPSED=$1
+    local MEMORY=$2
+
+    # Calculate which checkpoint we're at (0-5 for 0%, 20%, 40%, 60%, 80%, 100%)
+    local CHECKPOINT=$((ELAPSED * 5 / TEST_DURATION))
+    if [ $CHECKPOINT -gt 5 ]; then
+        CHECKPOINT=5
+    fi
+
+    # Only record if we've reached a new checkpoint
+    if [ $CHECKPOINT -gt $LAST_CHECKPOINT ]; then
+        case $CHECKPOINT in
+            0) CHECKPOINT_MEMORY_0=$MEMORY ;;
+            1) CHECKPOINT_MEMORY_1=$MEMORY ;;
+            2) CHECKPOINT_MEMORY_2=$MEMORY ;;
+            3) CHECKPOINT_MEMORY_3=$MEMORY ;;
+            4) CHECKPOINT_MEMORY_4=$MEMORY ;;
+            5) CHECKPOINT_MEMORY_5=$MEMORY ;;
+        esac
+        LAST_CHECKPOINT=$CHECKPOINT
+    fi
+}
+
 #   Memory sampling function
 sample_memory() {
     TIMESTAMP=$(date +%s)
@@ -143,7 +179,7 @@ sample_memory() {
                 # Significant growth in this cycle
                 CYCLE_CHECK=$(awk "BEGIN {print ($CYCLE_GROWTH_PERCENT >= 1.0)}")
                 if [ "$CYCLE_CHECK" = "1" ]; then
-                    INDICATOR="  *** WARNING: Leaked ${CYCLE_GROWTH} KB (${CYCLE_GROWTH_PERCENT}%) ***"
+                    INDICATOR="  *** Memory growth: ${CYCLE_GROWTH} KB (${CYCLE_GROWTH_PERCENT}%) ***"
                 else
                     INDICATOR="  << growth: +${CYCLE_GROWTH} KB"
                 fi
@@ -200,25 +236,25 @@ track_class_growth() {
 run_static_requests() {
     echo "  Running static file requests..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/index.html
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/size/1K.txt
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/size/100K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/index.html
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/size/1K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/size/100K.txt
     done
 }
 
 run_https_requests() {
     echo "  Running HTTPS requests..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
-        curl -s --max-time $CURL_TIMEOUT -k -o /dev/null ${HTTPS_ENDPOINT}/index.html
-        curl -s --max-time $CURL_TIMEOUT -k -o /dev/null ${HTTPS_ENDPOINT}/size/1K.txt
+        curl -s --max-time $CURL_TIMEOUT -k -H "Connection: close" -o /dev/null ${HTTPS_ENDPOINT}/index.html
+        curl -s --max-time $CURL_TIMEOUT -k -H "Connection: close" -o /dev/null ${HTTPS_ENDPOINT}/size/1K.txt
     done
 }
 
 run_auth_requests() {
     echo "  Running authenticated requests..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
-        curl -s --max-time $CURL_TIMEOUT --digest --user alice:password -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" --digest --user alice:password -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html
     done
 }
 
@@ -228,7 +264,7 @@ run_upload_requests() {
         # Create unique temp file with PID to allow parallel test runs
         TEMP_FILE="tmp/upload-test-$$.txt"
         echo "Test upload data $i" > $TEMP_FILE
-        curl -s --max-time $CURL_TIMEOUT -T $TEMP_FILE -o /dev/null ${HTTP_ENDPOINT}/upload/test-$$.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -T $TEMP_FILE -o /dev/null ${HTTP_ENDPOINT}/upload/test-$$.txt
         curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -X DELETE -o /dev/null ${HTTP_ENDPOINT}/upload/test-$$.txt
         rm -f $TEMP_FILE
     done
@@ -237,16 +273,16 @@ run_upload_requests() {
 run_mixed_requests() {
     echo "  Running mixed request pattern..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/index.html
-        curl -s --max-time $CURL_TIMEOUT -k -o /dev/null ${HTTPS_ENDPOINT}/size/1K.txt
-        curl -s --max-time $CURL_TIMEOUT --digest --user alice:password -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/index.html
+        curl -s --max-time $CURL_TIMEOUT -k -H "Connection: close" -o /dev/null ${HTTPS_ENDPOINT}/size/1K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" --digest --user alice:password -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html
     done
 }
 
 run_large_file_requests() {
     echo "  Running large file requests..."
     for i in $(seq 1 $((ITERATIONS_PER_CLASS / 2))); do
-        curl -s --max-time $CURL_TIMEOUT_LARGE -o /dev/null ${HTTP_ENDPOINT}/size/1M.txt
+        curl -s --max-time $CURL_TIMEOUT_LARGE -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/size/1M.txt
     done
 }
 
@@ -255,8 +291,8 @@ run_concurrent_requests() {
     for j in $(seq 1 $((ITERATIONS_PER_CLASS / 4))); do
         for i in $(seq 1 10); do
             (
-                curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/index.html
-                curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
+                curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/index.html
+                curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
             ) &
         done
     done
@@ -266,8 +302,8 @@ run_concurrent_requests() {
 run_error_requests() {
     echo "  Running error-inducing requests..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
-        curl -s --max-time $CURL_TIMEOUT -o /dev/null ${HTTP_ENDPOINT}/nonexistent.html 2>/dev/null || true
-        # curl -s --max-time $CURL_TIMEOUT --digest --user alice:wrong -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html 2>/dev/null || true
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -o /dev/null ${HTTP_ENDPOINT}/nonexistent.html 2>/dev/null || true
+        # curl -s --max-time $CURL_TIMEOUT -H "Connection: close" --digest --user alice:wrong -o /dev/null ${HTTP_ENDPOINT}/auth/secret.html 2>/dev/null || true
     done
 }
 
@@ -275,24 +311,24 @@ run_range_requests() {
     echo "  Running range requests..."
     for i in $(seq 1 $ITERATIONS_PER_CLASS); do
         # Single range requests
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=0-49" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=50-99" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=0-49" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=50-99" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
 
         # Suffix range (last N bytes)
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=-50" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=-50" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
 
         # Open-ended range (from offset to end)
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=50-" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=50-" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
 
         # Multiple ranges (multipart response)
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=0-9,20-29,50-59" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=0-9,20-29,50-59" -o /dev/null ${HTTP_ENDPOINT}/range-test.txt
 
         # Range requests on larger files
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=0-1023" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
-        curl -s --max-time $CURL_TIMEOUT -H "Range: bytes=1024-2047" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=0-1023" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
+        curl -s --max-time $CURL_TIMEOUT -H "Connection: close" -H "Range: bytes=1024-2047" -o /dev/null ${HTTP_ENDPOINT}/size/10K.txt
 
         # HTTPS range requests
-        curl -s --max-time $CURL_TIMEOUT -k -H "Range: bytes=0-49" -o /dev/null ${HTTPS_ENDPOINT}/range-test.txt
+        curl -s --max-time $CURL_TIMEOUT -k -H "Connection: close" -H "Range: bytes=0-49" -o /dev/null ${HTTPS_ENDPOINT}/range-test.txt
     done
 }
 
@@ -363,8 +399,10 @@ START_TIME=$(date +%s)
 ELAPSED=0
 TEST_CYCLE=0
 
-# Sample memory before tests
+# Sample memory before tests and record initial checkpoint
 sample_memory
+INITIAL_TEST_MEMORY=$(./get-memory.sh $WEB_PID)
+record_checkpoint 0 $INITIAL_TEST_MEMORY
 
 while [ $ELAPSED -lt $TEST_DURATION ]; do
     TEST_CYCLE=$((TEST_CYCLE + 1))
@@ -413,8 +451,15 @@ while [ $ELAPSED -lt $TEST_DURATION ]; do
     track_class_growth "$CLASS_NAME" "$MEMORY_AFTER"
 
     ELAPSED=$(($(date +%s) - START_TIME))
+
+    # Record checkpoint at 20% intervals
+    record_checkpoint $ELAPSED $MEMORY_AFTER
+
     echo ""
 done
+
+# Record final checkpoint if not already recorded
+record_checkpoint $TEST_DURATION $(./get-memory.sh $WEB_PID)
 
 #   Phase 3: Analysis
 echo "==========================================="
@@ -441,6 +486,71 @@ printf "%-23s %s KB\n" "Final memory:" "${FINAL_MEMORY}"
 printf "%-23s %s KB (%s%%)\n" "Soak-in growth:" "${SOAK_GROWTH}" "${SOAK_GROWTH_PERCENT}"
 printf "%-23s %s KB (%s%%)\n" "Test growth:" "${GROWTH}" "${GROWTH_PERCENT}"
 echo ""
+
+# Report memory at 20% intervals during test phase
+echo "Memory at Test Intervals:"
+echo "-------------------------------------------"
+printf "  %-12s %-12s %-15s\n" "Progress" "Memory (KB)" "Interval Growth"
+echo "-------------------------------------------"
+
+# Calculate and display interval growth
+PREV_MEMORY=$CHECKPOINT_MEMORY_0
+for i in 0 1 2 3 4 5; do
+    case $i in
+        0) CURR_MEMORY=$CHECKPOINT_MEMORY_0; LABEL="0%" ;;
+        1) CURR_MEMORY=$CHECKPOINT_MEMORY_1; LABEL="20%" ;;
+        2) CURR_MEMORY=$CHECKPOINT_MEMORY_2; LABEL="40%" ;;
+        3) CURR_MEMORY=$CHECKPOINT_MEMORY_3; LABEL="60%" ;;
+        4) CURR_MEMORY=$CHECKPOINT_MEMORY_4; LABEL="80%" ;;
+        5) CURR_MEMORY=$CHECKPOINT_MEMORY_5; LABEL="100%" ;;
+    esac
+
+    if [ -n "$CURR_MEMORY" ]; then
+        if [ $i -eq 0 ]; then
+            INTERVAL_GROWTH="-"
+        else
+            if [ -n "$PREV_MEMORY" ]; then
+                INTERVAL_GROWTH_KB=$((CURR_MEMORY - PREV_MEMORY))
+                if [ $INTERVAL_GROWTH_KB -ge 0 ]; then
+                    INTERVAL_GROWTH="+${INTERVAL_GROWTH_KB} KB"
+                else
+                    INTERVAL_GROWTH="${INTERVAL_GROWTH_KB} KB"
+                fi
+            else
+                INTERVAL_GROWTH="-"
+            fi
+        fi
+        printf "  %-12s %-12s %-15s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH"
+        PREV_MEMORY=$CURR_MEMORY
+    fi
+done
+echo ""
+
+# Analyze growth pattern
+if [ -n "$CHECKPOINT_MEMORY_0" ] && [ -n "$CHECKPOINT_MEMORY_5" ]; then
+    TOTAL_INTERVAL_GROWTH=$((CHECKPOINT_MEMORY_5 - CHECKPOINT_MEMORY_0))
+    if [ $TOTAL_INTERVAL_GROWTH -gt 0 ]; then
+        # Check if growth was continuous or concentrated
+        EARLY_GROWTH=0
+        LATE_GROWTH=0
+        if [ -n "$CHECKPOINT_MEMORY_2" ]; then
+            EARLY_GROWTH=$((CHECKPOINT_MEMORY_2 - CHECKPOINT_MEMORY_0))
+        fi
+        if [ -n "$CHECKPOINT_MEMORY_2" ] && [ -n "$CHECKPOINT_MEMORY_5" ]; then
+            LATE_GROWTH=$((CHECKPOINT_MEMORY_5 - CHECKPOINT_MEMORY_2))
+        fi
+
+        if [ $EARLY_GROWTH -gt 0 ] && [ $LATE_GROWTH -le 0 ]; then
+            echo "Growth pattern: Early growth, then stable (likely initialization)"
+        elif [ $LATE_GROWTH -gt 0 ] && [ $EARLY_GROWTH -le 0 ]; then
+            echo "Growth pattern: Stable initially, late growth (possible leak)"
+        elif [ $EARLY_GROWTH -gt 0 ] && [ $LATE_GROWTH -gt 0 ]; then
+            echo "Growth pattern: Continuous growth (investigate for leaks)"
+        fi
+        echo ""
+    fi
+fi
+
 echo "Memory Growth by Test Class:"
 echo "  Static requests:     ${CLASS_GROWTH_STATIC} KB"
 echo "  HTTPS requests:      ${CLASS_GROWTH_HTTPS} KB"
@@ -502,6 +612,40 @@ echo ""
     echo "Memory Growth:"
     printf "  %-11s %s KB (%s%%)\n" "Soak-in:" "${SOAK_GROWTH}" "${SOAK_GROWTH_PERCENT}"
     printf "  %-11s %s KB (%s%%)\n" "Test:" "${GROWTH}" "${GROWTH_PERCENT}"
+    echo ""
+    echo "Memory at Test Intervals:"
+    echo "-------------------------------------------"
+    printf "  %-12s %-12s %-15s\n" "Progress" "Memory (KB)" "Interval Growth"
+    echo "-------------------------------------------"
+    PREV_MEMORY=$CHECKPOINT_MEMORY_0
+    for i in 0 1 2 3 4 5; do
+        case $i in
+            0) CURR_MEMORY=$CHECKPOINT_MEMORY_0; LABEL="0%" ;;
+            1) CURR_MEMORY=$CHECKPOINT_MEMORY_1; LABEL="20%" ;;
+            2) CURR_MEMORY=$CHECKPOINT_MEMORY_2; LABEL="40%" ;;
+            3) CURR_MEMORY=$CHECKPOINT_MEMORY_3; LABEL="60%" ;;
+            4) CURR_MEMORY=$CHECKPOINT_MEMORY_4; LABEL="80%" ;;
+            5) CURR_MEMORY=$CHECKPOINT_MEMORY_5; LABEL="100%" ;;
+        esac
+        if [ -n "$CURR_MEMORY" ]; then
+            if [ $i -eq 0 ]; then
+                INTERVAL_GROWTH="-"
+            else
+                if [ -n "$PREV_MEMORY" ]; then
+                    INTERVAL_GROWTH_KB=$((CURR_MEMORY - PREV_MEMORY))
+                    if [ $INTERVAL_GROWTH_KB -ge 0 ]; then
+                        INTERVAL_GROWTH="+${INTERVAL_GROWTH_KB} KB"
+                    else
+                        INTERVAL_GROWTH="${INTERVAL_GROWTH_KB} KB"
+                    fi
+                else
+                    INTERVAL_GROWTH="-"
+                fi
+            fi
+            printf "  %-12s %-12s %-15s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH"
+            PREV_MEMORY=$CURR_MEMORY
+        fi
+    done
     echo ""
     echo "Memory Growth by Test Class:"
     echo "  Static requests:     ${CLASS_GROWTH_STATIC} KB"

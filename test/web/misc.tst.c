@@ -1,19 +1,18 @@
 /*
-    sse.c.tst - Server-Sent Events
+    misc.tst.c - Miscellaneous tests including Server-Sent Events
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
 
 /********************************** Includes **********************************/
 
-#include    "test.h"
+#include "test.h"
 
 /*********************************** Locals ***********************************/
 
 static char *HTTP;
 static char *HTTPS;
 static int  count = 0;
-static int  expected = 0;
 
 /************************************ Code ************************************/
 
@@ -22,47 +21,47 @@ static void onEvent(Url *url, ssize id, cchar *event, cchar *data, void *arg)
     count++;
 }
 
-static void highLevelAPI()
+static void highLevelAPI(void)
 {
     char url[128];
     int  rc;
 
     count = 0;
-    expected = 100;
-
     rc = urlGetEvents(SFMT(url, "%s/test/event", HTTP), onEvent, NULL, NULL);
 
-    ttrue(rc == 0);
-    ttrue(count == 100);
+    teqi(rc, 0);
+    teqi(count, 100);
 }
 
-static void lowLevelAPI()
+static void lowLevelAPI(void)
 {
     Url  *up;
     char url[128];
     int  rc;
 
     count = 0;
-    expected = 100;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));
-    ttrue(rc == 0);
+    teqi(rc, 0);
+
+    rc = urlWriteHeaders(up, NULL);
+    teqi(rc, 0);
 
     rc = urlFinalize(up);
-    ttrue(rc == 0);
+    teqi(rc, 0);
 
-    urlSseAsync(up, onEvent, up);
+    teqi(urlGetStatus(up), 200);
 
-    rc = urlWait(up);
-    ttrue(rc == 0);
+    rc = urlSseRun(up, onEvent, NULL, up->rx, rGetTicks() + 30 * TPS);
+    teqi(rc, 0);
 
-    ttrue(count == 100);
+    teqi(count, 100);
     urlFree(up);
 }
 
-static void testFiber()
+static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
         highLevelAPI();
@@ -75,10 +74,10 @@ static void testFiber()
 
 int main(void)
 {
-    rInit(0, 0);
-    rSpawnFiber("test", (RFiberProc) testFiber, NULL);
+    rInit(fiberMain, 0);
     rServiceEvents();
     rTerm();
+    return 0;
 }
 
 /*

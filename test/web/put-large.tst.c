@@ -53,7 +53,7 @@ static void testPutLargeUnderLimit(void)
     size_t putSize;
     ssize  fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // PUT file under 100KB body limit (use 50KB for test)
@@ -90,7 +90,7 @@ static void testPutAtLimit(void)
     size_t putLimit;
     ssize  fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     /*
@@ -132,7 +132,7 @@ static void testPutLargeFileHandling(void)
     size_t putSize;
     ssize  fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     /*
@@ -171,7 +171,7 @@ static void testPutVariableSizes(void)
     int   status, pid;
     ssize fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Test various PUT sizes to ensure handling is consistent
@@ -217,7 +217,7 @@ static void testPutProgressive(void)
     int   status, pid;
     ssize fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     /*
@@ -257,7 +257,7 @@ static void testFilenameSanitization(void)
     char url[256];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Test various problematic filenames
@@ -306,7 +306,7 @@ static void testPutCleanup(void)
     int   status, pid;
     ssize fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // PUT a file
@@ -341,8 +341,8 @@ static void testPutConcurrent(void)
     ssize  fileSize;
     char   *data1, *data2;
 
-    up1 = urlAlloc(URL_NO_LINGER);
-    up2 = urlAlloc(URL_NO_LINGER);
+    up1 = urlAlloc(0);
+    up2 = urlAlloc(0);
     pid = getpid();
 
     // Create 60KB files for concurrent PUT
@@ -393,7 +393,7 @@ static void testPutEmpty(void)
     int   status, pid;
     ssize fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // PUT zero-byte file
@@ -422,7 +422,7 @@ static void testPutContentLength(void)
     int   status, pid;
     ssize fileSize;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     /*

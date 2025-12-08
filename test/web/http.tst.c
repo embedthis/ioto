@@ -23,7 +23,7 @@ static void testHTTPMethods()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test GET method
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -57,7 +57,7 @@ static void testHTTPHeaders()
     Json *json;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test custom headers in request
     json = urlJson(up, "POST", SFMT(url, "%s/test/show", HTTP), "test data", (size_t) -1,
@@ -84,7 +84,7 @@ static void testContentTypes()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test HTML content
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -117,7 +117,7 @@ static void testConnectionHandling()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test keep-alive connections (default behavior)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Connection: keep-alive\r\n");
@@ -140,7 +140,7 @@ static void testInvalidRequests()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test path traversal attempt
     status = urlFetch(up, "GET", SFMT(url, "%s/test/../../../etc/passwd", HTTP), NULL, 0, NULL);
@@ -160,7 +160,7 @@ static void testStatusCodes()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 200 OK
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -181,7 +181,7 @@ static void testCacheHeaders()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test If-Modified-Since with old date
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,

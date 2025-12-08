@@ -22,7 +22,7 @@ static void testRequestHeaders()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test custom request headers
     status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), 0, 0,
@@ -49,7 +49,7 @@ static void testResponseHeaders()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);
@@ -86,7 +86,7 @@ static void testHeaderEdgeCases()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test headers with special characters and spaces
     status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), 0, 0,

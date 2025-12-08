@@ -18,6 +18,17 @@ extern "C" {
 /*********************************** Types ************************************/
 
 /**
+ * File size class configuration
+ * Defines iteration multipliers relative to base benchmark iterations
+ */
+typedef struct {
+    cchar *name;              // Display name (e.g., "1KB", "10KB")
+    cchar *file;              // File path relative to site/
+    int64 size;               // File size in bytes
+    double multiplier;        // Fraction of base iterations (1.0 = full, 0.25 = 25%)
+} FileClass;
+
+/**
  * Benchmark result structure
  * Stores timing and statistical data for a benchmark run
  */
@@ -49,6 +60,7 @@ typedef struct {
     Ticks timeout;            // Request timeout in milliseconds
     cchar *host;              // Host for socket connections
     int port;                 // Port for socket connections
+    void *session;            // Cached TLS session for cold connection resumption
 } ConnectionCtx;
 
 /**
@@ -62,7 +74,14 @@ typedef struct {
     bool success;             // True if request succeeded
 } RequestResult;
 
-#define BENCH_MAX_RESULTS 8   // Maximum results per benchmark group
+#define BENCH_MAX_RESULTS 8        // Maximum results per benchmark group
+#define BENCH_MAX_COLD_ITERATIONS 2000  // Max iterations for cold tests to limit TIME_WAITs
+#define BENCH_MAX_SOAK_ITERATIONS 100   // Max iterations per class during soak phase
+#define BENCH_MAX_TIME_WAITS 10000  // Max TIME_WAIT sockets before waiting (16K max)
+#define MIN_GROUP_DURATION_MS 500  // Minimum 500ms per test group
+
+// Global file class configuration array (defined in bench-utils.c)
+extern FileClass fileClasses[];
 
 /**
  * Benchmark context for unified result processing
@@ -71,34 +90,34 @@ typedef struct {
  */
 typedef struct BenchContext {
     // Global state (persistent across all benchmarks)
-    bool fatalError;          // Fatal error occurred, stop all benchmarks
-    bool stopOnErrors;        // Stop on first error
-    int totalErrors;          // Total errors across all benchmarks
+    bool fatal;                         // Fatal error occurred, stop all benchmarks
+    bool stopOnErrors;                       // Stop on first error
+    int errors;                         // Total errors across all benchmarks
 
     // Per-benchmark counters (reset for each benchmark)
-    int totalRequests;        // Total requests made in current benchmark
-    int errorCount;           // Errors in current benchmark
-    int seq;                  // Sequence counter for unique IDs
+    int totalRequests;                       // Total requests made in current benchmark
+    int errorCount;                          // Errors in current benchmark
+    int seq;                                 // Sequence counter for unique IDs
 
     // Configuration
-    cchar *category;          // Category name for logging (e.g., "Static file")
-    bool recordResults;       // Whether to record results
+    cchar *category;                         // Category name for logging (e.g., "Static file")
+    bool soak;                               // True during soak phase (no recording)
 
     // Duration allocation
-    Ticks duration;           // Total benchmark duration
-    double totalUnits;        // Total weighted units for duration allocation
+    Ticks duration;                          // Total benchmark duration
+    double totalUnits;                       // Total weighted units for duration allocation
 
     // Results tracking
-    BenchResult *results[BENCH_MAX_RESULTS];  // Results array (embedded)
-    int resultCount;          // Number of results in array
-    int resultOffset;         // Offset into results array
-    int classIndex;           // Current class index within results
+    BenchResult *results[BENCH_MAX_RESULTS]; // Results array (embedded)
+    int resultCount;                         // Number of results in array
+    int resultOffset;                        // Offset into results array
+    int classIndex;                          // Current class index within results
 
     // Connection context (for cleanup on fatal error)
-    ConnectionCtx *connCtx;   // Connection to cleanup on fatal
+    ConnectionCtx *connCtx;                  // Connection to cleanup on fatal
 
     // Bytes for current request
-    ssize bytes;              // Bytes transferred for current request
+    ssize bytes;                             // Bytes transferred for current request
 } BenchContext;
 
 // Global benchmark context (defined in bench.tst.c)
@@ -173,7 +192,7 @@ extern void freeConnectionCtx(ConnectionCtx *ctx);
  * @return Request result with status, bytes, elapsed time
  */
 extern RequestResult executeRequest(ConnectionCtx *ctx, cchar *method, cchar *url,
-                                     cchar *data, size_t dataLen, cchar *headers);
+                                    cchar *data, size_t dataLen, cchar *headers);
 
 /**
  * Execute a raw socket HTTP request
@@ -191,7 +210,7 @@ extern RequestResult executeRawRequest(ConnectionCtx *ctx, cchar *request, ssize
 
 /**
  * Initialize a benchmark context
- * Preserves recordResults from ctx (set before calling this function)
+ * Preserves soak from ctx (set before calling this function)
  * @param ctx Context to initialize
  * @param category Category name for logging (e.g., "Static file")
  * @param description Description for tinfo output (e.g., "Benchmarking static files...")
@@ -200,7 +219,7 @@ extern void initBenchContext(BenchContext *ctx, cchar *category, cchar *descript
 
 /**
  * Process a request result - handles error counting, logging, and recording
- * Updates totalRequests, errorCount, totalErrors, and records timing
+ * Updates totalRequests, errorCount, errors, and records timing
  * Calculates elapsed time and success based on status code
  * @param ctx Benchmark context
  * @param result Request result (status set, elapsed/success calculated by this function)
@@ -228,9 +247,9 @@ extern void finishBenchContext(BenchContext *ctx, int count, cchar *groupName);
  * @param url Request URL
  * @param status HTTP status code
  * @param errorCount Current error count
- * @param recordResults True if recording results (limits error logging)
+ * @param soak True if in soak phase (more verbose error logging)
  */
-extern void logRequestError(cchar *benchName, cchar *url, int status, int errorCount, bool recordResults);
+extern void logRequestError(cchar *benchName, cchar *url, int status, int errorCount, bool soak);
 
 /*
     Duration and Timing
@@ -257,6 +276,41 @@ extern Ticks getSoakDuration(void);
 extern Ticks getBenchDuration(void);
 
 /**
+ * Calculate total weighted units for duration allocation
+ * Sums all fileClasses multipliers and optionally doubles for warm/cold tests
+ * @param ctx Benchmark context to update
+ * @param duration Total duration to allocate
+ * @param warmCold True to double units for warm and cold test phases
+ */
+extern void setupTotalUnits(BenchContext *ctx, Ticks duration, bool warmCold);
+
+/**
+ * Calculate group duration based on file class multiplier
+ * Allocates time proportionally and ensures minimum duration
+ * @param fc File class to calculate duration for
+ * @return Duration in milliseconds for this file class
+ */
+extern Ticks getGroupDuration(FileClass *fc);
+
+/**
+ * Calculate per-class cold iteration limit based on file class multiplier
+ * Distributes BENCH_MAX_COLD_ITERATIONS proportionally across all classes
+ * @param fc File class to calculate limit for
+ * @param totalUnits Total weighted units from setupTotalUnits
+ * @return Maximum cold iterations for this file class
+ */
+extern int getColdIterationLimit(FileClass *fc, double totalUnits);
+
+/**
+ * Calculate group duration for equal time allocation
+ * Divides total duration equally among groups with minimum enforcement
+ * @param duration Total duration to allocate
+ * @param numGroups Number of groups to divide among
+ * @return Duration in milliseconds per group
+ */
+extern Ticks calcEqualDuration(Ticks duration, int numGroups);
+
+/**
  * Create a new benchmark result structure
  * @param name Benchmark name
  * @return Allocated benchmark result structure
@@ -279,17 +333,17 @@ extern void recordTiming(BenchResult *result, Ticks elapsed);
 /*
     Result Management
 
-    Note: Uses the global bctx context for stopOnErrors, fatalError, and totalErrors
+    Note: Uses the global bctx context for stopOnErrors, fatal, and errors
  */
 
 /**
  * Initialize a benchmark result (NULL-safe wrapper for createBenchResult)
  * @param name Benchmark name
- * @param recordResults True to create result, false to return NULL
- * @param description Optional description to log via tinfo when recordResults is true (NULL to skip)
- * @return Benchmark result or NULL if not recording
+ * @param soak True if in soak phase (returns NULL), false to create result
+ * @param description Optional description to log via tinfo when not in soak (NULL to skip)
+ * @return Benchmark result or NULL if in soak phase
  */
-extern BenchResult *initResult(cchar *name, bool recordResults, cchar *description);
+extern BenchResult *initResult(cchar *name, bool soak, cchar *description);
 
 /**
  * Record a request result
@@ -380,6 +434,35 @@ extern ssize parseContentLength(cchar *headers, size_t len);
  * @return Total bytes read, or -1 on error
  */
 extern ssize readHeaders(RSocket *sp, char *buf, size_t bufsize, Ticks deadline, ssize *bodyStart, ssize *bodyLen);
+
+/*
+    Setup Functions
+ */
+
+/**
+ * Setup HTTP and HTTPS endpoints from web.json5 configuration
+ * Also sets default TLS certificates and URL timeout
+ * @param HTTP Returns the HTTP endpoint URL (caller must free)
+ * @param HTTPS Returns the HTTPS endpoint URL (caller must free)
+ * @return true on success, false on failure
+ */
+extern bool benchSetup(char **HTTP, char **HTTPS);
+
+/**
+ * Get the current count of TIME_WAIT sockets
+ * Uses netstat to count TIME_WAIT sockets on the specified port
+ * @param port Port number to check (0 for all ports)
+ * @return Number of TIME_WAIT sockets
+ */
+extern int getTimeWaits(int port);
+
+/**
+ * Wait for TIME_WAIT sockets to drain below threshold
+ * Runs netstat to count TIME_WAIT sockets and waits until count is below threshold
+ * @param port Port number to check (0 for all ports)
+ * @param maxWaits Maximum TIME_WAIT count threshold (0 for default BENCH_MAX_TIME_WAITS)
+ */
+extern void waitForTimeWaits(int port, int maxWaits);
 
 #ifdef __cplusplus
 }

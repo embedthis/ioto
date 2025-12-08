@@ -27,7 +27,7 @@ static void post()
     int    status;
 
     // up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Post to a static file
     len = 80 * 1024;

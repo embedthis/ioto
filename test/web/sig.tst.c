@@ -252,7 +252,7 @@ static void fiberMain(void *data)
 
     if (setup(&HTTP, &HTTPS)) {
         // up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | URL_SHOW_RESP_HEADERS);
-        up = urlAlloc(URL_NO_LINGER);
+        up = urlAlloc(0);
         test_0(up);
         test_1(up);
         test_2(up);

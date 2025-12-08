@@ -39,6 +39,7 @@
         timeout: 0,
     },
     tls: {
+        authority: '@certs/roots.crt',
         certificate: '@certs/test.crt',
         key: '@certs/test.key',
     },

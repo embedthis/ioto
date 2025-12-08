@@ -3,7 +3,7 @@
 #
 
 NAME                  = ioto
-VERSION               = 2.9.0
+VERSION               = 3.0.0
 
 OS                    = windows
 PA                    = $(PROCESSOR_ARCHITECTURE)
@@ -79,7 +79,7 @@ ME_COM_VXWORKS        = 0
 ME_COM_MBEDTLS_PATH   = .
 !ENDIF
 !IFNDEF ME_COM_OPENSSL_PATH
-ME_COM_OPENSSL_PATH   = $(USERPROFILE)/vcpkg/installed/x64-windows
+ME_COM_OPENSSL_PATH   = $(USERPROFILE)\vcpkg\installed\$(ARCH)-windows
 !ENDIF
 
 !IF "$(ME_COM_LIB)" == "1"
@@ -149,7 +149,7 @@ ME_COM_WEBSOCK        = 1
 ME_COMPANY            = \"embedthis\"
 !ENDIF
 !IFNDEF ME_COMPATIBLE
-ME_COMPATIBLE         = \"2.9\"
+ME_COMPATIBLE         = \"3.0\"
 !ENDIF
 !IFNDEF ME_COMPILER_FORTIFY
 ME_COMPILER_FORTIFY   = 1
@@ -239,7 +239,7 @@ ME_TUNE               = \"size\"
 ME_USER               = \"ioto\"
 !ENDIF
 !IFNDEF ME_VERSION
-ME_VERSION            = \"2.9.0\"
+ME_VERSION            = \"3.0.0\"
 !ENDIF
 !IFNDEF ME_WEB_AUTH
 ME_WEB_AUTH           = 1

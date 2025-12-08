@@ -22,7 +22,7 @@ static void testGetFile()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test GET existing file
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -45,7 +45,7 @@ static void testHeadFile()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test HEAD existing file - may not be fully supported on all endpoints
     status = urlFetch(up, "HEAD", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -62,7 +62,7 @@ static void testPutFile()
     int   status;
     cchar *testContent = "Test file content for PUT operation";
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test PUT file - may not be enabled or configured
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/test-put.txt", HTTP),
@@ -80,7 +80,7 @@ static void testDeleteFile()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test DELETE - may not be enabled or configured
     status = urlFetch(up, "DELETE", SFMT(url, "%s/upload/test-delete.txt", HTTP), NULL, 0, NULL);
@@ -97,7 +97,7 @@ static void testDirectoryRedirect()
     int   status;
     cchar *location;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test access to directory without trailing slash (should redirect)
     status = urlFetch(up, "GET", SFMT(url, "%s/upload", HTTP), NULL, 0, NULL);
@@ -116,7 +116,7 @@ static void testUnsupportedMethod()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test unsupported HTTP method
     status = urlFetch(up, "PATCH", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

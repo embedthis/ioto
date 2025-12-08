@@ -12,9 +12,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if !WINDOWS
 #include <sys/resource.h>
+#endif
 #if MACOSX
 #include <mach/mach.h>
+#endif
+#if WINDOWS
+#include <psapi.h>
 #endif
 
 /*********************************** Locals ***********************************/
@@ -32,6 +37,19 @@ static Json  *globalResults = NULL; // Global results JSON structure
 static int64 initialMemorySize = 0; // Memory size after soak phase
 static int64 finalMemorySize = 0;   // Memory size at benchmark completion
 static int   webServerPid = 0;      // PID of web server being benchmarked
+static cchar *reportName = NULL;    // Report filename (without extension)
+
+/*
+    Iteration count configuration per file size class
+    Multiplier relative to base benchmark iterations
+ */
+FileClass fileClasses[] = {
+    { "1KB",   "static/1K.txt",   1024,       1.0  },   // Full iterations for small files
+    { "10KB",  "static/10K.txt",  10240,      1.0  },   // Full iterations
+    { "100KB", "static/100K.txt", 102400,     0.25 },   // 25% iterations for large files
+    { "1MB",   "static/1M.txt",   1048576,    0.25 },   // 25% iterations for very large files
+    { NULL,    NULL,              0,          0    }
+};
 
 /************************************ Code ************************************/
 
@@ -48,6 +66,12 @@ void configureDuration(int numGroups)
         }
     }
 
+    // Get report filename from TESTME_REPORT, default to "latest"
+    reportName = getenv("TESTME_REPORT");
+    if (!reportName || !*reportName) {
+        reportName = "latest";
+    }
+
     // Allocate 10% to soak, 90% to benchmarking
     soakDuration = totalDuration / 10;
     benchDuration = totalDuration - soakDuration;
@@ -58,10 +82,11 @@ void configureDuration(int numGroups)
     }
 
     printf("Duration-based benchmarking:\n");
+    printf("  Report: %s\n", reportName);
     printf("  Total: %lld seconds\n", (long long) (totalDuration / 1000));
     printf("  Soak:  %lld seconds\n", (long long) (soakDuration / 1000));
     printf("  Bench: %lld seconds\n", (long long) (benchDuration / 1000));
-    printf("  Per group: %lld seconds for %d groups\n", (long long) (perGroupDuration / 1000), numGroups);
+    printf("  Per group: %.1f seconds for %d groups\n", perGroupDuration / 1000.0, numGroups);
 }
 
 Ticks getSoakDuration(void)
@@ -72,6 +97,53 @@ Ticks getSoakDuration(void)
 Ticks getBenchDuration(void)
 {
     return perGroupDuration;
+}
+
+/*
+    File Class Utility Functions
+ */
+
+void setupTotalUnits(BenchContext *ctx, Ticks duration, bool warmCold)
+{
+    ctx->duration = duration;
+    ctx->totalUnits = 0;
+    for (int i = 0; fileClasses[i].name; i++) {
+        ctx->totalUnits += fileClasses[i].multiplier;
+    }
+    if (warmCold) {
+        ctx->totalUnits *= 2;  // Account for warm and cold tests
+    }
+}
+
+Ticks getGroupDuration(FileClass *fc)
+{
+    Ticks duration;
+
+    duration = (Ticks) (bctx->duration * fc->multiplier / bctx->totalUnits);
+    if (duration < MIN_GROUP_DURATION_MS) {
+        duration = MIN_GROUP_DURATION_MS;
+    }
+    return duration;
+}
+
+int getColdIterationLimit(FileClass *fc, double totalUnits)
+{
+    int limit;
+
+    // Divide totalUnits by 2 since setupTotalUnits doubles for warm/cold
+    // We only want the cold portion of the budget
+    limit = (int) (BENCH_MAX_COLD_ITERATIONS * fc->multiplier / (totalUnits / 2));
+    if (limit < 100) {
+        limit = 100;  // Minimum iterations per class
+    }
+    return limit;
+}
+
+Ticks calcEqualDuration(Ticks duration, int numGroups)
+{
+    Ticks d = duration / numGroups;
+
+    return d < MIN_GROUP_DURATION_MS ? MIN_GROUP_DURATION_MS : d;
 }
 
 /*
@@ -121,7 +193,7 @@ Url *getConnection(ConnectionCtx *ctx)
     }
     // For cold connections or first warm connection, allocate new
     if (!ctx->up) {
-        ctx->up = urlAlloc(URL_NO_LINGER);
+        ctx->up = urlAlloc(0);
         urlSetTimeout(ctx->up, ctx->timeout);
     }
     return ctx->up;
@@ -130,6 +202,7 @@ Url *getConnection(ConnectionCtx *ctx)
 RSocket *getSocket(ConnectionCtx *ctx)
 {
     Ticks deadline;
+    void  *newSession;
 
     if (!ctx || !ctx->useSocket) {
         return NULL;
@@ -143,13 +216,27 @@ RSocket *getSocket(ConnectionCtx *ctx)
         ctx->sp = rAllocSocket();
         if (ctx->useTls) {
             rSetTls(ctx->sp);
+            // Apply cached session for TLS resumption on cold connections
+            if (ctx->session) {
+                rSetTlsSession(ctx->sp, ctx->session);
+            }
         }
-        rSetSocketLinger(ctx->sp, 0);
+        // rSetSocketLinger(ctx->sp, 0);
         deadline = rGetTicks() + ctx->timeout;
         if (rConnectSocket(ctx->sp, ctx->host, ctx->port, deadline) < 0) {
             rFreeSocket(ctx->sp);
             ctx->sp = NULL;
             return NULL;
+        }
+        // Cache session after successful TLS connection for future cold connections
+        if (ctx->useTls && !ctx->reuseConnection) {
+            newSession = rGetTlsSession(ctx->sp);
+            if (newSession) {
+                if (ctx->session) {
+                    rFreeTlsSession(ctx->session);
+                }
+                ctx->session = newSession;
+            }
         }
     }
     return ctx->sp;
@@ -195,17 +282,45 @@ void freeConnectionCtx(ConnectionCtx *ctx)
         urlClose(ctx->up);
         urlFree(ctx->up);
     }
+    if (ctx->session) {
+        rFreeTlsSession(ctx->session);
+    }
     rFree((char*) ctx->host);
     rFree(ctx);
 }
 
+/*
+    Read the entire response using urlRead into a standard sized buffer.
+    Returns the number of bytes read, or -1 on error.
+ */
+static ssize getResponse(Url *up)
+{
+    ssize nbytes, total;
+    char  buf[ME_BUFSIZE];
+
+    if (!up) {
+        return -1;
+    }
+    if (urlFinalize(up) < 0) {
+        return -1;
+    }
+    total = 0;
+    while ((nbytes = urlRead(up, buf, sizeof(buf))) > 0) {
+        total += nbytes;
+    }
+    if (nbytes < 0) {
+        return -1;
+    }
+    return total;
+}
+
 RequestResult executeRequest(ConnectionCtx *ctx, cchar *method, cchar *url,
-                              cchar *data, size_t dataLen, cchar *headers)
+                             cchar *data, size_t dataLen, cchar *headers)
 {
     RequestResult result;
     Url           *up;
     Ticks         startTime;
-    cchar         *response;
+    ssize         bytes;
 
     result.status = 0;
     result.bytes = 0;
@@ -221,11 +336,10 @@ RequestResult executeRequest(ConnectionCtx *ctx, cchar *method, cchar *url,
 
     /*
         Consume response to enable connection reuse and complete full request timing
-        Use urlGetResponse() return value for bytes since rxLen is -1 for chunked encoding
-    */
-    response = urlGetResponse(up);
+     */
+    bytes = getResponse(up);
     result.elapsed = rGetTicks() - startTime;
-    result.bytes = response ? slen(response) : 0;
+    result.bytes = bytes > 0 ? bytes : 0;
 
     // Check success based on method
     if (smatch(method, "GET") || smatch(method, "HEAD")) {
@@ -247,8 +361,8 @@ RequestResult executeRawRequest(ConnectionCtx *ctx, cchar *request, ssize expect
 {
     RequestResult result;
     RSocket       *sp;
-    char          headers[8192], *body;
-    ssize         bodyStart, bodyInHeaders, headerLen, contentLen, bodyRead, nbytes;
+    char          buf[ME_BUFSIZE], headers[8192];
+    ssize         bodyStart, bodyInHeaders, headerLen, contentLen, bodyRead, nbytes, toRead;
     Ticks         deadline;
     bool          success;
 
@@ -290,23 +404,20 @@ RequestResult executeRawRequest(ConnectionCtx *ctx, cchar *request, ssize expect
         }
         return result;
     }
-    // Read body
-    body = rAlloc((size_t) (contentLen + 1));
-    bodyRead = 0;
+    // Read and discard body using fixed buffer (body data not needed)
+    // Body data already read with headers is discarded, just account for bytes
+    bodyRead = bodyInHeaders;
 
-    // Copy any body data that was read with headers
-    if (bodyInHeaders > 0) {
-        memcpy(body, headers + bodyStart, (size_t) bodyInHeaders);
-        bodyRead = bodyInHeaders;
-    }
-
-    // Read remaining body data
+    // Read and discard remaining body data
     while (bodyRead < contentLen) {
-        nbytes = rReadSocket(sp, body + bodyRead, (size_t) (contentLen - bodyRead), deadline);
+        toRead = contentLen - bodyRead;
+        if (toRead > (ssize) sizeof(buf)) {
+            toRead = sizeof(buf);
+        }
+        nbytes = rReadSocket(sp, buf, (size_t) toRead, deadline);
         if (nbytes <= 0) {
             tinfo("Raw socket read body failed: %s (read %lld of %lld bytes)",
                   rGetSocketError(sp), (int64) bodyRead, (int64) contentLen);
-            rFree(body);
             if (ctx->reuseConnection) {
                 rCloseSocket(sp);
             }
@@ -314,13 +425,12 @@ RequestResult executeRawRequest(ConnectionCtx *ctx, cchar *request, ssize expect
         }
         bodyRead += nbytes;
     }
-    rFree(body);
 
     // Handle connection cleanup based on server response
     if (scontains(headers, "Connection: close")) {
         // Server requested close - reset socket for reuse
         rCloseSocket(sp);
-        rResetSocket(sp);
+        // rResetSocket(sp);
     }
     releaseConnection(ctx);
     success = true;
@@ -334,9 +444,9 @@ RequestResult executeRawRequest(ConnectionCtx *ctx, cchar *request, ssize expect
     Error Reporting Functions
  */
 
-void logRequestError(cchar *benchName, cchar *url, int status, int errorCount, bool recordResults)
+void logRequestError(cchar *benchName, cchar *url, int status, int errorCount, bool soak)
 {
-    if (errorCount <= 5 || !recordResults) {
+    if (errorCount <= 5 || soak) {
         tinfo("Warning: %s request failed: %s (status %d)", benchName, url, status);
     }
 }
@@ -351,23 +461,23 @@ void logRequestError(cchar *benchName, cchar *url, int status, int errorCount, b
 void initBenchContext(BenchContext *ctx, cchar *category, cchar *description)
 {
     // Preserve global state
-    bool fatalError = ctx->fatalError;
+    bool fatal = ctx->fatal;
     bool stopOnErrors = ctx->stopOnErrors;
-    bool recordResults = ctx->recordResults;
-    int totalErrors = ctx->totalErrors;
+    bool soak = ctx->soak;
+    int  errors = ctx->errors;
 
     // Reset per-benchmark state
     memset(ctx, 0, sizeof(BenchContext));
 
     // Restore global state
-    ctx->fatalError = fatalError;
+    ctx->fatal = fatal;
     ctx->stopOnErrors = stopOnErrors;
-    ctx->recordResults = recordResults;
-    ctx->totalErrors = totalErrors;
+    ctx->soak = soak;
+    ctx->errors = errors;
 
     // Set per-benchmark configuration
     ctx->category = category;
-    if (recordResults && description) {
+    if (!soak && description) {
         tinfo("%s", description);
     }
 }
@@ -376,17 +486,16 @@ bool processResponse(BenchContext *ctx, RequestResult *result, cchar *url, Ticks
 {
     // Calculate elapsed time and determine success
     result->elapsed = rGetTicks() - startTime;
-    result->success = (result->status == 0 || (result->status >= 200 && result->status < 300));
-
+    result->success = (result->status >= 200 && result->status < 300);
     ctx->totalRequests++;
 
     if (!result->success) {
         ctx->errorCount++;
-        ctx->totalErrors++;
-        logRequestError(ctx->category, url, result->status, ctx->errorCount, ctx->recordResults);
+        ctx->errors++;
+        logRequestError(ctx->category, url, result->status, ctx->errorCount, ctx->soak);
 
         if (ctx->stopOnErrors) {
-            ctx->fatalError = true;
+            ctx->fatal = true;
             if (ctx->connCtx) {
                 freeConnectionCtx(ctx->connCtx);
                 ctx->connCtx = NULL;
@@ -394,7 +503,7 @@ bool processResponse(BenchContext *ctx, RequestResult *result, cchar *url, Ticks
             return false;
         }
     }
-    if (ctx->recordResults) {
+    if (!ctx->soak) {
         recordRequest(ctx->results[ctx->resultOffset + ctx->classIndex], result->success, result->elapsed, ctx->bytes);
     }
     return true;
@@ -407,7 +516,7 @@ void finishBenchContext(BenchContext *ctx, int count, cchar *groupName)
               ctx->category, ctx->errorCount, ctx->totalRequests,
               (ctx->errorCount * 100.0) / ctx->totalRequests);
     }
-    if (ctx->recordResults && count > 0 && groupName) {
+    if (!ctx->soak && count > 0 && groupName) {
         finalizeResults(ctx->results, count, groupName);
     }
 }
@@ -430,9 +539,9 @@ int64 getProcessMemorySize(int pid)
         }
     } else {
         // Other process - use ps command as task_for_pid requires special entitlements
-        char   cmd[256];
-        FILE   *fp;
-        int64  rss = 0;
+        char  cmd[256];
+        FILE  *fp;
+        int64 rss = 0;
 
         snprintf(cmd, sizeof(cmd), "ps -o rss= -p %d 2>/dev/null", pid);
         fp = popen(cmd, "r");
@@ -455,10 +564,10 @@ int64 getProcessMemorySize(int pid)
         }
     } else {
         // Other process - read from /proc
-        char   path[256];
-        FILE   *fp;
-        char   line[512];
-        int64  rss = 0;
+        char  path[256];
+        FILE  *fp;
+        char  line[512];
+        int64 rss = 0;
 
         snprintf(path, sizeof(path), "/proc/%d/status", pid);
         fp = fopen(path, "r");
@@ -474,12 +583,29 @@ int64 getProcessMemorySize(int pid)
         }
     }
     return 0;
-#else
-    struct rusage usage;
+#elif WINDOWS
+    PROCESS_MEMORY_COUNTERS pmc;
+    HANDLE                  hProcess;
+    int64                   memSize;
 
-    if (getrusage(RUSAGE_SELF, &usage) == 0) {
-        return (int64) usage.ru_maxrss;
+    memSize = 0;
+    if (pid == 0) {
+        hProcess = GetCurrentProcess();
+        if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
+            memSize = (int64) pmc.WorkingSetSize;
+        }
+    } else {
+        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, (DWORD) pid);
+        if (hProcess) {
+            if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
+                memSize = (int64) pmc.WorkingSetSize;
+            }
+            CloseHandle(hProcess);
+        }
     }
+    return memSize;
+#else
+    // Fallback - no memory info available
     return 0;
 #endif
 }
@@ -510,30 +636,30 @@ void recordInitialMemory(void)
     if (webServerPid == 0) {
         webServerPid = findWebServerPid();
         if (webServerPid == 0) {
-            printf("Warning: Could not find web server process (port 4260)\n");
+            tinfo("Warning: Could not find web server process (port 4260)\n");
             return;
         }
-        printf("Monitoring web server process: PID %d\n", webServerPid);
+        tinfo("Monitoring web server process: PID %d\n", webServerPid);
     }
     initialMemorySize = getProcessMemorySize(webServerPid);
     if (initialMemorySize > 0) {
-        printf("Initial web server memory: %.2f MB\n", initialMemorySize / (1024.0 * 1024.0));
+        tinfo("Initial web server memory: %.2f MB\n", initialMemorySize / (1024.0 * 1024.0));
     } else {
-        printf("Warning: Could not read memory for web server PID %d\n", webServerPid);
+        tinfo("Warning: Could not read memory for web server PID %d\n", webServerPid);
     }
 }
 
 void recordFinalMemory(void)
 {
     if (webServerPid == 0) {
-        printf("Warning: Web server PID not set\n");
+        tinfo("Warning: Web server PID not set\n");
         return;
     }
     finalMemorySize = getProcessMemorySize(webServerPid);
     if (finalMemorySize > 0) {
-        printf("Final web server memory: %.2f MB\n", finalMemorySize / (1024.0 * 1024.0));
+        tinfo("Final web server memory: %.2f MB\n", finalMemorySize / (1024.0 * 1024.0));
     } else {
-        printf("Warning: Could not read memory for web server PID %d\n", webServerPid);
+        tinfo("Warning: Could not read memory for web server PID %d\n", webServerPid);
     }
 }
 
@@ -652,6 +778,7 @@ void printBenchResult(BenchResult *result)
     }
     printf("Errors:           %d\n", result->errors);
     printf("\n");
+    fflush(stdout);
 }
 
 void saveBenchGroup(cchar *groupName, BenchResult **results, int count)
@@ -677,7 +804,6 @@ void saveBenchGroup(cchar *groupName, BenchResult **results, int count)
 
         testResult = jsonAlloc();
 
-        jsonSetNumber(testResult, 0, "iterations", result->iterations);
         jsonSetDouble(testResult, 0, "requestsPerSec", result->requestsPerSec);
         jsonSetDouble(testResult, 0, "avgLatency", result->avgTime);
         jsonSetDouble(testResult, 0, "p95Latency", result->p95Time);
@@ -685,6 +811,7 @@ void saveBenchGroup(cchar *groupName, BenchResult **results, int count)
         jsonSetNumber(testResult, 0, "minLatency", (int64) result->minTime);
         jsonSetNumber(testResult, 0, "maxLatency", (int64) result->maxTime);
         jsonSetNumber(testResult, 0, "bytesTransferred", (int64) result->bytesTransferred);
+        jsonSetNumber(testResult, 0, "iterations", result->iterations);
         jsonSetNumber(testResult, 0, "errors", result->errors);
 
         // Blend testResult into group at result->name
@@ -698,16 +825,19 @@ void saveBenchGroup(cchar *groupName, BenchResult **results, int count)
 /*
    Save results as markdown table
  */
-static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platform, cchar *profile, cchar *tls)
+static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platform, cchar *profile, cchar *tls,
+                                cchar *basePlatform)
 {
     FILE     *fp;
     JsonNode *groupNode, *testNode;
     int      groupId;
     cchar    *categoryLabel;
+    char     path[256];
 
-    fp = fopen("../../doc/benchmarks/latest.md", "w");
+    snprintf(path, sizeof(path), "../../doc/benchmarks/%s/%s.md", basePlatform, reportName);
+    fp = fopen(path, "w");
     if (!fp) {
-        printf("Warning: Could not open doc/benchmarks/latest.md for writing\n");
+        printf("Warning: Could not open doc/benchmarks/%s/%s.md for writing\n", basePlatform, reportName);
         return;
     }
 
@@ -757,10 +887,16 @@ static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platfor
             categoryLabel = "**Actions**";
         } else if (scmp(groupNode->name, "mixed") == 0) {
             categoryLabel = "**Mixed Workload**";
-        } else if (scmp(groupNode->name, "max_throughput") == 0) {
-            categoryLabel = "**Max Throughput**";
+        } else if (scmp(groupNode->name, "throughput") == 0) {
+            categoryLabel = "**Throughput**";
+        } else if (scmp(groupNode->name, "single_thread") == 0) {
+            categoryLabel = "**Single Thread**";
         } else if (scmp(groupNode->name, "uploads") == 0) {
             categoryLabel = "**Uploads**";
+        } else if (scmp(groupNode->name, "upload") == 0) {
+            categoryLabel = "**Multipart Uploads**";
+        } else if (scmp(groupNode->name, "connections") == 0) {
+            categoryLabel = "**Connections**";
         } else {
             categoryLabel = groupNode->name;
         }
@@ -818,7 +954,8 @@ static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platfor
     }
 
     fprintf(fp, "\n## Notes\n\n");
-    fprintf(fp, "- **Max Throughput test**: Uses wrk benchmark tool with 12 threads, 40 connections, 30 second duration\n");
+    fprintf(fp,
+            "- **Max Throughput test**: Uses wrk benchmark tool with 12 threads, 40 connections\n");
     fprintf(fp, "- **All other tests**: Run with 1 CPU core for the server and 1 CPU core for the client\n");
     fprintf(fp, "- **Warm tests**: Reuse connection/socket for all requests\n");
     fprintf(fp, "- **Cold tests**: New connection/socket for each request\n");
@@ -828,14 +965,62 @@ static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platfor
     fprintf(fp, "- Bytes column shows total data transferred during test\n");
 
     fclose(fp);
-    printf("Results saved to: doc/benchmarks/latest.md\n");
+    printf("Results saved to: doc/benchmarks/%s/%s.md\n", basePlatform, reportName);
+}
+
+/*
+    Archive previous latest.* files to latest-DATE.* before overwriting
+ */
+static void archivePreviousLatest(cchar *basePlatform)
+{
+    char      srcJson[256], srcMd[256], dstJson[256], dstMd[256], dateStr[32];
+    time_t    now;
+    struct tm *tm_info;
+    FILE      *srcFp;
+
+    // Only archive if we're saving to "latest"
+    if (!smatch(reportName, "latest")) {
+        return;
+    }
+    // Don't archive if running a subset of tests (TESTME_CLASS defined)
+    if (getenv("TESTME_CLASS") && *getenv("TESTME_CLASS")) {
+        return;
+    }
+
+    // Check if latest.json5 exists
+    snprintf(srcJson, sizeof(srcJson), "../../doc/benchmarks/%s/latest.json5", basePlatform);
+    srcFp = fopen(srcJson, "r");
+    if (!srcFp) {
+        return;  // No previous latest to archive
+    }
+    fclose(srcFp);
+
+    // Generate date-time string (YYYY-MM-DD-HHMM)
+    time(&now);
+    tm_info = localtime(&now);
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d-%H%M", tm_info);
+
+    // Build destination paths
+    snprintf(srcMd, sizeof(srcMd), "../../doc/benchmarks/%s/latest.md", basePlatform);
+    snprintf(dstJson, sizeof(dstJson), "../../doc/benchmarks/%s/latest-%s.json5", basePlatform, dateStr);
+    snprintf(dstMd, sizeof(dstMd), "../../doc/benchmarks/%s/latest-%s.md", basePlatform, dateStr);
+
+    // Copy latest.json5 to latest-DATE.json5
+    if (rename(srcJson, dstJson) == 0) {
+        printf("Archived previous results to: doc/benchmarks/%s/latest-%s.json5\n", basePlatform, dateStr);
+    }
+
+    // Copy latest.md to latest-DATE.md
+    if (rename(srcMd, dstMd) == 0) {
+        printf("Archived previous results to: doc/benchmarks/%s/latest-%s.md\n", basePlatform, dateStr);
+    }
 }
 
 void saveFinalResults(void)
 {
     Json      *root, *config;
     char      *platform, *profile, *output, *osver, *machine, platformInfo[256];
-    char      timestamp[64];
+    char      timestamp[64], basePlatform[64], path[256];
     FILE      *fp;
     time_t    now;
     struct tm *tm_info;
@@ -854,7 +1039,7 @@ void saveFinalResults(void)
     // Add timestamp
     time(&now);
     tm_info = gmtime(&now);
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S UTC", tm_info);
+    strftime(timestamp, sizeof(timestamp), "%b %d, %Y %I:%M %p UTC", tm_info);
     jsonSetString(root, 0, "timestamp", timestamp);
 
     // Add platform info with OS version and machine type
@@ -872,6 +1057,17 @@ void saveFinalResults(void)
         platform = "unknown";
 #endif
     }
+    // Extract base platform for directory (e.g., "macosx-arm64" -> "macosx")
+    scopy(basePlatform, sizeof(basePlatform), platform);
+    if (schr(basePlatform, '-')) {
+        *schr(basePlatform, '-') = '\0';
+    }
+    // Create platform-specific benchmark directory
+    snprintf(path, sizeof(path), "../../doc/benchmarks/%s", basePlatform);
+    mkdir(path, 0755);
+
+    // Archive previous latest results before overwriting
+    archivePreviousLatest(basePlatform);
 
     // Get OS version and machine type
     osver = NULL;
@@ -898,6 +1094,27 @@ void saveFinalResults(void)
             machine[strcspn(machine, "\n")] = '\0';
         }
         pclose(fp);
+    }
+#elif WINDOWS
+    {
+        SYSTEM_INFO si;
+
+        osver = rAlloc(128);
+        scopy(osver, 128, "Windows");
+
+        GetNativeSystemInfo(&si);
+        machine = rAlloc(64);
+        switch (si.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_AMD64:
+            scopy(machine, 64, "x86_64");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM64:
+            scopy(machine, 64, "arm64");
+            break;
+        default:
+            scopy(machine, 64, "x86");
+            break;
+        }
     }
 #endif
 
@@ -951,20 +1168,21 @@ void saveFinalResults(void)
     // Save to JSON5 file
     output = jsonToString(root, 0, NULL, JSON_PRETTY);
     if (output) {
-        FILE *fp = fopen("../../doc/benchmarks/latest.json5", "w");
+        snprintf(path, sizeof(path), "../../doc/benchmarks/%s/%s.json5", basePlatform, reportName);
+        fp = fopen(path, "w");
         if (fp) {
             fprintf(fp, "%s\n", output);
             fclose(fp);
-            printf("\nResults saved to: doc/benchmarks/latest.json5\n");
+            printf("\nResults saved to: doc/benchmarks/%s/%s.json5\n", basePlatform, reportName);
         } else {
-            printf("Warning: Could not open doc/benchmarks/latest.json5 for writing\n");
+            printf("Warning: Could not open doc/benchmarks/%s/%s.json5 for writing\n", basePlatform, reportName);
             printf("Results:\n%s\n", output);
         }
         rFree(output);
     }
 
     // Save to markdown file
-    saveMarkdownResults("1.0.0-dev", timestamp, platformInfo, profile, "openssl");
+    saveMarkdownResults("1.0.0-dev", timestamp, platformInfo, profile, "openssl", basePlatform);
 
     jsonFree(root);
 }
@@ -973,12 +1191,12 @@ void saveFinalResults(void)
     Result Management Functions
  */
 
-BenchResult *initResult(cchar *name, bool recordResults, cchar *description)
+BenchResult *initResult(cchar *name, bool soak, cchar *description)
 {
-    if (recordResults && description) {
+    if (!soak && description) {
         tinfo("%s", description);
     }
-    return recordResults ? createBenchResult(name) : NULL;
+    return soak ? NULL : createBenchResult(name);
 }
 
 void recordRequest(BenchResult *result, bool isSuccess, Ticks elapsed, ssize bytes)
@@ -993,9 +1211,9 @@ void recordRequest(BenchResult *result, bool isSuccess, Ticks elapsed, ssize byt
     } else {
         result->errors++;
         if (bctx) {
-            bctx->totalErrors++;
+            bctx->errors++;
             if (bctx->stopOnErrors) {
-                bctx->fatalError = true;
+                bctx->fatal = true;
                 ttrue(false, "TESTME_STOP: Stopping benchmark due to request error");
             }
         }
@@ -1105,6 +1323,97 @@ ssize readHeaders(RSocket *sp, char *buf, size_t bufsize, Ticks deadline, ssize 
         }
     }
     return -1;  // Headers too large
+}
+
+/*
+    Setup HTTP and HTTPS endpoints from web.json5 configuration
+ */
+bool benchSetup(char **HTTP, char **HTTPS)
+{
+    Json *json;
+
+    if (HTTP || HTTPS) {
+        json = jsonParseFile("web.json5", NULL, 0);
+        if (!json) {
+            printf("Cannot parse web.json5\n");
+            return 0;
+        }
+        if (HTTP) {
+            *HTTP = jsonGetClone(json, 0, "web.listen[0]", NULL);
+            if (!*HTTP) {
+                printf("Cannot get HTTP endpoint\n");
+                jsonFree(json);
+                return 0;
+            }
+        }
+        if (HTTPS) {
+            *HTTPS = jsonGetClone(json, 0, "web.listen[1]", NULL);
+            if (!*HTTPS) {
+                printf("Cannot get HTTPS endpoint\n");
+                jsonFree(json);
+                return 0;
+            }
+        }
+        jsonFree(json);
+    }
+    return 1;
+}
+
+/*
+    Get the current count of TIME_WAIT sockets
+    Uses netstat to count TIME_WAIT sockets on the specified port
+    @param port Port number to check (0 for all ports)
+    @return Number of TIME_WAIT sockets
+ */
+int getTimeWaits(int port)
+{
+    FILE *fp;
+    char cmd[256], line[256];
+    int  count;
+
+    count = 0;
+    if (port > 0) {
+        snprintf(cmd, sizeof(cmd), "netstat -an 2>/dev/null | grep ':%d.*TIME_WAIT' 2>/dev/null | wc -l", port);
+    } else {
+        snprintf(cmd, sizeof(cmd), "netstat -an 2>/dev/null | grep 'TIME_WAIT' 2>/dev/null | wc -l");
+    }
+    fp = popen(cmd, "r");
+    if (fp) {
+        if (fgets(line, sizeof(line), fp)) {
+            count = atoi(line);
+        }
+        pclose(fp);
+    }
+    return count;
+}
+
+/*
+    Wait for TIME_WAIT sockets to drain below threshold
+    @param port Port number to check (0 for all ports)
+    @param maxWaits Maximum TIME_WAIT count threshold (0 for default BENCH_MAX_TIME_WAITS)
+ */
+void waitForTimeWaits(int port, int maxWaits)
+{
+    int count, waited, threshold;
+
+    threshold = maxWaits > 0 ? maxWaits : BENCH_MAX_TIME_WAITS;
+    waited = 0;
+    while (1) {
+        count = getTimeWaits(port);
+        if (count < threshold) {
+            if (waited) {
+                printf("Time waits drained: %d, continuing\n\n", count);
+                fflush(stdout);
+            }
+            break;
+        }
+        if (!waited) {
+            printf("\nDraining TIME_WAIT sockets (current: %d, max: %d)...\n", count, threshold);
+            fflush(stdout);
+        }
+        waited = 1;
+        rSleep(1000);
+    }
 }
 
 /*

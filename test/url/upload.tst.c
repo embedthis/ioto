@@ -37,7 +37,7 @@ static void testWriteFile()
         return;
     }
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);
@@ -102,7 +102,7 @@ static void testUploadMultipleFiles()
     rAddName(forms, "description", "Test upload", 0);
     rAddName(forms, "category", "testing", 0);
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlStart(up, "POST", SFMT(url, "%s/test/upload", HTTP));
     rc = urlUpload(up, files, forms, NULL);
     ttrue(rc == 0);
@@ -124,7 +124,7 @@ static void testWriteNonExistentFile()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlStart(up, "POST", SFMT(url, "%s/test/show", HTTP));
     ttrue(status == 0);
@@ -142,7 +142,7 @@ static void testUploadEdgeCases()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test upload with NULL file list
     status = urlUpload(up, NULL, NULL, SFMT(url, "%s/test/upload", HTTP), NULL);

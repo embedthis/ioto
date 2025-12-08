@@ -22,7 +22,7 @@ static void testIfNoneMatchWithMatching()
     int  status;
     char *etag, *headers;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -52,7 +52,7 @@ static void testIfNoneMatchWithDifferent()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Request with If-None-Match using a different ETag - should get 200
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -72,7 +72,7 @@ static void testIfNoneMatchWildcard()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Request with If-None-Match: * - should get 304 if resource exists
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -89,7 +89,7 @@ static void testIfMatchSuccess()
     int  status;
     char *etag, *headers;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
@@ -118,7 +118,7 @@ static void testIfMatchFailure()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  PUT with If-Match using wrong ETag - should get 412
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
@@ -135,7 +135,7 @@ static void testIfMatchWildcard()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  PUT with If-Match: * - should succeed if resource exists
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
@@ -153,7 +153,7 @@ static void testIfModifiedSinceNotModified()
     int  status;
     char *lastModified, *headers;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -179,7 +179,7 @@ static void testIfModifiedSinceModified()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Request with If-Modified-Since using an old date - should get 200
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -200,7 +200,7 @@ static void testIfUnmodifiedSinceSuccess()
     int  status;
     char *lastModified;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
@@ -224,7 +224,7 @@ static void testIfUnmodifiedSinceFailure()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  PUT with If-Unmodified-Since using old date - should get 412
     status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
@@ -242,7 +242,7 @@ static void testIfNoneMatchPrecedence()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -269,7 +269,7 @@ static void testIfRangeWithMatchingEtag()
     int   status;
     cchar *etag, *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -297,7 +297,7 @@ static void testIfRangeWithDifferentEtag()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Request range with If-Range using wrong ETag - should get 200 with full content
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -319,7 +319,7 @@ static void testIfRangeWithDate()
     char  *lastModified;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -348,7 +348,7 @@ static void testMultipleETags()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -372,7 +372,7 @@ static void testDeleteWithPrecondition()
     int   status;
     cchar *etag;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  First, get the file and its ETag
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
@@ -400,7 +400,7 @@ static void testMalformedEtag()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Request with malformed If-None-Match (missing quotes) - should get 400
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,

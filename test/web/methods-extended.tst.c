@@ -33,7 +33,7 @@ static void testCaselessMethods(void)
     Url  *up;
     char url[128];
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // HTTP methods should be case-insensitive
     teqi(urlFetch(up, "GeT", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
@@ -54,7 +54,7 @@ static void testHEADMethod(void)
     cchar *clHeader, *response;
     int   status, contentLength;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // HEAD should return headers but no body (use trace route which allows HEAD)
     status = urlFetch(up, "HEAD", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0, NULL);
@@ -80,7 +80,7 @@ static void testOPTIONSMethod(void)
     cchar *allow;
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // OPTIONS on trace route (TRACE enabled)
     teqi(urlFetch(up, "OPTIONS", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0, NULL), 200);
@@ -107,7 +107,7 @@ static void testPUTMethodCreate(void)
     char url[128], data[128];
     int  pid, status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     pid = getpid();
     SFMT(data, "Test data from PID %d", pid);
@@ -131,7 +131,7 @@ static void testPUTMethodUpdate(void)
     char url[128], data1[128], data2[128];
     int  pid, status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     pid = getpid();
     SFMT(data1, "Initial data %d", pid);
@@ -160,7 +160,7 @@ static void testDELETEMethod(void)
     char url[128], data[64];
     int  pid, status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     pid = getpid();
     SFMT(data, "Test data %d", pid);
@@ -193,7 +193,7 @@ static void testPOSTMethod(void)
     char  url[128];
     cchar *body;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // POST with form data
     cchar *formData = "name=test&value=123";
@@ -224,7 +224,7 @@ static void testTRACEDisabled(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // TRACE should be disabled by default on most routes
     status = urlFetch(up, "TRACE", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

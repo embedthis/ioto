@@ -186,6 +186,13 @@
       <arglist></arglist>
     </member>
     <member kind="variable">
+      <type>ssize</type>
+      <name>headerSize</name>
+      <anchorfile>struct_web.html</anchorfile>
+      <anchor>aa5197102b2fdc21e2595309f706c1514</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
       <type>WebHost *</type>
       <name>host</name>
       <anchorfile>struct_web.html</anchorfile>
@@ -983,6 +990,20 @@
     <name>WebRoute</name>
     <filename>struct_web_route.html</filename>
     <member kind="variable">
+      <type>cchar *</type>
+      <name>cacheDirectives</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a95d107656c18f3d2f065b14deb25fb46</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>int</type>
+      <name>cacheMaxAge</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a6c31033ac798f9eba54d5bdd8daf2009</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
       <type>bool</type>
       <name>compressed</name>
       <anchorfile>struct_web_route.html</anchorfile>
@@ -994,6 +1015,13 @@
       <name>exact</name>
       <anchorfile>struct_web_route.html</anchorfile>
       <anchor>a23cb294e43087050b69f6b7a238fc2f7</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
+      <type>RHash *</type>
+      <name>extensions</name>
+      <anchorfile>struct_web_route.html</anchorfile>
+      <anchor>a0d6088c5e0ef30ae2ec5dd80c13b7550</anchor>
       <arglist></arglist>
     </member>
     <member kind="variable">

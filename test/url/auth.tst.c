@@ -27,7 +27,7 @@ static void testBasicAuthSuccess()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -55,7 +55,7 @@ static void testBasicAuthFailure()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "wrongpassword", "basic");
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -75,7 +75,7 @@ static void testDigestSHA256Success()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
 
@@ -97,7 +97,7 @@ static void testDigestMD5Success()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest-md5/secret.html", HTTP), NULL, 0, NULL);
 
@@ -117,7 +117,7 @@ static void testDigestAuthFailure()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "alice", "wrongpassword", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
 
@@ -138,7 +138,7 @@ static void testAuthAutoDetect()
     cchar   *response;
 
     // Test auto-detection with Basic auth endpoint
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", NULL);  // Auto-detect
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
 
@@ -160,7 +160,7 @@ static void testRoleBasedAccess()
     int     status;
 
     // Bob (user role) should not be able to access admin area
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
 
@@ -171,7 +171,7 @@ static void testRoleBasedAccess()
     urlFree(up);
 
     // Alice (admin role) should be able to access admin area
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "alice", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/admin/secret.html", HTTP), NULL, 0, NULL);
 
@@ -191,7 +191,7 @@ static void testNonceReuse()
     int     status;
     cchar   *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     fprintf(stderr, "AT %d\n", __LINE__);
     urlSetAuth(up, "alice", "password", "digest");
 

@@ -20,6 +20,7 @@ static int expected = 0;
 static void onEvent(Url *url, ssize id, cchar *event, cchar *data, void *arg)
 {
     count++;
+    tinfo("test", "SSE event %d: id=%zd event=%s data=%s", count, id, event ? event : "NULL", data ? data : "NULL");
 }
 
 static void highLevelAPI()
@@ -34,6 +35,7 @@ static void highLevelAPI()
     rc = urlGetEvents(SFMT(url, "%s/test/event", HTTP), onEvent, NULL, NULL);
 
     ttrue(rc == 0);
+    tinfo("test", "highLevelAPI: count=%d expected=100", count);
     ttrue(count == 100);
 }
 
@@ -46,7 +48,7 @@ static void lowLevelAPI()
     count = 0;
     expected = 100;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));
     ttrue(rc == 0);
@@ -55,17 +57,11 @@ static void lowLevelAPI()
     rc = urlFinalize(up);
     ttrue(rc == 0);
 
-    //  Set up the callback to receive events
-    urlSseAsync(up, onEvent, up);
-
-    /*
-        Wait for all the events to arrive. Server will finish the request after 100 events
-        Socket remains open for keep alive
-     */
-    rc = urlWait(up);
+    //  Use urlSseRun to receive events
+    rc = urlSseRun(up, onEvent, up, up->rx, rGetTicks() + 30000);
     ttrue(rc == 0);
-
     ttrue(count == 100);
+
     urlFree(up);
 }
 
@@ -79,15 +75,16 @@ static void keepAlive()
     count = 0;
     expected = 100;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
-    //  Sames as per lowLevelAPI
+    //  Same as per lowLevelAPI
     rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));
     ttrue(rc == 0);
     rc = urlFinalize(up);
     ttrue(rc == 0);
-    urlSseAsync(up, onEvent, up);
-    rc = urlWait(up);
+
+    //  Use urlSseRun to receive events
+    rc = urlSseRun(up, onEvent, up, up->rx, rGetTicks() + 30000);
     ttrue(rc == 0);
     ttrue(count == 100);
 
@@ -101,11 +98,37 @@ static void keepAlive()
     urlFree(up);
 }
 
+static void runAPI()
+{
+    Url     *up;
+    char    url[128];
+    int     rc;
+
+    count = 0;
+    expected = 100;
+
+    up = urlAlloc(0);
+
+    rc = urlStart(up, "GET", SFMT(url, "%s/test/event", HTTP));
+    ttrue(rc == 0);
+
+    rc = urlFinalize(up);
+    ttrue(rc == 0);
+
+    // Use urlSseRun directly
+    rc = urlSseRun(up, onEvent, NULL, up->rx, rGetTicks() + 30000);
+    ttrue(rc == 0);
+    ttrue(count == 100);
+
+    urlFree(up);
+}
+
 static void testFiber()
 {
     if (setup(&HTTP, &HTTPS)) {
         highLevelAPI();
         lowLevelAPI();
+        runAPI();
         keepAlive();
     }
     rFree(HTTP);

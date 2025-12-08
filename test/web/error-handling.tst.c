@@ -33,7 +33,7 @@ static void testInvalidMethod(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test with completely invalid method name
     status = urlFetch(up, "INVALID-METHOD", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -49,7 +49,7 @@ static void testMissingHost(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // URL client always sends Host header, so this tests server robustness
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -65,7 +65,7 @@ static void testMalformedRange(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test various malformed range headers
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, "Range: invalid-range\r\n");
@@ -88,7 +88,7 @@ static void testNonExistentFile(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Various non-existent paths
     status = urlFetch(up, "GET", SFMT(url, "%s/non-existent.html", HTTP), NULL, 0, NULL);
@@ -109,7 +109,7 @@ static void testPathTraversalAttempts(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test path normalization - server should normalize paths safely
     // Note: URL client may reject or normalize paths before sending
@@ -135,7 +135,7 @@ static void testEncodedTraversal(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // URL-encoded path traversal attempts
     // Note: URL client may reject malformed URLs before sending (negative status codes)
@@ -155,7 +155,7 @@ static void testInvalidContentLength(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // POST with body but wrong Content-Length
     // URL client handles Content-Length correctly, so test with matching length
@@ -172,7 +172,7 @@ static void testUnsupportedEncoding(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Request with unsupported transfer encoding
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0,
@@ -188,7 +188,7 @@ static void testDoubleSlashes(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // URLs with double slashes should be normalized
     status = urlFetch(up, "GET", SFMT(url, "%s//index.html", HTTP), NULL, 0, NULL);
@@ -206,7 +206,7 @@ static void testNullBytes(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Null bytes in URL should be rejected or handled safely
     // URL client may not send null bytes properly, but test what we can
@@ -222,7 +222,7 @@ static void testHeaderInjection(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Headers with embedded CRLF should be sanitized by client
     // But test that server handles correctly if they get through

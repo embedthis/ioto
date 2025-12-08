@@ -24,7 +24,7 @@ static void testSetDigestAuth()
 {
     Url *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test setting digest auth
     urlSetAuth(up, "digestuser", "digestpass", "digest");
@@ -48,7 +48,7 @@ static void testDigestAuthState()
 {
     Url *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "digestuser", "digestpass", "digest");
 
     // Verify state is set correctly
@@ -71,7 +71,7 @@ static void testAuthAutoDetect()
 {
     Url *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetAuth(up, "user", "password", NULL);  // Auto-detect
 
     tmatch(up->username, "user");

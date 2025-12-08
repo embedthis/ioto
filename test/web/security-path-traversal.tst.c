@@ -38,7 +38,7 @@ static void testBasicTraversal(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Classic ../ attack
     status = urlFetch(up, "GET", SFMT(url, "%s/../../../etc/passwd", HTTP), NULL, 0, NULL);
@@ -65,7 +65,7 @@ static void testURLEncodedTraversal(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: URL-encoded ../ (%2e%2e%2f)
     status = urlFetch(up, "GET", SFMT(url, "%s/%%2e%%2e%%2f%%2e%%2e%%2f%%2e%%2e%%2fetc%%2fpasswd", HTTP), NULL, 0,
@@ -91,7 +91,7 @@ static void testDoubleEncodedTraversal(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Double-encoded ../ (%252e%252e%252f)
     // %25 = %, so %252e = %2e after first decode
@@ -112,7 +112,7 @@ static void testBackslashTraversal(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Backslash instead of forward slash (Windows style)
     status = urlFetch(up, "GET", SFMT(url, "%s/..\\..\\..\\etc\\passwd", HTTP), NULL, 0, NULL);
@@ -137,7 +137,7 @@ static void testNullByteInjection(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Null byte to truncate path (%00)
     status = urlFetch(up, "GET", SFMT(url, "%s/../../../../etc/passwd%%00.html", HTTP), NULL, 0, NULL);
@@ -157,7 +157,7 @@ static void testAbsolutePathAttempts(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Absolute Unix path
     status = urlFetch(up, "GET", SFMT(url, "%s//etc/passwd", HTTP), NULL, 0, NULL);
@@ -182,7 +182,7 @@ static void testUnicodeTraversal(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Unicode dot encoding (U+002E = .)
     // %c0%ae is an overlong UTF-8 encoding of '.'
@@ -203,7 +203,7 @@ static void testDotVariations(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Triple dot
     status = urlFetch(up, "GET", SFMT(url, "%s/.../.../.../etc/passwd", HTTP), NULL, 0, NULL);
@@ -228,7 +228,7 @@ static void testPathNormalizationEdgeCases(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Path with trailing ../
     status = urlFetch(up, "GET", SFMT(url, "%s/valid/path/../../../../../../etc/passwd", HTTP), NULL, 0, NULL);
@@ -253,7 +253,7 @@ static void testCombinationAttacks(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: URL encoding + backslash + null byte
     status = urlFetch(up, "GET", SFMT(url, "%s/%%2e%%2e%%5c%%2e%%2e%%00.html", HTTP), NULL, 0, NULL);
@@ -278,7 +278,7 @@ static void testLegitimatePathsNotBlocked(void)
     char url[256];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Normal file should work
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

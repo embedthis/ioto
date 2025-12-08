@@ -4,7 +4,9 @@
         Minimal overhead configuration for accurate performance measurement
     */
     limits: {
-        fibers: 20,
+        fibers: 4,
+        fiberPoolMin: 1,
+        fiberPoolMax: 4,
     },
     log: {
         path: 'web.log',
@@ -62,8 +64,8 @@
             // Action handler routes
             { match: '/test/', handler: 'action' },
 
-            // Upload routes - files go to site/upload
-            { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
+            // Put files go to site/upload
+            { match: '/put/', methods: ['DELETE', 'GET', 'PUT'] },
 
             // WebSocket routes
             // { match: '/ws/', methods: ['GET'], handler: 'action' },

@@ -27,7 +27,7 @@ static void getChunked(int count)
     /*
         bulk response is always transfer encoded
      */
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     SFMT(body, "count=%d", count);
     status = urlFetch(up, "GET", SFMT(url, "%s/test/bulk", HTTP), body, (size_t) -1,
                       "Content-Type: application/x-www-form-urlencoded\r\n");

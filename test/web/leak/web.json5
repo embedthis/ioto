@@ -3,7 +3,9 @@
 */
 {
     limits: {
-        fibers: 20,
+        fibers: 4,
+        fiberPoolMin: 1,
+        fiberPoolMax: 4,
     },
     log: {
         path: 'web.log',
@@ -39,7 +41,7 @@
         limits: {
             buffer: '64K',
             body: '100K',
-            connections: '100',
+            connections: '10',
             header: '10K',
             sessions: '200',
             upload: '20MB',

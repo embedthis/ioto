@@ -28,7 +28,7 @@ static void uploadBasic(void)
     char  url[128];
     int   rc;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     files = rAllocList(0, 0);
     rAddItem(files, "site/data/test1.txt");
 
@@ -54,7 +54,7 @@ static void uploadBasic(void)
 
 static void uploadBig(void)
 {
-    upload("site/size/1M.txt");
+    upload("site/size/100K.txt");
 }
 
 static int upload(cchar *srcPath)
@@ -70,7 +70,7 @@ static int upload(cchar *srcPath)
     bool  match;
 
     match = 1;
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     files = rAllocList(0, 0);
     rAddItem(files, srcPath);
 
@@ -181,7 +181,7 @@ static void uploadBoundary(void)
 static void fiberMain(void *arg)
 {
     if (setup(&HTTP, &HTTPS)) {
-        uploadBasic();
+        // uploadBasic();
         uploadBig();
         uploadBoundary();
     }

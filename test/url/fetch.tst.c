@@ -22,7 +22,7 @@ static void fetchUrl()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     status = urlFetch(up, "GET", SFMT(url, "%s/test/show", HTTP), 0, 0, 0);
     ttrue(status == 200);
     json = urlGetJsonResponse(up);

@@ -39,7 +39,7 @@ static void testHTMLMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // HTML files should have text/html content type
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -64,7 +64,7 @@ static void testCSSMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // CSS files should have text/css content type
     status = urlFetch(up, "GET", SFMT(url, "%s/styles.css", HTTP), NULL, 0, NULL);
@@ -88,7 +88,7 @@ static void testJavaScriptMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // JavaScript files should have application/javascript or text/javascript
     status = urlFetch(up, "GET", SFMT(url, "%s/app.js", HTTP), NULL, 0, NULL);
@@ -113,7 +113,7 @@ static void testJSONMimeType(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // JSON files should have application/json
     status = urlFetch(up, "GET", SFMT(url, "%s/data.json", HTTP), NULL, 0, NULL);
@@ -137,7 +137,7 @@ static void testTextMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Plain text files
     status = urlFetch(up, "GET", SFMT(url, "%s/test.txt", HTTP), NULL, 0, NULL);
@@ -174,7 +174,7 @@ static void testImageMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test various image formats
     struct {
@@ -215,7 +215,7 @@ static void testFontMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test font file formats
     struct {
@@ -255,7 +255,7 @@ static void testMediaMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test audio/video formats
     struct {
@@ -294,7 +294,7 @@ static void testBinaryMimeTypes(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test binary file formats
     struct {
@@ -330,7 +330,7 @@ static void testUnknownExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Create file with unknown extension
@@ -354,7 +354,7 @@ static void testMultipleDots(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Files with multiple dots should use final extension
@@ -375,7 +375,7 @@ static void testCaseInsensitiveExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Extensions should be case-insensitive
@@ -400,7 +400,7 @@ static void testNoExtension(void)
     char url[128];
     int  status, pid;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     pid = getpid();
 
     // Files without extension should get default MIME type
@@ -422,7 +422,7 @@ static void testContentTypeHeaderFormat(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Verify Content-Type header format is correct
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -452,7 +452,7 @@ static void testCharsetHandling(void)
     int   status;
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Text files should include charset when appropriate
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

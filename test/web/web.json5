@@ -6,6 +6,8 @@
 {
     limits: {
         fibers: 10,
+        fiberPoolMin: 1,
+        fiberPoolMax: 4,
     },
     log: {
         path: 'log.txt',

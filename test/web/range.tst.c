@@ -22,7 +22,7 @@ static void testSingleRange()
     int   status;
     cchar *response, *contentRange, *acceptRanges;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test single range request: bytes=0-49 (first 50 bytes)
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -62,7 +62,7 @@ static void testMultiRange()
     int   status;
     cchar *response, *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test multi-range request: bytes=0-9,20-29,40-49
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -95,7 +95,7 @@ static void testSuffixRange()
     int   status;
     cchar *response, *contentRange;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test suffix range: bytes=-10 (last 10 bytes)
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -131,7 +131,7 @@ static void testOpenEndedRange()
     int   status;
     cchar *response, *contentRange;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test open-ended range: bytes=90- (from byte 90 to end)
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -166,7 +166,7 @@ static void testMalformedRange()
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test malformed Range header (missing "bytes=")
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -189,7 +189,7 @@ static void testUnsatisfiableRange()
     int   status;
     cchar *contentRange;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test range beyond file size: bytes=200-299 (file is only 100 bytes)
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
@@ -216,7 +216,7 @@ static void testAcceptRangesHeader()
     int   status;
     cchar *acceptRanges;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test that normal GET request includes Accept-Ranges header
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -236,7 +236,7 @@ static void testNormalRequestWithoutRange()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test that normal request without Range header still works
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -256,7 +256,7 @@ static void testRangeWithIfModifiedSince()
     int   status;
     cchar *lastModified;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // First, get the Last-Modified date
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, NULL);
@@ -279,7 +279,7 @@ static void testEdgeCases()
     int   status;
     cchar *response;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test zero-length range (start == end-1)
     status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,

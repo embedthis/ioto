@@ -46,9 +46,5 @@
         timeout: 1800,  // 30 minutes for comprehensive benchmarks
     },
     services: {
-        prep: './prep.sh',
-        setup: './setup.sh',
-        cleanup: './cleanup.sh',
-        healthcheck: { url: 'http://localhost:4260/index.html' },
     },
 }

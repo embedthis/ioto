@@ -21,7 +21,7 @@ static void testTimeout()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetTimeout(up, 4 * TPS);  // 2 second timeout
 
     // Test with a valid but slow endpoint instead of invalid IP
@@ -40,7 +40,7 @@ static void testDefaultTimeout()
     // Set global default timeout
     urlSetDefaultTimeout(30 * TPS);  // Set reasonable timeout
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     // Should use default timeout
 
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
@@ -56,7 +56,7 @@ static void testBufferLimits()
     cchar   *response;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetBufLimit(up, 1000);  // Set 1KB buffer limit
 
     status = urlFetch(up, "GET", SFMT(url, "%s/size/10K.txt", HTTP), 0, 0, 0);
@@ -79,7 +79,7 @@ static void testFlags()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_HEADERS | URL_NO_LINGER);
+    up = urlAlloc(URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_HEADERS);
 
     // Test with tracing flags
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
@@ -88,7 +88,7 @@ static void testFlags()
     urlFree(up);
 
     // Test HTTP/1.0 flag
-    up = urlAlloc(URL_HTTP_0 | URL_NO_LINGER);
+    up = urlAlloc(URL_HTTP_0);
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
     ttrue(status == 200);
 
@@ -102,7 +102,7 @@ static void testProtocol()
     char    url[128];
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Set protocol to HTTP/1.0
     urlSetProtocol(up, 0);
@@ -123,7 +123,7 @@ static void testRetries()
     Url     *up;
     int     status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetMaxRetries(up, 3);
 
     // Try connecting to invalid host - should retry
@@ -137,7 +137,7 @@ static void testStatusSetting()
 {
     Url     *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test setting custom status
     urlSetStatus(up, 404);
@@ -153,7 +153,7 @@ static void testCertConfiguration()
 {
     Url     *up;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test setting certificates (should not crash)
     urlSetCerts(up, "../certs/ca.crt", NULL, NULL, NULL);

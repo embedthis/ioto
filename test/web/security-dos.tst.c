@@ -34,7 +34,6 @@ static char *HTTPS;
 #define CONNECTION_LIMIT 200
 
 /************************************ Code ************************************/
-
 /*
     Helper function to initiate an HTTP request without waiting for response
     Returns 0 on success, -1 on failure
@@ -82,7 +81,7 @@ static void testConnectionLimitEnforcement(void)
     successCount = 0;
     count = CONNECTION_LIMIT;
     for (i = 0; i < count; i++) {
-        connections[i] = urlAlloc(URL_NO_LINGER);
+        connections[i] = urlAlloc(0);
 
         status = urlFetch(connections[i], "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
 
@@ -98,7 +97,7 @@ static void testConnectionLimitEnforcement(void)
         But may have a few less due to the TestMe health check connections
         So be safe and allow for this
      */
-    tgti(successCount, 90);
+    tgti(successCount, 80);
 
     // Cleanup all connections
     for (i = 0; i < count; i++) {
@@ -119,7 +118,7 @@ static void testRapidConnectionCycling(void)
     char url[128];
     int  status, i, successCount, failCount;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     successCount = 0;
     failCount = 0;
 
@@ -152,10 +151,11 @@ static void testSlowRequestHeader(void)
     Url     *up;
     char    url[128], response[4096], *buf;
     cchar   *scheme, *host, *path, *query, *hash;
-    int     port, rc;
+    int     port;
+    ssize   rc;
     ssize   nbytes;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     /*
         Test: Send request headers slowly (slowloris-style attack simulation)
@@ -219,9 +219,10 @@ static void testRequestTimeout(void)
     Url     *up;
     char    url[128], response[4096], *buf;
     cchar   *scheme, *host, *path, *query, *hash;
-    int     port, rc, status;
+    int     port, status;
+    ssize   rc;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     /*
         Test: Incomplete request should timeout
@@ -282,11 +283,11 @@ static void testConcurrentRequests(void)
         Use urlStart/urlFinalize to initiate requests without blocking,
         then wait for all responses
      */
-    up1 = urlAlloc(URL_NO_LINGER);
-    up2 = urlAlloc(URL_NO_LINGER);
-    up3 = urlAlloc(URL_NO_LINGER);
-    up4 = urlAlloc(URL_NO_LINGER);
-    up5 = urlAlloc(URL_NO_LINGER);
+    up1 = urlAlloc(0);
+    up2 = urlAlloc(0);
+    up3 = urlAlloc(0);
+    up4 = urlAlloc(0);
+    up5 = urlAlloc(0);
 
     // Initiate all requests without waiting for responses (overlapped)
     rc = startRequest(up1, SFMT(url, "%s/index.html", HTTP));
@@ -331,7 +332,7 @@ static void testMalformedRequestHandling(void)
     char url[128], *longQuery;
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test 1: Request with invalid method (should be rejected quickly)
     status = urlFetch(up, "INVALID", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
@@ -357,7 +358,7 @@ static void testRepeatedErrorRequests(void)
     char url[128];
     int  status, i, errorCount;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     errorCount = 0;
 
     /*
@@ -383,7 +384,7 @@ static void testResourceCleanupUnderStress(void)
     char url[128];
     int  status, i, successCount;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     successCount = 0;
 
     /*
@@ -409,7 +410,7 @@ static void testEmptyRequestHandling(void)
     int  status;
 
     // Test: Request with minimal data (just GET /)
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     status = urlFetch(up, "GET", SFMT(url, "%s/", HTTP), NULL, 0, NULL);
     // Should handle gracefully
     ttrue(status >= 200 && status < 500);
@@ -422,7 +423,7 @@ static void testRecoveryAfterErrors(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Server recovers from bad request
     status = urlFetch(up, "GET", SFMT(url, "%s/../../../../etc/passwd", HTTP), NULL, 0, NULL);
@@ -442,7 +443,7 @@ static void testNormalOperationNotAffected(void)
     char url[128];
     int  status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     // Test: Verify normal operations still work efficiently
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);

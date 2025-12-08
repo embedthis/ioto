@@ -147,13 +147,15 @@ static void testWebDate()
     char   *result;
 
     // Test date formatting
-    result = webDate(buf, sizeof(buf), now);
+    result = webHttpDate(now);
     ttrue(result != NULL);
     ttrue(slen(result) > 20);  // Should be a reasonable date string length
+    rFree(result);
 
     // Test with zero time
-    result = webDate(buf, sizeof(buf), 0);
+    result = webHttpDate(0);
     ttrue(result != NULL);
+    rFree(result);
 }
 
 static void fiberMain(void *arg)

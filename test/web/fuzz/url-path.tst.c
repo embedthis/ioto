@@ -144,7 +144,7 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
         Use URL_NO_LINGER to prevent TIME_WAIT accumulation during fuzzing
         This sends RST instead of FIN on close (works on Linux, macOS, Windows)
      */
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
     urlSetTimeout(up, 2000);
 
     // Construct URL with fuzzed path

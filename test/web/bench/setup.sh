@@ -15,7 +15,12 @@ fi
 
 if curl -s ${ENDPOINT}/ >/dev/null 2>&1; then
     # Find the existing web server PID
-    PID=$(lsof -ti :4260 | head -1)
+    if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
+        PID=$(lsof -ti :4260 2>/dev/null | head -1)
+    else
+        # Windows Git Bash
+        PID=$(netstat -ano 2>/dev/null | grep ':4260.*LISTEN' | awk '{print $NF}' | head -1)
+    fi
     if [ -z "$PID" ]; then
         echo "Error: Cannot find web server process" >&2
         exit 1
@@ -39,6 +44,6 @@ cleanup() {
     exit 0
 }
 
-trap cleanup SIGINT SIGTERM SIGQUIT EXIT
+trap cleanup SIGINT SIGTERM EXIT
 
 wait $WAITING_PID

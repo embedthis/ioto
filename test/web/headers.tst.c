@@ -24,7 +24,7 @@ static void checkResponseHeaders()
     char  url[128];
     int   status;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     status = urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     teqi(status, 200);
@@ -71,7 +71,7 @@ static void testMultipleHeaders()
     char url[128];
 
     //  Test request with multiple custom headers
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
                   "X-Custom-1: value1\r\nX-Custom-2: value2\r\n"), 200);
@@ -85,7 +85,7 @@ static void testLongHeaderValues()
     char url[128], *longValue;
 
     //  Test header with long value (but within limits)
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     longValue = rAlloc(500);
     memset(longValue, 'A', 499);
@@ -105,7 +105,7 @@ static void testStandardHeaders()
     cchar *date;
 
     //  Verify standard response headers are present
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 
@@ -122,7 +122,7 @@ static void testContentTypeVariations()
     char  url[128];
     cchar *contentType;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  HTML file
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
@@ -147,7 +147,7 @@ static void testCacheHeaders()
     cchar *etag, *lastModified;
 
     //  Static files should have caching headers
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 
@@ -167,7 +167,7 @@ static void testConnectionHeader()
     char  url[128];
     cchar *connection;
 
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     //  Test keep-alive connection
     teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
@@ -194,7 +194,7 @@ static void testHeaderCaseInsensitivity()
     cchar *value1, *value2, *value3;
 
     //  HTTP headers should be case-insensitive
-    up = urlAlloc(URL_NO_LINGER);
+    up = urlAlloc(0);
 
     teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
 

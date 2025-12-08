@@ -140,10 +140,10 @@
       <arglist></arglist>
     </member>
     <member kind="variable">
-      <type>int</type>
+      <type>Socket</type>
       <name>fd</name>
       <anchorfile>struct_r_wait.html</anchorfile>
-      <anchor>adf33352f896708ec3e7fddda94391d64</anchor>
+      <anchor>ad4765c58b8a218455019ab6956e7a14a</anchor>
       <arglist></arglist>
     </member>
     <member kind="variable">

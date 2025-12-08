@@ -120,15 +120,10 @@ static void outsideEvent(void)
 
 static void fiberMain()
 {
-    rCheckFiber();
     startEvent();
-    rCheckFiber();
     stopEvent();
-    rCheckFiber();
     spawnThread();
-    rCheckFiber();
     outsideEvent();
-    rCheckFiber();
     rStop();
 }
 
