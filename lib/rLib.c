@@ -48,11 +48,11 @@ PUBLIC int rInit(RFiberProc fn, cvoid *arg)
 #if R_USE_THREAD
     if (rc == 0) rc = rInitThread();
 #endif
-#if R_USE_FIBER
-    if (rc == 0) rc = rInitFibers();
-#endif
 #if R_USE_EVENT
     if (rc == 0) rc = rInitEvents();
+#endif
+#if R_USE_FIBER
+    if (rc == 0) rc = rInitFibers();
 #endif
 #if R_USE_WAIT
     if (rc == 0) rc = rInitWait();
@@ -79,17 +79,17 @@ PUBLIC void rTerm(void)
 #if R_USE_WAIT
     rTermWait();
 #endif
-#if R_USE_EVENT
-    rTermEvents();
-#endif
-#if R_USE_FIBER
-    rTermFibers();
-#endif
 #if R_USE_LOG
     rTermLog();
 #endif
 #if R_USE_FILE
     rTermFile();
+#endif
+#if R_USE_FIBER
+    rTermFibers();
+#endif
+#if R_USE_EVENT
+    rTermEvents();
 #endif
     rTermOs();
 }
@@ -203,6 +203,12 @@ PUBLIC int rWritePid(void)
     #define ME_R_MAX_BUF (8 * 1024 * 1024)
 #endif
 
+#define BUF_MIN_GROW     64
+
+/*********************************** Forwards *********************************/
+
+static size_t roundBufSize(size_t size);
+
 /************************************ Code ************************************/
 
 PUBLIC int rInitBuf(RBuf *bp, size_t size)
@@ -265,42 +271,58 @@ PUBLIC void rFreeBuf(RBuf *bp)
 }
 
 /*
-    Grow the buffer. Return 0 if the buffer grows. Increase by the growBy size specified when creating the buffer.
+    Round up buffer size to power-of-2.
+    Minimum size of BUF_MIN_GROW bytes to avoid frequent small reallocations.
  */
-PUBLIC int rGrowBuf(RBuf *bp, size_t need)
+static size_t roundBufSize(size_t size)
+{
+    if (size < BUF_MIN_GROW) {
+        size = BUF_MIN_GROW;
+    }
+    // Round up to next power of 2
+    size--;
+    size |= size >> 1;
+    size |= size >> 2;
+    size |= size >> 4;
+    size |= size >> 8;
+    size |= size >> 16;
+    size |= size >> 32;
+    size++;
+    return size;
+}
+
+/*
+    Grow the buffer to a specific size. Return 0 if successful.
+    Does not shrink buffers.
+ */
+PUBLIC int rGrowBufSize(RBuf *bp, size_t size)
 {
     char   *newbuf;
-    size_t growBy, newSize;
+    size_t newSize;
 
-    if (need <= 0 || need > ME_R_MAX_BUF) {
+    if (size <= 0 || size > ME_R_MAX_BUF) {
         return R_ERR_BAD_ARGS;
     }
-    if (need > MAXSSIZE - bp->buflen) {
-        return R_ERR_MEMORY;
+    if (size <= bp->buflen) {
+        return 0;
     }
-    if (bp->buflen + need > ME_R_MAX_BUF) {
+    newSize = roundBufSize(size);
+    if (newSize > ME_R_MAX_BUF) {
         return R_ERR_MEMORY;
     }
     if (bp->start > bp->buf) {
         rCompactBuf(bp);
     }
-    growBy = min(ME_R_MAX_BUF, need);
-    growBy = max(growBy, ME_BUFSIZE);
-
-    if (growBy > MAXSSIZE - bp->buflen) {
-        return R_ERR_MEMORY;
-    }
-    newSize = bp->buflen + growBy;
     if ((newbuf = rAlloc(newSize)) == 0) {
         return R_ERR_MEMORY;
     }
     if (bp->buf) {
         memcpy(newbuf, bp->buf, bp->buflen);
     }
-    memset(&newbuf[bp->buflen], 0, growBy);
-    bp->buflen = newSize;
+    memset(&newbuf[bp->buflen], 0, newSize - bp->buflen);
     bp->end = newbuf + (bp->end - bp->buf);
     bp->start = newbuf + (bp->start - bp->buf);
+    bp->buflen = newSize;
     bp->endbuf = &newbuf[bp->buflen];
 
     rFree(bp->buf);
@@ -308,12 +330,30 @@ PUBLIC int rGrowBuf(RBuf *bp, size_t need)
     return 0;
 }
 
+/*
+    Grow the buffer by a specified amount. Return 0 if the buffer grows.
+ */
+PUBLIC int rGrowBuf(RBuf *bp, size_t need)
+{
+    size_t newSize;
+
+    if (need <= 0 || need > ME_R_MAX_BUF) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (need > MAXSSIZE - bp->buflen) {
+        return R_ERR_MEMORY;
+    }
+    newSize = bp->buflen + need;
+    return rGrowBufSize(bp, newSize);
+}
+
 PUBLIC int rReserveBufSpace(RBuf *bp, size_t need)
 {
-    if (rGetBufSpace(bp) < need) {
-        if (rGrowBuf(bp, max(need, ME_BUFSIZE)) < 0) {
-            return R_ERR_MEMORY;
-        }
+    if (rGetBufSpace(bp) >= need) {
+        return 0;
+    }
+    if (rGrowBuf(bp, need) < 0) {
+        return R_ERR_MEMORY;
     }
     return 0;
 }
@@ -1410,42 +1450,38 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 
 #if R_USE_FIBER
 /*********************************** Locals ***********************************/
-/*
-    Printf alone can use 8k
- */
-#if ME_64
-    #define FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
-#else
-    #define FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
-#endif
-
-/*
-    Guard character for stack overflow detection
- */
-#define GUARD_CHAR              0xFE
-
-/*
-    Enable to add some extra debug checks
-
- #define ME_FIBER_ALLOC_DEBUG 1
- */
-
-/*
-    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
- */
-#define FIBER_MIN_STACK ((size_t) (16 * 1024))
-
-//  Write to stderr to avoid printf
-#define DWRITE(str) write(2, str, (int) strlen(str))
 
 static RFiber mainFiberState;
 static RFiber *mainFiber;
 static RFiber *currentFiber;
-static size_t stackSize = FIBER_DEFAULT_STACK;
-static int    fiberPeak = 0;
-static int    fiberCount = 0;
-static int    fiberLimit = 0;
+static size_t stackSize = ME_FIBER_DEFAULT_STACK;
 
+/*
+    Fiber pool for reusing fiber allocations
+ */
+typedef struct FiberPool {
+    RFiber *free;         // Head of free list
+    int active;           // Current active fiber count
+    int peak;             // High water mark
+    int max;              // Max fibers (0 = unlimited)
+    int pooled;           // Current pooled count
+    int poolMax;          // Maximum pool size
+    int poolMin;          // Minimum pool size (prune target)
+    uint64 poolHits;      // Acquisitions from pool
+    uint64 poolMisses;    // Allocations from heap
+    REvent pruneEvent;    // Periodic pruning timer
+} FiberPool;
+
+static FiberPool fiberPool = { 0 };
+
+/*********************************** Forwards *********************************/
+
+static RFiber *acquireFromPool(void);
+static RFiber *allocNewFiber(void);
+static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data);
+static bool releaseToPool(RFiber *fiber);
+static void freeFiberMemory(RFiber *fiber);
+static void pruneFibers(void *data);
 static void setupFiberSignalHandlers(void);
 
 /************************************ Code ************************************/
@@ -1459,12 +1495,17 @@ PUBLIC int rInitFibers(void)
     currentFiber = mainFiber;
     context = &mainFiber->context;
 
+    fiberPool.poolMin = ME_FIBER_POOL_MIN;
+    fiberPool.poolMax = ME_FIBER_POOL_LIMIT;
+    fiberPool.pruneEvent = rStartEvent(pruneFibers, NULL, ME_FIBER_PRUNE_INTERVAL);
+
     if (uctx_init(NULL) < 0) {
         rError("runtime", "Cannot initialize UCTX subsystem");
         return R_ERR_CANT_ALLOCATE;
     }
     //  Add 64 for prior stack frames
     uctx_setstack(context, ((char*) &base) + 64 - stackSize, stackSize);
+
 #if ME_WIN_LIKE || ESP32 || FREERTOS
     if (uctx_makecontext(context, NULL, 0) < 0) {
         rError("runtime", "Cannot allocate main fiber context");
@@ -1477,144 +1518,206 @@ PUBLIC int rInitFibers(void)
 
 PUBLIC void rTermFibers(void)
 {
+    RFiber *fiber, *next;
+
+    if (fiberPool.pruneEvent) {
+        rStopEvent(fiberPool.pruneEvent);
+        fiberPool.pruneEvent = 0;
+    }
+    for (fiber = fiberPool.free; fiber; fiber = next) {
+        next = fiber->next;
+#if FIBER_WITH_VALGRIND
+        VALGRIND_STACK_DEREGISTER(fiber->stackId);
+#endif
+        //  Signal fiber to exit loop (for pthreads), then free context
+        fiber->func = NULL;
+        uctx_freecontext(&fiber->context);
+#if ME_FIBER_VM_STACK
+        if (fiber->stack) {
+            rFreeVirt(fiber->stack, stackSize);
+            fiber->stack = NULL;
+        }
+#endif
+        rFree(fiber);
+    }
+    fiberPool.free = NULL;
+    fiberPool.pooled = 0;
+
     uctx_freecontext(&mainFiber->context);
     uctx_term();
+
     mainFiber = NULL;
     currentFiber = NULL;
 }
 
-PUBLIC int rStartFiberBlock(void)
-{
-    currentFiber->block = 1;
-    return setjmp(currentFiber->jmpbuf);
-}
-
-static void fiberSignalHandler(int signum)
-{
-    /*
-        If there is a double-exception while it is cleaning up, then abort.
-     */
-    if (currentFiber->block && currentFiber->exception == 0) {
-        currentFiber->block = 0;
-        currentFiber->exception = signum;
-        rEndFiberBlock();
-    } else {
-        abort();
-    }
-}
-
 /*
-    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit.
+    Top level fiber entry point.
+    Loops to accept new work when fiber is reused from pool.
+    Reads func/data from fiber struct - set by initFiberContext.
  */
-PUBLIC void rEndFiberBlock(void)
-{
-    longjmp(currentFiber->jmpbuf, 1);
-}
-
-static void setupFiberSignalHandlers(void)
-{
-#if ME_UNIX_LIKE
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sigemptyset(&sa.sa_mask);
-    sa.sa_handler = fiberSignalHandler;
-
-    sigaction(SIGSEGV, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-    sigaction(SIGFPE, &sa, NULL);
-    sigaction(SIGBUS, &sa, NULL);
-#endif
-}
-
-/*
-    Top level fiber entry point
- */
-static void fiberEntry(RFiber *fiber, RFiberProc func, void *data)
+static void fiberEntry(RFiber *fiber)
 {
     currentFiber = fiber;
-    func(data);
-    fiber->done = 1;
-    rYieldFiber(0);
-    /*
-        Never get here for non-pthreaded fibers. For pthreads, uctx_freecontext
-        will resume here and the pthread should immediately exit.
-     */
+
+    while (fiber->func) {
+        fiber->func(fiber->data);
+
+        //  Signal ready for reuse and yield back to main
+        fiber->pooled = 1;
+        rYieldFiber(0);
+
+        //  Resumed - loop continues if fiber->func is set, exits if NULL
+        fiber->pooled = 0;
+    }
+    //  For pthreads, the thread exits here. For native contexts, we never reach here.
 }
 
 PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
 {
     RFiber *fiber;
-    size_t size;
-    uctx_t *context;
 
-    if (fiberCount >= fiberLimit) {
-        if (fiberLimit) {
-#if ME_FIBER_ALLOC_DEBUG
-            {
-                char buf[16];
-                DWRITE("Exceeded fiber limit "); DWRITE(sitosbuf(buf, sizeof(buf), fiberLimit, 10)); DWRITE("\n");
-            }
+    // Check fiber limit
+    if (fiberPool.max && fiberPool.active >= fiberPool.max) {
+        rDebug("fiber", "Exceeded fiber limit %d", fiberPool.max);
+#if ME_FIBER_HARD_FAIL
+        rAllocException(R_MEM_STACK, (size_t) fiberPool.max);
 #endif
-#if FIBER_HARD_FAIL
-            rAllocException(R_MEM_STACK, (size_t) fiberLimit);
-#endif
+        return NULL;
+    }
+    fiberPool.active++;
+    if (fiberPool.active > fiberPool.peak) {
+        rDebug("fiber", "Peak fibers %d", fiberPool.active);
+        fiberPool.peak = fiberPool.active;
+    }
+    // Try pool first, then allocate new
+    fiber = acquireFromPool();
+    if (!fiber) {
+        fiber = allocNewFiber();
+        if (!fiber) {
+            fiberPool.active--;
             return NULL;
         }
     }
-    if (++fiberCount > fiberPeak) {
-        fiberPeak = fiberCount;
-#if ME_FIBER_ALLOC_DEBUG
-        {
-            char buf[16];
-            DWRITE("Peak fibers "); DWRITE(sitosbuf(buf, sizeof(buf), fiberPeak, 10)); DWRITE("\n");
-        }
-#endif
-    }
-    size = sizeof(RFiber);
-    if (uctx_needstack()) {
-        size += stackSize;
-        if (size > MAXINT) {
-            fiberCount--;
-            rAllocException(R_MEM_STACK, size);
-            return NULL;
-        }
-    }
-    if ((fiber = rAllocMem(size)) == 0) {
-        fiberCount--;
-        rAllocException(R_MEM_FAIL, size);
+    // Initialize fiber context for this use
+    if (initFiberContext(fiber, function, data) < 0) {
+        freeFiberMemory(fiber);
+        fiberPool.active--;
         return NULL;
     }
-    memset(fiber, 0, size);
-    context = &fiber->context;
-    uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, stackSize);
-    if (uctx_makecontext(context, (uctx_proc) fiberEntry, 3, fiber, function, data) < 0) {
-        rError("runtime", "Cannot allocate fiber context");
-        rFree(fiber);
-        fiberCount--;
-        return NULL;
-    }
-#if FIBER_WITH_VALGRIND
-    fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stack, (char*) fiber->stack + stackSize);
-#endif
-#if ME_FIBER_GUARD_STACK
-    //  Write a guard pattern
-    memset(fiber->guard, GUARD_CHAR, sizeof(fiber->guard));
-#endif
-#if ME_FIBER_ALLOC_DEBUG
-    memset(fiber->stack, 0, stackSize);
-#endif
     return fiber;
 }
 
 void rFreeFiber(RFiber *fiber)
 {
     assert(fiber);
+    fiberPool.active--;
 
+    if (!releaseToPool(fiber)) {
+        freeFiberMemory(fiber);
+    }
+}
+
+/*
+    Allocate a new fiber from the heap
+ */
+static RFiber *allocNewFiber(void)
+{
+    RFiber *fiber;
+    size_t size;
+
+    fiberPool.poolMisses++;
+
+    size = sizeof(RFiber);
+#if ME_FIBER_VM_STACK
+    // Stack is allocated separately via VM allocation (mmap)
+    if ((fiber = rAllocMem(size)) == 0) {
+        rAllocException(R_MEM_FAIL, size);
+        return NULL;
+    }
+    memset(fiber, 0, size);
+    if (uctx_needstack()) {
+        fiber->stack = rAllocVirt(stackSize);
+        if (!fiber->stack) {
+            rFree(fiber);
+            rAllocException(R_MEM_STACK, stackSize);
+            return NULL;
+        }
+    }
+#else
+    // Stack is allocated inline with fiber struct
+    if (uctx_needstack()) {
+        size += stackSize;
+        if (size > MAXINT) {
+            rAllocException(R_MEM_STACK, size);
+            return NULL;
+        }
+    }
+    if ((fiber = rAllocMem(size)) == 0) {
+        rAllocException(R_MEM_FAIL, size);
+        return NULL;
+    }
+    memset(fiber, 0, size);
+#endif
+
+#if FIBER_WITH_VALGRIND
+    fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stack, (char*) fiber->stack + stackSize);
+#endif
+#if ME_FIBER_ALLOC_DEBUG
+    if (fiber->stack) {
+        memset(fiber->stack, 0, stackSize);
+    }
+#endif
+    return fiber;
+}
+
+/*
+    Initialize a fiber's context for execution.
+    Always stores func/data in fiber struct for fiberEntry to read.
+ */
+static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data)
+{
+    uctx_t *context;
+
+    fiber->result = NULL;
+    fiber->block = 0;
+    fiber->exception = 0;
+    fiber->done = 0;
+    fiber->func = function;
+    fiber->data = (void*) data;
+
+    if (!fiber->pooled) {
+        //  New fiber - full context initialization
+        context = &fiber->context;
+        uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, stackSize);
+
+        if (uctx_makecontext(context, (uctx_proc) fiberEntry, 1, fiber) < 0) {
+            rError("runtime", "Cannot initialize fiber context");
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    //  For pooled fibers, context is alive and will return from rYieldFiber when resumed
+    fiber->pooled = 0;
+#if ME_FIBER_GUARD_STACK
+    memset(fiber->guard, R_STACK_GUARD_CHAR, sizeof(fiber->guard));
+#endif
+    return 0;
+}
+
+/*
+    Free a fiber's memory
+ */
+static void freeFiberMemory(RFiber *fiber)
+{
 #if FIBER_WITH_VALGRIND
     VALGRIND_STACK_DEREGISTER(fiber->stackId);
 #endif
     uctx_freecontext(&fiber->context);
-    fiberCount--;
+#if ME_FIBER_VM_STACK
+    if (fiber->stack) {
+        rFreeVirt(fiber->stack, stackSize);
+        fiber->stack = NULL;
+    }
+#endif
     rFree(fiber);
 }
 
@@ -1629,9 +1732,14 @@ static void *swapContext(RFiber *f1, RFiber *f2, void *result)
         rError("runtime", "Cannot swap context");
         return 0;
     }
+    // On return, the currentFiber is f1
     result = f1->result;
-    // Note: f2 is the fiber we swapped to and then returned back to "f1"
     if (f2->done) {
+        //  Fiber crashed or has unrecoverable error - free completely, skip pool
+        freeFiberMemory(f2);
+        fiberPool.active--;
+    } else if (f2->pooled) {
+        //  Fiber completed normally - return to pool (context stays alive)
         rFreeFiber(f2);
     }
     return result;
@@ -1640,8 +1748,7 @@ static void *swapContext(RFiber *f1, RFiber *f2, void *result)
 /*
     Yield from a fiber back to the main fiber.
     The caller must have some mechanism to resume. i.e. someone must call rResumeFiber. See rSleep()
-    The parameter is passed to the
-    The return result it
+    The result is passed to the fiber that calls rResumeFiber.
  */
 PUBLIC void *rYieldFiber(void *result)
 {
@@ -1655,7 +1762,7 @@ PUBLIC void *rYieldFiber(void *result)
     the main fiber is suspended until the fiber yields or completes. If called from a non-main fiber or
     foreign-thread the target fiber is scheduled to be resumed via an event. In this case, the call to
     rResumeFiber returns without yielding and the resumed fiber will run when the calling fiber next yields.
-    THREAD SAFE.
+    THREAD SAFE. The return value is the value passed to rYieldFiber.
  */
 PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
 {
@@ -1664,12 +1771,12 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result)
     if (fiber->done) {
         return fiber->result;
     }
-    if (rIsMain()) {
+    if (rIsMain() && !rIsForeignThread()) {
         result = swapContext(currentFiber, fiber, result);
     } else {
         // Foreign thread or non-main fiber running in an Ioto thread
         rStartFiber(fiber, (void*) result);
-#if FUTURE
+#if DIRECT_SWAP
         /*
             Direct swap between fibers
             We don't use this which may be faster, but it means the critical main fiber would not be resumed
@@ -1716,38 +1823,17 @@ PUBLIC int rSpawnFiber(cchar *name, RFiberProc fn, void *arg)
     return 0;
 }
 
-PUBLIC void rSetFiberStack(size_t size)
-{
-    stackSize = size;
-    if (stackSize <= 0) {
-        stackSize = FIBER_DEFAULT_STACK;
-    }
-    if (stackSize < FIBER_MIN_STACK) {
-        rError("runtime", "Stack of %d is too small. Adjusting to be %d", (int) stackSize, (int) FIBER_MIN_STACK);
-        stackSize = FIBER_MIN_STACK;
-    }
-}
-
-PUBLIC int rSetFiberLimits(int maxFibers)
-{
-    int old = maxFibers;
-
-    fiberLimit = maxFibers;
-    return old;
-}
-
 PUBLIC RFiber *rGetFiber(void)
 {
     return currentFiber;
 }
 
+/*
+    Check if executing on the main fiber. Not thread-safe - only call from the runtime thread.
+ */
 PUBLIC bool rIsMain(void)
 {
-    if (!mainFiber) {
-        //  Not yet initialized
-        return 1;
-    }
-    return rGetCurrentThread() == rGetMainThread() && currentFiber == mainFiber;
+    return currentFiber == mainFiber;
 }
 
 PUBLIC bool rIsForeignThread(void)
@@ -1760,7 +1846,7 @@ PUBLIC bool rIsForeignThread(void)
  */
 PUBLIC void rSleep(Ticks ticks)
 {
-    if (rIsMain()) {
+    if (rIsMain() && !rIsForeignThread()) {
 #if FREERTOS
         if (ticks) {
             vTaskDelay(ticks / portTICK_PERIOD_MS);
@@ -1827,10 +1913,9 @@ PUBLIC void rCheckFiber(void)
     if (rIsForeignThread()) {
         return;
     }
-    if (rIsMain()) {
+    if (rIsMain() && !rIsForeignThread()) {
         return;
     }
-
     base = (char*) rGetFiberStack();
     if (base == 0) return;
 
@@ -1838,23 +1923,16 @@ PUBLIC void rCheckFiber(void)
     used = (size_t) (base - (char*) &base);
     if (used > peak) {
         peak = (used + 1023) / 1024 * 1024;
-#if ME_FIBER_ALLOC_DEBUG
-        char num[16];
-        sitosbuf(num, sizeof(num), peak / 1024, 10);
-        DWRITE("Peak fiber stack usage "); DWRITE(num); DWRITE("k (+16k for o/s)\n");
-#endif
+        rDebug("fiber", "Peak fiber stack usage %dk (+16k for o/s)", peak / 1024);
         for (i = 0; i < sizeof(currentFiber->guard); i++) {
-            if (currentFiber->guard[i] != (char) GUARD_CHAR) {
-                DWRITE("ERROR: Stack overflow detected\n");
+            if (currentFiber->guard[i] != (char) R_STACK_GUARD_CHAR) {
+                rError("fiber", "Stack overflow detected");
                 break;
             }
         }
-#if ME_FIBER_ALLOC_DEBUG
         //  This measures the stack that has been used in the past
         used = rGetStackUsage();
-        sitosbuf(num, sizeof(num), used / 1024, 10);
-        DWRITE("Actual stack usage "); DWRITE(num); DWRITE("k\n");
-#endif
+        rDebug("fiber", "Actual stack usage %dk", used / 1024);
     }
 }
 
@@ -1875,6 +1953,208 @@ PUBLIC int64 rGetStackUsage(void)
     return used;
 }
 #endif /* ME_FIBER_GUARD_STACK */
+
+PUBLIC void rSetFiberStackSize(size_t size)
+{
+    stackSize = size;
+    if (stackSize <= 0) {
+        stackSize = ME_FIBER_DEFAULT_STACK;
+    }
+    if (stackSize < ME_FIBER_MIN_STACK) {
+        rError("runtime", "Stack of %d is too small. Adjusting to be %d", (int) stackSize, (int) ME_FIBER_MIN_STACK);
+        stackSize = ME_FIBER_MIN_STACK;
+    }
+}
+
+PUBLIC int rSetFiberLimits(int maxFibers, int poolMin, int poolMax)
+{
+    int old = fiberPool.max;
+
+    if (maxFibers < 0 || poolMin < 0 || poolMax < 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (maxFibers > 0 && poolMax > maxFibers) {
+        poolMax = maxFibers;
+    }
+    fiberPool.max = maxFibers;
+    fiberPool.poolMin = poolMin;
+    fiberPool.poolMax = poolMax;
+    return old;
+}
+
+PUBLIC void rGetFiberStats(int *active, int *max, int *pooled, int *poolMax, int *poolMin, uint64 *hits,
+                           uint64 *misses)
+{
+    if (active) *active = fiberPool.active;
+    if (max) *max = fiberPool.max;
+    if (pooled) *pooled = fiberPool.pooled;
+    if (poolMax) *poolMax = fiberPool.poolMax;
+    if (poolMin) *poolMin = fiberPool.poolMin;
+    if (hits) *hits = fiberPool.poolHits;
+    if (misses) *misses = fiberPool.poolMisses;
+}
+
+/*
+    Prune excess fibers from the pool down to poolMin
+    Only prunes fibers that have been idle longer than ME_FIBER_IDLE_TIMEOUT
+ */
+static void pruneFibers(void *data)
+{
+    RFiber *fiber, *next, *prev;
+    Ticks  now;
+    int    count;
+
+    prev = NULL;
+    count = 0;
+    now = rGetTicks();
+
+    for (fiber = fiberPool.free; fiber; fiber = next) {
+        next = fiber->next;
+        // Stop pruning when we reach the minimum pool size
+        if (fiberPool.pooled <= fiberPool.poolMin) {
+            break;
+        }
+        // Only prune fibers that have been idle longer than ME_FIBER_IDLE_TIMEOUT
+        if (fiber->idleSince > 0 && (now - fiber->idleSince) > ME_FIBER_IDLE_TIMEOUT) {
+            if (prev) {
+                prev->next = next;
+            } else {
+                fiberPool.free = next;
+            }
+            count++;
+            fiberPool.pooled--;
+#if FIBER_WITH_VALGRIND
+            VALGRIND_STACK_DEREGISTER(fiber->stackId);
+#endif
+            //  Signal fiber to exit loop (for pthreads), then free context
+            fiber->func = NULL;
+            uctx_freecontext(&fiber->context);
+#if ME_FIBER_VM_STACK
+            if (fiber->stack) {
+                rFreeVirt(fiber->stack, stackSize);
+                fiber->stack = NULL;
+            }
+#endif
+            rFree(fiber);
+        } else {
+            prev = fiber;
+        }
+    }
+    if (count) {
+        rDebug("fiber", "Pruned %d idle fibers", count);
+    }
+#if ME_R_DEBUG_HEAP
+#if LINUX
+    struct mallinfo2 mi = mallinfo2();
+    rDebug("fiber", "Heap: arena %zu, used %zu, free %zu", mi.arena, mi.uordblks, mi.fordblks);
+#elif MACOSX
+    struct mstats ms = mstats();
+    rDebug("fiber", "Heap: used %zu, free %zu", ms.bytes_used, ms.bytes_free);
+#endif
+    rDebug("pruneFibers: pruned %d, active %d, peak %d, pooled %d, poolMin: %d, poolMax: %d",
+           count, fiberPool.active, fiberPool.peak, fiberPool.pooled, fiberPool.poolMin, fiberPool.poolMax);
+#endif
+    //  Reschedule if pool is still active
+    if (fiberPool.poolMax > 0) {
+        fiberPool.pruneEvent = rStartEvent(pruneFibers, NULL, ME_FIBER_PRUNE_INTERVAL);
+    }
+}
+
+/*
+    Get a fiber from the pool. Returns NULL if pool is empty.
+ */
+static RFiber *acquireFromPool(void)
+{
+    RFiber *fiber;
+
+    if (!fiberPool.free) {
+        return NULL;
+    }
+    fiber = fiberPool.free;
+    fiberPool.free = fiber->next;
+    fiberPool.pooled--;
+    fiberPool.poolHits++;
+    //  Context is alive and parked at yield point - no cleanup needed
+    return fiber;
+}
+
+/*
+    Return a fiber to the pool. Returns true if pooled, false if pool is full.
+ */
+static bool releaseToPool(RFiber *fiber)
+{
+    if (fiberPool.pooled >= fiberPool.poolMax) {
+        return 0;
+    }
+    fiber->idleSince = rGetTicks();
+    fiber->next = fiberPool.free;
+    fiberPool.free = fiber;
+    fiberPool.pooled++;
+    return 1;
+}
+
+/*
+    Define a code block that can be used to catch exceptions and terminate the fiber.
+ */
+PUBLIC int rStartFiberBlock(void)
+{
+    currentFiber->block = 1;
+    return setjmp(currentFiber->jmpbuf);
+}
+
+static void fiberSignalHandler(int signum)
+{
+    /*
+        If there is a double-exception while it is cleaning up, then abort.
+     */
+    if (currentFiber->block && currentFiber->exception == 0) {
+        currentFiber->block = 0;
+        currentFiber->exception = signum;
+        rEndFiberBlock();
+    } else {
+        abort();
+    }
+}
+
+/*
+    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit.
+ */
+PUBLIC void rEndFiberBlock(void)
+{
+    longjmp(currentFiber->jmpbuf, 1);
+}
+
+/*
+    Abort the current fiber immediately. Does not return.
+    The fiber is freed and not returned to the pool.
+ */
+PUBLIC void rAbortFiber(void)
+{
+    if (currentFiber && currentFiber != mainFiber) {
+        currentFiber->done = 1;
+        rYieldFiber(0);
+    }
+    //  Never reached for non-main fibers
+}
+
+/*
+    Setup signal handlers for fiber exceptions.
+ */
+static void setupFiberSignalHandlers(void)
+{
+#if ME_UNIX_LIKE
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sigemptyset(&sa.sa_mask);
+    sa.sa_handler = fiberSignalHandler;
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+#endif
+}
+
 #endif /* R_USE_FIBER */
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.
@@ -1882,10 +2162,57 @@ PUBLIC int64 rGetStackUsage(void)
  */
 
 
-/********* Start of file src/file.c ************/
+/********* Start of file src/freertos.c ************/
 
 /**
-    file.c - File and filename services.
+    freertos.c - FreeRTOS specific adaptions
+
+    NOTE: ESP32 does not use this -- it has its own customized version
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+
+
+#if FREERTOS && !ESP32
+/*********************************** Code *************************************/
+
+PUBLIC int rInitOs(void)
+{
+    // FreeRTOS requires no additional initialization
+    return 0;
+}
+
+PUBLIC void rTermOs(void)
+{
+    // FreeRTOS requires no cleanup
+}
+
+/*
+    FreeRTOS does not support hostname resolution
+ */
+int gethostname(char *name, size_t namelen)
+{
+    return -1;
+}
+
+#else
+void freeRtosDummy(void)
+{
+}
+#endif /* FREERTOS */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+/********* Start of file src/fs.c ************/
+
+/**
+    fs.c - File system services.
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -1981,13 +2308,37 @@ PUBLIC bool rFileExists(cchar *path)
 
 PUBLIC ssize rCopyFile(cchar *from, cchar *to, int mode)
 {
-    char   *buf;
-    size_t len;
+    char  buf[ME_BUFSIZE];
+    ssize nread, nwritten, total;
+    int   fdin, fdout;
 
-    if ((buf = rReadFile(from, &len)) == 0) {
-        return R_ERR_CANT_READ;
+    if ((fdin = open(from, O_RDONLY | O_BINARY | O_CLOEXEC, 0)) < 0) {
+        rTrace("runtime", "Cannot open %s for reading", from);
+        return R_ERR_CANT_OPEN;
     }
-    return rWriteFile(to, buf, len, mode);
+    if (mode == 0) {
+        mode = 0644;
+    }
+    if ((fdout = open(to, O_WRONLY | O_TRUNC | O_CREAT | O_BINARY | O_CLOEXEC, mode)) < 0) {
+        rTrace("runtime", "Cannot open %s for writing", to);
+        close(fdin);
+        return R_ERR_CANT_CREATE;
+    }
+    total = 0;
+    nwritten = 0;
+    while ((nread = read(fdin, buf, sizeof(buf))) > 0) {
+        if ((nwritten = (ssize) write(fdout, buf, (uint) nread)) != nread) {
+            nwritten = -1;
+            break;
+        }
+        total += nwritten;
+    }
+    close(fdin);
+    close(fdout);
+    if (nread < 0 || nwritten < 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    return total;
 }
 
 PUBLIC int rAccessFile(cchar *path, int mode)
@@ -2067,6 +2418,7 @@ PUBLIC ssize rWriteFile(cchar *path, cchar *buf, size_t len, int mode)
 PUBLIC char *rJoinFile(cchar *path, cchar *other)
 {
     size_t len;
+    char   sep[2];
 
     if (other == NULL || *other == '\0' || strcmp(other, ".") == 0) {
         return sclone(path);
@@ -2079,9 +2431,11 @@ PUBLIC char *rJoinFile(cchar *path, cchar *other)
     }
     len = slen(path);
     if (len > 0 && path[len - 1] == SEPS[0]) {
-        return sfmt("%s%s", path, other);
+        return sjoin(path, other, NULL);
     } else {
-        return sfmt("%s%c%s", path, SEPS[0], other);
+        sep[0] = SEPS[0];
+        sep[1] = '\0';
+        return sjoin(path, sep, other, NULL);
     }
 }
 
@@ -2915,53 +3269,6 @@ PUBLIC int rFlushFile(int fd)
  */
 
 
-/********* Start of file src/freertos.c ************/
-
-/**
-    freertos.c - FreeRTOS specific adaptions
-
-    NOTE: ESP32 does not use this -- it has its own customized version
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************* Includes ***********************************/
-
-
-
-#if FREERTOS && !ESP32
-/*********************************** Code *************************************/
-
-PUBLIC int rInitOs(void)
-{
-    // FreeRTOS requires no additional initialization
-    return 0;
-}
-
-PUBLIC void rTermOs(void)
-{
-    // FreeRTOS requires no cleanup
-}
-
-/*
-    FreeRTOS does not support hostname resolution
- */
-int gethostname(char *name, size_t namelen)
-{
-    return -1;
-}
-
-#else
-void freeRtosDummy(void)
-{
-}
-#endif /* FREERTOS */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
 /********* Start of file src/hash.c ************/
 
 /*
@@ -2987,6 +3294,8 @@ void freeRtosDummy(void)
 #ifndef ME_R_MAX_HASH
     #define ME_R_MAX_HASH (1 << 25)
 #endif
+
+#define R_HASH_ALLOC_SIZE 512
 
 /********************************** Forwards **********************************/
 
@@ -3480,7 +3789,7 @@ PUBLIC RBuf *rHashToBuf(RHash *hash, cchar *join)
     if (!join) {
         join = ",";
     }
-    if ((buf = rAllocBuf(0)) == 0) {
+    if ((buf = rAllocBuf(R_HASH_ALLOC_SIZE)) == 0) {
         return NULL;
     }
     for (ITERATE_NAMES(hash, np)) {
@@ -3567,7 +3876,7 @@ PUBLIC char *rHashToJson(RHash *hash, int pretty)
 {
     RBuf *buf;
 
-    if ((buf = rAllocBuf(0)) == 0) {
+    if ((buf = rAllocBuf(R_HASH_ALLOC_SIZE)) == 0) {
         return NULL;
     }
     rHashToJsonBuf(hash, buf, pretty);
@@ -3599,6 +3908,8 @@ PUBLIC char *rHashToJson(RHash *hash, int pretty)
 #ifndef ME_R_LIST_MIN_SIZE
     #define ME_R_LIST_MIN_SIZE 16
 #endif
+
+#define R_LIST_ALLOC_SIZE      512
 
 /************************************ Code ************************************/
 
@@ -4014,7 +4325,7 @@ PUBLIC char *rListToString(RList *list, cchar *join)
     if (!join) {
         join = ",";
     }
-    if ((buf = rAllocBuf(0)) == 0) {
+    if ((buf = rAllocBuf(R_LIST_ALLOC_SIZE)) == 0) {
         return NULL;
     }
     for (ITERATE_ITEMS(list, s, next)) {
@@ -4581,7 +4892,7 @@ PUBLIC void rMetrics(cchar *message, cchar *namespace, cchar *dimensions, cchar 
     int64   i64value;
     int     ivalue;
 
-    if ((buf = rAllocBuf(0)) == 0) {
+    if ((buf = rAllocBuf(1024)) == 0) {
         return;
     }
     rPutToBuf(buf,
@@ -5840,6 +6151,41 @@ PUBLIC void rAllocException(int cause, size_t size)
 }
 
 /*
+    Allocate memory via virtual memory allocation (mmap/VirtualAlloc).
+    This keeps stack allocations separate from the heap to reduce fragmentation.
+ */
+PUBLIC void *rAllocVirt(size_t size)
+{
+#if MACOSX || LINUX || FREEBSD
+    void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        return NULL;
+    }
+    return ptr;
+#elif WINDOWS
+    void *ptr = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    return ptr;
+#else
+    return rAllocMem(size);
+#endif
+}
+
+/*
+    Free memory allocated via rAllocVirt
+ */
+PUBLIC void rFreeVirt(void *ptr, size_t size)
+{
+    if (!ptr) return;
+#if MACOSX || LINUX || FREEBSD
+    munmap(ptr, size);
+#elif WINDOWS
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    rFree(ptr);
+#endif
+}
+
+/*
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
@@ -5934,6 +6280,7 @@ typedef struct Rtls {
     SSL_CTX *ctx;
     SSL *handle;
     BIO *bio;
+    SSL_SESSION *session;                   /* Cached session for client resumption */
     int handshakes;
 } Rtls;
 
@@ -6083,6 +6430,7 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
 {
     X509_STORE *store;
     SSL_CTX    *ctx;
+    uchar      resume[16];
 
     STACK_OF(X509_NAME) * certNames;
     char abuf[128];
@@ -6096,6 +6444,7 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
     tp->ctx = ctx;
     tp->freeCtx = 1;
     SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
+
 #if defined(TLS1_3_VERSION) && ME_ENFORCE_TLS1_3
     #if defined(SSL_CTX_set_min_proto_version)
     SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
@@ -6108,6 +6457,7 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         #endif
     #endif
 #endif
+
     if (tp->verifyIssuer < 0) {
         tp->verifyIssuer = defaultVerifyIssuer;
     }
@@ -6175,6 +6525,13 @@ PUBLIC int rConfigTls(Rtls *tp, bool server)
         SSL_CTX_set_verify(ctx, verifyMode, verifyPeerCertificate);
     }
     SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY | SSL_MODE_RELEASE_BUFFERS | SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+    // Enable TLS session resumption for server connections
+    if (server) {
+        RAND_bytes(resume, sizeof(resume));
+        SSL_CTX_set_session_id_context(ctx, resume, sizeof(resume));
+        SSL_CTX_sess_set_cache_size(ctx, ME_R_SSL_CACHE);
+    }
 
     if (ME_R_TLS_SET_OPTIONS) {
         SSL_CTX_set_options(ctx, ME_R_TLS_SET_OPTIONS);
@@ -6268,6 +6625,11 @@ PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
     SSL_set_app_data(tp->handle, (void*) tp);
     SSL_set_SSL_CTX(tp->handle, tp->ctx);
 
+    // Apply cached session for client-side resumption
+    if (tp->session) {
+        SSL_set_session(tp->handle, tp->session);
+    }
+
     /*
         Create a socket bio. We don't use the BIO except as storage for the fd
      */
@@ -6312,7 +6674,8 @@ static int handshake(Rtls *tp, Ticks deadline)
 {
     int error, mask, rc;
 
-    for (mask = R_IO; rWaitForIO(tp->sock->wait, mask, deadline) >= 0; ) {
+    mask = R_IO;
+    for (;;) {
         ERR_clear_error();
         if ((rc = SSL_do_handshake(tp->handle)) >= 0) {
             break;
@@ -6324,20 +6687,28 @@ static int handshake(Rtls *tp, Ticks deadline)
         } else if (error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_CONNECT) {
             mask |= R_WRITABLE;
         } else {
+#if ME_R_DEBUG_LOGGING
             if (rEmitLog("debug", "tls")) {
                 char ebuf[80];
                 getTlsError(tp, ebuf, sizeof(ebuf));
                 rDebug("tls", "SSL_read %s", ebuf);
             }
+#endif
             return R_ERR_CANT_CONNECT;
         }
+        if (rWaitForIO(tp->sock->wait, mask, deadline) < 0) {
+            return R_ERR_TIMEOUT;
+        }
     }
-
     tp->protocol = sclone(SSL_get_version(tp->handle));
     tp->cipher = sclone(SSL_get_cipher(tp->handle));
     tp->connected = 1;
 
-    rDebug("tls", "Handshake with %s and %s", tp->protocol, tp->cipher);
+#if ME_R_DEBUG_LOGGING
+    if (rEmitLog("debug", "tls")) {
+        rDebug("tls", "Handshake with %s and %s", tp->protocol, tp->cipher);
+    }
+#endif
     return 1;
 }
 
@@ -6777,6 +7148,38 @@ PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
     tp->engine = sclone(engine);
 }
 
+PUBLIC void *rGetTlsSession(RSocket *sp)
+{
+    Rtls *tp;
+
+    if (!sp || !sp->tls) {
+        return NULL;
+    }
+    tp = sp->tls;
+    if (tp->handle) {
+        return SSL_get1_session(tp->handle);
+    }
+    return NULL;
+}
+
+PUBLIC void rSetTlsSession(RSocket *sp, void *session)
+{
+    Rtls *tp;
+
+    if (!sp || !sp->tls) {
+        return;
+    }
+    tp = sp->tls;
+    tp->session = (SSL_SESSION*) session;
+}
+
+PUBLIC void rFreeTlsSession(void *session)
+{
+    if (session) {
+        SSL_SESSION_free((SSL_SESSION*) session);
+    }
+}
+
 #else
 void opensslDummy(void)
 {
@@ -6819,8 +7222,10 @@ void opensslDummy(void)
     Disabling this should only be done with a full understanding of the security implications.
  */
 #ifndef R_OWN_PRINTF
-    #define R_OWN_PRINTF 1
+    #define R_OWN_PRINTF    1
 #endif
+
+#define R_PRINTF_ALLOC_SIZE 256
 
 /*********************************** Defines **********************************/
 #if R_OWN_PRINTF
@@ -7056,15 +7461,15 @@ static ssize innerSprintf(char **buf, size_t maxsize, cchar *spec, va_list args)
         if (maxsize <= 0) {
             //  No limit
             maxsize = 0;
-            len = ME_BUFSIZE;
+            len = R_PRINTF_ALLOC_SIZE;
         } else {
-            len = min(ME_BUFSIZE, maxsize);
+            len = min(R_PRINTF_ALLOC_SIZE, maxsize);
         }
         if ((ctx.buf = rAlloc(len)) == 0) {
             return R_ERR_MEMORY;
         }
         ctx.endbuf = &ctx.buf[len];
-        ctx.growBy = ME_BUFSIZE;
+        ctx.growBy = R_PRINTF_ALLOC_SIZE;
     }
     ctx.maxsize = (int) maxsize;
     ctx.precision = 0;
@@ -8514,21 +8919,21 @@ PUBLIC ssize rMakeArgs(cchar *command, char ***argvp, bool argsOnly)
 #define ME_SOCKET_TIMEOUT    (30 * 1000)
 #define ME_HANDSHAKE_TIMEOUT (30 * 1000)
 #ifndef ME_SOCKET_MAX
-    #define ME_SOCKET_MAX    10000
+    #define ME_SOCKET_MAX    1000
 #endif
 
-static int activeSockets = 0;
+static int           activeSockets = 0;
+static int           socketLimit = ME_SOCKET_MAX;
+static RSocketCustom socketCustom;
 
 /********************************** Forwards **********************************/
 
-static void acceptSocket(RSocket *listen);
+static void acceptSocket(RSocket *listen, int mask);
+static void socketHandlerFiber(RSocket *sp);
 static int getOsError(RSocket *sp);
-static int getSocketError(RSocket *sp);
 #if ME_DEBUG
 static void traceSocket(Socket fd, cchar *label);
 #endif
-
-static RSocketCustom socketCustom;
 
 /************************************ Code ************************************/
 
@@ -8580,12 +8985,20 @@ PUBLIC void rCloseSocket(RSocket *sp)
     }
 #endif
     if (sp->fd != INVALID_SOCKET) {
-        if (sp->linger != 0) {
+        if (sp->linger != 0 && !(sp->flags & R_SOCKET_EOF)) {
             rSetSocketBlocking(sp, 0);
-            while (recv(sp->fd, buf, sizeof(buf), 0) > 0);
+            while (recv(sp->fd, buf, sizeof(buf), MSG_NOSIGNAL) > 0);
             if (shutdown(sp->fd, SHUT_RDWR) == 0) {
-                while (recv(sp->fd, buf, sizeof(buf), 0) > 0);
+                while (recv(sp->fd, buf, sizeof(buf), MSG_NOSIGNAL) > 0);
             }
+        } else {
+            /*
+                Always call shutdown for server sockets to handle macOS "poisoned socket" case
+                Under high load, macOS can hand accept() a socket with internal RST state but readable data.
+                close() alone won't send FIN/RST for these poisoned sockets, leaving clients hung.
+                shutdown(SHUT_RDWR) forces the kernel to send RST even for poisoned TCBs.
+             */
+            shutdown(sp->fd, SHUT_RDWR);
         }
         closesocket(sp->fd);
         sp->fd = INVALID_SOCKET;
@@ -8594,7 +9007,7 @@ PUBLIC void rCloseSocket(RSocket *sp)
 
     if (sp->wait) {
         // The resumed party may free the socket -- be careful!
-        rResumeWait(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
+        rResumeWaitFiber(sp->wait, R_READABLE | R_WRITABLE | R_TIMEOUT);
     }
 }
 
@@ -8622,9 +9035,11 @@ PUBLIC void rResetSocket(RSocket *sp)
  */
 PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
 {
-    struct addrinfo hints, *res, *r;
-    char            pbuf[16];
-    int             rc;
+    struct addrinfo         hints, *res, *r;
+    struct sockaddr_storage peerAddr;
+    Socklen                 errorLen, peerLen;
+    char                    pbuf[16];
+    int                     error, rc;
 
     if (!host) {
         return rSetSocketError(sp, "Host address required for connection");
@@ -8635,7 +9050,7 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
     if (sp->fd != INVALID_SOCKET) {
         rCloseSocket(sp);
     }
-    sp->flags = 0;
+    sp->flags = sp->flags & (R_SOCKET_FAST_CONNECT | R_SOCKET_FAST_CLOSE);
 
  #if ME_COM_SSL
     if (sp->tls && rConfigTls(sp->tls, 0) < 0) {
@@ -8655,44 +9070,84 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
         rSetSocketError(sp, "Cannot find address of %s:%d", host, port);
         return R_ERR_BAD_ARGS;
     }
-    for (r = res; r; r = r->ai_next) {
-        if (sp->fd != INVALID_SOCKET) {
-            closesocket(sp->fd);
-            sp->fd = INVALID_SOCKET;
-        }
-        if (sp->wait) {
-            rFreeWait(sp->wait);
-            sp->wait = NULL;
-        }
-        if ((sp->fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == SOCKET_ERROR) {
-            rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
-            continue;
-        }
-        rSetSocketBlocking(sp, 0);
-        sp->wait = rAllocWait((int) sp->fd);
+    /*
+        Two-pass connection: try IPv4 addresses first, then IPv6.
+        We use IPv4 addresses first to optimize for servers that only support IPv4.
+     */
+    int connected = 0;
+    for (int pass = 0; pass < 2 && !connected; pass++) {
+        int targetFamily = (pass == 0) ? AF_INET : AF_INET6;
 
-        do {
-            rc = connect(sp->fd, r->ai_addr, (socklen_t) r->ai_addrlen);
-        } while (rc < 0 && rGetOsError() == EINTR);
-
-        if (rc == 0 || (rc < 0 && (rGetOsError() == EINPROGRESS || rGetOsError() == EAGAIN))) {
- #if ME_UNIX_LIKE
-            fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
- #endif
-            sp->activity = rGetTime();
-
-            if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
+        for (r = res; r; r = r->ai_next) {
+            if (r->ai_family != targetFamily) {
                 continue;
             }
-            if (getSocketError(sp) == 0) {
-                // Successfully connected
-                break;
+            if (sp->fd != INVALID_SOCKET) {
+                closesocket(sp->fd);
+                sp->fd = INVALID_SOCKET;
             }
-            continue;
+            if (sp->wait) {
+                rFreeWait(sp->wait);
+                sp->wait = NULL;
+            }
+            if ((sp->fd = socket(r->ai_family, r->ai_socktype, r->ai_protocol)) == SOCKET_ERROR) {
+                rSetSocketError(sp, "Cannot open socket for %s:%d", host, port);
+                continue;
+            }
+            rSetSocketBlocking(sp, 0);
+            sp->wait = rAllocWait((int) sp->fd);
+
+            do {
+                rc = connect(sp->fd, r->ai_addr, (socklen_t) r->ai_addrlen);
+            } while (rc < 0 && rGetOsError() == EINTR);
+
+            if (rc == 0 || (rc < 0 && (rGetOsError() == EINPROGRESS || rGetOsError() == EAGAIN))) {
+#if ME_UNIX_LIKE
+                fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
+#endif
+                sp->activity = rGetTime();
+
+                if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
+                    continue;
+                }
+                /*
+                    First check SO_ERROR for connection failures. If SO_ERROR is non-zero, connection failed.
+                    Then use getpeername to verify connection is truly established. This catches a macOS bug
+                    where SO_ERROR returns 0 but the connection isn't actually established.
+                 */
+                error = 0;
+                errorLen = sizeof(error);
+                if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &errorLen) < 0 || error != 0) {
+                    continue;
+                }
+                peerLen = sizeof(peerAddr);
+                if (getpeername(sp->fd, (struct sockaddr*) &peerAddr, &peerLen) == 0) {
+                    connected = 1;
+                    break;
+                }
+#if MACOSX
+                /*
+                    MACOSX bug: SO_ERROR returns 0 but the connection isn't actually established yet.
+                    This is triggered by another socket writing a large amount of data to the local server that
+                    is not read and the connect is closed.
+                 */
+                for (int i = 0; i < 10; i++) {
+                    if (getpeername(sp->fd, (struct sockaddr*) &peerAddr, &peerLen) == 0) {
+                        connected = 1;
+                        break;
+                    }
+                    rSleep(10);
+                }
+                if (connected) {
+                    break;
+                }
+#endif
+                continue;
+            }
         }
     }
     freeaddrinfo(res);
-    if (!r) {
+    if (!connected) {
         if (sp->fd != INVALID_SOCKET) {
             closesocket(sp->fd);
             sp->fd = INVALID_SOCKET;
@@ -8701,7 +9156,7 @@ PUBLIC int rConnectSocket(RSocket *sp, cchar *host, int port, Ticks deadline)
             rFreeWait(sp->wait);
             sp->wait = NULL;
         }
-        rSetSocketError(sp, "Cannot connect socket for %s:%d", host, port);
+        rSetSocketError(sp, "Cannot connect socket to %s:%d", host, port);
         return R_ERR_CANT_CONNECT;
     }
  #if ME_COM_SSL
@@ -8745,19 +9200,25 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     hints.ai_flags = AI_PASSIVE;     // Use wildcard address if host is NULL
 
     /*
-        When host is NULL (wildcard), prefer IPv6 with dual-stack to accept both IPv4 and IPv6.
-        When host is "localhost", prefer IPv4 for compatibility as most clients expect IPv4 loopback.
+        When dual-stack is available (IPV6_V6ONLY defined), prefer IPv6 to accept both IPv4 and
+        IPv6 connections via a single socket. IPV6_V6ONLY is set to 0 below to enable dual-stack.
         When host is a specific IPv4 address like "127.0.0.1", use IPv4 only.
+        When dual-stack is not available, use AF_UNSPEC to let the system choose.
+        NOTE: macosx dual-stack does not work reliably with localhost, so we use IPv4 only.
      */
-    if (!host) {
-        hints.ai_family = AF_INET6;  // Dual-stack for wildcard
-    } else if (smatch(host, "localhost")) {
-        hints.ai_family = AF_INET;   // Prefer IPv4 for localhost compatibility
-    } else if (smatch(host, "127.0.0.1")) {
+#if defined(IPV6_V6ONLY)
+    if (smatch(host, "127.0.0.1") || smatch(host, "localhost")) {
+        hints.ai_family = AF_INET;   // Explicit IPv4 loopback
+    } else {
+        hints.ai_family = AF_INET6;  // Dual-stack for all other hosts
+    }
+#else
+    if (smatch(host, "127.0.0.1")) {
         hints.ai_family = AF_INET;   // Explicit IPv4 loopback
     } else {
         hints.ai_family = AF_UNSPEC; // Use resolved address family
     }
+#endif
 
     sitosbuf(pbuf, sizeof(pbuf), port, 10);
     if (getaddrinfo(host, pbuf, &hints, &res) != 0) {
@@ -8779,8 +9240,8 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
             continue;
         }
  #endif
-        //  For IPv6 sockets, disable IPv6-only mode to allow IPv4 connections on dual-stack systems
  #if defined(IPV6_V6ONLY)
+        //  For IPv6 sockets, disable IPv6-only mode to allow IPv4 connections on dual-stack systems
         if (family == AF_INET6) {
             int no = 0;
             setsockopt(lp->fd, IPPROTO_IPV6, IPV6_V6ONLY, (void*) &no, sizeof(no));
@@ -8825,63 +9286,90 @@ PUBLIC int rListenSocket(RSocket *lp, cchar *host, int port, RSocketProc handler
     lp->handler = handler;
     lp->arg = arg;
 
-    //  Run acceptSocket on a new coroutine when readable
-    rSetWaitHandler(lp->wait, (RWaitProc) acceptSocket, lp, R_READABLE, 0);
+    //  Run acceptSocket on main fiber when readable (fast path for accept)
+    rSetWaitHandler(lp->wait, (RWaitProc) acceptSocket, lp, R_READABLE, 0, R_WAIT_MAIN_FIBER);
     return 0;
 }
 
 /*
     This routine is called by the accept wait handler when a new connection is accepted.
-    It allocates a new socket and sets up the connection.
-    It then calls the socket handler with the new socket.
-    The handler frees the socket.
+    Runs on main fiber - only does accept() and basic field assignment.
+    All socket setup syscalls moved to socketHandlerFiber.
+
+    With edge-triggered I/O (EV_CLEAR), we must loop to drain the entire listen backlog.
+    Otherwise connections can accumulate and cause ECONNRESET errors under load.
  */
-static void acceptSocket(RSocket *listen)
+static void acceptSocket(RSocket *listen, int mask)
 {
     RSocket                 *sp;
     struct sockaddr_storage addr;
     Socklen                 addrLen;
     Socket                  fd;
 
-    assert(!rIsMain());
-    if (rIsMain()) {
-        return;
-    }
-    addrLen = sizeof(addr);
-
-    if ((sp = rAllocSocket()) == 0) {
-        return;
-    }
-    if (activeSockets >= ME_SOCKET_MAX) {
-        rSetSocketError(sp, "Too many active sockets");
-        rFreeSocket(sp);
-        return;
-    }
+    //  Edge-triggered: drain all pending connections
     do {
-        if ((fd = accept(listen->fd, (struct sockaddr*) &addr, &addrLen)) == SOCKET_ERROR) {
+        addrLen = sizeof(addr);
+        fd = accept(listen->fd, (struct sockaddr*) &addr, &addrLen);
+        if (fd == SOCKET_ERROR) {
             if (rGetOsError() != EAGAIN) {
-                rSetSocketError(sp, "Accept failed, errno %d", rGetOsError());
-                rFreeSocket(sp);
-                return;
+                rLog("error", "socket", "Accept failed, errno %d", rGetOsError());
             }
+            break;
         }
-    } while (fd == SOCKET_ERROR);
+        //  Check limit AFTER accept (must drain backlog for edge-triggered)
+        if (activeSockets >= socketLimit) {
+            rLog("error", "socket", "Too many active sockets (%d/%d), rejecting connection", activeSockets,
+                 socketLimit);
+            closesocket(fd);
+            continue;  // Keep draining backlog
+        }
+        if ((sp = rAllocSocket()) == 0) {
+            // Memory errors handled globally
+            rError("socket", "Cannot allocate socket");
+            closesocket(fd);
+            break;
+        }
+        activeSockets++;
 
-    activeSockets++;
+        //  Minimal setup on main fiber - just assign fields (no syscalls)
+        sp->fd = fd;
+        sp->handler = listen->handler;
+        sp->arg = listen;  // Temporarily store listen socket for fiber to access TLS config
+        sp->flags |= R_SOCKET_SERVER;
 
-    sp->fd = fd;
-    sp->handler = listen->handler;
-    sp->arg = listen->arg;
-    sp->flags |= R_SOCKET_SERVER;
+        //  Run via a fiber from the pool for socket setup and handler
+        if (rSpawnFiber("socket", (RFiberProc) socketHandlerFiber, sp) < 0) {
+            rFreeSocket(sp);
+        }
+    } while (1);
+    //  No re-arm needed - edge-triggered event will fire on next connection after backlog is drained
+}
+
+/*
+    Socket handler fiber - runs in spawned fiber.
+    Performs all socket setup syscalls and TLS work off the main fiber.
+ */
+static void socketHandlerFiber(RSocket *sp)
+{
+    RSocket *listen;
+
+    listen = (RSocket*) sp->arg;   // Temporarily stored listen socket
+
+    //  Socket setup (syscalls done in fiber to keep main fiber fast)
     sp->activity = rGetTime();
     sp->wait = rAllocWait((int) sp->fd);
+
     rSetSocketBlocking(sp, 0);
+    rSetSocketNoDelay(sp, 1);
 
  #if ME_UNIX_LIKE
-    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    fcntl(sp->fd, F_SETFD, FD_CLOEXEC);
  #endif
-
-    rSetWaitMask(listen->wait, R_READABLE, 0);
+ #if MACOSX
+    //  Disable SIGPIPE on this socket. MSG_NOSIGNAL is not supported on macosx.
+    int one = 1;
+    setsockopt(sp->fd, SOL_SOCKET, SO_NOSIGPIPE, &one, sizeof(one));
+ #endif
 
  #if ME_COM_SSL
     if (listen->tls) {
@@ -8894,19 +9382,14 @@ static void acceptSocket(RSocket *listen)
         }
     }
  #endif
-
-    assert(sp->handler);
-    if (!sp->handler) {
-        rSetSocketError(sp, "Missing socket handler");
-    } else {
-        // Handler must free the socket
-        (sp->handler)(sp->arg, sp);
-    }
-#if LEGACY
-    rFreeSocket(sp);
-#endif
+    sp->arg = listen->arg;
+    (sp->handler)(sp->arg, sp);
 }
 
+/*
+    Read from a socket. If in blocking mode, this will block until data is available.
+    Peferable to use rReadSocket which can wait without blocking via fiber coroutines until a deadline is reached.
+ */
 PUBLIC ssize rReadSocketSync(RSocket *sp, char *buf, size_t bufsize)
 {
     ssize bytes;
@@ -8991,6 +9474,7 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
         buf = (char*) buf + written;
         toWrite -= (size_t) written;
         if (toWrite > 0) {
+            // rWriteSocketSync has already blocked until data can be written
             if (rWaitForIO(sp->wait, R_WRITABLE, deadline) == 0) {
                 return R_ERR_TIMEOUT;
             }
@@ -9002,6 +9486,10 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
     return (ssize) bufsize;
 }
 
+/*
+    Write to a socket. If in blocking mode, this will block until data can be written
+    Peferable to use rWriteSocket which can wait without blocking via fiber coroutines until a deadline is reached.
+ */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t bufsize)
 {
     size_t len;
@@ -9154,6 +9642,15 @@ PUBLIC void rSetSocketLinger(RSocket *sp, int linger)
     }
 }
 
+PUBLIC void rSetSocketNoDelay(RSocket *sp, int enable)
+{
+    int value = enable ? 1 : 0;
+
+    if (sp && sp->fd != INVALID_SOCKET) {
+        setsockopt(sp->fd, IPPROTO_TCP, TCP_NODELAY, (char*) &value, sizeof(value));
+    }
+}
+
 PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer)
 {
     if (!sp->tls) {
@@ -9221,6 +9718,16 @@ PUBLIC RSocketCustom rGetSocketCustom(void)
 PUBLIC void rSetSocketCustom(RSocketCustom custom)
 {
     socketCustom = custom;
+}
+
+PUBLIC int rGetSocketLimit(void)
+{
+    return socketLimit;
+}
+
+PUBLIC void rSetSocketLimit(int limit)
+{
+    socketLimit = limit;
 }
 
 PUBLIC bool rCheckInternet(void)
@@ -9337,32 +9844,82 @@ static void traceSocket(Socket fd, cchar *label)
 }
 #endif
 
+#if ME_HAS_SENDFILE
 /*
-    Return the socket error code for the socket
-    This is necessary because the socket may be writable by have a connection error
+    Send a file over a socket using zero-copy sendfile.
+    Returns the number of bytes sent, or -1 on error with errno set.
  */
-static int getSocketError(RSocket *sp)
+PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len)
 {
-    Socklen len;
-    int     error;
+    RWait *wp;
 
-    len = sizeof(error);
-    error = 0;
-    if (getsockopt(sp->fd, SOL_SOCKET, SO_ERROR, (char*) &error, &len) < 0) {
-        return R_ERR_CANT_COMPLETE;
+    wp = sock->wait;
+    if (!wp) {
+        sock->wait = wp = rAllocWait((int) sock->fd);
     }
-    if (error == 0) {
-        return 0;
+
+#if LINUX
+    off_t off;
+    ssize total, remaining, written;
+
+    total = 0;
+    remaining = (ssize) len;
+    off = offset;
+
+    while (remaining > 0) {
+        written = sendfile(sock->fd, fd, &off, (size_t) remaining);
+        if (written < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                if (rWaitForIO(wp, R_WRITABLE, 0) == 0) {
+                    break;
+                }
+                continue;
+            }
+            return (total > 0) ? total : -1;
+        }
+        total += written;
+        remaining -= written;
     }
-#if ME_WIN_LIKE
-    //  On Windows, SO_ERROR returns WSA error codes, set it directly
-    WSASetLastError(error);
+    return total;
+
+#elif MACOSX || FREEBSD
+    off_t written, total, remaining;
+    int   rc;
+
+    total = 0;
+    remaining = (off_t) len;
+
+    while (remaining > 0) {
+        written = remaining;
+        rc = sendfile(fd, sock->fd, offset + total, &written, NULL, 0);
+        if (rc < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                if (written > 0) {
+                    total += written;
+                    remaining -= written;
+                } else {
+                    if (rWaitForIO(wp, R_WRITABLE, 0) == 0) {
+                        break;
+                    }
+                }
+                continue;
+            }
+            return (total > 0) ? (ssize) total : -1;
+        }
+        total += written;
+        remaining -= written;
+        if (written == 0) {
+            break;
+        }
+    }
+    return (ssize) total;
+
 #else
-    //  On Unix, SO_ERROR returns errno values
-    errno = error;
+    errno = ENOSYS;
+    return -1;
 #endif
-    return error;
 }
+#endif /* ME_HAS_SENDFILE */
 
 #endif /* R_USE_SOCKET */
 /*
@@ -9388,7 +9945,9 @@ static int getSocketError(RSocket *sp)
 #if R_USE_STRING
 /*********************************** Locals ***********************************/
 
-#define HASH_PRIME 0x01000193
+#define HASH_PRIME          0x01000193
+
+#define R_STRING_ALLOC_SIZE 256
 
 /************************************ Code ************************************/
 /*
@@ -9791,7 +10350,6 @@ PUBLIC char *sjoinv(cchar *buf, va_list args)
     while (str) {
         bytes = slen(str);
         if (required > MAXINT - bytes) {
-            rLog("error security", "sjoinv", "Integer overflow");
             va_end(ap);
             return 0;
         }
@@ -9845,7 +10403,7 @@ PUBLIC char *sjoinArgs(int argc, cchar **argv, cchar *sep)
     if (sep == 0) {
         sep = "";
     }
-    buf = rAllocBuf(0);
+    buf = rAllocBuf(R_STRING_ALLOC_SIZE);
     for (i = 0; i < argc; i++) {
         rPutToBuf(buf, "%s%s", argv[i], sep);
     }
@@ -10272,7 +10830,7 @@ PUBLIC char *sreplace(cchar *str, cchar *pattern, cchar *replacement)
     if (!pattern || pattern[0] == '\0' || !str || str[0] == '\0') {
         return sclone(str);
     }
-    buf = rAllocBuf(0);
+    buf = rAllocBuf(R_STRING_ALLOC_SIZE);
     plen = slen(pattern);
     for (s = str; *s; s++) {
         if (sncmp(s, pattern, plen) == 0) {
@@ -10522,7 +11080,7 @@ PUBLIC char *stemplate(cchar *str, void *keys)
         if (schr(str, '$') == 0) {
             return sclone(str);
         }
-        buf = rAllocBuf(0);
+        buf = rAllocBuf(R_STRING_ALLOC_SIZE);
         for (src = (char*) str; *src; ) {
             if (*src == '$') {
                 start = src;
@@ -10746,8 +11304,6 @@ PUBLIC void *rSpawnThread(RThreadProc fn, void *arg)
 {
     ThreadContext *context;
 
-    assert(!rIsMain());
-
     context = rAllocType(ThreadContext);
     context->fiber = rGetFiber();
     if (!context->fiber) {
@@ -10845,7 +11401,7 @@ PUBLIC bool rTryLock(RLock *lock)
 #elif VXWORKS
     rc = semTake(lock->cs, NO_WAIT) != OK;
 #endif
-#if ME_DEBUG
+#if ME_DEBUG && KEEP
     if (!rc) {
         //  Only set owner if lock was successfully acquired
         lock->owner = rGetCurrentThread();
@@ -10888,7 +11444,7 @@ PUBLIC void rLock(RLock *lock)
 #elif VXWORKS
     semTake(lock->cs, WAIT_FOREVER);
 #endif
-#if ME_DEBUG
+#if ME_DEBUG && KEEP
     // Store last locker only
     lock->owner = rGetCurrentThread();
 #endif
@@ -11262,6 +11818,11 @@ PUBLIC uint64 rGetHiResTicks(void)
 
     __asm__ __volatile__ ("rdtsc" : "=a" (low), "=d" (high));
     return ((uint64) high << 32) | low;
+}
+#elif MACOSX && (ME_CPU_ARCH == ME_CPU_ARM64)
+PUBLIC uint64 rGetHiResTicks(void)
+{
+    return mach_absolute_time();
 }
 #elif WINDOWS
 PUBLIC uint64 rGetHiResTicks(void)
@@ -11994,14 +12555,22 @@ PUBLIC RWait *rAllocWait(int fd)
     return wp;
 }
 
+/*
+    Free a wait object. Assumed that the underlying socket is already closed.
+ */
 PUBLIC void rFreeWait(RWait *wp)
 {
     char fdbuf[32];
 
     if (wp) {
-        rSetWaitMask(wp, 0, 0);
-        rRemoveName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) wp->fd, 10));
-        rResumeWait(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
+        if (wp->fd != INVALID_SOCKET) {
+#if ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
+            //  Must remove from pollFds array since we manage it manually
+            rSetWaitMask(wp, 0, 0);
+#endif
+            rRemoveName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) wp->fd, 10));
+        }
+        rResumeWaitFiber(wp, R_READABLE | R_WRITABLE | R_MODIFIED | R_TIMEOUT);
         rFree(wp);
     }
 }
@@ -12009,7 +12578,7 @@ PUBLIC void rFreeWait(RWait *wp)
 /*
     Resume any waiting fiber when a wait is freed
  */
-PUBLIC void rResumeWait(RWait *wp, int mask)
+PUBLIC void rResumeWaitFiber(RWait *wp, int mask)
 {
     if (wp->fiber) {
         //  Release a waiting fiber (rWaitForIO)
@@ -12018,25 +12587,32 @@ PUBLIC void rResumeWait(RWait *wp, int mask)
 }
 
 /*
-    This will always create a new fiber coroutine for triggered events
+    Set a wait handler. If flags includes R_WAIT_MAIN_FIBER, the handler runs on the main fiber.
+    Otherwise, a new fiber coroutine is created for triggered events.
  */
-PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask, Ticks deadline)
+PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask, Ticks deadline, int flags)
 {
     wp->deadline = deadline;
     wp->handler = handler;
     wp->arg = arg;
+    wp->flags = flags;
     rSetWaitMask(wp, mask, 0);
 }
 
 PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
 {
-    int fd;
+    Socket fd;
+    int    priorMask;
 
     if (wp == 0) {
         return;
     }
-    fd = wp->fd;
     wp->deadline = deadline;
+    if (wp->mask == (int) mask) {
+        return;
+    }
+    fd = wp->fd;
+    priorMask = wp->mask;
     wp->mask = (int) mask;
 
 #if ME_EVENT_NOTIFIER == R_EVENT_EPOLL
@@ -12047,10 +12623,6 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
     }
     memset(&ev, 0, sizeof(ev));
     ev.data.fd = fd;
-    ev.events = EPOLLOUT | EPOLLIN | EPOLLHUP;
-    (void) epoll_ctl(waitfd, EPOLL_CTL_DEL, fd, &ev);
-
-    ev.events = 0;
     if (mask & R_READABLE) {
         ev.events |= EPOLLIN | EPOLLHUP;
     }
@@ -12058,14 +12630,15 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
         ev.events |= EPOLLOUT | EPOLLHUP;
     }
     if (mask & R_MODIFIED) {
-        ev.events = EPOLLIN | EPOLLHUP;
-        mask |= R_READABLE;
+        ev.events |= EPOLLIN | EPOLLHUP;
     }
     if (ev.events) {
-        if (epoll_ctl(waitfd, EPOLL_CTL_ADD, fd, &ev) != 0) {
-            //  Close socket will remove wait which may not exist
-            // rTrace("event", "Epoll add error %d on fd %d", errno, fd);
+        //  Try MOD first, fall back to ADD if not yet registered
+        if (epoll_ctl(waitfd, EPOLL_CTL_MOD, fd, &ev) < 0 && errno == ENOENT) {
+            (void) epoll_ctl(waitfd, EPOLL_CTL_ADD, fd, &ev);
         }
+    } else {
+        (void) epoll_ctl(waitfd, EPOLL_CTL_DEL, fd, &ev);
     }
 
 #elif ME_EVENT_NOTIFIER == R_EVENT_KQUEUE
@@ -12076,41 +12649,32 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
         return;
     }
     flags = mask >> 32;
-
-    //  OPT - can these be combined with the SETs below?
     memset(&ev, 0, sizeof(ev));
-    EV_SET(&ev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-    EV_SET(&ev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-    (void) kevent(waitfd, &ev[0], 2, NULL, 0, NULL);
-
     kp = &ev[0];
+
+    //  Only delete filters that were previously set but are no longer needed
+    if ((priorMask & R_READABLE) && !(mask & R_READABLE)) {
+        EV_SET(kp++, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+    }
+    if ((priorMask & R_WRITABLE) && !(mask & R_WRITABLE)) {
+        EV_SET(kp++, fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+    }
+    // EV_CLEAR makes events edge-triggered
     if (mask & R_READABLE) {
-        EV_SET(kp, fd, EVFILT_READ, EV_ADD | EV_CLEAR, flags, 0, 0);
-        kp++;
+        EV_SET(kp++, fd, EVFILT_READ, EV_ADD | EV_CLEAR, flags, 0, 0);
     }
     if (mask & R_WRITABLE) {
-        EV_SET(kp, fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, flags, 0, 0);
-        kp++;
+        EV_SET(kp++, fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, flags, 0, 0);
     }
     if (mask & R_MODIFIED) {
-        EV_SET(kp, fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, 0);
-        kp++;
+        EV_SET(kp++, fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, flags, 0, 0);
     }
-
-    if (kevent(waitfd, &ev[0], (int) (kp - ev), NULL, 0, NULL) < 0) {
-#if FUTURE
-        /*
-            Reissue and get results. Test for broken pipe case.
-         */
-        if (mask) {
-            int rc = kevent(waitfd, ev, 1, ev, 1, NULL);
-            if (rc == 1 && interest[0].flags & EV_ERROR && interest[0].data == EPIPE) {
-                // Broken PIPE - just ignore
-            } else {
-                rError("wait", "Cannot issue notifier wakeup event, errno=%d", errno);
-            }
+    if (kp > &ev[0]) {
+        int rc = kevent(waitfd, &ev[0], (int) (kp - ev), NULL, 0, NULL);
+        //  ENOENT is expected when deleting filters for already-closed sockets
+        if (rc != 0 && errno != ENOENT) {
+            rLog("error", "wait", "kevent: rc %d, errno %d\n", rc, errno);
         }
-#endif
     }
 #elif ME_EVENT_NOTIFIER == R_EVENT_SELECT
     int i;
@@ -12154,25 +12718,36 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
     }
     //  Add new entry if mask is non-zero
     if (mask) {
-        if (pollCount < pollMax) {
-            pollFds[pollCount].fd = fd;
-            pollFds[pollCount].events = 0;
-            if (mask & R_READABLE) {
-                pollFds[pollCount].events |= POLLIN;
+        //  Grow the poll table if full
+        if (pollCount >= pollMax) {
+            int       newMax = pollMax * 2;
+            WSAPOLLFD *newFds = rAlloc(sizeof(WSAPOLLFD) * newMax);
+            if (newFds) {
+                memcpy(newFds, pollFds, sizeof(WSAPOLLFD) * pollCount);
+                rFree(pollFds);
+                pollFds = newFds;
+                pollMax = newMax;
+            } else {
+                rDebug("wait", "Cannot grow poll table for fd %d", fd);
+                return;
             }
-            if (mask & R_WRITABLE) {
-                pollFds[pollCount].events |= POLLOUT;
-            }
-            if (mask & R_MODIFIED) {
-                pollFds[pollCount].events |= POLLIN;
-            }
-            pollFds[pollCount].revents = 0;
-            pollCount++;
-        } else {
-            rDebug("wait", "Poll table full, cannot add fd %d (max=%d)", fd, pollMax);
         }
+        pollFds[pollCount].fd = fd;
+        pollFds[pollCount].events = 0;
+        if (mask & R_READABLE) {
+            pollFds[pollCount].events |= POLLIN;
+        }
+        if (mask & R_WRITABLE) {
+            pollFds[pollCount].events |= POLLOUT;
+        }
+        if (mask & R_MODIFIED) {
+            pollFds[pollCount].events |= POLLIN;
+        }
+        pollFds[pollCount].revents = 0;
+        pollCount++;
     }
 #endif
+    (void) priorMask;
 }
 
 /*
@@ -12183,7 +12758,7 @@ PUBLIC void rWakeup(void)
     #if ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
     char byte = 'W';
     if (waiting && wakeupSock[1] != INVALID_SOCKET) {
-        send(wakeupSock[1], &byte, 1, 0);
+        send(wakeupSock[1], &byte, 1, MSG_NOSIGNAL);
     }
 #elif ME_UNIX_LIKE
     if (waiting) {
@@ -12257,10 +12832,11 @@ PUBLIC int rWait(Ticks deadline)
             kev = &events[i];
             fd = (int) kev->ident;
             event = 0;
-            if (kev->filter == EVFILT_READ || kev->filter == EVFILT_VNODE || kev->flags & EV_ERROR) {
+            if (kev->filter == EVFILT_READ || kev->filter == EVFILT_VNODE ||
+                kev->flags & (EV_ERROR | EV_EOF)) {
                 event |= R_READABLE;
             }
-            if (kev->filter == EVFILT_WRITE || kev->flags & EV_ERROR) {
+            if (kev->filter == EVFILT_WRITE || kev->flags & (EV_ERROR | EV_EOF)) {
                 event |= R_WRITABLE;
             }
             if (event) {
@@ -12335,7 +12911,7 @@ PUBLIC int rWait(Ticks deadline)
             //  Check if this is the wakeup socket at slot 0
             if (i == 0 && fd == wakeupSock[0]) {
                 //  Drain the wakeup socket
-                while (recv(wakeupSock[0], buf, sizeof(buf), 0) > 0) {
+                while (recv(wakeupSock[0], buf, sizeof(buf), MSG_NOSIGNAL) > 0) {
                 }
                 pollFds[i].revents = 0;
                 continue;
@@ -12364,16 +12940,30 @@ PUBLIC int rWait(Ticks deadline)
  */
 static void invokeExpired(void)
 {
-    RWait *wp;
-    RName *np;
-    Ticks now;
+    RWait  *wp;
+    RName  *np;
+    Ticks  now;
+    Socket expired[ME_MAX_EVENTS];
+    int    count;
 
     now = rGetTicks();
+    count = 0;
+
+    //  First pass: collect expired fds without modifying the hash
     for (ITERATE_NAMES(waitMap, np)) {
         wp = (RWait*) np->value;
         if (wp->deadline && wp->deadline <= now) {
-            invokeHandler((size_t) wp->fd, R_TIMEOUT);
+            if (count < ME_MAX_EVENTS && count < ME_MAX_EVENTS) {
+                expired[count++] = wp->fd;
+            }
         }
+    }
+    /*
+        Second pass: invoke handlers after iteration completes
+        This prevents hash modification during iteration which would corrupt the iterator
+     */
+    for (int i = 0; i < count; i++) {
+        invokeHandler((size_t) expired[i], R_TIMEOUT);
     }
 }
 
@@ -12386,26 +12976,31 @@ static void invokeHandler(size_t fd, int mask)
     RFiber *fiber;
     char   fdbuf[32];
 
-    assert(rIsMain());
-
     if ((wp = rLookupName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) fd, 10))) == 0) {
         return;
     }
     if ((wp->mask | R_TIMEOUT) & mask) {
         wp->eventMask = mask;
-        rSetWaitMask(wp, 0, 0);
-        if (wp->fiber) {
-            fiber = wp->fiber;
+        if (!wp->fiber && !wp->handler) {
+            //  No fiber and no handler - cleanup wait and return
+            rFreeWait(wp);
+            return;
+        }
+        if (wp->flags & R_WAIT_MAIN_FIBER) {
+            //  Run handler directly on main fiber - fast path for accept
+            ((RWaitProc) wp->handler)(wp->arg, mask & ~R_TIMEOUT);
+        } else if (wp->fiber) {
+            //  Existing path: resume waiting fiber
+            rResumeFiber(wp->fiber, (void*) (ssize) (mask & ~R_TIMEOUT));
         } else {
-            assert(wp->handler);
-            if (!wp->handler) return;
+            //  Existing path: allocate new fiber for handler
             if ((fiber = rAllocFiber("wait", (RFiberProc) wp->handler, wp->arg)) == 0) {
-                // Wait for a fiber to be available to run the handler
+                //  Wait for a fiber to be available to run the handler
                 rStartEvent((REventProc) wp->handler, (void*) wp->arg, 1);
                 return;
             }
+            rResumeFiber(fiber, (void*) (ssize) (mask & ~R_TIMEOUT));
         }
-        rResumeFiber(fiber, (void*) (ssize) (mask & ~R_TIMEOUT));
     }
 }
 
@@ -12419,8 +13014,6 @@ PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline)
     int   priorMask;
     void  *value;
 
-    assert(!rIsMain());
-
     if (deadline && deadline < rGetTicks()) {
         return 0;
     }
@@ -12431,9 +13024,8 @@ PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline)
 
     value = rYieldFiber(0);
 
-    wp->deadline = priorDeadline;
-    wp->mask = priorMask;
     wp->fiber = 0;
+    rSetWaitMask(wp, priorMask, priorDeadline);
     return (int) (ssize) value;
 }
 
