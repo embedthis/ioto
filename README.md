@@ -203,6 +203,16 @@ Visual Studio Community Edition. You can download the installer from the
 You will also need to install `vcpkg` to manage the dependencies and install
 the required SSL libraries.
 
+Newer versions of Visual Studio include Vcpkg. You can check if you have Vcpkg
+installed by running:
+
+```bash
+    > vcpkg --version
+```
+
+If installed, you can skip these steps: If you do not have Vcpkg installed, you
+can install it by running:
+
 To install `vcpkg`, download Vcpkg and install at the top of your home
 directory.
 
@@ -213,10 +223,10 @@ directory.
     > .\vcpkg integrate install
 ```
 
-Once installed, you can install the required Ioto OpenSSL dependency:
+Once installed, you can install the required Ioto dependencies:
 
 ```bash
-$ vcpkg install openssl
+$ vcpkg install
 ```
 
 OpenSSL will be installed to:
