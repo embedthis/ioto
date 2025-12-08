@@ -51,6 +51,14 @@
     #define ME_JSON_DEFAULT_PROPERTY 64        /**< Default property name buffer size in bytes */
 #endif
 
+#ifndef ME_JSON_BUFSIZE
+    /*
+        Most conversions are done for short properties and values, so we use a small buffer size.
+     */
+    #define ME_JSON_BUFSIZE          128       /**< Default bufsize for jsonToString operation */
+#endif
+
+
 static int maxLength = JSON_MAX_LINE_LENGTH;   // Maximum line length for compact output
 static int indentLevel = JSON_DEFAULT_INDENT;  // Indentation spaces per level
 
@@ -1831,7 +1839,7 @@ PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags)
     if (!json) {
         return 0;
     }
-    if ((buf = rAllocBuf(0)) == 0) {
+    if ((buf = rAllocBuf(ME_JSON_BUFSIZE)) == 0) {
         return 0;
     }
     if (key && *key && (nid = jsonGetId(json, nid, key)) < 0) {
@@ -2160,7 +2168,7 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
     if (!str || schr(str, '$') == 0 || !json) {
         return sclone(str);
     }
-    buf = rAllocBuf(0);
+    buf = rAllocBuf(ME_JSON_BUFSIZE);
     for (src = (char*) str; *src; src++) {
         if (src[0] == '$' && src[1] == '{') {
             for (cp = start = src + 2; *cp && *cp != '}'; cp++) {

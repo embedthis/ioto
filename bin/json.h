@@ -201,17 +201,17 @@
     #define ME_CPU_ARCH ME_CPU_ALPHA
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm64__) || defined(__aarch64__)
+#elif defined(__arm64__) || defined(__aarch64__) || defined(_M_ARM64)
     #define ME_CPU "arm64"
     #define ME_CPU_ARCH ME_CPU_ARM64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(_M_ARM)
     #define ME_CPU "arm"
     #define ME_CPU_ARCH ME_CPU_ARM
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__x86_64__) || defined(_M_AMD64)
+#elif defined(__x86_64__) || defined(_M_AMD64) || defined(__amd64__) || defined(__amd64)
     #define ME_CPU "x64"
     #define ME_CPU_ARCH ME_CPU_X64
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
@@ -236,14 +236,15 @@
     #define ME_CPU_ARCH ME_CPU_MIPS64
     #define CPU_ENDIAN ME_BIG_ENDIAN
 
-#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc)
+#elif defined(__ppc64__) || defined(__powerpc64__)
+    #define ME_CPU "ppc64"
+    #define ME_CPU_ARCH ME_CPU_PPC64
+    #define CPU_ENDIAN ME_BIG_ENDIAN
+
+#elif defined(__ppc__) || defined(__powerpc__) || defined(__ppc) || defined(__POWERPC__)
     #define ME_CPU "ppc"
     #define ME_CPU_ARCH ME_CPU_PPC
     #define CPU_ENDIAN ME_BIG_ENDIAN
-
-#elif defined(__ppc64__)
-    #define CPU "ppc64"
-    #define CPU_ARCH CPU_PPC64
 
 #elif defined(__sparc__)
     #define ME_CPU "sparc"
@@ -261,20 +262,20 @@
     #define ME_CPU_ARCH ME_CPU_SH
     #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__riscv_32)
-    #define ME_CPU "riscv"
-    #define ME_CPU_ARCH ME_CPU_RISCV
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
-
-#elif defined(__riscv_64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
     #define ME_CPU "riscv64"
     #define ME_CPU_ARCH ME_CPU_RISCV64
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 
-#elif defined(__XTENSA__)
+#elif defined(__riscv) && (__riscv_xlen == 32)
+    #define ME_CPU "riscv"
+    #define ME_CPU_ARCH ME_CPU_RISCV
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
+
+#elif defined(__XTENSA__) || defined(__xtensa__)
     #define ME_CPU "xtensa"
     #define ME_CPU_ARCH ME_CPU_XTENSA
-    #define ME_CPU_ENDIAN ME_LITTLE_ENDIAN
+    #define CPU_ENDIAN ME_LITTLE_ENDIAN
 #else
     #error "Cannot determine CPU type in osdep.h"
 #endif
@@ -653,6 +654,7 @@
     #include    <netinet/ip.h>
 #endif
 #if ME_UNIX_LIKE
+    #include    <stdbool.h>
     #include    <pthread.h>
     #include    <pwd.h>
 #if !CYGWIN
@@ -709,6 +711,7 @@
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,0)
         #include    <sys/epoll.h>
     #endif
+    #include    <malloc.h>
     #include    <sys/prctl.h>
     #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,22)
         #include    <sys/eventfd.h>
@@ -723,6 +726,17 @@
         #include    <sys/sendfile.h>
     #endif
 #endif
+
+/*
+    Sendfile support for zero-copy file transfers
+ */
+#if LINUX && !__UCLIBC__
+    #define ME_HAS_SENDFILE 1
+#elif MACOSX || FREEBSD
+    #define ME_HAS_SENDFILE 1
+#else
+    #define ME_HAS_SENDFILE 0
+#endif
 #if MACOSX
     #include    <stdbool.h>
     #include    <mach-o/dyld.h>
@@ -730,6 +744,7 @@
     #include    <mach/mach_init.h>
     #include    <mach/mach_time.h>
     #include    <mach/task.h>
+    #include    <malloc/malloc.h>
     #include    <libkern/OSAtomic.h>
     #include    <net/if_dl.h>
 #endif
@@ -824,7 +839,7 @@
 */
 #ifndef HAS_BOOL
     #ifndef __cplusplus
-        #if !MACOSX && !FREERTOS
+        #if !ME_UNIX_LIKE && !FREERTOS
             #define HAS_BOOL 1
             /**
                 Boolean data type.
@@ -2151,8 +2166,17 @@ extern "C" {
     #define R_USE_PLATFORM_REPORT ESP32
 #endif
 
+#ifndef ME_FIBER_VM_STACK
+    #if ESP32 || FREERTOS
+        #define ME_FIBER_VM_STACK 0
+    #else
+        #define ME_FIBER_VM_STACK 1
+    #endif
+#endif
+
 #ifndef ME_FIBER_GUARD_STACK
-    #if ME_DEBUG
+//  Only use fiber guards when not using VM stack (VM provides guard pages)
+    #if ME_DEBUG && !ME_FIBER_VM_STACK
         #define ME_FIBER_GUARD_STACK 1
     #else
         #define ME_FIBER_GUARD_STACK 0
@@ -2201,11 +2225,7 @@ struct Rtls;
 #endif
 
 #ifndef ME_R_PRINT
-    #define ME_R_PRINT           1
-#endif
-
-#ifndef ME_FIBER_GUARD_STACK
-    #define ME_FIBER_GUARD_STACK 0
+    #define ME_R_PRINT 1
 #endif
 
 /************************************ Error Codes *****************************/
@@ -2505,6 +2525,27 @@ PUBLIC void *rReallocMem(void *ptr, size_t size);
 PUBLIC void rFreeMem(void *ptr);
 
 /**
+    Allocate virtual memory
+    @description Allocate memory using virtual memory allocation (mmap/VirtualAlloc).
+        This keeps allocations separate from the heap to reduce fragmentation.
+        Useful for allocating large blocks like fiber stacks.
+        Only supported on Unix/Windows.
+    @param size Size of memory block to allocate in bytes.
+    @return Pointer to allocated memory block, or NULL on failure.
+    @stability Evolving
+ */
+PUBLIC void *rAllocVirt(size_t size);
+
+/**
+    Free virtual memory
+    @description Free memory allocated via rAllocVirt.  Only supported on Unix/Windows.
+    @param ptr Memory block pointer to free. NULL is safely ignored.
+    @param size Size of the memory block (required for munmap on Unix).
+    @stability Evolving
+ */
+PUBLIC void rFreeVirt(void *ptr, size_t size);
+
+/**
     Compare two blocks of memory
     @description Compare two blocks of memory.
     @param s1 First block of memory
@@ -2550,6 +2591,7 @@ PUBLIC void *rMemdup(cvoid *ptr, size_t size);
 PUBLIC void rSetMemHandler(RMemProc handler);
 
 /************************************ Fiber ************************************/
+
 /**
     Fiber entry point function
     @param data Custom function argument
@@ -2559,21 +2601,81 @@ typedef void (*RFiberProc)(void *data);
 
 #if R_USE_FIBER
 
+#ifndef ME_FIBER_DEFAULT_STACK
+/*
+    Standard printf alone can use 8k
+ */
+    #if ME_64
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
+    #else
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
+    #endif
+#endif
+
+/*
+    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
+ */
+#ifndef ME_FIBER_MIN_STACK
+    #define ME_FIBER_MIN_STACK   ((size_t) (16 * 1024))
+#endif
+/*
+    Guard character for stack overflow detection when not using VM stacks
+ */
+#define R_STACK_GUARD_CHAR       0xFE
+
+#ifndef ME_FIBER_ALLOC_DEBUG
+    #define ME_FIBER_ALLOC_DEBUG 0
+#endif
+
+#ifndef ME_FIBER_POOL_MIN
+    #if ESP32 || FREERTOS
+        #define ME_FIBER_POOL_MIN 0
+    #else
+        #define ME_FIBER_POOL_MIN 1
+    #endif
+#endif
+
+#ifndef ME_FIBER_POOL_LIMIT
+    #if ESP32 || FREERTOS
+        #define ME_FIBER_POOL_LIMIT 4
+    #else
+        #define ME_FIBER_POOL_LIMIT 8
+    #endif
+#endif
+
+#ifndef ME_FIBER_PRUNE_INTERVAL
+    #define ME_FIBER_PRUNE_INTERVAL (1 * 60 * 1000)
+#endif
+
+#ifndef ME_FIBER_IDLE_TIMEOUT
+    #define ME_FIBER_IDLE_TIMEOUT   (60 * 1000)
+#endif
+
 #if FIBER_WITH_VALGRIND
-  #include <valgrind/valgrind.h>
-  #include <valgrind/memcheck.h>
+    #include <valgrind/valgrind.h>
+    #include <valgrind/memcheck.h>
 #endif
 
 /**
     Fiber state
     @stability Evolving
  */
+#if _MSC_VER
+// Suppress C4324: jmp_buf has 16-byte alignment for SSE registers, causing struct padding
+    #pragma warning(push)
+    #pragma warning(disable: 4324)
+#endif
 typedef struct RFiber {
+    struct RFiber *next; // Free list link when pooled
     uctx_t context;
+    RFiberProc func;     // Next function to run (for pooled reuse)
+    Ticks idleSince;     // Timestamp when fiber was returned to pool (for idle pruning)
     jmp_buf jmpbuf;
     void *result;
-    bool block;      // Fiber executing a setjmp block
-    int exception;    // Exception that caused the fiber to crash
+    void *data;          // Next data (for pooled reuse)
+    bool block;          // Fiber executing a setjmp block
+    bool pooled;         // Fiber is pooled, waiting for reuse
+    int exception;       // Exception that caused the fiber to crash
     int done;
 #if FIBER_WITH_VALGRIND
     uint stackId;
@@ -2582,6 +2684,9 @@ typedef struct RFiber {
     //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
+#if ME_FIBER_VM_STACK
+    uchar *stack;        // Pointer to VM-allocated stack
+#else
 #if _MSC_VER
     #pragma warning(push)
     #pragma warning(disable: 4200)
@@ -2590,7 +2695,11 @@ typedef struct RFiber {
 #if _MSC_VER
     #pragma warning(pop)
 #endif
+#endif
 } RFiber;
+#if _MSC_VER
+    #pragma warning(pop)
+#endif
 
 /**
     Thread entry point function
@@ -2662,7 +2771,7 @@ PUBLIC void *rResumeFiber(RFiber *fiber, void *result);
  */
 PUBLIC void *rYieldFiber(void *value);
 
-/** 
+/**
     Start a fiber block
     @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
     @return Zero on first call. Returns 1 when jumping out of the block.
@@ -2672,11 +2781,20 @@ PUBLIC int rStartFiberBlock(void);
 
 /**
     End a fiber block
-    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs 
+    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs
     in the fiber block.
     @stability Prototype
  */
 PUBLIC void rEndFiberBlock(void);
+
+/**
+    Abort the current fiber immediately. Does not return.
+    @description Immediately terminates the current fiber and yields back to the main fiber.
+    The fiber is freed and not returned to the pool. Call after handling an exception
+    from rStartFiberBlock if the fiber context may be corrupted.
+    @stability Evolving
+ */
+PUBLIC void rAbortFiber(void);
 
 /**
     Get the current fiber object
@@ -2686,8 +2804,8 @@ PUBLIC void rEndFiberBlock(void);
 PUBLIC RFiber *rGetFiber(void);
 
 /**
-    Test if a fiber is the main fiber
-    @return True if the fiber is the main fiber
+    Test if executing on the main fiber. Not thread-safe - only call from the runtime thread.
+    @return True if executing on the main fiber
     @stability Evolving
  */
 PUBLIC bool rIsMain(void);
@@ -2737,15 +2855,34 @@ PUBLIC size_t rGetFiberStackSize(void);
     @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
     @stability Evolving
  */
-PUBLIC void rSetFiberStack(size_t size);
+PUBLIC void rSetFiberStackSize(size_t size);
 
 /**
-    Set the fiber limits
-    @param maxFibers The maximum number of fibers (stacks). Set to zero for no limit.
-    @return The previous limit.
+    Set fiber limits
+    @description Configure fiber allocation limits and pool size for caching and reusing fiber allocations.
+        The pool reduces allocation overhead by maintaining a cache of pre-allocated fibers.
+    @param maxFibers Maximum number of fibers (stacks). Set to zero for no limit.
+    @param poolMin Minimum number of fibers to keep in the pool (prune target).
+    @param poolMax Maximum number of fibers to pool.
+    @return The previous maxFibers limit.
     @stability Evolving
  */
-PUBLIC int rSetFiberLimits(int maxFibers);
+PUBLIC int rSetFiberLimits(int maxFibers, int poolMin, int poolMax);
+
+/**
+    Get fiber statistics
+    @description Retrieve current fiber metrics for monitoring and tuning.
+    @param active Output pointer for current active fiber count (may be NULL).
+    @param max Output pointer for maximum fiber limit (may be NULL).
+    @param pooled Output pointer for current number of pooled fibers (may be NULL).
+    @param poolMax Output pointer for maximum pool size (may be NULL).
+    @param poolMin Output pointer for minimum pool size (may be NULL).
+    @param hits Output pointer for pool hit count (may be NULL).
+    @param misses Output pointer for pool miss count (may be NULL).
+    @stability Evolving
+ */
+PUBLIC void rGetFiberStats(int *active, int *max, int *pooled, int *poolMax, int *poolMin, uint64 *hits,
+                           uint64 *misses);
 
 /**
     Allocate a fiber coroutine object
@@ -2959,13 +3096,30 @@ PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
 PUBLIC char *rGetDate(cchar *format);
 
 /**
+    Get the elapsed time since a ticks mark. Create the ticks mark with rGetTicks()
+    @param mark Staring time stamp
+    @returns the time elapsed since the mark was taken.
+    @stability Evolving
+ */
+PUBLIC Ticks rGetElapsedTicks(Ticks mark);
+
+/**
     Get an ISO Date string representation of the given date/time
-    @description Get the date/time as an ISO string.
+    @description Get the date/time as an ISO string. This is a RFC 3339 date string: "2025-11-10T21:28:28.000Z"
     @param time Given time to convert.
     @return A date string. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rGetIsoDate(Time time);
+
+/**
+    Get an HTTP Date string representation of the given date/time
+    @description Get the date/time as an HTTP string. This is a RFC 7231 IMF-fixdate: "Mon, 10 Nov 2025 21:28:28 GMT"
+    @param time Given time to convert.
+    @return A date string. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *rGetHttpDate(Time time);
 
 /**
     Get the elapsed time since a ticks mark. Create the ticks mark with rGetTicks()
@@ -3002,11 +3156,34 @@ PUBLIC Ticks rGetTicks(void);
 PUBLIC Time rGetTime(void);
 
 /**
+    Make a time from a struct tm
+    @param tp Pointer to a struct tm
+    @return The time in milliseconds since Jan 1 1970.
+    @stability Evolving
+ */
+PUBLIC Time rMakeTime(struct tm *tp);
+/**
+    Make a universal time from a struct tm
+    @param tp Pointer to a struct tm
+    @return The time in milliseconds since Jan 1 1970.
+    @stability Evolving
+ */
+PUBLIC Time rMakeUniversalTime(struct tm *tp);
+
+/**
     Parse an ISO date string
-    @return The time in milliseconds since Jan 1, 1970.
+    @return The time in milliseconds since Jan 1, 1970. If the string is invalid, return -1.
     @stability Evolving
  */
 PUBLIC Time rParseIsoDate(cchar *when);
+
+/**
+    Parse an HTTP date string
+    @param value HTTP date string
+    @return The time in milliseconds since Jan 1, 1970. If the string is invalid, return 0.
+    @stability Evolving
+ */
+PUBLIC Time rParseHttpDate(cchar *value);
 
 #endif /* R_USE_TIME */
 
@@ -3049,6 +3226,7 @@ typedef int64 REvent;
 #define R_MODIFIED                0x200 /**< Wait mask for modify events */
 #define R_IO                      0x6   /**< Wait mask for readable or writeable events */
 #define R_TIMEOUT                 0x400 /**< Wait mask for timeout */
+#define R_WAIT_MAIN_FIBER         0x1   /**< Execute wait handler on main fiber without allocating a new fiber */
 
 #define R_EVENT_FAST              0x1   /**< Fast event flag - must not block and runs off main fiber */
 
@@ -3211,7 +3389,9 @@ typedef struct RWait {
     cvoid *arg;             /**< Argument to pass to the handler */
     Ticks deadline;         /**< System deadline time to wait until */
     int mask;               /**< Current event mask */
-    int fd;                 /**< File descriptor to wait upon */
+    int eventMask;          /**< I/O events received */
+    int flags;              /**< Wait handler flags (R_WAIT_MAIN_FIBER) */
+    Socket fd;              /**< File descriptor to wait upon */
 } RWait;
 
 /**
@@ -3237,6 +3417,7 @@ PUBLIC RWait *rAllocWait(int fd);
 
 /**
     Free a wait object
+    @description This call will free a wait object. The underlying socket is assumed to be already closed.
     @param wp RWait object
     @stability Evolving
  */
@@ -3249,25 +3430,31 @@ PUBLIC void rFreeWait(RWait *wp);
     @param mask Event mask to pass to fiber on resume
     @stability Evolving
  */
-PUBLIC void rResumeWait(RWait *wp, int mask);
+PUBLIC void rResumeWaitFiber(RWait *wp, int mask);
 
 /**
     Define a wait handler function on a wait object.
     @description This will run the designated handler on a coroutine fiber in response to matching I/O events.
+        The wait mask is persistent - it remains active across multiple events. The handler will be invoked
+        each time the specified I/O events occur. To disable the wait, call rSetWaitMask(wp, 0, 0) or rFreeWait(wp).
     @param wp RWait object
     @param handler Function handler to invoke as the entrypoint in the new coroutine fiber.
     @param arg Parameter argument to pass to the handler
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline Optional deadline to wait system time. Set to zero for no deadline.
+    @param flags Set to R_WAIT_MAIN_FIBER to run handler on main fiber without allocating a new fiber. Set to 0 for
+       default behavior.
     @stability Evolving
  */
-PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask, Ticks deadline);
+PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask, Ticks deadline, int flags);
 
 /**
-    Update the wait mask for a wait handler
+    Update the wait mask for a wait handler.
+    @description The wait mask is persistent and remains active across multiple events. If the mask and deadline
+        are unchanged from the current values, no kernel syscall is made.
     @param wp RWait object
-    @param mask Set to R_READABLE or R_WRITABLE or both.
-    @param deadline System time in ticks to wait until.  Set to zero for no deadline.
+    @param mask Set to R_READABLE or R_WRITABLE or both. Set to 0 to disable the wait.
+    @param deadline System time in ticks to wait until. Set to zero for no deadline.
     @stability Evolving
  */
 PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline);
@@ -3796,6 +3983,17 @@ PUBLIC char *sncaselesscontains(cchar *str, cchar *pattern, size_t limit);
  */
 PUBLIC ssize sncopy(char *dest, size_t destMax, cchar *src, size_t len);
 
+/**
+    Catenate strings.
+    @description This catenates strings together.
+    @param dest Destination string to append to.
+    @param destMax Maximum size of the destination buffer in characters (including null terminator).
+    @param src Source string to append.
+    @return Returns the number of characters copied to the destination string, or -1 on error.
+    @stability Prototype
+ */
+PUBLIC ssize sncat(char *dest, size_t destMax, cchar *src);
+
 /*
     Test if a string is a floating point number
     @description The supported format is: [+|-][DIGITS][.][DIGITS][(e|E)[+|-]DIGITS]
@@ -4104,7 +4302,7 @@ PUBLIC int svaluei(cchar *value);
     However, it is still recommended that wherever possible, you use the accessor routines provided.
     @see RBuf RBufProc rAddNullToBuf rAdjustBufEnd rAdjustBufStart rBufToString rCloneBuf
         rCompactBuf rAllocBuf rFlushBuf rGetBlockFromBuf rGetBufEnd rGetBufLength
-        rGetBufSize rGetBufSpace rGetBufStart rGetCharFromBuf rGrowBuf rInserCharToBuf
+        rGetBufSize rGetBufSpace rGetBufStart rGetCharFromBuf rGrowBuf rGrowBufSize rInserCharToBuf
         rLookAtLastCharInBuf rLookAtNextCharInBuf rPutBlockToBuf rPutCharToBuf rPutToBuf
         rPutIntToBuf rPutStringToBuf rPutSubToBuf rResetBufIfEmpty rInitBuf
     @stability Internal.
@@ -4311,6 +4509,18 @@ PUBLIC int rGetCharFromBuf(RBuf *buf);
 PUBLIC int rGrowBuf(RBuf *buf, size_t count);
 
 /**
+    Grow the buffer to a specific size
+    @description Grow the storage allocated for content for the buffer to the specified size.
+        If the buffer is already at least the specified size, no action is taken. The size
+        is rounded up to the next power of 2 for efficient memory allocation.
+    @param buf Buffer created via rAllocBuf
+    @param size Minimum total size for the buffer in bytes.
+    @returns Zero if successful and otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC int rGrowBufSize(RBuf *buf, size_t size);
+
+/**
     Grow the buffer so that there is at least the needed minimum space available.
     @description Grow the storage allocated for content for the buffer if required to ensure the minimum specified by
        "need" is available.
@@ -4450,7 +4660,7 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
 typedef struct RList {
     int capacity;           /**< Current list capacity */
     int length;             /**< Current length of the list contents */
-    int flags : 1;          /**< Items should be freed when list is freed */
+    int flags : 8;          /**< List flags: R_DYNAMIC_VALUE, R_STATIC_VALUE, R_TEMPORAL_VALUE */
     void **items;           /**< List item data */
 } RList;
 
@@ -5777,6 +5987,8 @@ PUBLIC void rTermEvents(void);
 #define R_SOCKET_EOF             0x2      /**< Seen end of file */
 #define R_SOCKET_LISTENER        0x4      /**< RSocket is server listener */
 #define R_SOCKET_SERVER          0x8      /**< Socket is on the server-side */
+#define R_SOCKET_FAST_CONNECT    0x10     /**< Fast connect mode */
+#define R_SOCKET_FAST_CLOSE      0x20     /**< Fast close mode */
 
 #ifndef ME_R_SSL_CACHE
     #define ME_R_SSL_CACHE       512
@@ -5796,7 +6008,26 @@ PUBLIC void rTermEvents(void);
 
 #define R_TLS_HAS_AUTHORITY      0x1    /**< Signal to the custom callback that authority certs are available */
 
+/**
+    Socket handler callback function.
+    @description This function is called by the socket layer when a new connection is accepted. The handler
+    is responsible for freeing the socket passed to it.
+    @param data Data passed to the handler.
+    @param sp Socket object.
+    @stability Evolving
+ */
 typedef void (*RSocketProc)(cvoid *data, struct RSocket *sp);
+
+/**
+    Custom socket configuration callback function.
+    @description This function is called by the socket layer to configure the socket. It is used on some platforms
+        (ESP32) to attach the certificate bundle to the socket.
+    @param sp Socket object.
+    @param cmd Command to execute.
+    @param arg Argument to the command.
+    @param flags Flags for the command.
+    @stability Evolving
+ */
 typedef void (*RSocketCustom)(struct RSocket *sp, int cmd, void *arg, int flags);
 
 /*
@@ -5807,7 +6038,7 @@ typedef void (*RSocketCustom)(struct RSocket *sp, int cmd, void *arg, int flags)
 typedef struct RSocket {
     Socket fd;                              /**< Actual socket file handle */
     struct Rtls *tls;
-    int flags : 8;
+    int flags : 16;
     uint mask : 4;
     uint hasCert : 1;                       /**< TLS certificate defined */
     int linger;                             /**< Linger timeout in seconds. -1 means no linger. */
@@ -5843,7 +6074,10 @@ PUBLIC bool rCheckInternet(void);
 /**
     Connect a client socket
     @description Open a client connection. May be called from a fiber or from main. This function is
-                 fiber-aware and will yield during the connection process when called from a fiber.
+        fiber-aware and will yield during the connection process when called from a fiber.
+        The connection strategy is two-pass. First it tries IPv4 addresses, then IPv6.
+        We use IPv4 addresses first to optimize for servers that only support IPv4. This is to avoid
+        issues with some systems where IPv6 dual-stack don't work reliably with localhost.
     @pre If using TLS, this must only be called from a fiber.
     @param sp Socket object returned via rAllocSocket. Must not be NULL.
     @param host Host or IP address to connect to. Must not be NULL.
@@ -5871,6 +6105,21 @@ PUBLIC void rDisconnectSocket(RSocket *sp);
 PUBLIC void rFreeSocket(RSocket *sp);
 
 /**
+    Get the maximum number of active sockets allowed.
+    @return The socket limit.
+    @stability Evolving
+ */
+PUBLIC int rGetSocketLimit(void);
+
+/**
+    Set the maximum number of active sockets allowed.
+    @description This sets a runtime limit on active sockets. Connections exceeding this limit will be rejected.
+    @param limit Maximum number of active sockets.
+    @stability Evolving
+ */
+PUBLIC void rSetSocketLimit(int limit);
+
+/**
     Get the locally bound socket IP address and port for the socket
     @description Get the file descriptor associated with a socket.
     @param sp Socket object returned from rAllocSocket
@@ -5883,8 +6132,8 @@ PUBLIC void rFreeSocket(RSocket *sp);
 PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port);
 
 /**
-    Get the custom socket callback handler
-    @return The custom socket callback handler
+    Get the custom socket configuration callback
+    @return The custom socket callback
     @stability Evolving
  */
 PUBLIC RSocketCustom rGetSocketCustom(void);
@@ -5951,12 +6200,16 @@ PUBLIC bool rIsSocketSecure(RSocket *sp);
 /**
     Listen on a server socket for incoming connections
     @description Open a server socket and listen for client connections.
-        If host is null, then this will listen on both IPv6 and IPv4.
+        When dual-stack is available (IPV6_V6ONLY defined), prefer IPv6 to accept both IPv4 and
+        IPv6 connections via a single socket. When a specific host is an IPv4 address like "127.0.0.1",
+        use IPv4 only. When dual-stack is not available, let the system choose the interface.
+        NOTE: macosx dual-stack does not work reliably with localhost, so we use IPv4 only.
     @param sp Socket object returned via rAllocSocket
     @param host Host name or IP address to bind to. Set to 0.0.0.0 to bind to all possible addresses on a given port.
+       Supports IPv4, IPv6, wildcard and named hosts.
     @param port TCP/IP port number to connect to.
     @param handler Function callback to invoke for incoming connections. The function is invoked on a new fiber
-       coroutine.
+       coroutine. The handler is responsible for freeing the socket passed to it.
     @param arg Argument to handler.
     @return Zero if successful.
     @stability Evolving
@@ -5965,8 +6218,8 @@ PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler
 
 /**
     Read from a socket until a deadline is reached.
-    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are 
-        available. If none is available, this call will yield the current fiber and resume the main fiber. When data 
+    @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are
+        available. If none is available, this call will yield the current fiber and resume the main fiber. When data
         is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
@@ -5983,10 +6236,12 @@ PUBLIC ssize rReadSocket(RSocket *sp, char *buf, size_t bufsize, Ticks deadline)
 
 /**
     Read from a socket.
-    @description Read data from a socket. The read will return with whatever bytes are available. If none and the socket
-        is in blocking mode, it will block until there is some data available or the socket is disconnected.
-        Use rSetSocketBlocking to change the socket blocking mode.  It is preferable to use rReadSocket which can wait 
-        without blocking via fiber coroutines until a deadline is reached.
+    @description Read data from a socket without yielding the current fiber. If the socket is in blocking mode,
+        this is a blocking read. The read will return with whatever bytes are available. If none are available,
+        the call will return -1 and set the socket error. If the socket is in blocking mode, it will block until
+        there is some data available or the socket is disconnected. Use rSetSocketBlocking to change the socket
+        blocking mode.  It is preferable to use rReadSocket which can wait without blocking via fiber coroutines
+        until a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
     @param bufsize Size of the buffer.
@@ -6020,7 +6275,9 @@ PUBLIC void rSetSocketCerts(RSocket *sp, cchar *ca, cchar *key, cchar *cert, cch
 
 /**
     Set the socket custom configuration callback
-    @param custom Custom callback function
+    @description This call is used to set the custom socket configuration callback. It is used on some platforms
+        (ESP32) to attach the certificate bundle to the socket.
+    @param custom Custom socket configuration callback function
     @stability Evolving
  */
 PUBLIC void rSetSocketCustom(RSocketCustom custom);
@@ -6071,7 +6328,8 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
 
 /**
     Set the socket linger timeout
-    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be closed.
+    @description Set the linger timeout for the socket. The linger timeout is the time to wait for the socket to be
+       closed.
     If set to zero, the socket will be closed immediately with a RST packet instead of a FIN packet.
     This API must be called before calling rConnectSocket.
     @param sp Socket object returned from rAllocSocket
@@ -6079,6 +6337,16 @@ PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
     @stability Evolving
  */
 PUBLIC void rSetSocketLinger(RSocket *sp, int linger);
+
+/**
+    Set the TCP_NODELAY option to disable Nagle's algorithm.
+    @description Disabling Nagle's algorithm reduces latency for small packets at the cost of potentially
+        more network overhead. This is beneficial for interactive protocols.
+    @param sp Socket object returned from rAllocSocket
+    @param enable Set to 1 to enable TCP_NODELAY (disable Nagle), 0 to disable
+    @stability Evolving
+ */
+PUBLIC void rSetSocketNoDelay(RSocket *sp, int enable);
 
 /**
     Set the socket TLS verification parameters
@@ -6110,16 +6378,16 @@ PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline);
 
 /**
     Write to a socket until a deadline is reached
-    @description Write a block of data to a socket until a deadline is reached. This may return having written less 
-        than the required bytes if the deadline is reached. This call will yield the current fiber and resume 
+    @description Write a block of data to a socket until a deadline is reached. This may return having written less
+        than the required bytes if the deadline is reached. This call will yield the current fiber and resume
         the main fiber. When data is available, the fiber will resume.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
     @param bufsize Length of data to write.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
-        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError() 
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot
+        absorb any more data. If the transport is saturated, will return a negative error and rGetSocketError()
         returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
@@ -6127,19 +6395,38 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
 
 /**
     Write to a socket
-    @description Write a block of data to a socket. If the socket is in non-blocking mode (the default), the write
-        may return having written less than the required bytes. It is preferable to use rWriteSocket which can wait 
-        without blocking via fiber coroutines until a deadline is reached.
+    @description Write a block of data to a socket without yielding the current fiber.
+        If the socket is in non-blocking mode (the default), the write may return having written less than
+        the required bytes. If it is in blocking mode, it will block until the data is written.
+        It is preferable to use rWriteSocket which can wait without blocking via fiber coroutines until
+        a deadline is reached.
     @param sp Socket object returned from rAllocSocket
     @param buf Reference to a block to write to the socket
-    @param len Length of data to write. This may be less than the requested write length if the socket is 
+    @param len Length of data to write. This may be less than the requested write length if the socket is
         in non-blocking mode. Will return a negative error code on errors.
-    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot 
-        absorb any more data. If the transport is saturated, will return a negative error and rGetError() 
+    @return A count of bytes actually written. Return a negative error code on errors and if the socket cannot
+        absorb any more data. If the transport is saturated, will return a negative error and rGetError()
         returns EAGAIN or EWOULDBLOCK.
     @stability Evolving
  */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t len);
+
+#if ME_HAS_SENDFILE
+/**
+    Send a file over a socket using zero-copy sendfile.
+    @description This function uses the kernel sendfile() system call to transfer data
+        directly from a file to a socket without copying through user space. This is
+        only available for non-TLS connections on supported platforms (Linux, macOS, FreeBSD).
+    @param sock RSocket pointer. Uses sock->wait if present for efficient I/O waiting.
+    @param fd File descriptor of the file to send.
+    @param offset File offset to start sending from.
+    @param len Number of bytes to send.
+    @return The number of bytes sent, or a negative error code on failure.
+        Returns -1 with errno set to ENOSYS on unsupported platforms.
+    @stability Evolving
+ */
+PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len);
+#endif
 
 #endif /* R_USE_SOCKET */
 
@@ -6174,7 +6461,7 @@ typedef struct RLock {
 #else
         #warning "Unsupported OS in RLock definition in r.h"
 #endif
-#if ME_DEBUG
+#if ME_DEBUG && KEEP
     RThread owner;
 #endif
     bool initialized;
@@ -6369,6 +6656,31 @@ PUBLIC void rSetTlsDefaultAlpn(cchar *ciphers);
 PUBLIC void rSetTlsDefaultCiphers(cchar *ciphers);
 PUBLIC void rSetTlsDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke);
 PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer);
+
+/**
+    Get the current TLS session for caching.
+    @description Returns the TLS session with incremented reference count. Caller must free with rFreeTlsSession.
+    @param sp Socket object
+    @return TLS session object or NULL if not available
+    @stability Evolving
+ */
+PUBLIC void *rGetTlsSession(RSocket *sp);
+
+/**
+    Set a cached TLS session for resumption on next connection.
+    @description Must be called after rSetTls() but before rConnectSocket().
+    @param sp Socket object
+    @param session TLS session object from rGetTlsSession
+    @stability Evolving
+ */
+PUBLIC void rSetTlsSession(RSocket *sp, void *session);
+
+/**
+    Free a TLS session object.
+    @param session TLS session object from rGetTlsSession
+    @stability Evolving
+ */
+PUBLIC void rFreeTlsSession(void *session);
 #endif /* R_USE_TLS */
 
 /********************************* Red Black Tree ********************************/
@@ -6590,7 +6902,6 @@ PUBLIC void rPlatformReport(char *label);
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
-
 
 /********* Start of file ../../../src/json.h ************/
 
@@ -7106,7 +7417,7 @@ PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
-    @return The key value as a date or defaultValue if not defined
+    @return The key value as a date or defaultValue if not defined. Return -1 if the date is invalid.
     @stability Evolving
  */
 PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue);
