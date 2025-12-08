@@ -47,30 +47,33 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_HTTP_AUTH
-    #define ME_WEB_HTTP_AUTH       1   /**< Enable HTTP Basic and Digest authentication protocols */
+    #define ME_WEB_HTTP_AUTH       1               /**< Enable HTTP Basic and Digest authentication protocols */
 #endif
 #if ME_WEB_HTTP_AUTH
     #ifndef ME_WEB_AUTH_BASIC
-        #define ME_WEB_AUTH_BASIC  1   /**< Enable HTTP Basic authentication */
+        #define ME_WEB_AUTH_BASIC  1               /**< Enable HTTP Basic authentication */
     #endif
     #ifndef ME_WEB_AUTH_DIGEST
-        #define ME_WEB_AUTH_DIGEST 1   /**< Enable HTTP Digest authentication */
+        #define ME_WEB_AUTH_DIGEST 1               /**< Enable HTTP Digest authentication */
     #endif
     #ifndef ME_WEB_MAX_AUTH
-        #define ME_WEB_MAX_AUTH    256 /**< Default maximum length for usernames and password hashes */
+        #define ME_WEB_MAX_AUTH    256             /**< Default maximum length for usernames and password hashes */
     #endif
 #endif
 #ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS          1   /**< Enable resource limits and security constraints */
+    #define ME_WEB_LIMITS          1               /**< Enable resource limits and security constraints */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS        1   /**< Enable session management support */
+    #define ME_WEB_SESSIONS        1               /**< Enable session management support */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD          1   /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD          1               /**< Enable file upload functionality */
 #endif
 #ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK         1   /**< Enable WebSocket protocol support */
+    #define ME_COM_WEBSOCK         1               /**< Enable WebSocket protocol support */
+#endif
+#ifndef ME_HTTP_SENDFILE
+    #define ME_HTTP_SENDFILE       ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
 #endif
 /** @} */
 
@@ -678,8 +681,9 @@ typedef struct Web {
 #endif /* ME_WEB_HTTP_AUTH */
 
 #if ME_WEB_UPLOAD
-    //  Upload
     RHash *uploads;             /**< Table of uploaded files for this request */
+    char *uploadName;           /**< Name of the current uploading file */
+    char *uploadContentType;    /**< Content type of the current uploading file */
     WebUpload *upload;          /**< Current uploading file */
     int numUploads;             /**< Count of uploaded files */
     cchar *uploadDir;           /**< Directory to place uploaded files */
@@ -947,6 +951,28 @@ PUBLIC char *webParseUrl(cchar *url,
 PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize);
 
 /**
+    Read request body data directly from the rx buffer (zero-copy).
+    @description Fills buffer and sets *dataPtr to the data location. Consumes data internally.
+        Handles both regular Content-Length and chunked transfer encoding.
+        This is more efficient than webRead for cases where the data can be processed directly
+        from the buffer (e.g., writing to a file) without needing an intermediate copy.
+    @pre Must only be called from a fiber.
+    @param web Web request object.
+    @param dataPtr Pointer to receive the data buffer address.
+    @param desiredSize Desired number of bytes to make available.
+    @return Number of bytes available in *dataPtr, 0 on EOF, or negative on error.
+    @stability Internal
+    @code
+    char *ptr;
+    ssize nbytes;
+    while ((nbytes = webReadDirect(web, &ptr, ME_BUFSIZE * 4)) > 0) {
+        write(fd, ptr, nbytes);
+    }
+    @endcode
+ */
+PUBLIC ssize webReadDirect(Web *web, char **dataPtr, size_t desiredSize);
+
+/**
     Read request body data until a given pattern is reached.
     @description This routine will read the body data and return the number of bytes read.
         This routine will block the current fiber if necessary. Other fibers continue to run.
@@ -984,17 +1010,20 @@ PUBLIC void webRemoveVar(Web *web, cchar *name);
 
 /**
     Write a file response
-    @description Read the complete contents of an open file descriptor and send it as the
-        HTTP response body. The function will yield the current fiber as needed to avoid
-        blocking other concurrent operations.
+    @description Read from an open file descriptor and send it as the HTTP response body.
+        Supports sending a portion of the file by specifying offset and length.
+        Uses zero-copy sendfile on non-TLS connections when available.
+        The function will yield the current fiber as needed to avoid blocking other
+        concurrent operations.
     @pre Must only be called from a fiber
     @param web Web request object
     @param fd Open file descriptor to read from (file or pipe)
+    @param offset Byte offset in the file to start reading from
+    @param len Number of bytes to send from the file
     @return Number of bytes written to the response, or negative on error
     @stability Evolving
  */
-
-PUBLIC ssize webSendFile(Web *web, int fd);
+PUBLIC ssize webSendFile(Web *web, int fd, Offset offset, ssize len);
 
 /**
     Set the content length for the response
@@ -1141,7 +1170,26 @@ PUBLIC ssize webWriteJson(Web *web, const Json *json);
 PUBLIC ssize webWriteHeaders(Web *web);
 
 /**
-    Write a response
+    Write a response using a static string
+    @description This routine writes a single plain text response using a static string and
+        finalizes the response in one call. This is a higher performance alternative to
+        webWriteResponse() when the message is a compile-time constant or persistent string
+        that does not need printf-style formatting.
+        If status is zero, set the status to 400 and close the socket after issuing the response.
+        It will block the current fiber if necessary. Other fibers continue to run.
+        This will set the Content-Type header to text/plain.
+    @pre Must only be called from a fiber.
+    @param web Web object
+    @param status HTTP status code. If the status is less than or equal to zero, close the socket after issuing the
+       response. If status is zero, default the status to 400.
+    @param msg Static message string (must be persistent, will not be copied or freed)
+    @return The number of bytes written.
+    @stability Evolving
+ */
+PUBLIC ssize webWriteResponseString(Web *web, int status, cchar *msg);
+
+/**
+    Write a response with printf-style formatting
     @description This routine writes a single plain text response and finalizes the
         response in one call.  If status is zero, set the status to 400 and close the
         socket after issuing the response.  It will block the current fiber if necessary.
@@ -1532,8 +1580,6 @@ PUBLIC int webHook(Web *web, int event);
     @internal
  */
 PUBLIC int webUpgradeSocket(Web *web);
-PUBLIC void webAsync(Web *web, WebSocketProc callback, void *arg);
-PUBLIC int webWait(Web *web);
 #endif /* ME_COM_WEBSOCK */
 
 /************************************ Misc ************************************/
@@ -1543,13 +1589,11 @@ PUBLIC int webWait(Web *web);
     @description Convert a Unix timestamp to a properly formatted HTTP date string
         suitable for use in HTTP headers like Last-Modified or Expires. The format
         follows RFC 2822 specifications.
-    @param buf Buffer to hold the generated date string (must be at least 64 bytes)
-    @param size Size of the buffer
     @param when Unix timestamp to convert
-    @return Pointer to the buffer containing the formatted date string
+    @return Pointer to an allocated HTTP date string. Caller must free.
     @stability Evolving
  */
-PUBLIC char *webDate(char *buf, size_t size, time_t when);
+PUBLIC char *webHttpDate(time_t when);
 
 /**
     Check if currentEtag matches any ETag in If-Match or If-None-Match list
