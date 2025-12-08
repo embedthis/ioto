@@ -90,7 +90,8 @@ info:
 
 test:
 	@./bin/prep-test.sh
-	tm test
+	echo "@@ Running tests"
+	tm -v test
 	
 run:
 	$(BUILD)/bin/ioto -v

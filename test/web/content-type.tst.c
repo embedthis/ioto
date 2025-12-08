@@ -336,6 +336,7 @@ static void testUnknownExtension(void)
     // Create file with unknown extension
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/test-%d.xyz", HTTP, pid),
                       "test data", 9, "Content-Type: text/plain\r\n");
+    tinfo("@@ status: %d", status);
     ttrue(status == 201 || status == 204);
 
     // Note: /upload/ route doesn't serve files via GET

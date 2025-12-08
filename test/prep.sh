@@ -16,4 +16,8 @@ if [ ! -d certs ] ; then
     cp ../certs/*.key certs
 fi
 
+echo "@@ TestMe prep complete"
+pwd
+ls -l certs
+
 exit 0
