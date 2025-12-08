@@ -268,7 +268,7 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
         urlFree(up);
         return NULL;
     }
-    urlSseAsync(up, callback, arg);
+    urlSseRun(up, callback, arg, up->rx, 0);
     return up;
 }
 
