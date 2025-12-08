@@ -18,7 +18,7 @@ make-files() {
     fi
 }
 
-mkdir -p tmp
+mkdir -p tmp site/upload
 
 # Create 100-byte test files for range and conditional request tests
 # range-test.txt - read-only tests
