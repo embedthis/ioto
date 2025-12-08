@@ -592,3 +592,7 @@ PUBLIC bool mqttCheckQueue(Mqtt *mq);
 
 #endif /* ME_COM_MQTT */
 #endif
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
