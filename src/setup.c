@@ -29,7 +29,7 @@ PUBLIC int ioInitConfig(void)
 {
     Json   *json;
     size_t stackSize;
-    int    maxFibers;
+    int    maxFibers, poolMin, poolMax;
 
     assert(rIsMain());
 
@@ -50,12 +50,12 @@ PUBLIC int ioInitConfig(void)
     
     stackSize = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
     if (stackSize) {
-        rSetFiberStack(stackSize);
+        rSetFiberStackSize(stackSize);
     }
     maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "0"));
-    if (maxFibers) {
-        rSetFiberLimits(maxFibers);
-    }
+    poolMin = svaluei(jsonGet(json, 0, "limits.fiberPoolMin", "0"));
+    poolMax = svaluei(jsonGet(json, 0, "limits.fiberPoolMax", "0"));
+    rSetFiberLimits(maxFibers, poolMin, poolMax);
 
 #if SERVICES_CLOUD
     if (ioto->cmdAccount) {

@@ -120,7 +120,7 @@ static Log *allocLog(Json *json, int id, cchar *path)
         return 0;
     }
     lp->notifyWait = rAllocWait(lp->notifyFd);
-    rSetWaitHandler(lp->notifyWait, (RWaitProc) logNotify, lp, R_MODIFIED);
+    rSetWaitHandler(lp->notifyWait, (RWaitProc) logNotify, lp, R_MODIFIED, 0, 0);
 #endif
     return lp;
 }
@@ -327,11 +327,11 @@ static int openLog(Log *lp)
     lp->wait = rAllocWait(fileno(lp->fp));
 
     if (lp->command) {
-        rSetWaitHandler(lp->wait, (RWaitProc) logEvent, lp, R_READABLE);
+        rSetWaitHandler(lp->wait, (RWaitProc) logEvent, lp, R_READABLE, 0, 0);
 #if MACOSX
     } else {
         rSetWaitHandler(lp->wait, (RWaitProc) logEvent, lp,
-                        ((int64) R_MODIFIED) | ((int64) NOTE_WRITE << 32) | R_READABLE);
+                        ((int64) R_MODIFIED) | ((int64) NOTE_WRITE << 32) | R_READABLE, 0, 0);
 #endif
     }
     return 0;

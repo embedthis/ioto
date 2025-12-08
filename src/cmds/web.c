@@ -187,7 +187,6 @@ int main(int argc, char **argv)
         rDaemonize();
     }
 #endif
-
     //  Initialize runtime and start web server fiber
     if (rInit((RFiberProc) start, 0) < 0) {
         rFprintf(stderr, "web: Cannot initialize runtime\n");
@@ -212,7 +211,7 @@ int main(int argc, char **argv)
 static void start(void)
 {
     cchar *path;
-    int   maxFibers;
+    int   maxFibers, poolMin, poolMax;
 
     //  Load configuration from file or use defaults
     path = configPath ? configPath : "web.json5";
@@ -227,11 +226,11 @@ static void start(void)
     if (profile) {
         jsonSetString(config, 0, "profile", profile);
     }
-    //  Configure fiber limits if specified in config
+    //  Configure fiber limits if specified in config. A value of zero uses the default values
     maxFibers = (int) svalue(jsonGet(config, 0, "limits.fibers", "0"));
-    if (maxFibers) {
-        rSetFiberLimits(maxFibers);
-    }
+    poolMin = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMin", "0"));
+    poolMax = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMax", "0"));
+    rSetFiberLimits(maxFibers, poolMin, poolMax);
 
     //  Override listen endpoints if specified on command line
     if (endpoint) {

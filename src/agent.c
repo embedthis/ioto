@@ -204,9 +204,8 @@ static int initServices(void)
         if (!ioto->registered && ioRegister() < 0) {
             return R_ERR_BAD_ARGS;
         }
-    } else
+    }
 #endif
-    rTrace("ioto", "The LICENSE requires that you declare device volumes at https://admin.embedthis.com");
 
 #if SERVICES_DATABASE
     if (ioto->dbService && ioInitDb() < 0) {
