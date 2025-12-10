@@ -5,9 +5,7 @@
 */
 {
     limits: {
-        fibers: 10,
-        fiberPoolMin: 1,
-        fiberPoolMax: 4,
+        fiberStack: '32k',
     },
     log: {
         path: 'log.txt',
@@ -69,14 +67,18 @@
         ],
     },
     web: {
+        // Enable fiber exception blocks for handler crash recovery testing
+        fiberBlocks: true,      
         auth: {
             realm: 'Test Realm',
             authType: 'digest',
             algorithm: 'SHA-256',
             secret: 'test-secret-1234567890abcdef',
-            // SECURITY: Require TLS for Basic authentication to prevent password exposure
-            // Basic auth sends credentials in base64 (not encrypted), making it vulnerable
-            // to network sniffing attacks if sent over plain HTTP
+            /*
+                SECURITY: Require TLS for Basic authentication to prevent password exposure
+                Basic auth sends credentials in base64 (not encrypted), making it vulnerable
+                to network sniffing attacks if sent over plain HTTP
+             */
             requireTlsForBasic: true,
             roles: {
                 public: [],

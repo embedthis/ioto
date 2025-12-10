@@ -35,6 +35,9 @@ static void testSingleRange()
 
     contentRange = urlGetHeader(up, "Content-Range");
     ttrue(contentRange != NULL);
+    if (!scontains(contentRange, "bytes 0-49/100")) {
+        tinfo("Content-Range: %s (expected: bytes 0-49/100)", contentRange);
+    }
     ttrue(scontains(contentRange, "bytes 0-49/100"));
 
     acceptRanges = urlGetHeader(up, "Accept-Ranges");

@@ -8,7 +8,6 @@ echo SUCCESS: ${TESTME_SUCCESS} >&2
 if [ "${TESTME_SUCCESS}" = "1" ]; then
     rm -f web.log
 else
-    echo "@@ CAT web.log"
     cat web.log
 fi
 

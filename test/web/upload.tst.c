@@ -44,6 +44,7 @@ static void uploadBasic(void)
     teqi(urlGetStatus(up), 200);
 
     json = urlGetJsonResponse(up);
+    jsonPrint(json);
     tmatch(jsonGet(json, 0, "uploads[0].clientFilename", 0), "test1.txt");
 
     jsonFree(json);
@@ -181,7 +182,7 @@ static void uploadBoundary(void)
 static void fiberMain(void *arg)
 {
     if (setup(&HTTP, &HTTPS)) {
-        // uploadBasic();
+        uploadBasic();
         uploadBig();
         uploadBoundary();
     }

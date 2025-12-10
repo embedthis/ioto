@@ -580,7 +580,7 @@ static void benchUpload(Ticks duration)
                 // Upload file
                 up = getConnection(ctx);
                 startTime = rGetTicks();
-                SFMT(url, "%s/test/upload/", HTTP);
+                SFMT(url, "%s/test/bench/", HTTP);
                 result.status = urlFetch(up, "POST", url, rGetBufStart(buf), rGetBufLength(buf), headers);
                 getResponse(up);
                 rFreeBuf(buf);
@@ -727,8 +727,12 @@ static void benchAuth(Ticks duration)
         groupStart = rGetTicks();
         iterations = 0;
         while (rGetTicks() - groupStart < duration / 2) {
+            // Cap auth iterations to avoid session limit issues on some platforms
+            int authLimit = BENCH_MAX_AUTH_ITERATIONS / 2;
+            int coldLimit = MIN(BENCH_MAX_COLD_ITERATIONS, authLimit);
             iterations++;
-            if (iterLimit(iterations, warm, BENCH_MAX_COLD_ITERATIONS)) break;
+            if (iterLimit(iterations, warm, coldLimit)) break;
+            if (warm && iterations > authLimit) break;
             // Get connection from context
             up = getConnection(ctx);
             urlSetAuth(up, "bench", "password", "digest");

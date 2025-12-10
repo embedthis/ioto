@@ -82,7 +82,7 @@ static void testMultipleHeaders()
 static void testLongHeaderValues()
 {
     Url  *up;
-    char url[128], *longValue;
+    char url[128], *longValue, *header;
 
     //  Test header with long value (but within limits)
     up = urlAlloc(0);
@@ -91,8 +91,9 @@ static void testLongHeaderValues()
     memset(longValue, 'A', 499);
     longValue[499] = '\0';
 
-    teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0,
-                  SFMT(NULL, "X-Long-Header: %s\r\n", longValue)), 200);
+    header = sfmt("X-Long-Header: %s\r\n", longValue);
+    teqi(urlFetch(up, "GET", SFMT(url, "%s/test/success", HTTP), NULL, 0, header), 200);
+    rFree(header);
 
     rFree(longValue);
     urlFree(up);

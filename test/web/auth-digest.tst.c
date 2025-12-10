@@ -148,7 +148,7 @@ static void testDigest(void)
     up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", "digest");
     status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
-    ttrue(status == 401, "bob (MD5 password) should fail on SHA-256 digest route");
+    ttrue(status == 401, "bob (MD5 password) should not pass on SHA-256 digest route");
     urlFree(up);
 
     /*

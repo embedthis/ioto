@@ -12,6 +12,7 @@
         },
     },
     documents: '@site',
+    fiberBlocks: true,  
     headers: {},
     index: 'index.html',
     limits: {

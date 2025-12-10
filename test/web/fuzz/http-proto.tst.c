@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     };
 
     // Extra room for ASAN
-    rSetFiberStack(256 * 1024);
+    rSetFiberStackSize(256 * 1024);
     rInit(fuzzFiber, &config);
     rServiceEvents();
     rTerm();

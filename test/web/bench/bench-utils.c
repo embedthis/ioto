@@ -843,17 +843,18 @@ static void saveMarkdownResults(cchar *version, cchar *timestamp, cchar *platfor
 
     // Write header
     fprintf(fp, "# Web Server Benchmark Results\n\n");
-    fprintf(fp, "**Version:** %s  \n", version);
-    fprintf(fp, "**Timestamp:** %s  \n", timestamp);
-    fprintf(fp, "**Platform:** %s  \n", platform);
-    fprintf(fp, "**Profile:** %s  \n", profile);
-    fprintf(fp, "**TLS:** %s  \n", tls);
-    fprintf(fp, "**Total Duration:** %lld seconds (%llds soak + %llds bench)  \n",
+    fprintf(fp, "## System Configuration\n\n");
+    fprintf(fp, "- **Version:** %s\n", version);
+    fprintf(fp, "- **Timestamp:** %s\n", timestamp);
+    fprintf(fp, "- **Platform:** %s\n", platform);
+    fprintf(fp, "- **Profile:** %s\n", profile);
+    fprintf(fp, "- **TLS:** %s\n", tls);
+    fprintf(fp, "- **Total Duration:** %lld seconds (%llds soak + %llds bench)\n",
             (long long) (totalDuration / 1000), (long long) (soakDuration / 1000),
             (long long) (benchDuration / 1000));
-    fprintf(fp, "**Initial Memory (after soak):** %.2f MB  \n", initialMemorySize / (1024.0 * 1024.0));
-    fprintf(fp, "**Final Memory:** %.2f MB  \n", finalMemorySize / (1024.0 * 1024.0));
-    fprintf(fp, "**Memory Delta:** %+.2f MB\n\n", (finalMemorySize - initialMemorySize) / (1024.0 * 1024.0));
+    fprintf(fp, "- **Initial Memory (after soak):** %.2f MB\n", initialMemorySize / (1024.0 * 1024.0));
+    fprintf(fp, "- **Final Memory:** %.2f MB\n", finalMemorySize / (1024.0 * 1024.0));
+    fprintf(fp, "- **Memory Delta:** %+.2f MB\n", (finalMemorySize - initialMemorySize) / (1024.0 * 1024.0));
 
     // Write table header
     fprintf(fp, "## Performance Results\n\n");

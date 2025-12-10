@@ -27,7 +27,7 @@
         service: '1hr',
     },
     limits: {
-        stack: '128k',
+        fiberStack: '128k',
     },
     mqtt: {
         authority: '@certs/aws.crt',

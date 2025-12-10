@@ -77,6 +77,7 @@ typedef struct {
 #define BENCH_MAX_RESULTS 8        // Maximum results per benchmark group
 #define BENCH_MAX_COLD_ITERATIONS 2000  // Max iterations for cold tests to limit TIME_WAITs
 #define BENCH_MAX_SOAK_ITERATIONS 100   // Max iterations per class during soak phase
+#define BENCH_MAX_AUTH_ITERATIONS 10000 // Max total auth iterations (sessions have limits)
 #define BENCH_MAX_TIME_WAITS 10000  // Max TIME_WAIT sockets before waiting (16K max)
 #define MIN_GROUP_DURATION_MS 500  // Minimum 500ms per test group
 

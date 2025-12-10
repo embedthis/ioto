@@ -50,7 +50,7 @@
     },
     limits: {
         reprovision: 5,
-        _stack: '64k'
+        _fiberStack: '64k'
     },
     log: {
         path: 'stdout',

@@ -489,9 +489,9 @@ echo ""
 
 # Report memory at 20% intervals during test phase
 echo "Memory at Test Intervals:"
-echo "-------------------------------------------"
-printf "  %-12s %-12s %-15s\n" "Progress" "Memory (KB)" "Interval Growth"
-echo "-------------------------------------------"
+echo "------------------------------------------------------"
+printf "  %-12s %-12s %-15s %-10s\n" "Progress" "Memory (KB)" "Interval Growth" "Growth %"
+echo "------------------------------------------------------"
 
 # Calculate and display interval growth
 PREV_MEMORY=$CHECKPOINT_MEMORY_0
@@ -508,9 +508,11 @@ for i in 0 1 2 3 4 5; do
     if [ -n "$CURR_MEMORY" ]; then
         if [ $i -eq 0 ]; then
             INTERVAL_GROWTH="-"
+            INTERVAL_PERCENT="-"
         else
             if [ -n "$PREV_MEMORY" ]; then
                 INTERVAL_GROWTH_KB=$((CURR_MEMORY - PREV_MEMORY))
+                INTERVAL_PERCENT=$(awk "BEGIN {printf \"%.2f%%\", ($INTERVAL_GROWTH_KB / $PREV_MEMORY) * 100}")
                 if [ $INTERVAL_GROWTH_KB -ge 0 ]; then
                     INTERVAL_GROWTH="+${INTERVAL_GROWTH_KB} KB"
                 else
@@ -518,9 +520,10 @@ for i in 0 1 2 3 4 5; do
                 fi
             else
                 INTERVAL_GROWTH="-"
+                INTERVAL_PERCENT="-"
             fi
         fi
-        printf "  %-12s %-12s %-15s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH"
+        printf "  %-12s %-12s %-15s %-10s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH" "$INTERVAL_PERCENT"
         PREV_MEMORY=$CURR_MEMORY
     fi
 done
@@ -614,9 +617,9 @@ echo ""
     printf "  %-11s %s KB (%s%%)\n" "Test:" "${GROWTH}" "${GROWTH_PERCENT}"
     echo ""
     echo "Memory at Test Intervals:"
-    echo "-------------------------------------------"
-    printf "  %-12s %-12s %-15s\n" "Progress" "Memory (KB)" "Interval Growth"
-    echo "-------------------------------------------"
+    echo "------------------------------------------------------"
+    printf "  %-12s %-12s %-15s %-10s\n" "Progress" "Memory (KB)" "Interval Growth" "Growth %"
+    echo "------------------------------------------------------"
     PREV_MEMORY=$CHECKPOINT_MEMORY_0
     for i in 0 1 2 3 4 5; do
         case $i in
@@ -630,9 +633,11 @@ echo ""
         if [ -n "$CURR_MEMORY" ]; then
             if [ $i -eq 0 ]; then
                 INTERVAL_GROWTH="-"
+                INTERVAL_PERCENT="-"
             else
                 if [ -n "$PREV_MEMORY" ]; then
                     INTERVAL_GROWTH_KB=$((CURR_MEMORY - PREV_MEMORY))
+                    INTERVAL_PERCENT=$(awk "BEGIN {printf \"%.2f%%\", ($INTERVAL_GROWTH_KB / $PREV_MEMORY) * 100}")
                     if [ $INTERVAL_GROWTH_KB -ge 0 ]; then
                         INTERVAL_GROWTH="+${INTERVAL_GROWTH_KB} KB"
                     else
@@ -640,9 +645,10 @@ echo ""
                     fi
                 else
                     INTERVAL_GROWTH="-"
+                    INTERVAL_PERCENT="-"
                 fi
             fi
-            printf "  %-12s %-12s %-15s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH"
+            printf "  %-12s %-12s %-15s %-10s\n" "$LABEL" "$CURR_MEMORY" "$INTERVAL_GROWTH" "$INTERVAL_PERCENT"
             PREV_MEMORY=$CURR_MEMORY
         fi
     done

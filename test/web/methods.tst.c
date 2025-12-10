@@ -52,7 +52,6 @@ static void checkMethods()
     // PUT
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/temp.dat", HTTP), NULL, 0, NULL);
     ttrue(status == 201 || status == 204);
-    exit(0);
 
     // Delete
     status = urlFetch(up, "DELETE", SFMT(url, "%s/upload/temp.dat", HTTP), NULL, 0, NULL);
