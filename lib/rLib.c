@@ -1454,7 +1454,16 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 static RFiber mainFiberState;
 static RFiber *mainFiber;
 static RFiber *currentFiber;
-static size_t stackSize = ME_FIBER_DEFAULT_STACK;
+
+// Runtime-configurable initial stack size (single source of truth)
+#if ME_FIBER_GROWABLE_STACK
+static size_t fiberInitialStack = ME_FIBER_INITIAL_STACK;
+static size_t fiberMaxStack = ME_FIBER_MAX_STACK;
+static size_t fiberStackGrowSize = ME_FIBER_STACK_GROW_SIZE;
+static size_t fiberStackResetLimit = ME_FIBER_STACK_RESET_LIMIT;
+#else
+static size_t fiberInitialStack = ME_FIBER_DEFAULT_STACK;
+#endif
 
 /*
     Fiber pool for reusing fiber allocations
@@ -1484,6 +1493,13 @@ static void freeFiberMemory(RFiber *fiber);
 static void pruneFibers(void *data);
 static void setupFiberSignalHandlers(void);
 
+#if ME_FIBER_GROWABLE_STACK
+static int allocGuardedStack(RFiberStack *info, size_t initialSize, size_t maxSize);
+static void freeGuardedStack(RFiberStack *info);
+static void resetGuardedStack(RFiberStack *info);
+static int growFiberStack(RFiber *fiber);
+#endif
+
 /************************************ Code ************************************/
 
 PUBLIC int rInitFibers(void)
@@ -1503,8 +1519,8 @@ PUBLIC int rInitFibers(void)
         rError("runtime", "Cannot initialize UCTX subsystem");
         return R_ERR_CANT_ALLOCATE;
     }
-    //  Add 64 for prior stack frames
-    uctx_setstack(context, ((char*) &base) + 64 - stackSize, stackSize);
+    // Main fiber uses OS-managed thread stack - this just sets uctx bounds
+    uctx_setstack(context, ((char*) &base) + 64 - ME_FIBER_DEFAULT_STACK, ME_FIBER_DEFAULT_STACK);
 
 #if ME_WIN_LIKE || ESP32 || FREERTOS
     if (uctx_makecontext(context, NULL, 0) < 0) {
@@ -1532,9 +1548,11 @@ PUBLIC void rTermFibers(void)
         //  Signal fiber to exit loop (for pthreads), then free context
         fiber->func = NULL;
         uctx_freecontext(&fiber->context);
-#if ME_FIBER_VM_STACK
+#if ME_FIBER_GROWABLE_STACK
+        freeGuardedStack(&fiber->stackInfo);
+#elif ME_FIBER_VM_STACK
         if (fiber->stack) {
-            rFreeVirt(fiber->stack, stackSize);
+            rFreeVirt(fiber->stack, fiberInitialStack);
             fiber->stack = NULL;
         }
 #endif
@@ -1561,11 +1579,9 @@ static void fiberEntry(RFiber *fiber)
 
     while (fiber->func) {
         fiber->func(fiber->data);
-
         //  Signal ready for reuse and yield back to main
         fiber->pooled = 1;
         rYieldFiber(0);
-
         //  Resumed - loop continues if fiber->func is set, exits if NULL
         fiber->pooled = 0;
     }
@@ -1589,7 +1605,6 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
         rDebug("fiber", "Peak fibers %d", fiberPool.active);
         fiberPool.peak = fiberPool.active;
     }
-    // Try pool first, then allocate new
     fiber = acquireFromPool();
     if (!fiber) {
         fiber = allocNewFiber();
@@ -1598,7 +1613,6 @@ PUBLIC RFiber *rAllocFiber(cchar *name, RFiberProc function, cvoid *data)
             return NULL;
         }
     }
-    // Initialize fiber context for this use
     if (initFiberContext(fiber, function, data) < 0) {
         freeFiberMemory(fiber);
         fiberPool.active--;
@@ -1628,7 +1642,22 @@ static RFiber *allocNewFiber(void)
     fiberPool.poolMisses++;
 
     size = sizeof(RFiber);
-#if ME_FIBER_VM_STACK
+#if ME_FIBER_GROWABLE_STACK
+    // Allocate fiber structure (stack allocated separately with guard pages)
+    if ((fiber = rAllocMem(size)) == 0) {
+        rAllocException(R_MEM_FAIL, size);
+        return NULL;
+    }
+    memset(fiber, 0, size);
+    if (uctx_needstack()) {
+        // Allocate guarded stack using runtime-configurable limits
+        if (allocGuardedStack(&fiber->stackInfo, fiberInitialStack, fiberMaxStack) < 0) {
+            rFree(fiber);
+            rAllocException(R_MEM_STACK, fiberInitialStack);
+            return NULL;
+        }
+    }
+#elif ME_FIBER_VM_STACK
     // Stack is allocated separately via VM allocation (mmap)
     if ((fiber = rAllocMem(size)) == 0) {
         rAllocException(R_MEM_FAIL, size);
@@ -1636,17 +1665,17 @@ static RFiber *allocNewFiber(void)
     }
     memset(fiber, 0, size);
     if (uctx_needstack()) {
-        fiber->stack = rAllocVirt(stackSize);
+        fiber->stack = rAllocVirt(fiberInitialStack);
         if (!fiber->stack) {
             rFree(fiber);
-            rAllocException(R_MEM_STACK, stackSize);
+            rAllocException(R_MEM_STACK, fiberInitialStack);
             return NULL;
         }
     }
 #else
     // Stack is allocated inline with fiber struct
     if (uctx_needstack()) {
-        size += stackSize;
+        size += fiberInitialStack;
         if (size > MAXINT) {
             rAllocException(R_MEM_STACK, size);
             return NULL;
@@ -1660,12 +1689,22 @@ static RFiber *allocNewFiber(void)
 #endif
 
 #if FIBER_WITH_VALGRIND
-    fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stack, (char*) fiber->stack + stackSize);
+#if ME_FIBER_GROWABLE_STACK
+    fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stackInfo.usable, fiber->stackInfo.top);
+#else
+    fiber->stackId = VALGRIND_STACK_REGISTER(fiber->stack, (char*) fiber->stack + fiberInitialStack);
+#endif
 #endif
 #if ME_FIBER_ALLOC_DEBUG
-    if (fiber->stack) {
-        memset(fiber->stack, 0, stackSize);
+#if ME_FIBER_GROWABLE_STACK
+    if (fiber->stackInfo.usable) {
+        memset(fiber->stackInfo.usable, 0, fiber->stackInfo.committed);
     }
+#else
+    if (fiber->stack) {
+        memset(fiber->stack, 0, fiberInitialStack);
+    }
+#endif
 #endif
     return fiber;
 }
@@ -1688,8 +1727,11 @@ static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data)
     if (!fiber->pooled) {
         //  New fiber - full context initialization
         context = &fiber->context;
-        uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, stackSize);
-
+#if ME_FIBER_GROWABLE_STACK
+        uctx_setstack(context, uctx_needstack() ? fiber->stackInfo.usable : NULL, fiber->stackInfo.committed);
+#else
+        uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, fiberInitialStack);
+#endif
         if (uctx_makecontext(context, (uctx_proc) fiberEntry, 1, fiber) < 0) {
             rError("runtime", "Cannot initialize fiber context");
             return R_ERR_CANT_INITIALIZE;
@@ -1697,7 +1739,7 @@ static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data)
     }
     //  For pooled fibers, context is alive and will return from rYieldFiber when resumed
     fiber->pooled = 0;
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
     memset(fiber->guard, R_STACK_GUARD_CHAR, sizeof(fiber->guard));
 #endif
     return 0;
@@ -1712,9 +1754,11 @@ static void freeFiberMemory(RFiber *fiber)
     VALGRIND_STACK_DEREGISTER(fiber->stackId);
 #endif
     uctx_freecontext(&fiber->context);
-#if ME_FIBER_VM_STACK
+#if ME_FIBER_GROWABLE_STACK
+    freeGuardedStack(&fiber->stackInfo);
+#elif ME_FIBER_VM_STACK
     if (fiber->stack) {
-        rFreeVirt(fiber->stack, stackSize);
+        rFreeVirt(fiber->stack, fiberInitialStack);
         fiber->stack = NULL;
     }
 #endif
@@ -1877,7 +1921,7 @@ PUBLIC void *rGetFiberStack(void)
 
 PUBLIC size_t rGetFiberStackSize(void)
 {
-    return stackSize;
+    return fiberInitialStack;
 }
 
 /*
@@ -1902,7 +1946,7 @@ PUBLIC void rLeave(bool *access)
     *access = 0;
 }
 
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
 PUBLIC void rCheckFiber(void)
 {
     static size_t peak = 0;
@@ -1944,26 +1988,26 @@ PUBLIC int64 rGetStackUsage(void)
     int64 used;
 
     used = 0;
-    for (uchar *cp = currentFiber->stack; cp < &currentFiber->stack[stackSize]; cp++) {
+    for (uchar *cp = currentFiber->stack; cp < &currentFiber->stack[fiberInitialStack]; cp++) {
         if (*cp != 0) {
-            used = &currentFiber->stack[stackSize] - cp;
+            used = &currentFiber->stack[fiberInitialStack] - cp;
             break;
         }
     }
     return used;
 }
-#endif /* ME_FIBER_GUARD_STACK */
+#endif /* ME_FIBER_GUARD_PAD */
 
 PUBLIC void rSetFiberStackSize(size_t size)
 {
-    stackSize = size;
-    if (stackSize <= 0) {
-        stackSize = ME_FIBER_DEFAULT_STACK;
+    if (size <= 0) {
+        return;
     }
-    if (stackSize < ME_FIBER_MIN_STACK) {
-        rError("runtime", "Stack of %d is too small. Adjusting to be %d", (int) stackSize, (int) ME_FIBER_MIN_STACK);
-        stackSize = ME_FIBER_MIN_STACK;
+    if (size < ME_FIBER_MIN_STACK) {
+        rError("runtime", "Stack of %zd is too small. Adjusting to %zd", size, (size_t) ME_FIBER_MIN_STACK);
+        size = ME_FIBER_MIN_STACK;
     }
+    fiberInitialStack = size;
 }
 
 PUBLIC int rSetFiberLimits(int maxFibers, int poolMin, int poolMax)
@@ -1993,6 +2037,184 @@ PUBLIC void rGetFiberStats(int *active, int *max, int *pooled, int *poolMax, int
     if (hits) *hits = fiberPool.poolHits;
     if (misses) *misses = fiberPool.poolMisses;
 }
+
+PUBLIC int rSetFiberStackLimits(size_t initialSize, size_t maxSize, size_t growSize, size_t resetLimit)
+{
+#if ME_FIBER_GROWABLE_STACK
+    size_t pageSize = rGetPageSize();
+#endif
+
+    // Update initial stack size (always applicable)
+    if (initialSize != 0) {
+        if (initialSize < ME_FIBER_MIN_STACK) {
+            initialSize = ME_FIBER_MIN_STACK;
+        }
+#if ME_FIBER_GROWABLE_STACK
+        fiberInitialStack = R_ALLOC_ALIGN(initialSize, pageSize);
+#else
+        fiberInitialStack = initialSize;
+#endif
+    }
+#if ME_FIBER_GROWABLE_STACK
+    // Guard-page-specific settings (silently ignored when guard pages disabled)
+    if (maxSize != 0) {
+        if (maxSize < fiberInitialStack) {
+            maxSize = fiberInitialStack;
+        }
+        fiberMaxStack = R_ALLOC_ALIGN(maxSize, pageSize);
+    }
+    if (growSize != 0) {
+        if (growSize < pageSize) {
+            growSize = pageSize;
+        }
+        fiberStackGrowSize = R_ALLOC_ALIGN(growSize, pageSize);
+    }
+    if (resetLimit != 0) {
+        fiberStackResetLimit = R_ALLOC_ALIGN(resetLimit, pageSize);
+    }
+#endif
+    return 0;
+}
+
+PUBLIC void rGetFiberStackLimits(size_t *initialSize, size_t *maxSize, size_t *growSize, size_t *resetLimit)
+{
+    if (initialSize) {
+        *initialSize = fiberInitialStack;
+    }
+#if ME_FIBER_GROWABLE_STACK
+    if (maxSize) {
+        *maxSize = fiberMaxStack;
+    }
+    if (growSize) {
+        *growSize = fiberStackGrowSize;
+    }
+    if (resetLimit) {
+        *resetLimit = fiberStackResetLimit;
+    }
+#else
+    if (maxSize) *maxSize = 0;
+    if (growSize) *growSize = 0;
+    if (resetLimit) *resetLimit = 0;
+#endif
+}
+
+#if ME_FIBER_GROWABLE_STACK
+/*
+    Allocate a guarded stack with reserved virtual address space.
+    Reserves maxSize VA space, commits initialSize at the top (stack grows down).
+    The region from base to usable is PROT_NONE and acts as the guard.
+ */
+static int allocGuardedStack(RFiberStack *info, size_t initialSize, size_t maxSize)
+{
+    size_t pageSize, reserveSize, commitSize;
+    void   *base, *usable;
+
+    pageSize = rGetPageSize();
+    reserveSize = R_ALLOC_ALIGN(maxSize, pageSize);
+    commitSize = R_ALLOC_ALIGN(initialSize, pageSize);
+
+    // Reserve entire virtual address range (PROT_NONE)
+    base = rAllocPages(reserveSize);
+    if (!base) {
+        return -1;
+    }
+    // Commit usable portion at top of range (stack grows down)
+    usable = (char*) base + reserveSize - commitSize;
+    if (rProtectPages(usable, commitSize, R_PROT_READ | R_PROT_WRITE) < 0) {
+        rFreePages(base, reserveSize);
+        return -1;
+    }
+    // Fill stack info structure
+    info->base = base;
+    info->usable = usable;
+    info->top = (char*) base + reserveSize;
+    info->reserved = reserveSize;
+    info->committed = commitSize;
+    info->initialSize = commitSize;
+    info->maxSize = maxSize;
+    info->guarded = 1;
+    return 0;
+}
+
+/*
+    Free a guarded stack
+ */
+static void freeGuardedStack(RFiberStack *info)
+{
+    if (info && info->guarded && info->base) {
+        rFreePages(info->base, info->reserved);
+        info->base = NULL;
+        info->guarded = 0;
+    }
+}
+
+/*
+    Reset a guarded stack back to initial size for pool reuse.
+    Only resets stacks that have grown beyond fiberStackResetLimit.
+ */
+static void resetGuardedStack(RFiberStack *info)
+{
+    size_t decommitSize;
+    void   *newUsable, *oldUsable;
+
+    if (!info || !info->guarded) {
+        return;
+    }
+    // Only reset if stack has grown beyond the reset limit
+    if (info->committed <= fiberStackResetLimit) {
+        return;
+    }
+    // Decommit grown pages back to initial size (make them PROT_NONE again)
+    newUsable = (char*) info->top - info->initialSize;
+    oldUsable = info->usable;
+    decommitSize = (size_t) ((char*) newUsable - (char*) oldUsable);
+
+    if (decommitSize > 0) {
+        rProtectPages(oldUsable, decommitSize, R_PROT_NONE);
+    }
+    // Update stack info
+    info->usable = newUsable;
+    info->committed = info->initialSize;
+}
+
+/*
+    Grow a fiber's stack by fiberStackGrowSize.
+    Called from signal handler when guard region is accessed.
+ */
+static int growFiberStack(RFiber *fiber)
+{
+    RFiberStack *stack;
+    size_t      newCommitted;
+    void        *newUsable;
+
+    stack = &fiber->stackInfo;
+
+    // Check if we can grow
+    newCommitted = stack->committed + fiberStackGrowSize;
+    if (newCommitted > stack->maxSize) {
+        rError("fiber", "Stack overflow: cannot grow beyond %zd", stack->maxSize);
+        return -1;
+    }
+    // Calculate new usable region
+    newUsable = (char*) stack->usable - fiberStackGrowSize;
+
+    // Check we haven't hit the base
+    if (newUsable < stack->base) {
+        rError("fiber", "Stack overflow: exhausted reserved space");
+        return -1;
+    }
+    // Make new area writable (previously PROT_NONE from reservation)
+    if (rProtectPages(newUsable, fiberStackGrowSize, R_PROT_READ | R_PROT_WRITE) < 0) {
+        rError("fiber", "Failed to commit stack pages");
+        return -1;
+    }
+    stack->usable = newUsable;
+    stack->committed = newCommitted;
+
+    rDebug("fiber", "Grew stack to %zd bytes", newCommitted);
+    return 0;
+}
+#endif /* ME_FIBER_GROWABLE_STACK */
 
 /*
     Prune excess fibers from the pool down to poolMin
@@ -2029,9 +2251,11 @@ static void pruneFibers(void *data)
             //  Signal fiber to exit loop (for pthreads), then free context
             fiber->func = NULL;
             uctx_freecontext(&fiber->context);
-#if ME_FIBER_VM_STACK
+#if ME_FIBER_GROWABLE_STACK
+            freeGuardedStack(&fiber->stackInfo);
+#elif ME_FIBER_VM_STACK
             if (fiber->stack) {
-                rFreeVirt(fiber->stack, stackSize);
+                rFreeVirt(fiber->stack, fiberInitialStack);
                 fiber->stack = NULL;
             }
 #endif
@@ -2074,6 +2298,10 @@ static RFiber *acquireFromPool(void)
     fiberPool.free = fiber->next;
     fiberPool.pooled--;
     fiberPool.poolHits++;
+#if ME_FIBER_GROWABLE_STACK
+    // Reset grown stacks above resetLimit back to initial size
+    resetGuardedStack(&fiber->stackInfo);
+#endif
     //  Context is alive and parked at yield point - no cleanup needed
     return fiber;
 }
@@ -2096,12 +2324,140 @@ static bool releaseToPool(RFiber *fiber)
 /*
     Define a code block that can be used to catch exceptions and terminate the fiber.
  */
-PUBLIC int rStartFiberBlock(void)
+PUBLIC void rStartFiberBlock(void)
 {
     currentFiber->block = 1;
-    return setjmp(currentFiber->jmpbuf);
 }
 
+PUBLIC void rEndFiberBlock(void)
+{
+#if ME_UNIX_LIKE
+    sigset_t set;
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGSEGV);
+    sigaddset(&set, SIGBUS);
+    sigaddset(&set, SIGFPE);
+    sigaddset(&set, SIGILL);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+#endif
+}
+
+#if ME_FIBER_GROWABLE_STACK && ME_UNIX_LIKE
+/*
+    Alternate signal stack for handling stack overflow (can't use the overflowed stack!)
+*/
+#if ME_WIN_LIKE || !ME_UNIX_LIKE
+    #define R_ALT_STACK_SIZE (64 * 1024)
+#else
+    #define R_ALT_STACK_SIZE (32 * 1024)
+#endif
+static char signalStack[R_ALT_STACK_SIZE];
+
+// Prevent recursive handling
+static volatile sig_atomic_t inGuardHandler = 0;
+
+/*
+    Enhanced signal handler for guard page stack growth.
+    Uses SA_SIGINFO to get the faulting address for distinguishing stack growth from bugs.
+ */
+static void guardPageHandler(int signum, siginfo_t *info, void *context)
+{
+    RFiberStack *stack;
+    void        *faultAddr;
+
+    // Prevent recursive handling
+    if (inGuardHandler) {
+        abort();
+    }
+    inGuardHandler = 1;
+
+    faultAddr = info->si_addr;
+
+    if (!currentFiber || !currentFiber->stackInfo.guarded) {
+        goto not_stack_fault;
+    }
+    stack = &currentFiber->stackInfo;
+
+    /* 
+        Check if fault is in the reserved-but-uncommitted region
+        This is between base and usable (the committed stack area)
+     */
+    if (faultAddr >= stack->base && faultAddr < stack->usable) {
+        /* This is a stack growth request - attempt to grow */
+        if (growFiberStack(currentFiber) == 0) {
+            inGuardHandler = 0;
+            return;  // Resume execution - stack has been grown
+        }
+        // Growth failed (hit max limit) - fall through to exception handling
+    }
+
+not_stack_fault:
+    inGuardHandler = 0;
+
+    /* 
+        Not a stack growth fault - it's a real bug (null ptr, bad access, etc.)
+        Use existing fiber exception handling or abort
+     */
+    if (currentFiber && currentFiber->block && currentFiber->exception == 0) {
+        currentFiber->block = 0;
+        currentFiber->exception = signum;
+        longjmp(currentFiber->jmpbuf, 1);
+    } else {
+        abort();
+    }
+}
+#endif /* ME_FIBER_GROWABLE_STACK && ME_UNIX_LIKE */
+
+#if ME_WIN_LIKE && ME_FIBER_GROWABLE_STACK
+/*
+    Windows Vectored Exception Handler for guard page stack growth and fiber exceptions.
+ */
+static LONG WINAPI guardPageVEH(PEXCEPTION_POINTERS info)
+{
+    RFiberStack *stack;
+    void        *faultAddr;
+    DWORD       code;
+
+    code = info->ExceptionRecord->ExceptionCode;
+
+    // Handle memory access violations - may be stack growth
+    if (code == EXCEPTION_ACCESS_VIOLATION) {
+        faultAddr = (void*) info->ExceptionRecord->ExceptionInformation[1];
+
+        if (currentFiber && currentFiber->stackInfo.guarded) {
+            stack = &currentFiber->stackInfo;
+
+            // Check if fault is in the reserved-but-uncommitted region
+            if (faultAddr >= stack->base && faultAddr < stack->usable) {
+                if (growFiberStack(currentFiber) == 0) {
+                    return EXCEPTION_CONTINUE_EXECUTION;
+                }
+            }
+        }
+    }
+    // Handle exceptions for fiber exception blocks
+    if (code == EXCEPTION_ACCESS_VIOLATION ||
+        code == EXCEPTION_ILLEGAL_INSTRUCTION ||
+        code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
+        code == EXCEPTION_INT_OVERFLOW ||
+        code == EXCEPTION_FLT_DIVIDE_BY_ZERO ||
+        code == EXCEPTION_FLT_OVERFLOW ||
+        code == EXCEPTION_FLT_UNDERFLOW ||
+        code == EXCEPTION_FLT_INVALID_OPERATION) {
+
+        if (currentFiber && currentFiber->block && currentFiber->exception == 0) {
+            currentFiber->block = 0;
+            currentFiber->exception = (int) code;
+            longjmp(currentFiber->jmpbuf, 1);
+            // Not reached - longjmp doesn't return
+        }
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif /* ME_WIN_LIKE && ME_FIBER_GROWABLE_STACK */
+
+#if ME_UNIX_LIKE
 static void fiberSignalHandler(int signum)
 {
     /*
@@ -2110,19 +2466,12 @@ static void fiberSignalHandler(int signum)
     if (currentFiber->block && currentFiber->exception == 0) {
         currentFiber->block = 0;
         currentFiber->exception = signum;
-        rEndFiberBlock();
+        longjmp(currentFiber->jmpbuf, 1);
     } else {
         abort();
     }
 }
-
-/*
-    Perform a longjmp back to the rStartFiberBlock and return 1 to indicate a block exit.
- */
-PUBLIC void rEndFiberBlock(void)
-{
-    longjmp(currentFiber->jmpbuf, 1);
-}
+#endif
 
 /*
     Abort the current fiber immediately. Does not return.
@@ -2146,12 +2495,40 @@ static void setupFiberSignalHandlers(void)
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sigemptyset(&sa.sa_mask);
-    sa.sa_handler = fiberSignalHandler;
 
+#if ME_FIBER_GROWABLE_STACK
+    // Setup alternate signal stack (required for handling stack overflow)
+    stack_t ss;
+    ss.ss_sp = signalStack;
+    ss.ss_size = R_ALT_STACK_SIZE;
+    ss.ss_flags = 0;
+    sigaltstack(&ss, NULL);
+
+    // Memory access signals - may be stack growth requests
+    sa.sa_sigaction = guardPageHandler;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+
+    // Non-memory signals - always errors, use basic handler
+    sa.sa_handler = fiberSignalHandler;
+    sa.sa_flags = 0;
     sigaction(SIGILL, &sa, NULL);
     sigaction(SIGFPE, &sa, NULL);
+#else
+    // Basic handler without fault address (existing behavior)
+    sa.sa_handler = fiberSignalHandler;
+    sa.sa_flags = 0;
+    sigaction(SIGSEGV, &sa, NULL);
     sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+#endif
+#endif
+
+#if ME_WIN_LIKE && ME_FIBER_GROWABLE_STACK
+    // Windows uses Vectored Exception Handling
+    AddVectoredExceptionHandler(1, guardPageVEH);
 #endif
 }
 
@@ -6040,7 +6417,7 @@ PUBLIC void *rAllocMem(size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
     rCheckFiber();
 #endif
     return ptr;
@@ -6129,7 +6506,7 @@ PUBLIC void *rReallocMem(void *mem, size_t size)
         rAllocException(R_MEM_FAIL, size);
         return 0;
     }
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
     rCheckFiber();
 #endif
     return ptr;
@@ -6184,6 +6561,91 @@ PUBLIC void rFreeVirt(void *ptr, size_t size)
     rFree(ptr);
 #endif
 }
+
+#if ME_FIBER_GROWABLE_STACK
+/*
+    Reserve virtual address space with PROT_NONE (uncommitted)
+ */
+PUBLIC void *rAllocPages(size_t size)
+{
+#if MACOSX || LINUX || FREEBSD
+    void *ptr = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        return NULL;
+    }
+    return ptr;
+#elif WINDOWS
+    void *ptr = VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
+    return ptr;
+#else
+    return NULL;
+#endif
+}
+
+/*
+    Free reserved virtual address space
+ */
+PUBLIC void rFreePages(void *ptr, size_t size)
+{
+    if (!ptr) return;
+#if MACOSX || LINUX || FREEBSD
+    munmap(ptr, size);
+#elif WINDOWS
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    // No-op on unsupported platforms
+#endif
+}
+
+/*
+    Change memory protection on a region
+ */
+PUBLIC int rProtectPages(void *addr, size_t size, int prot)
+{
+#if MACOSX || LINUX || FREEBSD
+    int mprot = PROT_NONE;
+    if (prot & R_PROT_READ) mprot |= PROT_READ;
+    if (prot & R_PROT_WRITE) mprot |= PROT_WRITE;
+    if (prot & R_PROT_EXEC) mprot |= PROT_EXEC;
+    return mprotect(addr, size, mprot);
+#elif WINDOWS
+    DWORD winProt = PAGE_NOACCESS;
+    if (prot & R_PROT_WRITE) {
+        winProt = PAGE_READWRITE;
+    } else if (prot & R_PROT_READ) {
+        winProt = PAGE_READONLY;
+    }
+    // Must commit before protecting
+    if (!VirtualAlloc(addr, size, MEM_COMMIT, winProt)) {
+        return -1;
+    }
+    return 0;
+#else
+    return -1;
+#endif
+}
+
+/*
+    Get system page size (cached)
+ */
+PUBLIC size_t rGetPageSize(void)
+{
+    static size_t pageSize = 0;
+
+    if (pageSize == 0) {
+#if MACOSX || LINUX || FREEBSD
+        pageSize = (size_t) sysconf(_SC_PAGESIZE);
+#elif WINDOWS
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        pageSize = si.dwPageSize;
+#else
+        pageSize = 4096;  // Default fallback
+#endif
+    }
+    return pageSize;
+}
+#endif /* ME_FIBER_GROWABLE_STACK */
 
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.

@@ -20,7 +20,6 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a2591e86544f90a5dd26f7e92b2e57440" class="nameRef">webCheckSecurityToken</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check an XSRF security token.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a10051a064f5afde32f906a8975baf6ef" class="nameRef">webContentNotModified</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *currentEtag, <a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> mtime)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Determine if 304 Not Modified should be returned.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_session" class="ref">WebSession</a> *</td><td><a href="#web_8h_1a743cca220b556ccae4fdf9dbcc7ab053" class="nameRef">webCreateSession</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create a login session.</td></tr>
-<tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a6dfa2440636b0657c4a23925635f9b43" class="nameRef">webDate</a>(char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> when)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a time to an HTTP date string.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1af90a8913f046551477e9e554e585d5cb" class="nameRef">webDecode</a>(char *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode a URL-encoded string.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a7b633a9d97904ae283f62183a4a46821" class="nameRef">webDecode64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode Base64 string.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a164c57396ff5e8d6bd4dc7331847a9be" class="nameRef">webDestroySession</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Destroy the web session object.</td></tr>
@@ -46,9 +45,10 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#web_8h_1a7ae26c2692880b0853cad53e53b1c53c" class="nameRef">webGetVar</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a request variable value from the request form/body.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a92738e613a418871de1207ef7b9a8c7b" class="nameRef">webHash</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *algorithm)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Hash a string using specified algorithm.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1aececaa735f28451fcc59ea3143c1792b" class="nameRef">webHashPassword</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Hash password for storage.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1ab39c5676dfbffc91b17d89cc0245b51b" class="nameRef">webHttpDate</a>(<a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> when)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a time to an HTTP date string.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1a2ae8a93ddb8024d3bb2c1180eec793da" class="nameRef">webInit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the web module.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ae37fec0fc0eebea040f900f67e77a206" class="nameRef">webIsAuthenticated</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if the user has been authenticated.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a6d153144eddd26485b974529adf88455" class="nameRef">webLogin</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Login a user by creating session state.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a6d153144eddd26485b974529adf88455" class="nameRef">webLogin</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Login a user.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a85313a553af93814d35f794ac9eace84" class="nameRef">webLogout</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Logout a user and remove the user login session.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_user" class="ref">WebUser</a> *</td><td><a href="#web_8h_1ae7227a33c126a1c314119c93f9bae38b" class="nameRef">webLookupUser</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Lookup a user by username.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ada669ffff2f6b0f63919eab50c795592" class="nameRef">webMatchEtag</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *currentEtag)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if currentEtag matches any ETag in If-Match or If-None-Match list.</td></tr>
@@ -58,6 +58,7 @@
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1ab92c702fe0070737e33aa3cc14475ed4" class="nameRef">webParseCookie</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a cookie header string and return a cookie value.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1af222a151d3ec3af89330bc09a7e90dd0" class="nameRef">webParseUrl</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **scheme, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **host, int *port, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **query, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **hash)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a URL into its components.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a37d85c751e8464fd0eb22598b3b95cbf" class="nameRef">webRead</a>(<a href="#struct_web" class="ref">Web</a> *web, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a3ca00e725844efbd0e47f26d0550e8fe" class="nameRef">webReadDirect</a>(<a href="#struct_web" class="ref">Web</a> *web, char **dataPtr, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> desiredSize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data directly from the rx buffer (zero-copy).</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a3595488c261d3836bd3e064d33584dea" class="nameRef">webReadUntil</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *until, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data until a given pattern is reached.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1ab55db6243c532ea20fb1980a280a148b" class="nameRef">webRedirect</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Redirect the client to a new URL.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a7bdc8213f0b18c58c38d6a255359ad76" class="nameRef">webRemoveSessionVar</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a session variable.</td></tr>
@@ -89,7 +90,8 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a687c501de9d22cd63087f961dda73cfb" class="nameRef">webWriteFmt</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write formatted string response data.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a665e78e55c94a76a4b78574e8ebc4cad" class="nameRef">webWriteHeaders</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write request response headers.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a4ecf48d0dbe343b207897b87af164ff3" class="nameRef">webWriteJson</a>(<a href="#struct_web" class="ref">Web</a> *web, const Json *json)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write JSON object as response data.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a0cfaf5a0c841df8d2935eb3dddb33a40" class="nameRef">webWriteResponse</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write a response.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a0cfaf5a0c841df8d2935eb3dddb33a40" class="nameRef">webWriteResponse</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write a response with printf-style formatting.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a216f19d77c7c17e0582fbec4904af36f" class="nameRef">webWriteResponseString</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *msg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write a response using a static string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1ab1a81fac5a9be11b3f26ca2934cb1b64" class="nameRef">webWriteValidatedData</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *buf, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *sigKey)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write a buffer with a validated signature.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a2681ce531c2bd6d245ea82a5ad441b25" class="nameRef">webWriteValidatedJson</a>(<a href="#struct_web" class="ref">Web</a> *web, const Json *json, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *sigKey)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write response data from a JSON object and validate against the API signature This routine will block the current fiber if necessary.</td></tr>
 </table>
@@ -1024,26 +1026,6 @@ User name.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="web_8h_1a6dfa2440636b0657c4a23925635f9b43"></a>
-<div class="api">
-  <div class="prototype">
-    char *
-    webDate
-(char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, <a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> when)
-  </div>
-  <div class="apiDetail">
-<p>Convert a time to an HTTP date string.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Convert a Unix timestamp to a properly formatted HTTP date string suitable for use in HTTP headers like Last-Modified or Expires. The format follows RFC 2822 specifications.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">buf</td><td>Buffer to hold the generated date string (must be at least 64 bytes).</td></tr>
-    <tr><td class="param">size</td><td>Size of the buffer.</td></tr>
-    <tr><td class="param">when</td><td>Unix timestamp to convert.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Pointer to the buffer containing the formatted date string.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
 <a name="web_8h_1af90a8913f046551477e9e554e585d5cb"></a>
 <div class="api">
   <div class="prototype">
@@ -1502,6 +1484,24 @@ User name.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1ab39c5676dfbffc91b17d89cc0245b51b"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    webHttpDate
+(<a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> when)
+  </div>
+  <div class="apiDetail">
+<p>Convert a time to an HTTP date string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Convert a Unix timestamp to a properly formatted HTTP date string suitable for use in HTTP headers like Last-Modified or Expires. The format follows RFC 2822 specifications.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">when</td><td>Unix timestamp to convert.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Pointer to an allocated HTTP date string. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1a2ae8a93ddb8024d3bb2c1180eec793da"></a>
 <div class="api">
   <div class="prototype">
@@ -1541,8 +1541,9 @@ User name.
 (<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)
   </div>
   <div class="apiDetail">
-<p>Login a user by creating session state.</p>
+<p>Login a user.</p>
 Assumes the caller has already authenticated and authorized the user
+    <dl><dt><b>Description</b>:</dt><dd>This creates a login session and defines a session cookie in the response.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
@@ -1725,6 +1726,27 @@ Assumes the caller has already authenticated and authorized the user
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Number of bytes read, 0 when all body data consumed, or negative on error.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1a3ca00e725844efbd0e47f26d0550e8fe"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webReadDirect
+(<a href="#struct_web" class="ref">Web</a> *web, char **dataPtr, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> desiredSize)
+  </div>
+  <div class="apiDetail">
+<p>Read request body data directly from the rx buffer (zero-copy).</p>
+    <dl><dt><b>Description</b>:</dt><dd>Fills buffer and sets *dataPtr to the data location. Consumes data internally. Handles both regular Content-Length and chunked transfer encoding. This is more efficient than webRead for cases where the data can be processed directly from the buffer (e.g., writing to a file) without needing an intermediate copy.</dd></dl>
+    <dl><dt></dt><dd>Must only be called from a fiber.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">dataPtr</td><td>Pointer to receive the data buffer address.</td></tr>
+    <tr><td class="param">desiredSize</td><td>Desired number of bytes to make available.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of bytes available in *dataPtr, 0 on EOF, or negative on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal <programlisting><codeline><highlight class="normal">char<sp/>*ptr;</highlight></codeline><codeline><highlight class="normal">ssize<sp/>nbytes;</highlight></codeline><codeline><highlight class="normal">while<sp/>((nbytes<sp/>=<sp/>webReadDirect(web,<sp/>&amp;ptr,<sp/>ME_BUFSIZE<sp/>*<sp/>4))<sp/>&gt;<sp/>0)<sp/>{</highlight></codeline><codeline><highlight class="normal"><sp/><sp/><sp/><sp/>write(fd,<sp/>ptr,<sp/>nbytes);</highlight></codeline><codeline><highlight class="normal">}</highlight></codeline></programlisting></dd></dl>
   </div>
 </div>
 <a name="web_8h_1a3595488c261d3836bd3e064d33584dea"></a>
@@ -2337,7 +2359,7 @@ The path is used as a JSON property path into the signatures.json5 file. It is t
 (<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)
   </div>
   <div class="apiDetail">
-<p>Write a response.</p>
+<p>Write a response with printf-style formatting.</p>
     <dl><dt><b>Description</b>:</dt><dd>This routine writes a single plain text response and finalizes the response in one call. If status is zero, set the status to 400 and close the socket after issuing the response. It will block the current fiber if necessary. Other fibers continue to run. This will set the Content-Type header to text/plain.</dd></dl>
     <dl><dt></dt><dd>Must only be called from a fiber.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
@@ -2346,6 +2368,27 @@ The path is used as a JSON property path into the signatures.json5 file. It is t
     <tr><td class="param">status</td><td>HTTP status code. If the status is less than or equal to zero, close the socket after issuing the response. If status is zero, default the status to 400.</td></tr>
     <tr><td class="param">fmt</td><td>Printf style message string.</td></tr>
     <tr><td class="param">...</td><td>Format arguments.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes written.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1a216f19d77c7c17e0582fbec4904af36f"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a>
+    webWriteResponseString
+(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *msg)
+  </div>
+  <div class="apiDetail">
+<p>Write a response using a static string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine writes a single plain text response using a static string and finalizes the response in one call. This is a higher performance alternative to webWriteResponse() when the message is a compile-time constant or persistent string that does not need printf-style formatting. If status is zero, set the status to 400 and close the socket after issuing the response. It will block the current fiber if necessary. Other fibers continue to run. This will set the Content-Type header to text/plain.</dd></dl>
+    <dl><dt></dt><dd>Must only be called from a fiber.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> object.</td></tr>
+    <tr><td class="param">status</td><td>HTTP status code. If the status is less than or equal to zero, close the socket after issuing the response. If status is zero, default the status to 400.</td></tr>
+    <tr><td class="param">msg</td><td>Static message string (must be persistent, will not be copied or freed).</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>The number of bytes written.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>

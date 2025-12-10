@@ -131,14 +131,49 @@
     #endif
 #endif
 
-#ifndef ME_FIBER_GUARD_STACK
-//  Only use fiber guards when not using VM stack (VM provides guard pages)
-    #if ME_DEBUG && !ME_FIBER_VM_STACK
-        #define ME_FIBER_GUARD_STACK 1
+//  Growable stacks use guard pages and reserve-then-commit memory model
+#ifndef ME_FIBER_GROWABLE_STACK
+    #if ME_FIBER_VM_STACK && (ME_UNIX_LIKE || ME_WIN_LIKE)
+        #define ME_FIBER_GROWABLE_STACK 1
     #else
-        #define ME_FIBER_GUARD_STACK 0
+        #define ME_FIBER_GROWABLE_STACK 0
     #endif
 #endif
+
+//  Pattern-based guard pad only when growable stacks not available
+#ifndef ME_FIBER_GUARD_PAD
+    #if ME_DEBUG && !ME_FIBER_GROWABLE_STACK
+        #define ME_FIBER_GUARD_PAD 1
+    #else
+        #define ME_FIBER_GUARD_PAD 0
+    #endif
+#endif
+
+#ifndef ME_FIBER_INITIAL_STACK
+    #define ME_FIBER_INITIAL_STACK     ((size_t) (32 * 1024))
+#endif
+
+#ifndef ME_FIBER_MAX_STACK
+    #if ME_64
+        #define ME_FIBER_MAX_STACK     ((size_t) (8 * 1024 * 1024))
+    #else
+        #define ME_FIBER_MAX_STACK     ((size_t) (1024 * 1024))
+    #endif
+#endif
+
+#ifndef ME_FIBER_STACK_GROW_SIZE
+    #define ME_FIBER_STACK_GROW_SIZE   ((size_t) (16 * 1024))
+#endif
+
+#ifndef ME_FIBER_STACK_RESET_LIMIT
+    #define ME_FIBER_STACK_RESET_LIMIT ((size_t) (64 * 1024))
+#endif
+
+//  Memory protection flags for rProtectPages
+#define R_PROT_NONE                    0
+#define R_PROT_READ                    1
+#define R_PROT_WRITE                   2
+#define R_PROT_EXEC                    4
 
 #if R_USE_FIBER
     #include "uctx.h"
@@ -502,6 +537,48 @@ PUBLIC void *rAllocVirt(size_t size);
  */
 PUBLIC void rFreeVirt(void *ptr, size_t size);
 
+#if ME_FIBER_GROWABLE_STACK
+/**
+    Reserve virtual address space without committing physical memory.
+    @description Reserves a region of virtual address space with PROT_NONE protection.
+        Memory must be committed via rProtectPages before use.
+        Used for guard page stack allocation.
+    @param size Size of virtual address space to reserve in bytes.
+    @return Pointer to reserved region, or NULL on failure.
+    @stability Evolving
+ */
+PUBLIC void *rAllocPages(size_t size);
+
+/**
+    Free reserved virtual address space.
+    @description Releases virtual address space reserved via rAllocPages.
+    @param ptr Pointer to reserved region. NULL is safely ignored.
+    @param size Size of the reserved region in bytes.
+    @stability Evolving
+ */
+PUBLIC void rFreePages(void *ptr, size_t size);
+
+/**
+    Change memory protection on a region.
+    @description Commits and/or changes protection on a region of virtual memory.
+        On Unix, uses mprotect. On Windows, uses VirtualAlloc to commit then protect.
+    @param addr Start address of the region (must be page-aligned).
+    @param size Size of the region in bytes (must be page-aligned).
+    @param prot Protection flags: R_PROT_NONE, R_PROT_READ, R_PROT_WRITE, R_PROT_EXEC.
+    @return Zero on success, negative on error.
+    @stability Evolving
+ */
+PUBLIC int rProtectPages(void *addr, size_t size, int prot);
+
+/**
+    Get system page size.
+    @description Returns the system memory page size. Result is cached for efficiency.
+    @return Page size in bytes (typically 4096).
+    @stability Evolving
+ */
+PUBLIC size_t rGetPageSize(void);
+#endif
+
 /**
     Compare two blocks of memory
     @description Compare two blocks of memory.
@@ -613,6 +690,25 @@ typedef void (*RFiberProc)(void *data);
     #include <valgrind/memcheck.h>
 #endif
 
+#if ME_FIBER_GROWABLE_STACK
+/**
+    Guard page stack metadata for growable stacks.
+    @description Tracks the reserved and committed regions of a guard-page protected stack.
+    @stability Evolving
+    @ingroup RFiber
+ */
+typedef struct RFiberStack {
+    void *base;           // Lowest address (start of reserved region, PROT_NONE)
+    void *usable;         // Start of usable (committed) stack space
+    void *top;            // Highest address (stack top, end of reserved region)
+    size_t reserved;      // Total reserved virtual address space
+    size_t committed;     // Currently committed (usable) size
+    size_t initialSize;   // Initial committed size (for pool reset)
+    size_t maxSize;       // Maximum growth allowed
+    bool guarded;         // Using guard pages (vs pattern)
+} RFiberStack;
+#endif
+
 /**
     Fiber state
     @stability Evolving
@@ -637,12 +733,14 @@ typedef struct RFiber {
 #if FIBER_WITH_VALGRIND
     uint stackId;
 #endif
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
     //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
-#if ME_FIBER_VM_STACK
-    uchar *stack;        // Pointer to VM-allocated stack
+#if ME_FIBER_GROWABLE_STACK
+    RFiberStack stackInfo; // Guard page stack metadata
+#elif ME_FIBER_VM_STACK
+    uchar *stack;          // Pointer to VM-allocated stack
 #else
 #if _MSC_VER
     #pragma warning(push)
@@ -730,16 +828,14 @@ PUBLIC void *rYieldFiber(void *value);
 
 /**
     Start a fiber block
-    @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
-    @return Zero on first call. Returns 1 when jumping out of the block.
+    @description This prepares a fiber block to use setjmp/longjmp.
     @stability Prototype
  */
-PUBLIC int rStartFiberBlock(void);
+PUBLIC void rStartFiberBlock(void);
 
 /**
     End a fiber block
-    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs
-    in the fiber block.
+    @description This restores the signal mask to the original state.
     @stability Prototype
  */
 PUBLIC void rEndFiberBlock(void);
@@ -774,7 +870,7 @@ PUBLIC bool rIsMain(void);
  */
 PUBLIC bool rIsForeignThread(void);
 
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
 /**
     CHECK fiber stack usage
     @description This will log peak fiber stack use to the log file
@@ -800,17 +896,24 @@ PUBLIC int64 rGetStackUsage(void);
 PUBLIC void *rGetFiberStack(void);
 
 /**
-    Get the current fiber stack size
-    @description Returns the configured fiber stack size in bytes.
-    @return The fiber stack size in bytes.
+    Get the initial fiber stack size
+    @description Returns the initial fiber stack size in bytes. When guard pages are enabled,
+        this is the initially committed size that can grow automatically. Use rGetFiberStackLimits
+        for full stack configuration including max size and growth parameters.
+    @return The initial fiber stack size in bytes.
     @stability Evolving
+    @see rGetFiberStackLimits
  */
 PUBLIC size_t rGetFiberStackSize(void);
 
 /**
-    Set the default fiber stack size
-    @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
+    Set the initial fiber stack size
+    @description Sets the initial stack size for new fibers. When guard pages are enabled,
+        this is the initially committed size (stacks can grow beyond this). Use rSetFiberStackLimits
+        for full configuration including max size, growth increment, and reset threshold.
+    @param size Size of fiber stack in bytes. This should typically be in the range of 32K to 512K.
     @stability Evolving
+    @see rSetFiberStackLimits
  */
 PUBLIC void rSetFiberStackSize(size_t size);
 
@@ -840,6 +943,33 @@ PUBLIC int rSetFiberLimits(int maxFibers, int poolMin, int poolMax);
  */
 PUBLIC void rGetFiberStats(int *active, int *max, int *pooled, int *poolMax, int *poolMin, uint64 *hits,
                            uint64 *misses);
+
+/**
+    Configure fiber stack limits.
+    @description Sets runtime limits for fiber stack allocation. Values of 0 leave the current
+        setting unchanged. When guard pages are enabled, all sizes are rounded up to page boundaries
+        and stacks can grow automatically. When guard pages are disabled, only initialSize is used
+        (maxSize, growSize, resetLimit are silently ignored).
+    @param initialSize Initial stack size for new fibers. If 0, unchanged.
+    @param maxSize Maximum stack size fibers can grow to (guard pages only). If 0, unchanged.
+    @param growSize Size increment when stack grows (guard pages only). If 0, unchanged.
+    @param resetLimit Only reset stacks above this size on pool reuse (guard pages only). If 0, unchanged.
+    @return Zero on success, negative on error.
+    @stability Evolving
+ */
+PUBLIC int rSetFiberStackLimits(size_t initialSize, size_t maxSize, size_t growSize, size_t resetLimit);
+
+/**
+    Get current fiber stack limit settings.
+    @description Retrieves the current fiber stack configuration. Any pointer may be NULL.
+        When guard pages are disabled, maxSize, growSize, and resetLimit return 0.
+    @param initialSize Pointer to receive initial stack size (may be NULL).
+    @param maxSize Pointer to receive max stack size, 0 if guard pages disabled (may be NULL).
+    @param growSize Pointer to receive growth increment, 0 if guard pages disabled (may be NULL).
+    @param resetLimit Pointer to receive reset limit, 0 if guard pages disabled (may be NULL).
+    @stability Evolving
+ */
+PUBLIC void rGetFiberStackLimits(size_t *initialSize, size_t *maxSize, size_t *growSize, size_t *resetLimit);
 
 /**
     Allocate a fiber coroutine object

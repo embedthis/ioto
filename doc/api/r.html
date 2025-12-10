@@ -36,7 +36,6 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a8a257ecb7db62931d0c93cc45cab746c" class="nameRef">rDaemonize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>For the current process and run as a daemon.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1aabf9e67e1d6c74c7878b7c6d4c803b9b" class="nameRef">rDirname</a>(char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the directory name portion of a filename.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a27e34757cdd320b8640b46e5c1e5465e" class="nameRef">rDisconnectSocket</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Disconnect a socket.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a2e8e2be71c5d3f4e746eb50a8a4cd8a3" class="nameRef">rEndFiberBlock</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>End a fiber block.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a2fc82aa07dbb13002a6204c042acddf8" class="nameRef">rEnter</a>(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> *access, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Enter a fiber critical section.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool</td><td><a href="#r_8h_1a9471a80488de99e7b78794424863006e" class="nameRef">rFileExists</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if a file exists.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1ae261ef8ca8c72bfcf1f444c5e14d3d69" class="nameRef">rFlushFile</a>(int fd)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Flush file buffers.</td></tr>
@@ -61,7 +60,8 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1adadee860b5fcbc7b04fabd3198994125" class="nameRef">rGetError</a>(int error)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return a string representation of an R error code.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RFiber,*</td><td><a href="#r_8h_1a3384070f5fe40122b170616f91b3ddba" class="nameRef">rGetFiber</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current fiber object.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a089fb7d0e4d5d33f3c40962e1c0d1e0f" class="nameRef">rGetFiberStack</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the base address of the fiber stack.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> size_t</td><td><a href="#r_8h_1a7c2b0d9202d29be7f7b5c376b15887e9" class="nameRef">rGetFiberStackSize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current fiber stack size.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1aef232c2a76976e42ff6ff0cbc3b00398" class="nameRef">rGetFiberStackLimits</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *initialSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *maxSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *growSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *resetLimit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get current fiber stack limit settings.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> size_t</td><td><a href="#r_8h_1a7c2b0d9202d29be7f7b5c376b15887e9" class="nameRef">rGetFiberStackSize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the initial fiber stack size.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ace1a59cce67b9ab6a84b44f30b42a464" class="nameRef">rGetFiberStats</a>(int *active, int *max, int *pooled, int *poolMax, int *poolMin, <a href="osdep.html#osdep_8h_1a151d6b4fc026bbbf0b057d78f2543f50" class="ref">uint64</a> *hits, <a href="osdep.html#osdep_8h_1a151d6b4fc026bbbf0b057d78f2543f50" class="ref">uint64</a> *misses)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get fiber statistics.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1a54db929e2a0027e00caef9ddd314cf26" class="nameRef">rGetFileExt</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the extension of a file path.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1ad1a258a646b8ec308daf8f6961afe49b" class="nameRef">rGetFilePath</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a file path name.</td></tr>
@@ -82,6 +82,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RSocketCustom</td><td><a href="#r_8h_1a66b9f22e7238544c91feb074f607de95" class="nameRef">rGetSocketCustom</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the custom socket configuration callback.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1a0b5572a4f8519a0b6bda62dea357c2bd" class="nameRef">rGetSocketError</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket error.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Socket</td><td><a href="#r_8h_1ab4b12fff7f437c19e7ccc0837c8de773" class="nameRef">rGetSocketHandle</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket file descriptor.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a088281233efef6173ff28884e28e6551" class="nameRef">rGetSocketLimit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the maximum number of active sockets allowed.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RWait,*</td><td><a href="#r_8h_1a919a9e748ca82402c8b12e70ea49f56c" class="nameRef">rGetSocketWait</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket wait handler.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a4bba5d382cad512b94fb175f3795acab" class="nameRef">rGetState</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current R state.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a11ceff807560578401d8b762f5d178a3" class="nameRef">rGetTempFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dir, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a temp filename.</td></tr>
@@ -142,7 +143,8 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ticks</td><td><a href="#r_8h_1a562d0c21d142ca29cc7cee26fc21b450" class="nameRef">rRunEvents</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run due events.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a1e7ecc44de09a8c42918273b3fb89b30" class="nameRef">rServiceEvents</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Service events.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a59b35c5883ebf4a1f6f4636c38662edb" class="nameRef">rSetFiberLimits</a>(int maxFibers, int poolMin, int poolMax)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set fiber limits.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a92e9b7055e05ba617f7f17539d5f0583" class="nameRef">rSetFiberStackSize</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the default fiber stack size.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1adf5510d7ca6775426de79bb09750503b" class="nameRef">rSetFiberStackLimits</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> initialSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> maxSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> growSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> resetLimit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure fiber stack limits.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a92e9b7055e05ba617f7f17539d5f0583" class="nameRef">rSetFiberStackSize</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the initial fiber stack size.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a8c789489ea07a942b46dcb1c6a0d18c5" class="nameRef">rSetMemHandler</a>(<a href="#r_8h_1a3e2bc18aa2db34222ff8e68c993bb1d4" class="ref">RMemProc</a> handler)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a global memory exhaustion handler.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1af84ad013fcfa0dc3867dc6df1e4e7581" class="nameRef">rSetOsError</a>(int error)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the O/S error code.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a817d093be54881d3fc2b3a72e07271be" class="nameRef">rSetSocketBlocking</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> on)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a socket into blocking I/O mode.</td></tr>
@@ -153,6 +155,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ad93f99ff7fd597026f970502a173f8b1" class="nameRef">rSetSocketDefaultCiphers</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ciphers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the default TLS ciphers to use for communications.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a34293d84511f0c1f8e259141f477d80f" class="nameRef">rSetSocketDefaultVerify</a>(int verifyPeer, int verifyIssuer)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the default TLS verification parameters.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a69f5469e15fad7bf4261acf0f69c3584" class="nameRef">rSetSocketError</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the socket error message.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a93f847acea48f9409ce038b2b923454e" class="nameRef">rSetSocketLimit</a>(int limit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum number of active sockets allowed.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ad23d9ae5ea3aeba11cee157019a3459c" class="nameRef">rSetSocketLinger</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, int linger)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the socket linger timeout.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ab42765bc6510ba9586ad033b9ebf7307" class="nameRef">rSetSocketNoDelay</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, int enable)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the TCP_NODELAY option to disable Nagle&apos;s algorithm.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a962e82f4240c024e7117402fd15c3b38" class="nameRef">rSetSocketVerify</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, int verifyPeer, int verifyIssuer)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the socket TLS verification parameters.</td></tr>
@@ -160,7 +163,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a5f33a3343c0937ad589d48beaeac5b8f" class="nameRef">rSetState</a>(int state)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the R state.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ad227b3587a2e6ddd19b6e7cbc5fc9ae2" class="nameRef">rSetTimeouts</a>(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> on)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Control timeouts.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a197140055ddedeb1876d52bc405a31b3" class="nameRef">rSetTlsSession</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, void *session)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a cached TLS session for resumption on next connection.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a231c473e1104350ec3e623ed13749f87" class="nameRef">rSetWaitHandler</a>(<a href="#struct_r_wait" class="ref">RWait</a> *wp, <a href="#r_8h_1a489c3016ecc64ff8fffdd663a6249fbe" class="ref">RWaitProc</a> handler, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> mask, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a wait handler function on a wait object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ac7660907db1afdaee6ab1029994b9ca0" class="nameRef">rSetWaitHandler</a>(<a href="#struct_r_wait" class="ref">RWait</a> *wp, <a href="#r_8h_1a489c3016ecc64ff8fffdd663a6249fbe" class="ref">RWaitProc</a> handler, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> mask, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a wait handler function on a wait object.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ab19a9edafc17535aa1b4c1435a3eeef1" class="nameRef">rSetWaitMask</a>(<a href="#struct_r_wait" class="ref">RWait</a> *wp, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> mask, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update the wait mask for a wait handler.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1aa1bcdb4a2fd54cbb570db24ddd68a9cd" class="nameRef">rSignal</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Signal watches of a named event.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ac9ff01f079930719b44dc956e9f15743" class="nameRef">rSignalSync</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Signal watches of a named event synchronously (blocking).</td></tr>
@@ -170,7 +173,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a34e2cfa9a420b03452be1e9eccfd6f62" class="nameRef">rSpawnThread</a>(<a href="#r_8h_1a3da0c3abfa79a3c73d2c0920f395b210" class="ref">RThreadProc</a> fn, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Spawn an O/S thread and wait until it completes.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> REvent</td><td><a href="#r_8h_1adada457cdac6b212a648e7630a137d00" class="nameRef">rStartEvent</a>(<a href="#r_8h_1a02fa8ee37c08629cb92622c0f8dc1135" class="ref">REventProc</a> proc, void *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a callback event.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1af095d5a60dd353712a4c24bd5a489d23" class="nameRef">rStartFiber</a>(<a href="#struct_r_fiber" class="ref">RFiber</a> *fiber, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fiber coroutine.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a969c045683606d3608f8b7f8db0fbf64" class="nameRef">rStartFiberBlock</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fiber block.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1adef7b7fe7629ab4d3338b205634e1376" class="nameRef">rStartFiberBlock</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fiber block.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a979b9dbe371c8ee5a00022747757e3ef" class="nameRef">rStop</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Immediately stop the app.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a28f58bf28e186b9a27975385310c5af1" class="nameRef">rStopEvent</a>(<a href="#r_8h_1a1149ec39f6cdb2f2d68612836de380b5" class="ref">REvent</a> id)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Stop an event.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a0a54d92e2877d58e7d2593f25e5cd5d2" class="nameRef">rTermFibers</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the fiber coroutine module.</td></tr>
@@ -437,6 +440,10 @@
 <td>#define</td><td><a href="#r_8h_1a34fcdeeae27de7f86c4a66df8db09908" class="nameRef">R_TRIM_START</a>&nbsp;&nbsp;&nbsp;0x1</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Flag for strim to trim from the start of the string.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#r_8h_1a5f9fcd954038c6f86d749e2cd20ba5e1" class="nameRef">R_WAIT_MAIN_FIBER</a>&nbsp;&nbsp;&nbsp;0x1</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Execute wait handler on main fiber without allocating a new fiber.</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#r_8h_1a0ec8eab885efe728a9b44f469edb0595" class="nameRef">R_WALK_DEPTH_FIRST</a>&nbsp;&nbsp;&nbsp;0x1</td>
 </tr>
@@ -831,6 +838,9 @@ File descriptor to wait upon.
 </td></tr>
 <tr><td class="param"><a class="ref" href="#struct_r_fiber">RFiber</a> *</td><td>fiber</td><td>
 Current fiber for rWaitForIO.
+</td></tr>
+<tr><td class="param">int</td><td>flags</td><td>
+Wait handler flags (R_WAIT_MAIN_FIBER).
 </td></tr>
 <tr><td class="param">RWaitProc</td><td>handler</td><td>
 Handler function to invoke as the entrypoint in the fiber coroute.
@@ -1584,19 +1594,6 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="r_8h_1a2e8e2be71c5d3f4e746eb50a8a4cd8a3"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
-    rEndFiberBlock
-(void )
-  </div>
-  <div class="apiDetail">
-<p>End a fiber block.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This jumps out of a fiber block using longjmp. This is typically called when an exception occurs in the fiber block.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
-  </div>
-</div>
 <a name="r_8h_1a2fc82aa07dbb13002a6204c042acddf8"></a>
 <div class="api">
   <div class="prototype">
@@ -2041,6 +2038,26 @@ Create the ticks mark with rGetTicks()
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1aef232c2a76976e42ff6ff0cbc3b00398"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rGetFiberStackLimits
+(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *initialSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *maxSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *growSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> *resetLimit)
+  </div>
+  <div class="apiDetail">
+<p>Get current fiber stack limit settings.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Retrieves the current fiber stack configuration. Any pointer may be NULL. When guard pages are disabled, maxSize, growSize, and resetLimit return 0.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">initialSize</td><td>Pointer to receive initial stack size (may be NULL).</td></tr>
+    <tr><td class="param">maxSize</td><td>Pointer to receive max stack size, 0 if guard pages disabled (may be NULL).</td></tr>
+    <tr><td class="param">growSize</td><td>Pointer to receive growth increment, 0 if guard pages disabled (may be NULL).</td></tr>
+    <tr><td class="param">resetLimit</td><td>Pointer to receive reset limit, 0 if guard pages disabled (may be NULL).</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a7c2b0d9202d29be7f7b5c376b15887e9"></a>
 <div class="api">
   <div class="prototype">
@@ -2049,9 +2066,9 @@ Create the ticks mark with rGetTicks()
 (void )
   </div>
   <div class="apiDetail">
-<p>Get the current fiber stack size.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Returns the configured fiber stack size in bytes.</dd></dl>
-    <dl><dt>Returns:</dt><dd>The fiber stack size in bytes.</dd></dl>
+<p>Get the initial fiber stack size.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Returns the initial fiber stack size in bytes. When guard pages are enabled, this is the initially committed size that can grow automatically. Use rGetFiberStackLimits for full stack configuration including max size and growth parameters.</dd></dl>
+    <dl><dt>Returns:</dt><dd>The initial fiber stack size in bytes.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -2399,6 +2416,19 @@ This call adds the files to the supplied results list
     <tr><td class="param">sp</td><td>Socket object returned from rAllocSocket.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>The Socket file descriptor used by the O/S for the socket.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a088281233efef6173ff28884e28e6551"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rGetSocketLimit
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Get the maximum number of active sockets allowed.</p>
+    <dl><dt>Returns:</dt><dd>The socket limit.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -3422,6 +3452,27 @@ This is a secure verion of printf that can handle null args
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1adf5510d7ca6775426de79bb09750503b"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rSetFiberStackLimits
+(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> initialSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> maxSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> growSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> resetLimit)
+  </div>
+  <div class="apiDetail">
+<p>Configure fiber stack limits.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Sets runtime limits for fiber stack allocation. Values of 0 leave the current setting unchanged. When guard pages are enabled, all sizes are rounded up to page boundaries and stacks can grow automatically. When guard pages are disabled, only initialSize is used (maxSize, growSize, resetLimit are silently ignored).</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">initialSize</td><td>Initial stack size for new fibers. If 0, unchanged.</td></tr>
+    <tr><td class="param">maxSize</td><td>Maximum stack size fibers can grow to (guard pages only). If 0, unchanged.</td></tr>
+    <tr><td class="param">growSize</td><td>Size increment when stack grows (guard pages only). If 0, unchanged.</td></tr>
+    <tr><td class="param">resetLimit</td><td>Only reset stacks above this size on pool reuse (guard pages only). If 0, unchanged.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success, negative on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a92e9b7055e05ba617f7f17539d5f0583"></a>
 <div class="api">
   <div class="prototype">
@@ -3430,10 +3481,11 @@ This is a secure verion of printf that can handle null args
 (<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)
   </div>
   <div class="apiDetail">
-<p>Set the default fiber stack size.</p>
+<p>Set the initial fiber stack size.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Sets the initial stack size for new fibers. When guard pages are enabled, this is the initially committed size (stacks can grow beyond this). Use rSetFiberStackLimits for full configuration including max size, growth increment, and reset threshold.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
-    <tr><td class="param">size</td><td>Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.</td></tr>
+    <tr><td class="param">size</td><td>Size of fiber stack in bytes. This should typically be in the range of 32K to 512K.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
@@ -3614,6 +3666,23 @@ from a socket
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a93f847acea48f9409ce038b2b923454e"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rSetSocketLimit
+(int limit)
+  </div>
+  <div class="apiDetail">
+<p>Set the maximum number of active sockets allowed.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This sets a runtime limit on active sockets. Connections exceeding this limit will be rejected.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">limit</td><td>Maximum number of active sockets.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1ad23d9ae5ea3aeba11cee157019a3459c"></a>
 <div class="api">
   <div class="prototype">
@@ -3738,12 +3807,12 @@ from a socket
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="r_8h_1a231c473e1104350ec3e623ed13749f87"></a>
+<a name="r_8h_1ac7660907db1afdaee6ab1029994b9ca0"></a>
 <div class="api">
   <div class="prototype">
     <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
     rSetWaitHandler
-(<a href="#struct_r_wait" class="ref">RWait</a> *wp, <a href="#r_8h_1a489c3016ecc64ff8fffdd663a6249fbe" class="ref">RWaitProc</a> handler, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> mask, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)
+(<a href="#struct_r_wait" class="ref">RWait</a> *wp, <a href="#r_8h_1a489c3016ecc64ff8fffdd663a6249fbe" class="ref">RWaitProc</a> handler, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> mask, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline, int flags)
   </div>
   <div class="apiDetail">
 <p>Define a wait handler function on a wait object.</p>
@@ -3755,6 +3824,7 @@ from a socket
     <tr><td class="param">arg</td><td>Parameter argument to pass to the handler.</td></tr>
     <tr><td class="param">mask</td><td>Set to R_READABLE or R_WRITABLE or both.</td></tr>
     <tr><td class="param">deadline</td><td>Optional deadline to wait system time. Set to zero for no deadline.</td></tr>
+    <tr><td class="param">flags</td><td>Set to R_WAIT_MAIN_FIBER to run handler on main fiber without allocating a new fiber. Set to 0 for default behavior.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
@@ -3929,17 +3999,16 @@ from a socket
     <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
   </div>
 </div>
-<a name="r_8h_1a969c045683606d3608f8b7f8db0fbf64"></a>
+<a name="r_8h_1adef7b7fe7629ab4d3338b205634e1376"></a>
 <div class="api">
   <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
     rStartFiberBlock
 (void )
   </div>
   <div class="apiDetail">
 <p>Start a fiber block.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.</dd></dl>
-    <dl><dt>Returns:</dt><dd>Zero on first call. Returns 1 when jumping out of the block.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This prepares a fiber block to use setjmp/longjmp.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
   </div>
 </div>

@@ -154,6 +154,13 @@
       <arglist></arglist>
     </member>
     <member kind="variable">
+      <type>int</type>
+      <name>flags</name>
+      <anchorfile>struct_r_wait.html</anchorfile>
+      <anchor>a8de9b7bf0fd995e5b7673122ecbdf6d3</anchor>
+      <arglist></arglist>
+    </member>
+    <member kind="variable">
       <type>RWaitProc</type>
       <name>handler</name>
       <anchorfile>struct_r_wait.html</anchorfile>
