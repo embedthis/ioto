@@ -139,29 +139,37 @@ This documentation should be updated when:
 
 ## Recent Activity
 
-### Version 3.0.0 Release (December 9, 2025)
+### Version 3.0.0 Release (December 10, 2025)
 
-Major release with performance optimizations and API enhancements.
+Major release with performance optimizations, growable fiber stacks, and API enhancements.
 
-**Key Changes**:
-- Socket accept optimization with `R_WAIT_MAIN_FIBER` flag
-- New `rGrowBufSize()` for growing buffers to specific sizes
-- New `rGetSocketLimit()` / `rSetSocketLimit()` for runtime socket limits
-- New `webReadDirect()` for zero-copy body reading
-- New `webWriteResponseString()` for efficient static responses
-- Fixed Windows pollFds clearing in `rFreeWait()`
-- Dynamic poll table growth for Windows/WSAPoll
+**Major Features**:
+- **Growable Fiber Stacks** - Auto-growing stacks via guard pages (`ME_FIBER_GROWABLE_STACK`)
+  - Reserves large virtual address space, commits memory on demand
+  - Configurable via `limits.fiberStack`, `limits.fiberStackMax`, `limits.fiberStackGrow`
+  - New APIs: `rAllocPages()`, `rFreePages()`, `rProtectPages()`, `rGetPageSize()`
+  - New APIs: `rSetFiberStackLimits()`, `rGetFiberStackLimits()`
+- **Fiber Exception Blocks** - Crash recovery for web handlers (`ME_WEB_FIBER_BLOCKS`)
+  - Enable via `web.fiberBlocks` configuration
+  - New `WEB_HOOK_EXCEPTION` hook for exception notification
+- **Zero-Copy I/O** - `webReadDirect()` and sendfile support
+- **HTTP Authentication** - Basic and Digest authentication for web server
+- **Event-Driven I/O** - 10x connection scalability via non-blocking keep-alive
+- **Simplified SSE/WebSocket APIs** - `urlSseRun()` and `webSocketRun()` replace async/wait pairs
 
 **API Changes**:
 - `rSetWaitHandler()` signature changed: added `flags` parameter
-- Added `flags` field to `RWait` structure
-- New constant `R_WAIT_MAIN_FIBER` for main fiber execution
+- `rSetFiberLimits()` signature changed: added `poolMin`, `poolMax` parameters
+- `webSendFile()` signature changed: added `offset`, `len` parameters
+- Removed `urlSseAsync()`, `urlSseWait()`, `urlWait()` - use `urlSseRun()` instead
+- Removed `webSocketAsync()`, `webSocketWait()` - use `webSocketRun()` instead
 
 **Documentation Updated**:
 - [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry for v3.0.0
+- [../../doc/releases/3.0.0.md](../../doc/releases/3.0.0.md) - Full release notes
 
 **Status**: Version 3.0.0 committed and ready for release.
 
 ---
 
-**Last Updated:** 2025-12-09
+**Last Updated:** 2025-12-10
