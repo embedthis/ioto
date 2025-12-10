@@ -210,8 +210,9 @@ int main(int argc, char **argv)
  */
 static void start(void)
 {
-    cchar *path;
-    int   maxFibers, poolMin, poolMax;
+    cchar  *path;
+    size_t stackInitial, stackMax, stackGrow, stackReset;
+    int    maxFibers, poolMin, poolMax;
 
     //  Load configuration from file or use defaults
     path = configPath ? configPath : "web.json5";
@@ -231,6 +232,17 @@ static void start(void)
     poolMin = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMin", "0"));
     poolMax = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMax", "0"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
+
+    //  Configure fiber stack limits if specified. A value of zero keeps the default.
+    stackInitial = (size_t) svalue(jsonGet(config, 0, "limits.fiberStack", "0"));
+    if (stackInitial == 0) {
+        // Backwards compatibility with old "limits.stack" property.
+        stackInitial = (size_t) svalue(jsonGet(config, 0, "limits.stack", "0"));
+    }
+    stackMax = (size_t) svalue(jsonGet(config, 0, "limits.fiberStackMax", "0"));
+    stackGrow = (size_t) svalue(jsonGet(config, 0, "limits.fiberStackGrow", "0"));
+    stackReset = (size_t) svalue(jsonGet(config, 0, "limits.fiberStackReset", "0"));
+    rSetFiberStackLimits(stackInitial, stackMax, stackGrow, stackReset);
 
     //  Override listen endpoints if specified on command line
     if (endpoint) {

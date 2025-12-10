@@ -28,7 +28,7 @@ static void reset(void);
 PUBLIC int ioInitConfig(void)
 {
     Json   *json;
-    size_t stackSize;
+    size_t stackInitial, stackMax, stackGrow, stackReset;
     int    maxFibers, poolMin, poolMax;
 
     assert(rIsMain());
@@ -48,14 +48,22 @@ PUBLIC int ioInitConfig(void)
     json = ioto->config;
     ioConfig(json);
     
-    stackSize = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
-    if (stackSize) {
-        rSetFiberStackSize(stackSize);
-    }
+    // Configure the fiber pool. A value of zero keeps the default.
     maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "0"));
     poolMin = svaluei(jsonGet(json, 0, "limits.fiberPoolMin", "0"));
     poolMax = svaluei(jsonGet(json, 0, "limits.fiberPoolMax", "0"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
+
+    //  Configure fiber stack limits if specified. A value of zero keeps the default.
+    stackInitial = (size_t) svalue(jsonGet(json, 0, "limits.fiberStack", "0"));
+    if (stackInitial == 0) {
+        // Backwards compatibility with old "limits.stack" property.
+        stackInitial = (size_t) svalue(jsonGet(json, 0, "limits.stack", "0"));
+    }
+    stackMax = (size_t) svalue(jsonGet(json, 0, "limits.fiberStackMax", "0"));
+    stackGrow = (size_t) svalue(jsonGet(json, 0, "limits.fiberStackGrow", "0"));
+    stackReset = (size_t) svalue(jsonGet(json, 0, "limits.fiberStackReset", "0"));
+    rSetFiberStackLimits(stackInitial, stackMax, stackGrow, stackReset);
 
 #if SERVICES_CLOUD
     if (ioto->cmdAccount) {
