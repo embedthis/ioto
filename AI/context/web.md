@@ -17,20 +17,6 @@ The **Web Server Module** — a fast, secure, tiny web server for embedded appli
 - API signatures
 - JSON configuration file
 
-### New APIs (v3.0.0)
-
-**Zero-Copy Body Reading:**
-- `webReadDirect(web, &dataPtr, desiredSize)` - Read body data directly from rx buffer without copying
-  - Returns pointer to data in buffer, consumes data internally
-  - Handles both Content-Length and chunked transfer encoding
-  - More efficient for streaming to files or processing large bodies
-
-**Static String Response:**
-- `webWriteResponseString(web, status, msg)` - Write response using static string
-  - Higher performance than `webWriteResponse()` for constant strings
-  - No printf-style formatting overhead
-  - String must be persistent (not freed)
-
 ## Web Module Testing
 
 ### Test Ports and Configuration

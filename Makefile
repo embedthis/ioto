@@ -89,9 +89,9 @@ info:
 	echo "      [Info] Run via: \"sudo make run\". Run \"ioto\" manually with \"$(BUILD)/bin\" in your path."
 
 test:
+	# Check for test prerequisites
 	@./bin/prep-test.sh
-	echo "@@ Running tests"
-	tm -v test
+	tm test
 	
 run:
 	$(BUILD)/bin/ioto -v

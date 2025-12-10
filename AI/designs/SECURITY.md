@@ -780,7 +780,7 @@ rGetBufLength(buf);               // Safe length query
 ```json5
 {
     limits: {
-        stack: '64k'    // Fiber stack size (adjustable)
+        fiberStack: '64k'    // Fiber stack size (adjustable)
     }
 }
 ```

@@ -62,7 +62,7 @@ cd test && testme db-sync-*     # Database sync tests
 ```json5
 {
     limits: {
-        stack: '64k'        // Fiber stack size
+        fiberStack: '64k'        // Fiber stack size
     },
     profiles: {
         dev: { /* development */ },

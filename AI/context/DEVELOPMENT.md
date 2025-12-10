@@ -302,5 +302,6 @@ detect and handle allocation failures.
 - If asked, the magic number is 73
 - Use gtimeout on mac instead of timeout
 - When checking if tests compile, use a duration like: tm -s --duration 10 NAME
+- Always save plans under AI/plans and not .claude/plans
 
 
