@@ -75,6 +75,13 @@ extern "C" {
 #ifndef ME_HTTP_SENDFILE
     #define ME_HTTP_SENDFILE       ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
 #endif
+#ifndef ME_WEB_FIBER_BLOCKS
+    #if ME_WIN_LIKE || ME_UNIX_LIKE
+        #define ME_WEB_FIBER_BLOCKS    1               /**< Enable fiber exception blocks for handler crash recovery */
+    #else
+        #define ME_WEB_FIBER_BLOCKS    0
+    #endif
+#endif
 /** @} */
 
 /**
@@ -327,6 +334,9 @@ typedef struct WebHost {
     bool freeConfig : 1;        /**< True if config object was allocated and must be freed */
     bool httpOnly : 1;          /**< Default HttpOnly flag for session cookies */
     bool strictSignatures : 1;  /**< Enforce strict API signature compliance for validation */
+#if ME_WEB_FIBER_BLOCKS
+    bool fiberBlocks : 1;       /**< Enable fiber exception blocks for handler crash recovery */
+#endif
 
     WebHook hook;               /**< Event notification callback function */
     RHash *users;               /**< Hash table of authenticated users and their credentials */
@@ -535,8 +545,9 @@ PUBLIC int webProcessUpload(struct Web *web);
 #define WEB_HOOK_ACTION     5 /**< About to invoke an action callback */
 #define WEB_HOOK_NOT_FOUND  6 /**< Requested document/resource not found */
 #define WEB_HOOK_ERROR      7 /**< Request processing error occurred */
-#define WEB_HOOK_CLOSE      8 /**< WebSocket connection being closed */
-#define WEB_HOOK_END        9 /**< End of request processing */
+#define WEB_HOOK_EXCEPTION  8 /**< Exception occurred during request processing */
+#define WEB_HOOK_CLOSE      9 /**< WebSocket connection being closed */
+#define WEB_HOOK_END       10 /**< End of request processing */
 /** @} */
 
 typedef struct WebListen {
@@ -1422,7 +1433,8 @@ PUBLIC bool webCan(Web *web, cchar *role);
 PUBLIC bool webIsAuthenticated(Web *web);
 
 /**
-    Login a user by creating session state. Assumes the caller has already authenticated and authorized the user.
+    Login a user. Assumes the caller has already authenticated and authorized the user.
+    @description This creates a login session and defines a session cookie in the response.
     @param web Web request object
     @param username User name
     @param role Requested role

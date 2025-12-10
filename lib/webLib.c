@@ -1875,6 +1875,10 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->httpOnly = jsonGetBool(host->config, 0, "web.sessions.httpOnly", 1);
     host->roles = jsonGetId(host->config, 0, "web.auth.roles");
     host->headers = jsonGetId(host->config, 0, "web.headers");
+#if ME_WEB_FIBER_BLOCKS
+    // Defaults to false
+    host->fiberBlocks = jsonGetBool(host->config, 0, "web.fiberBlocks", 0);
+#endif
 
     host->webSocketsMaxMessage = svaluei(jsonGet(host->config, 0, "web.limits.maxMessage", "100K"));
     host->webSocketsMaxFrame = svaluei(jsonGet(host->config, 0, "web.limits.maxFrame", "100K"));
@@ -2824,49 +2828,55 @@ static void webProcessRequest(Web *web)
     }
     //  Explicit timeout detection - critical for resource cleanup
     mask = web->sock->wait->eventMask;
+    int blockResult = 0;
     if (mask & R_TIMEOUT) {
         rTrace("web", "Keep-alive inactivity timeout on connection %lld", web->conn);
         web->close = 1;
     } else {
-
-#if FIBER_BLOCKS
+#if ME_WEB_FIBER_BLOCKS
         /*
-            Future code to catch exceptions during request processing
-            This is like a try/catch block and aborts
-            This needs to be configurable and opt-in
+            Catch exceptions during request processing using setjmp/longjmp.
+            Enable via web.fiberBlocks configuration property.
+            Uses short-circuit evaluation: if fiberBlocks is false, rStartFiberBlock is never called.
          */
-        if (rStartFiberBlock() == 0) {
-#endif
-        web->fiber = rGetFiber();
 
-        while (!web->close) {
-            //  Process one complete request (blocks for I/O as needed)
-            if (serveRequest(web) < 0) {
-                break;
-            }
-            //  Check if we should continue
-            if (web->close || web->sock->fd == INVALID_SOCKET) {
-                break;
-            }
-            //  Reset web instance object for next request
-            resetWeb(web);
-
-            if (rGetBufLength(web->rx) == 0) {
-                //  No buffered data, setup wait for next request
-                webSetupKeepAliveWait(web);
-                return;
-            }
-            //  Continue loop to process pipelined requests
+        if (host->fiberBlocks) {
+            rStartFiberBlock();
+            blockResult = setjmp(rGetFiber()->jmpbuf);
         }
-#if FIBER_BLOCKS
-    } else {
-        /*
-            Note: this may not perform full cleanup of resources allocated by the request
-            This is a best effort to allow the server to continue serving other requests
-         */
-        rLog("raw", "web", "Exception in request processing");
-        web->close = 1;
-    }
+        if (!host->fiberBlocks || blockResult == 0) {
+#endif
+            web->fiber = rGetFiber();
+
+            while (!web->close) {
+                //  Process one complete request (blocks for I/O as needed)
+                if (serveRequest(web) < 0) {
+                    break;
+                }
+                //  Check if we should continue
+                if (web->close || web->sock->fd == INVALID_SOCKET) {
+                    break;
+                }
+                //  Reset web instance object for next request
+                resetWeb(web);
+
+                if (rGetBufLength(web->rx) == 0) {
+                    //  No buffered data, setup wait for next request
+                    webSetupKeepAliveWait(web);
+                    return;
+                }
+                //  Continue loop to process pipelined requests
+            }
+#if ME_WEB_FIBER_BLOCKS
+        } else {
+            /*
+                This is a best effort to allow the server to continue serving other requests. The user should cleanup resources via the HOOK.
+             */
+            rEndFiberBlock();
+            webHook(web, WEB_HOOK_EXCEPTION);
+            rError("web", "Exception in handler processing for %s\n", web->path);
+            web->close = 1;
+        }
 #endif
     }
     if (host->flags & WEB_SHOW_REQ_HEADERS) {
@@ -6032,6 +6042,28 @@ static void xsrfAction(Web *web)
 }
 
 /*
+    NOTE: this does not work in the Xcode debugger because the signal is intercepted by
+    the Mach layer first. 
+ */
+static void recurse(Web *web, int depth)
+{
+    char buf[1024];
+
+    buf[0] = 'a';
+    if (depth > 0) {
+        recurse(web, depth - 1);
+    }
+}
+
+static void recurseAction(Web *web)
+{
+    // Recurse 1MB
+    recurse(web, 1000);
+    webWriteFmt(web, "Recursion complete");
+    webFinalize(web);
+}
+
+/*
     Read a streamed rx body
  */
 static void streamAction(Web *web)
@@ -6075,6 +6107,43 @@ static void webSocketAction(Web *web)
 }
 #endif
 
+#if ME_WEB_FIBER_BLOCKS
+/*
+    Crash action for testing fiber exception blocks.
+    On Windows: dereference null pointer (VEH catches hardware exceptions)
+    On Unix: use raise() (signal handlers catch signals)
+ */
+static void crashNullAction(Web *web)
+{
+    rTrace("test", "Trigger SIGSEGV");
+#if ME_WIN_LIKE
+    volatile int *ptr = NULL;
+    *ptr = 42;  // Actual null dereference triggers VEH
+#else
+    raise(SIGSEGV);
+#endif
+    webWriteResponseString(web, 200, "should not reach here\n");
+}
+
+/*
+    Crash action for testing fiber exception blocks.
+    On Windows: actual divide by zero (VEH catches EXCEPTION_INT_DIVIDE_BY_ZERO)
+    On Unix/ARM64: use raise() since integer division doesn't generate SIGFPE on ARM
+ */
+static void crashDivideAction(Web *web)
+{
+    rTrace("test", "Trigger SIGFPE");
+#if ME_WIN_LIKE
+    volatile int zero = 0;
+    volatile int result = 42 / zero;  // Actual divide by zero triggers VEH on x86/x64
+    webWriteResponse(web, 200, "should not reach here: %d\n", result);
+#else
+    raise(SIGFPE);
+    webWriteResponseString(web, 200, "should not reach here\n");
+#endif
+}
+#endif
+
 PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 {
     char url[128];
@@ -6099,6 +6168,11 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
     webAddAction(host, SFMT(url, "%s/xsrf", prefix), xsrfAction, NULL);
     webAddAction(host, SFMT(url, "%s/sig", prefix), sigAction, NULL);
     webAddAction(host, SFMT(url, "%s/buffer", prefix), bufferAction, NULL);
+    webAddAction(host, SFMT(url, "%s/recurse", prefix), recurseAction, NULL);
+#if ME_WEB_FIBER_BLOCKS
+    webAddAction(host, SFMT(url, "%s/crash/null", prefix), crashNullAction, NULL);
+    webAddAction(host, SFMT(url, "%s/crash/divide", prefix), crashDivideAction, NULL);
+#endif
 }
 
 #else
