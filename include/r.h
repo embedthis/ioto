@@ -149,15 +149,30 @@
     #endif
 #endif
 
-#ifndef ME_FIBER_INITIAL_STACK
-    #define ME_FIBER_INITIAL_STACK     ((size_t) (32 * 1024))
+#ifndef ME_FIBER_DEFAULT_STACK
+// Standard printf alone can use 8k on Linux/MacOS/Windows.
+    #if defined(CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+// ESP32: Use the FreeRTOS main task stack size from sdkconfig.
+        #define ME_FIBER_DEFAULT_STACK ((size_t) CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+    #elif ME_64
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
+    #else
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
+    #endif
+#endif
+
+/*
+    Minimum safe stack size - uses uctx minimum. Routines like getaddrinfo are stack intensive.
+ */
+#ifndef ME_FIBER_MIN_STACK
+    #define ME_FIBER_MIN_STACK ((size_t) UCTX_MIN_STACK_SIZE)
 #endif
 
 #ifndef ME_FIBER_MAX_STACK
     #if ME_64
-        #define ME_FIBER_MAX_STACK     ((size_t) (8 * 1024 * 1024))
+        #define ME_FIBER_MAX_STACK ((size_t) (8 * 1024 * 1024))
     #else
-        #define ME_FIBER_MAX_STACK     ((size_t) (1024 * 1024))
+        #define ME_FIBER_MAX_STACK ((size_t) (1024 * 1024))
     #endif
 #endif
 
@@ -634,24 +649,6 @@ PUBLIC void rSetMemHandler(RMemProc handler);
 typedef void (*RFiberProc)(void *data);
 
 #if R_USE_FIBER
-
-#ifndef ME_FIBER_DEFAULT_STACK
-/*
-    Standard printf alone can use 8k
- */
-    #if ME_64
-        #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
-    #else
-        #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
-    #endif
-#endif
-
-/*
-    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
- */
-#ifndef ME_FIBER_MIN_STACK
-    #define ME_FIBER_MIN_STACK   ((size_t) (16 * 1024))
-#endif
 /*
     Guard character for stack overflow detection when not using VM stacks
  */
@@ -828,14 +825,14 @@ PUBLIC void *rYieldFiber(void *value);
 
 /**
     Start a fiber block
-    @description This prepares a fiber block to use setjmp/longjmp.
+    @description This prepares a fiber block to use setjmp/longjmp. This is only available on Unix-like systems.
     @stability Prototype
  */
 PUBLIC void rStartFiberBlock(void);
 
 /**
     End a fiber block
-    @description This restores the signal mask to the original state.
+    @description This restores the signal mask to the original state. This is only available on Unix-like systems.
     @stability Prototype
  */
 PUBLIC void rEndFiberBlock(void);
@@ -1299,9 +1296,11 @@ typedef int64 REvent;
         #define ME_EVENT_NOTIFIER R_EVENT_KQUEUE
     #elif WINDOWS
         #define ME_EVENT_NOTIFIER R_EVENT_WSAPOLL
-    #elif VXWORKS || ESP32
+    #elif VXWORKS || ESP32 || FREERTOS
         #define ME_EVENT_NOTIFIER R_EVENT_SELECT
-    #elif (LINUX || ME_BSD_LIKE) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+    #elif LINUX && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+        #define ME_EVENT_NOTIFIER R_EVENT_EPOLL
+    #elif ME_BSD_LIKE
         #define ME_EVENT_NOTIFIER R_EVENT_EPOLL
     #else
         #define ME_EVENT_NOTIFIER R_EVENT_SELECT
@@ -3338,10 +3337,12 @@ PUBLIC void dump(cchar *msg, uchar *block, size_t len);
     Order of values matters as RList uses R_DYNAMIC_VALUE and it must be 0x1 to fit in one bit flags.
  */
 #define R_DYNAMIC_VALUE  0x1         /**< Dynamic (allocated) value provided, hash/list will free */
-#define R_STATIC_VALUE   0x2         /**< Static value provided, no need to clone or free */
+#define R_STATIC_VALUE   0x2         /**< Static value provided, no need to clone or free.
+                                          WARNING: the value must be persistent for the lifetime of the hash/list.*/
 #define R_TEMPORAL_VALUE 0x4         /**< Temporal value provided, hash/list will clone and free */
 #define R_DYNAMIC_NAME   0x8         /**< Dynamic name provided, hash will free */
-#define R_STATIC_NAME    0x10        /**< Static name provided no need to clone or free */
+#define R_STATIC_NAME    0x10        /**< Static name provided no need to clone or free.
+                                          WARNING: the name must be persistent for the lifetime of the hash/list. */
 #define R_TEMPORAL_NAME  0x20        /**< Temporal name provided, hash will clone and free */
 #define R_HASH_CASELESS  0x40        /**< Ignore case in comparisons */
 #define R_NAME_MASK      0x38
@@ -4522,7 +4523,7 @@ PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len);
 /*
     The threading APIs are THREAD SAFE
  */
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
 typedef pthread_t RThread;
 #elif ME_64
 typedef int64 RThread;
@@ -4543,7 +4544,7 @@ typedef struct RLock {
     CRITICAL_SECTION cs;                /**< Internal mutex critical section */
 #elif VXWORKS
     SEM_ID cs;
-#elif ME_UNIX_LIKE || PTHREADS
+#elif PTHREADS
     pthread_mutex_t cs;
 #else
         #warning "Unsupported OS in RLock definition in r.h"
@@ -4616,7 +4617,7 @@ PUBLIC void rMemoryBarrier(void);
 /*
     Lock macros
  */
-    #if ME_UNIX_LIKE || PTHREADS
+    #if PTHREADS
         #define rLock(lock)   pthread_mutex_lock(&((lock)->cs))
         #define rUnlock(lock) pthread_mutex_unlock(&((lock)->cs))
     #elif ME_WIN_LIKE

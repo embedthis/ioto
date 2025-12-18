@@ -286,7 +286,9 @@ static size_t roundBufSize(size_t size)
     size |= size >> 4;
     size |= size >> 8;
     size |= size >> 16;
+#if SIZE_MAX > 0xFFFFFFFF
     size |= size >> 32;
+#endif
     size++;
     return size;
 }
@@ -1455,14 +1457,13 @@ static RFiber mainFiberState;
 static RFiber *mainFiber;
 static RFiber *currentFiber;
 
-// Runtime-configurable initial stack size (single source of truth)
+static size_t fiberInitialStack = ME_FIBER_DEFAULT_STACK;
+
 #if ME_FIBER_GROWABLE_STACK
-static size_t fiberInitialStack = ME_FIBER_INITIAL_STACK;
+// Runtime-configurable initial stack size (single source of truth)
 static size_t fiberMaxStack = ME_FIBER_MAX_STACK;
 static size_t fiberStackGrowSize = ME_FIBER_STACK_GROW_SIZE;
 static size_t fiberStackResetLimit = ME_FIBER_STACK_RESET_LIMIT;
-#else
-static size_t fiberInitialStack = ME_FIBER_DEFAULT_STACK;
 #endif
 
 /*
@@ -1520,8 +1521,10 @@ PUBLIC int rInitFibers(void)
         return R_ERR_CANT_ALLOCATE;
     }
     // Main fiber uses OS-managed thread stack - this just sets uctx bounds
-    uctx_setstack(context, ((char*) &base) + 64 - ME_FIBER_DEFAULT_STACK, ME_FIBER_DEFAULT_STACK);
-
+    if (uctx_setstack(context, ((char*) &base) + 64 - ME_FIBER_DEFAULT_STACK, ME_FIBER_DEFAULT_STACK) < 0) {
+        rError("runtime", "Cannot set main fiber stack, size %d", (int) ME_FIBER_DEFAULT_STACK);
+        return R_ERR_CANT_ALLOCATE;
+    }
 #if ME_WIN_LIKE || ESP32 || FREERTOS
     if (uctx_makecontext(context, NULL, 0) < 0) {
         rError("runtime", "Cannot allocate main fiber context");
@@ -1542,21 +1545,7 @@ PUBLIC void rTermFibers(void)
     }
     for (fiber = fiberPool.free; fiber; fiber = next) {
         next = fiber->next;
-#if FIBER_WITH_VALGRIND
-        VALGRIND_STACK_DEREGISTER(fiber->stackId);
-#endif
-        //  Signal fiber to exit loop (for pthreads), then free context
-        fiber->func = NULL;
-        uctx_freecontext(&fiber->context);
-#if ME_FIBER_GROWABLE_STACK
-        freeGuardedStack(&fiber->stackInfo);
-#elif ME_FIBER_VM_STACK
-        if (fiber->stack) {
-            rFreeVirt(fiber->stack, fiberInitialStack);
-            fiber->stack = NULL;
-        }
-#endif
-        rFree(fiber);
+        freeFiberMemory(fiber);
     }
     fiberPool.free = NULL;
     fiberPool.pooled = 0;
@@ -1579,7 +1568,7 @@ static void fiberEntry(RFiber *fiber)
 
     while (fiber->func) {
         fiber->func(fiber->data);
-        //  Signal ready for reuse and yield back to main
+        //  Signal fiber is ready for possible reuse and yield back to main
         fiber->pooled = 1;
         rYieldFiber(0);
         //  Resumed - loop continues if fiber->func is set, exits if NULL
@@ -1716,6 +1705,7 @@ static RFiber *allocNewFiber(void)
 static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data)
 {
     uctx_t *context;
+    int    rc;
 
     fiber->result = NULL;
     fiber->block = 0;
@@ -1728,10 +1718,19 @@ static int initFiberContext(RFiber *fiber, RFiberProc function, cvoid *data)
         //  New fiber - full context initialization
         context = &fiber->context;
 #if ME_FIBER_GROWABLE_STACK
-        uctx_setstack(context, uctx_needstack() ? fiber->stackInfo.usable : NULL, fiber->stackInfo.committed);
+        /*
+            On platforms that manage stacks internally (Windows/FreeRTOS), stackInfo is not allocated
+            so use fiberInitialStack for the size parameter
+         */
+        rc = uctx_setstack(context, uctx_needstack() ? fiber->stackInfo.usable : NULL,
+                           uctx_needstack() ? fiber->stackInfo.committed : fiberInitialStack);
 #else
-        uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, fiberInitialStack);
+        rc = uctx_setstack(context, uctx_needstack() ? fiber->stack : NULL, fiberInitialStack);
 #endif
+        if (rc < 0) {
+            rError("runtime", "Cannot set fiber stack");
+            return R_ERR_CANT_INITIALIZE;
+        }
         if (uctx_makecontext(context, (uctx_proc) fiberEntry, 1, fiber) < 0) {
             rError("runtime", "Cannot initialize fiber context");
             return R_ERR_CANT_INITIALIZE;
@@ -1753,6 +1752,8 @@ static void freeFiberMemory(RFiber *fiber)
 #if FIBER_WITH_VALGRIND
     VALGRIND_STACK_DEREGISTER(fiber->stackId);
 #endif
+    //  Signal fiberEntry to exit loop (for pthreads/freertos)
+    fiber->func = NULL;
     uctx_freecontext(&fiber->context);
 #if ME_FIBER_GROWABLE_STACK
     freeGuardedStack(&fiber->stackInfo);
@@ -1967,7 +1968,7 @@ PUBLIC void rCheckFiber(void)
     used = (size_t) (base - (char*) &base);
     if (used > peak) {
         peak = (used + 1023) / 1024 * 1024;
-        rDebug("fiber", "Peak fiber stack usage %dk (+16k for o/s)", peak / 1024);
+        rDebug("fiber", "Peak fiber stack usage %dk (+16k for o/s)", (int) peak / 1024);
         for (i = 0; i < sizeof(currentFiber->guard); i++) {
             if (currentFiber->guard[i] != (char) R_STACK_GUARD_CHAR) {
                 rError("fiber", "Stack overflow detected");
@@ -1976,7 +1977,7 @@ PUBLIC void rCheckFiber(void)
         }
         //  This measures the stack that has been used in the past
         used = rGetStackUsage();
-        rDebug("fiber", "Actual stack usage %dk", used / 1024);
+        rDebug("fiber", "Actual stack usage %dk", (int) used / 1024);
     }
 }
 
@@ -2189,10 +2190,15 @@ static int growFiberStack(RFiber *fiber)
 
     stack = &fiber->stackInfo;
 
+    /*
+        NOTE: This function is called from within a signal handler (guardPageHandler).
+        Do NOT use rError, rInfo, rDebug, or any other non-async-signal-safe functions here.
+        Only async-signal-safe functions like mprotect, write(2) are permitted.
+     */
+
     // Check if we can grow
     newCommitted = stack->committed + fiberStackGrowSize;
     if (newCommitted > stack->maxSize) {
-        rError("fiber", "Stack overflow: cannot grow beyond %zd", stack->maxSize);
         return -1;
     }
     // Calculate new usable region
@@ -2200,18 +2206,14 @@ static int growFiberStack(RFiber *fiber)
 
     // Check we haven't hit the base
     if (newUsable < stack->base) {
-        rError("fiber", "Stack overflow: exhausted reserved space");
         return -1;
     }
     // Make new area writable (previously PROT_NONE from reservation)
     if (rProtectPages(newUsable, fiberStackGrowSize, R_PROT_READ | R_PROT_WRITE) < 0) {
-        rError("fiber", "Failed to commit stack pages");
         return -1;
     }
     stack->usable = newUsable;
     stack->committed = newCommitted;
-
-    rDebug("fiber", "Grew stack to %zd bytes", newCommitted);
     return 0;
 }
 #endif /* ME_FIBER_GROWABLE_STACK */
@@ -2245,21 +2247,7 @@ static void pruneFibers(void *data)
             }
             count++;
             fiberPool.pooled--;
-#if FIBER_WITH_VALGRIND
-            VALGRIND_STACK_DEREGISTER(fiber->stackId);
-#endif
-            //  Signal fiber to exit loop (for pthreads), then free context
-            fiber->func = NULL;
-            uctx_freecontext(&fiber->context);
-#if ME_FIBER_GROWABLE_STACK
-            freeGuardedStack(&fiber->stackInfo);
-#elif ME_FIBER_VM_STACK
-            if (fiber->stack) {
-                rFreeVirt(fiber->stack, fiberInitialStack);
-                fiber->stack = NULL;
-            }
-#endif
-            rFree(fiber);
+            freeFiberMemory(fiber);
         } else {
             prev = fiber;
         }
@@ -2346,12 +2334,8 @@ PUBLIC void rEndFiberBlock(void)
 #if ME_FIBER_GROWABLE_STACK && ME_UNIX_LIKE
 /*
     Alternate signal stack for handling stack overflow (can't use the overflowed stack!)
-*/
-#if ME_WIN_LIKE || !ME_UNIX_LIKE
-    #define R_ALT_STACK_SIZE (64 * 1024)
-#else
-    #define R_ALT_STACK_SIZE (32 * 1024)
-#endif
+ */
+#define R_ALT_STACK_SIZE (32 * 1024)
 static char signalStack[R_ALT_STACK_SIZE];
 
 // Prevent recursive handling
@@ -2379,7 +2363,7 @@ static void guardPageHandler(int signum, siginfo_t *info, void *context)
     }
     stack = &currentFiber->stackInfo;
 
-    /* 
+    /*
         Check if fault is in the reserved-but-uncommitted region
         This is between base and usable (the committed stack area)
      */
@@ -2395,7 +2379,7 @@ static void guardPageHandler(int signum, siginfo_t *info, void *context)
 not_stack_fault:
     inGuardHandler = 0;
 
-    /* 
+    /*
         Not a stack growth fault - it's a real bug (null ptr, bad access, etc.)
         Use existing fiber exception handling or abort
      */
@@ -3580,7 +3564,9 @@ PUBLIC char *rGetTempFile(cchar *dir, cchar *prefix)
         rError("runtime", "Cannot create temporary file %s", path);
         return NULL;
     }
+#if ME_UNIX_LIKE || ME_WIN_LIKE || VXWORKS
     fchmod(fd, 0600);
+#endif
     close(fd);
     return sclone(path);
 #endif
@@ -5372,7 +5358,7 @@ PUBLIC int rGetRawOsError(void)
         return EPIPE;
     }
     return rc;
-#elif ME_UNIX_LIKE || VXWORKS
+#elif ME_UNIX_LIKE || VXWORKS || ESP32 || ME_SIMULATED
     return errno;
 #else
     return 0;
@@ -5383,7 +5369,7 @@ PUBLIC void rSetOsError(int error)
 {
 #if ME_WIN_LIKE
     SetLastError(error);
-#elif ME_UNIX_LIKE || VXWORKS
+#elif ME_UNIX_LIKE || VXWORKS || ESP32 || ME_SIMULATED
     errno = error;
 #endif
 }
@@ -5396,9 +5382,7 @@ PUBLIC int rGetOsError(void)
 #if !ME_WIN_LIKE
     return rGetRawOsError();
 #else /* ME_WIN_LIKE */
-    int err;
-
-    err = rGetRawOsError();
+    int err = rGetRawOsError();
     switch (err) {
     case ERROR_SUCCESS:
         return 0;
@@ -5644,7 +5628,11 @@ PUBLIC void dump(cchar *msg, uchar *data, size_t len)
 
 /*********************************** Locals ***********************************/
 
-#define R_MAX_CERT_SIZE (64 * 1024)
+#define R_MAX_CERT_SIZE                 (512 * 1024)
+
+#ifndef MBEDTLS_SSL_MAX_CONTENT_LEN
+    #define MBEDTLS_SSL_MAX_CONTENT_LEN 8192
+#endif
 
 typedef struct Rtls {
     RSocket *sock;                         /* Owning socket */
@@ -5926,7 +5914,8 @@ PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
 
 static int handshake(Rtls *tp, Ticks deadline)
 {
-    int mask, rc, vrc;
+    int      mask, rc;
+    uint32_t vrc;
 
     rc = 0;
     mask = R_IO;
@@ -6007,7 +5996,7 @@ PUBLIC bool rIsTlsConnected(Rtls *tp)
     return tp->connected;
 }
 
-PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
+PUBLIC ssize rReadTls(Rtls *tp, void *buf, size_t len)
 {
     int    rc;
     size_t toRead;
@@ -6043,7 +6032,7 @@ PUBLIC ssize rReadTls(Rtls *tp, void *buf, ssize len)
 /*
     Write data. Return the number of bytes written or -1 on errors or socket closure.
  */
-PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
+PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, size_t len)
 {
     ssize  totalWritten;
     int    rc;
@@ -6074,7 +6063,7 @@ PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, ssize len)
         } else {
             totalWritten += rc;
             buf = (void*) ((char*) buf + rc);
-            len -= rc;
+            len -= (size_t) rc;
         }
     } while (len > 0);
 
@@ -6106,7 +6095,7 @@ static int *getCipherSuite(char *ciphers)
         rError("runtime", "mbedtls getCipherSuite integer overflow");
         return NULL;
     }
-    result = rAlloc((nciphers + 1) * sizeof(int));
+    result = rAlloc((uint) (nciphers + 1) * sizeof(int));
 
     /*
         Locate required cipher and convert to an MbedTLS code
@@ -6144,8 +6133,8 @@ static char *replaceHyphen(char *cipher, char from, char to)
 
 static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
 {
-    uchar *buf, *cp;
-    ssize len;
+    uchar  *buf, *cp;
+    size_t len;
 
     if (path[0] == '@') {
         len = slen(&path[1]);
@@ -6183,8 +6172,8 @@ static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
 
 static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
 {
-    uchar *buf, *cp;
-    ssize len;
+    uchar  *buf, *cp;
+    size_t len;
 
     if (path[0] == '@') {
         len = slen(&path[1]);
@@ -6221,8 +6210,8 @@ static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
 
 static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path)
 {
-    uchar *buf;
-    ssize len;
+    uchar  *buf;
+    size_t len;
 
     if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
         rSetSocketError(tp->sock, "CRL file is too large %s", path);
@@ -11748,7 +11737,7 @@ PUBLIC RThread rGetCurrentThread(void)
 {
 #if ESP32
     return (RThread) xTaskGetCurrentTaskHandle();
-#elif ME_UNIX_LIKE || PTHREADS
+#elif PTHREADS
     return (RThread) pthread_self();
 #elif ME_WIN_LIKE
     return (RThread) GetCurrentThreadId();
@@ -11806,7 +11795,7 @@ PUBLIC RLock *rAllocLock(void)
 PUBLIC void rTermLock(RLock *lock)
 {
     assert(lock);
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
     pthread_mutex_destroy(&lock->cs);
 #elif ME_WIN_LIKE
     DeleteCriticalSection(&lock->cs);
@@ -11823,7 +11812,7 @@ PUBLIC void rFreeLock(RLock *lock)
 
 PUBLIC RLock *rInitLock(RLock *lock)
 {
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
 #if ME_UNIX_LIKE
@@ -11856,7 +11845,7 @@ PUBLIC bool rTryLock(RLock *lock)
 
     if (lock == 0) return 0;
 
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
     rc = pthread_mutex_trylock(&lock->cs) != 0;
 #elif ME_WIN_LIKE
     rc = TryEnterCriticalSection(&lock->cs) == 0;
@@ -11899,7 +11888,7 @@ PUBLIC void rGlobalUnlock(void)
 PUBLIC void rLock(RLock *lock)
 {
     if (lock == 0) return;
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
     pthread_mutex_lock(&lock->cs);
 #elif ME_WIN_LIKE
     EnterCriticalSection(&lock->cs);
@@ -11915,7 +11904,7 @@ PUBLIC void rLock(RLock *lock)
 PUBLIC void rUnlock(RLock *lock)
 {
     if (lock == 0) return;
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
     pthread_mutex_unlock(&lock->cs);
 #elif ME_WIN_LIKE
     LeaveCriticalSection(&lock->cs);
@@ -13026,8 +13015,8 @@ PUBLIC void rFreeWait(RWait *wp)
 
     if (wp) {
         if (wp->fd != INVALID_SOCKET) {
-#if ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
-            //  Must remove from pollFds array since we manage it manually
+#if ME_EVENT_NOTIFIER == R_EVENT_SELECT || ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
+            //  Must clear masks and recalculate highestFd (SELECT) or remove from pollFds (WSAPOLL)
             rSetWaitMask(wp, 0, 0);
 #endif
             rRemoveName(waitMap, sitosbuf(fdbuf, sizeof(fdbuf), (int64) wp->fd, 10));
@@ -13217,7 +13206,7 @@ PUBLIC void rSetWaitMask(RWait *wp, int64 mask, Ticks deadline)
  */
 PUBLIC void rWakeup(void)
 {
-    #if ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
+#if ME_EVENT_NOTIFIER == R_EVENT_WSAPOLL
     char byte = 'W';
     if (waiting && wakeupSock[1] != INVALID_SOCKET) {
         send(wakeupSock[1], &byte, 1, MSG_NOSIGNAL);
@@ -13328,7 +13317,24 @@ PUBLIC int rWait(Ticks deadline)
     }
 #endif
     if (select(highestFd + 1, &readEvents, &writeEvents, NULL, &tv) < 0) {
-        rTrace("event", "Select error %d", errno);
+        if (errno == EBADF) {
+            int newHighest = -1;
+            //  Find and remove bad file descriptors
+            for (fd = 0; fd <= highestFd; fd++) {
+                if (FD_ISSET(fd, &readMask) || FD_ISSET(fd, &writeMask)) {
+                    if (fcntl(fd, F_GETFD) < 0 && errno == EBADF) {
+                        FD_CLR(fd, &readMask);
+                        FD_CLR(fd, &writeMask);
+                        invokeHandler((size_t) fd, R_READABLE | R_WRITABLE);
+                    } else {
+                        newHighest = fd;
+                    }
+                }
+            }
+            highestFd = newHighest;
+        } else if (errno != ETIMEDOUT && errno != EINTR) {
+            rTrace("event", "Select error %d", errno);
+        }
         invokeExpired();
         waiting = 0;
         return 0;
