@@ -38,7 +38,7 @@ all: build
 build: config compile info
 
 config:
-	@mkdir -p $(BUILD)/bin $(CONFIG)/certs $(CONFIG)/db $(CONFIG)/site 
+	@mkdir -p $(BUILD)/bin $(TOP)/state/config $(TOP)/state/certs $(TOP)/state/db $(TOP)/state/site 
 	if [ ! -d apps/$(APP) ] ; then \
 		echo "      [Error] Unknown app \"$(APP)\"" ; exit 255 ; \
 	fi ; \
@@ -49,6 +49,11 @@ config:
 		fi ; \
 	fi 
 	echo $(APP) >build/.app
+	bin/prepare $(APP)
+
+config-esp32:
+	@./bin/config-esp32 $(APP)
+	bin/prepare $(APP)
 
 compile:
 	@if [ ! -f $(PROJECT) ] ; then \
@@ -75,9 +80,6 @@ clean:
 	find . -name ioto.crt | xargs rm -f
 	find . -name .testme | xargs rm -fr
 	find . -name '*K.txt' | xargs rm -f
-
-config-esp32:
-	@./bin/config-esp32 $(APP)
 
 install installBinary uninstall:
 	@echo '       [Run] $@'

@@ -79,6 +79,7 @@
 		0157863B0157863B00000044 /* shadow.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B00000045 /* shadow.c */; };
 		0157863B0157863B00000046 /* sync.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B00000047 /* sync.c */; };
 		0157863B0157863B00000048 /* update.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B00000049 /* update.c */; };
+		0157863B0157863B0000001A /* ioto.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B0000001B /* ioto.c */; };
 		0157863B0157863B0000004A /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B0000004B /* config.c */; };
 		0157863B0157863B0000004C /* cron.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B0000004D /* cron.c */; };
 		0157863B0157863B0000004E /* database.c in Sources */ = {isa = PBXBuildFile; fileRef = 0157863B0157863B0000004F /* database.c */; };
@@ -306,6 +307,7 @@
 		0157863B0157863B00000045 /* shadow.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = shadow.c; path = src/cloud/shadow.c; sourceTree = "<group>"; };
 		0157863B0157863B00000047 /* sync.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = sync.c; path = src/cloud/sync.c; sourceTree = "<group>"; };
 		0157863B0157863B00000049 /* update.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = update.c; path = src/cloud/update.c; sourceTree = "<group>"; };
+		0157863B0157863B0000001B /* ioto.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ioto.c; path = src/cmds/ioto.c; sourceTree = "<group>"; };
 		0157863B0157863B0000004B /* config.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = config.c; path = src/config.c; sourceTree = "<group>"; };
 		0157863B0157863B0000004D /* cron.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cron.c; path = src/cron.c; sourceTree = "<group>"; };
 		0157863B0157863B0000004F /* database.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = database.c; path = src/database.c; sourceTree = "<group>"; };
@@ -463,6 +465,7 @@
 				0157863B0157863B00000045 /* shadow.c */,
 				0157863B0157863B00000047 /* sync.c */,
 				0157863B0157863B00000049 /* update.c */,
+				0157863B0157863B0000001B /* ioto.c */,
 				0157863B0157863B0000004B /* config.c */,
 				0157863B0157863B0000004D /* cron.c */,
 				0157863B0157863B0000004F /* database.c */,
@@ -867,6 +870,7 @@ fi
 				0157863B0157863B00000044 /* shadow.c in Sources */,
 				0157863B0157863B00000046 /* sync.c in Sources */,
 				0157863B0157863B00000048 /* update.c in Sources */,
+				0157863B0157863B0000001A /* ioto.c in Sources */,
 				0157863B0157863B0000004A /* config.c in Sources */,
 				0157863B0157863B0000004C /* cron.c in Sources */,
 				0157863B0157863B0000004E /* database.c in Sources */,

@@ -847,6 +847,7 @@ DEPS_55 += $(BUILD)/obj/provision.o
 DEPS_55 += $(BUILD)/obj/shadow.o
 DEPS_55 += $(BUILD)/obj/sync.o
 DEPS_55 += $(BUILD)/obj/update.o
+DEPS_55 += $(BUILD)/obj/ioto.o
 DEPS_55 += $(BUILD)/obj/config.o
 DEPS_55 += $(BUILD)/obj/cron.o
 DEPS_55 += $(BUILD)/obj/database.o
@@ -859,7 +860,7 @@ DEPS_55 += $(BUILD)/obj/webserver.o
 
 $(BUILD)/bin/libioto.a: $(DEPS_55)
 	@echo '      [Link] $(BUILD)/bin/libioto.a'
-	$(AR) -cr "$(BUILD)/bin/libioto.a" $(INPUT) "$(BUILD)/obj/cryptLib.o" "$(BUILD)/obj/dbLib.o" "$(BUILD)/obj/jsonLib.o" "$(BUILD)/obj/mqttLib.o" "$(BUILD)/obj/openaiLib.o" "$(BUILD)/obj/rLib.o" "$(BUILD)/obj/uctxAssembly.o" "$(BUILD)/obj/uctxLib.o" "$(BUILD)/obj/urlLib.o" "$(BUILD)/obj/webLib.o" "$(BUILD)/obj/websockLib.o" "$(BUILD)/obj/agent.o" "$(BUILD)/obj/ai.o" "$(BUILD)/obj/app.o" "$(BUILD)/obj/cloud.o" "$(BUILD)/obj/cloudwatch.o" "$(BUILD)/obj/helpers.o" "$(BUILD)/obj/logs.o" "$(BUILD)/obj/provision.o" "$(BUILD)/obj/shadow.o" "$(BUILD)/obj/sync.o" "$(BUILD)/obj/update.o" "$(BUILD)/obj/config.o" "$(BUILD)/obj/cron.o" "$(BUILD)/obj/database.o" "$(BUILD)/obj/esp32.o" "$(BUILD)/obj/mqtt.o" "$(BUILD)/obj/register.o" "$(BUILD)/obj/serialize.o" "$(BUILD)/obj/setup.o" "$(BUILD)/obj/webserver.o"
+	$(AR) -cr "$(BUILD)/bin/libioto.a" $(INPUT) "$(BUILD)/obj/cryptLib.o" "$(BUILD)/obj/dbLib.o" "$(BUILD)/obj/jsonLib.o" "$(BUILD)/obj/mqttLib.o" "$(BUILD)/obj/openaiLib.o" "$(BUILD)/obj/rLib.o" "$(BUILD)/obj/uctxAssembly.o" "$(BUILD)/obj/uctxLib.o" "$(BUILD)/obj/urlLib.o" "$(BUILD)/obj/webLib.o" "$(BUILD)/obj/websockLib.o" "$(BUILD)/obj/agent.o" "$(BUILD)/obj/ai.o" "$(BUILD)/obj/app.o" "$(BUILD)/obj/cloud.o" "$(BUILD)/obj/cloudwatch.o" "$(BUILD)/obj/helpers.o" "$(BUILD)/obj/logs.o" "$(BUILD)/obj/provision.o" "$(BUILD)/obj/shadow.o" "$(BUILD)/obj/sync.o" "$(BUILD)/obj/update.o" "$(BUILD)/obj/ioto.o" "$(BUILD)/obj/config.o" "$(BUILD)/obj/cron.o" "$(BUILD)/obj/database.o" "$(BUILD)/obj/esp32.o" "$(BUILD)/obj/mqtt.o" "$(BUILD)/obj/register.o" "$(BUILD)/obj/serialize.o" "$(BUILD)/obj/setup.o" "$(BUILD)/obj/webserver.o"
 
 #
 #   db

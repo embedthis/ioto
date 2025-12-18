@@ -4,12 +4,17 @@
 #
 #   The ioto.json5 is updated and the config.h is regenerated.
 #
+APP=$1
 SERVICES="database keys logs mqtt provision register serialize shadow sync update url web"
-CONFIG=../../state/config
-APP=`json app ${CONFIG}/ioto.json5`
+CONFIG=state/config
+
+SPEC=../../sdkconfig
+if [ ! -f ${SPEC} ] ; then
+    SPEC=../../sdkconfig.defaults
+fi
 
 for service in ${SERVICES} ; do
-    value=`grep -i CONFIG_IOTO_${service} ../../sdkconfig | grep -v '^# ' | \
+    value=`grep -i CONFIG_IOTO_${service} ${SPEC} | grep -v '^# ' | \
         sed 's/.*=//' | sed 's/"//g'`
     if [ "${value}" = "y" ] ; then
         ./bin/json --overwrite services.${service}=true ${CONFIG}/ioto.json5
@@ -21,7 +26,9 @@ for service in ${SERVICES} ; do
 done
 
 rm -f include/config.h
+echo "  [Generate] config.h"
 ./bin/json --header services ${CONFIG}/ioto.json5 >include/config.h
-./bin/json --header app ${CONFIG}/ioto.json5 >>include/config.h
+
+cp ${CONFIG}/ioto.json5 ../../state/config
 
 exit 0

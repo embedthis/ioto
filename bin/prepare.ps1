@@ -171,9 +171,9 @@ if (Test-Path $sigSource) {
         Remove-Item -Path $sigDest -Force -ErrorAction SilentlyContinue
 
         $schemaFile = Join-Path $CONFIG "schema.json5"
-        $supportQuery = Join-Path $TOP "paks\dev-schemas\parts\SupportQuery.json5"
-        $queryFile = Join-Path $TOP "paks\dev-schemas\parts\Query.json5"
-        $matchFile = Join-Path $TOP "paks\dev-schemas\parts\Match.json5"
+        $supportQuery = Join-Path $TOP "schemas\parts\SupportQuery.json5"
+        $queryFile = Join-Path $TOP "schemas\parts\Query.json5"
+        $matchFile = Join-Path $TOP "schemas\parts\Match.json5"
 
         & make-sig `
             --blend "Schema=$schemaFile" `

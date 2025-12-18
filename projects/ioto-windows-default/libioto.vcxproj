@@ -162,6 +162,7 @@
     <ClCompile Include="..\..\src\cloud\shadow.c" />
     <ClCompile Include="..\..\src\cloud\sync.c" />
     <ClCompile Include="..\..\src\cloud\update.c" />
+    <ClCompile Include="..\..\src\cmds\ioto.c" />
     <ClCompile Include="..\..\src\config.c" />
     <ClCompile Include="..\..\src\cron.c" />
     <ClCompile Include="..\..\src\database.c" />

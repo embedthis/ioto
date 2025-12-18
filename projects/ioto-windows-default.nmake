@@ -1055,6 +1055,7 @@ DEPS_54 = $(DEPS_54) $(BUILD)/obj/provision.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/shadow.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/sync.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/update.obj
+DEPS_54 = $(DEPS_54) $(BUILD)/obj/ioto.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/config.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/cron.obj
 DEPS_54 = $(DEPS_54) $(BUILD)/obj/database.obj
@@ -1067,7 +1068,7 @@ DEPS_54 = $(DEPS_54) $(BUILD)/obj/webserver.obj
 
 $(BUILD)/bin/libioto.lib: $(DEPS_54)
 	@echo ..... [Link] $(BUILD)/bin/libioto.lib
-	"$(AR)" -nologo -out:"$(BUILD)/bin/libioto.lib" $(INPUT) "$(BUILD)/obj/cryptLib.obj" "$(BUILD)/obj/dbLib.obj" "$(BUILD)/obj/jsonLib.obj" "$(BUILD)/obj/mqttLib.obj" "$(BUILD)/obj/openaiLib.obj" "$(BUILD)/obj/rLib.obj" "$(BUILD)/obj/uctxLib.obj" "$(BUILD)/obj/urlLib.obj" "$(BUILD)/obj/webLib.obj" "$(BUILD)/obj/websockLib.obj" "$(BUILD)/obj/agent.obj" "$(BUILD)/obj/ai.obj" "$(BUILD)/obj/app.obj" "$(BUILD)/obj/cloud.obj" "$(BUILD)/obj/cloudwatch.obj" "$(BUILD)/obj/helpers.obj" "$(BUILD)/obj/logs.obj" "$(BUILD)/obj/provision.obj" "$(BUILD)/obj/shadow.obj" "$(BUILD)/obj/sync.obj" "$(BUILD)/obj/update.obj" "$(BUILD)/obj/config.obj" "$(BUILD)/obj/cron.obj" "$(BUILD)/obj/database.obj" "$(BUILD)/obj/esp32.obj" "$(BUILD)/obj/mqtt.obj" "$(BUILD)/obj/register.obj" "$(BUILD)/obj/serialize.obj" "$(BUILD)/obj/setup.obj" "$(BUILD)/obj/webserver.obj" $(LOG)
+	"$(AR)" -nologo -out:"$(BUILD)/bin/libioto.lib" $(INPUT) "$(BUILD)/obj/cryptLib.obj" "$(BUILD)/obj/dbLib.obj" "$(BUILD)/obj/jsonLib.obj" "$(BUILD)/obj/mqttLib.obj" "$(BUILD)/obj/openaiLib.obj" "$(BUILD)/obj/rLib.obj" "$(BUILD)/obj/uctxLib.obj" "$(BUILD)/obj/urlLib.obj" "$(BUILD)/obj/webLib.obj" "$(BUILD)/obj/websockLib.obj" "$(BUILD)/obj/agent.obj" "$(BUILD)/obj/ai.obj" "$(BUILD)/obj/app.obj" "$(BUILD)/obj/cloud.obj" "$(BUILD)/obj/cloudwatch.obj" "$(BUILD)/obj/helpers.obj" "$(BUILD)/obj/logs.obj" "$(BUILD)/obj/provision.obj" "$(BUILD)/obj/shadow.obj" "$(BUILD)/obj/sync.obj" "$(BUILD)/obj/update.obj" "$(BUILD)/obj/ioto.obj" "$(BUILD)/obj/config.obj" "$(BUILD)/obj/cron.obj" "$(BUILD)/obj/database.obj" "$(BUILD)/obj/esp32.obj" "$(BUILD)/obj/mqtt.obj" "$(BUILD)/obj/register.obj" "$(BUILD)/obj/serialize.obj" "$(BUILD)/obj/setup.obj" "$(BUILD)/obj/webserver.obj" $(LOG)
 
 #
 #   db

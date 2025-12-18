@@ -8453,7 +8453,7 @@ PUBLIC void dump(cchar *msg, uchar *data, size_t len)
 
 /*********************************** Locals ***********************************/
 
-#define R_MAX_CERT_SIZE (64 * 1024)
+#define R_MAX_CERT_SIZE (512 * 1024)
 
 typedef struct Rtls {
     RSocket *sock;                         /* Owning socket */

@@ -7,3 +7,4 @@ if [ ! -d projects ] ; then
     exit 2
 fi
 cp projects/esp32/Makefile ../..
+cp projects/esp32/CMakeLists.txt .

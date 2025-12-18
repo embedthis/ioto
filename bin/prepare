@@ -23,8 +23,6 @@ if [ -z "${APP}" ] ; then
 	APP=unit
 fi
 
-echo "   [Prepare] Building with \"${APP}\" app"
-
 if [ ! -f bin/json ] ; then
     cc -DJSON_SOLO=1 -o bin/json bin/json.c -lm
 fi
@@ -93,7 +91,6 @@ done
 if [ ! -f ${HDR} -o config/ioto.json5 -nt ${HDR} ] ; then
 	echo "      [Create] ${HDR}"
 	${JSON} --header services ${CONFIG}/ioto.json5 >${HDR}
-	# ${JSON} --header app ${CONFIG}/ioto.json5 | sed 's/"//g' >>${HDR}
 	changed=1
 fi
 
@@ -131,9 +128,9 @@ if [ -f config/signatures.json5 ] ; then
 		rm -f ${CONFIG}/signatures.json5
 		make-sig \
 			--blend Schema=${CONFIG}/schema.json5 \
-			--blend SupportQuery=${TOP}/paks/dev-schemas/parts/SupportQuery.json5 \
-			--blend Query=${TOP}/paks/dev-schemas/parts/Query.json5 \
-			--blend Match=${TOP}/paks/dev-schemas/parts/Match.json5 \
+			--blend SupportQuery=${TOP}/schemas/parts/SupportQuery.json5 \
+			--blend Query=${TOP}/schemas/parts/Query.json5 \
+			--blend Match=${TOP}/schemas/parts/Match.json5 \
 			config/signatures.json5 ${CONFIG}/signatures.json5
 		changed=1
 	fi
