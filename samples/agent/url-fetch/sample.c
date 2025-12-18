@@ -27,7 +27,7 @@ int main(int argc, char **argv)
         url = argv[1];
     }
 
-    rInit(start, 0, 0);
+    rInit(start, 0);
 
     //  Block until instructed to exit
     rServiceEvents();

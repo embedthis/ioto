@@ -11,7 +11,7 @@ The samples are under two directories:
 Directory | Description
 --------- | -----------
 [api](api)     | API script samples for the Ioto Cloud
-[agent](agent)     | Samples for the Ioto Agent
+[agent](agent) | Samples for the Ioto Agent
 
 ## API Samples
 

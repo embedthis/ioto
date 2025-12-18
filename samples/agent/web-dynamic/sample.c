@@ -21,7 +21,7 @@ static void testAction(Web *web);
 */
 int main(int argc, char **argv)
 {
-    rInit((RFiberProc) start, 0, 0);
+    rInit((RFiberProc) start, 0);
 
     //  Block until instructed to exit
     rServiceEvents();

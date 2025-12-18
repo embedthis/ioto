@@ -21,8 +21,12 @@ endif
 
 all: build
 
+top:
+	echo $(TOP)
+
 build:
 	@for sample in $(SAMPLES) ; do \
+		echo $$sample ; \
 		make -C $$sample ; \
 	done
 

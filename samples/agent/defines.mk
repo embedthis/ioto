@@ -2,32 +2,20 @@
 #	defines.mk -- Definitions to build Ioto samples with GCC make
 #
 
-PROFILE = default
+PROFILE = dev
 OS      = $(shell uname | sed 's/CYGWIN.*/windows/;s/Darwin/macosx/' | tr '[A-Z]' '[a-z]')
 
 ifeq ($(OS),macosx)
 	IFLAGS	:= -I /opt/homebrew/include
 	LFLAGS	:= -L /opt/homebrew/lib
 endif
-#
-#	Change this to point to your Ioto install
-#
-TOP		= $(realpath $(shell pwd)/../../../../dev/ioto)
 
-ifeq ($(ARCH),)
-    ifeq ($(OS),windows)
-        ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
-            ARCH?=x64
-        else
-            ARCH?=x86
-        endif
-    else
-        ARCH:= $(shell uname -m | sed 's/i.86/x86/;s/x86_64/x64/;s/arm.*/arm64/;s/mips.*/mips/')
-    endif
-endif
-
-LIBDIR 	= $(TOP)/build/$(OS)-$(ARCH)-$(PROFILE)/bin
-INCDIR  = $(TOP)/build/$(OS)-$(ARCH)-$(PROFILE)/inc
+#
+#	Change this to point to your Ioto install if building outside of the Ioto repository
+#
+TOP		= $(realpath $(shell pwd)/../../..)
+LIBDIR 	= $(TOP)/build/bin
+INCDIR  = $(TOP)/build/inc
 LIBS	= $(LFLAGS) -lioto -ldl -lpthread -lm -lssl -lcrypto 
 CFLAGS	= -g -I$(INCDIR) $(IFLAGS) -DSERVICES_CLOUD -DSERVICES_WEB -DSERVICES_MQTT
 

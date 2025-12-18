@@ -12,7 +12,7 @@
 
 int main(int argc, char **argv)
 {
-    if (rInit(ioInit, NULL, 0) < 0) {
+    if (rInit((RFiberProc) ioInit, NULL) < 0) {
         fprintf(stderr, "Cannot initialize runtime");
         exit(1);
     }

@@ -19,7 +19,7 @@ PUBLIC int ioStart(void)
         This call will block and wait for acknowledgement.
         Note: call blocks, but ioto is not blocked.
      */
-    mqttSubscribe(ioto->mqtt, incoming, 2, MQTT_WAIT_ACK, "/myDevice/change");
+    mqttSubscribe(ioto->mqtt, (MqttCallback) incoming, 2, MQTT_WAIT_ACK, "/myDevice/change");
 
     /*
         Publish an "initialized" message with quality of service (1) which means send at most once.
