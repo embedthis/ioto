@@ -22,3 +22,5 @@ find tmp -name 'bench-mp-*.txt' -delete 2>/dev/null || true
 # Note: Keep web.log for debugging if tests fail
 # TestMe will handle log preservation based on test results
 rm -f web.log
+
+rm -f tmp/*

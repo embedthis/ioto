@@ -32,22 +32,22 @@
 static Ticks totalDuration = DEFAULT_TOTAL_DURATION;
 static Ticks soakDuration = DEFAULT_SOAK_DURATION;
 static Ticks benchDuration = DEFAULT_BENCH_DURATION;
-static Ticks perGroupDuration = 0;  // Calculated based on number of groups
-static Json  *globalResults = NULL; // Global results JSON structure
-static int64 initialMemorySize = 0; // Memory size after soak phase
-static int64 finalMemorySize = 0;   // Memory size at benchmark completion
-static int   webServerPid = 0;      // PID of web server being benchmarked
-static cchar *reportName = NULL;    // Report filename (without extension)
+static Ticks perGroupDuration = 0;                    // Calculated based on number of groups
+static Json  *globalResults = NULL;                   // Global results JSON structure
+static int64 initialMemorySize = 0;                   // Memory size after soak phase
+static int64 finalMemorySize = 0;                     // Memory size at benchmark completion
+static int   webServerPid = 0;                        // PID of web server being benchmarked
+static cchar *reportName = NULL;                      // Report filename (without extension)
 
 /*
     Iteration count configuration per file size class
     Multiplier relative to base benchmark iterations
  */
 FileClass fileClasses[] = {
-    { "1KB",   "static/1K.txt",   1024,       1.0  },   // Full iterations for small files
-    { "10KB",  "static/10K.txt",  10240,      1.0  },   // Full iterations
-    { "100KB", "static/100K.txt", 102400,     0.25 },   // 25% iterations for large files
-    { "1MB",   "static/1M.txt",   1048576,    0.25 },   // 25% iterations for very large files
+    { "1KB",   "static/1K.txt",   1024,       1.0  }, // Full iterations for small files
+    { "10KB",  "static/10K.txt",  10240,      1.0  }, // Full iterations
+    { "100KB", "static/100K.txt", 102400,     0.25 }, // 25% iterations for large files
+    { "1MB",   "static/1M.txt",   1048576,    0.25 }, // 25% iterations for very large files
     { NULL,    NULL,              0,          0    }
 };
 

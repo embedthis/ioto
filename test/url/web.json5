@@ -50,6 +50,7 @@
             algorithm: 'SHA-256',
             secret: 'test-secret-1234567890abcdef',
             autoLogin: false,
+            requireTlsForBasic: false,
             roles: {
                 public: [],
                 user: ['view', 'read'],

@@ -37,13 +37,13 @@ static void testNullPointerCrash(void)
 
     up = urlAlloc(0);
 
-    /* 
+    /*
         Make a request that will crash with null pointer dereference
         The server should catch the exception and close the connection
      */
     status = urlFetch(up, "GET", SFMT(url, "%s/test/crash/null", HTTP), NULL, 0, NULL);
 
-    /*  
+    /*
         The request should fail (connection closed by server)
         Status will be negative (connection error) or 0 (incomplete response)
      */

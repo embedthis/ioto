@@ -209,7 +209,7 @@ static void testURILength(void)
     }
     longURI = rBufToStringAndFree(buf);
     urlClose(up);
-    
+
     status = urlFetch(up, "GET", longURI, NULL, 0, NULL);
     /*
         May succeed or fail depending on URI limit (typically 8-16K)

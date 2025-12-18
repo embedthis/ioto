@@ -16,15 +16,15 @@
 // Locals
 
 // Benchmark timing constants
-#define URL_TIMEOUT_MS 10000     // 10 second timeout to prevent hangs
+#define URL_TIMEOUT_MS   10000   // 10 second timeout to prevent hangs
 
-#define NUM_SOAK_GROUPS 9
+#define NUM_SOAK_GROUPS  9
 #define NUM_BENCH_GROUPS 12
 
 /*
     List of all benchmark classes in run order
  */
- static cchar *benchClasses[] = {
+static cchar *benchClasses[] = {
     "throughput", "static", "https", "raw_http", "raw_https",
     "websockets", "put", "upload", "auth", "actions", "mixed", "connections",
     NULL
@@ -101,7 +101,7 @@ static void fiberMain(void *data)
     // Phase 1: Soak (warmup)
     cchar *singleClass[] = { testClass, NULL };
     cchar **classes = testClass ? singleClass : soakClasses;
-    int numClasses = testClass ? 1 : NUM_SOAK_GROUPS;
+    int   numClasses = testClass ? 1 : NUM_SOAK_GROUPS;
     runSoakTest(classes, numClasses, getSoakDuration());
 
     // Phase 2: Benchmark (measurement)
@@ -114,7 +114,7 @@ static void fiberMain(void *data)
         recordFinalMemory();
         saveFinalResults();
     }
-    
+
 done:
     printf("\n");
     printf("=========================================\n");
@@ -674,7 +674,8 @@ static void benchActions(Ticks duration)
                 iterations++;
                 if (iterLimit(iterations, warm, BENCH_MAX_COLD_ITERATIONS)) break;
                 startTime = rGetTicks();
-                result = executeRequest(ctx, "GET", SFMT(url, "%s/test/%s/", HTTP, actions[actionIndex]), NULL, 0, NULL);
+                result = executeRequest(ctx, "GET", SFMT(url, "%s/test/%s/", HTTP, actions[actionIndex]), NULL, 0,
+                                        NULL);
                 bctx->bytes = result.bytes;
                 if (!processResponse(bctx, &result, url, startTime)) {
                     return;
@@ -898,10 +899,10 @@ static void benchWebSockets(Ticks duration)
     int                iterations;
 
     /*
-    if (smatch(getenv("TESTME_REPORT"), "appweb")) {
+       if (smatch(getenv("TESTME_REPORT"), "appweb")) {
         tinfo("Skipping web sockets benchmark for appweb");
         return;
-    } */
+       } */
     initBenchContext(bctx, "WebSocket", "Benchmarking WebSockets...");
     SFMT(desc, "  Running echo tests for %.1f seconds...", duration / 1000.0);
     bctx->results[0] = initResult("websocket_echo", bctx->soak, desc);
@@ -1291,7 +1292,7 @@ static void testWrk(void)
 
     rFree(host);
 }
-  
+
 /*
     Check if a test class name is valid
  */
@@ -1370,7 +1371,8 @@ static cchar *initBench(void)
     if (testClass && *testClass) {
         if (!isValidBenchClass(testClass)) {
             tinfo("Error: Invalid TESTME_CLASS='%s'", testClass);
-            tinfo("Valid values: static, https, raw_http, raw_https, put, upload, auth, actions, mixed, websockets, connections, throughput");
+            tinfo(
+                "Valid values: static, https, raw_http, raw_https, put, upload, auth, actions, mixed, websockets, connections, throughput");
             bctx->fatal = true;
             return NULL;
         }
@@ -1426,7 +1428,7 @@ static void benchTrace(cchar *fmt, ...)
         va_end(args);
     }
 }
- 
+
 /*
     Parse HTTP/HTTPS endpoints to extract host and port
  */
