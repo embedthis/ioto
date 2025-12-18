@@ -5,7 +5,7 @@
     version: 'latest',
     description: 'blink app schema',
     blend: [
-        '../../../schemas/OneTable.json5',
+        '../../../schemas/parts/OneTable.json5',
     ],
     process: { },
     models: { },

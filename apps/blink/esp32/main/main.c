@@ -1,17 +1,14 @@
 /*
     main.c - Ioto blink example app
 
-    This is a trivial app to blink a GPIO (2) LED and test that Ioto is built and running correctly. The app sets up WIFI and does connect to the cloud to register the device.
+    This is a trivial app to blink a GPIO_LED (2) LED and test that Ioto is built and running correctly. The app sets up WIFI and does connect to the cloud to register the device.
  */
 #include "ioto.h"
 #include "driver/gpio.h"
 #include "rom/gpio.h"
 #include "sdkconfig.h"
 
-#define GPIO            2
-#define WIFI_SSID       "wifi-ssid"
-#define WIFI_PASSWORD   "wifi-password"
-#define HOSTNAME        "hostname"
+#define GPIO_LED  2
 
 /*
     ESP32 app main
@@ -19,14 +16,12 @@
 void app_main(void)
 {
     /*
-        Initialize the runtime and setup the ESP32 file system, WIFI and time daemon.
-        If your app does these steps independently, just omit the relevant call here.
+        Initialize the runtime and setup the ESP32 file system.
      */
     if (ioStartRuntime(IOTO_VERBOSE) < 0) {
         return;
     }
-    if (ioStorage("/state", "storage") < 0 || 
-            ioWIFI(WIFI_SSID, WIFI_PASSWORD, HOSTNAME) < 0 || ioSetTime(0) < 0) {
+    if (ioStorage("/state", "storage") < 0) {
         ioStopRuntime();
         return;
     }
@@ -34,7 +29,6 @@ void app_main(void)
         Run Ioto services and continue until commanded to exit
      */
     ioRun(ioStart);
-
     ioStopRuntime();
 }
 
@@ -48,16 +42,16 @@ int ioStart(void)
     int count = jsonGetInt(ioto->config, 0, "demo.count", 30);
 
     rInfo("blink", "IoStart - ready\n");
-    gpio_reset_pin(GPIO);
-    gpio_set_direction(GPIO, GPIO_MODE_OUTPUT);
+    gpio_reset_pin(GPIO_LED);
+    gpio_set_direction(GPIO_LED, GPIO_MODE_OUTPUT);
 
     for (int i = 0, level = 1; i < count; i++) {
         rInfo("blink", "Turn LED %s", level ? "on" : "off");
-        gpio_set_level(GPIO, level);
+        gpio_set_level(GPIO_LED, level);
         level = !level;
         rSleep(delay);
     }
-    gpio_set_direction(GPIO, 0);
+    gpio_set_direction(GPIO_LED, 0);
     rInfo("blink", "Demo complete");
     return 0;
 }

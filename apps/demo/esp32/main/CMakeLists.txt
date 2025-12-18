@@ -1,7 +1,8 @@
 file(GLOB SOURCES *.c)
 
-idf_component_register(SRCS "${SOURCES}"
+idf_component_register(SRCS "main.c" "${SOURCES}"
     INCLUDE_DIRS "."
+    PRIV_REQUIRES ioto
 )
 
 if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")

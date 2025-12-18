@@ -1,23 +1,16 @@
 /*
     demo.c -- Demonstration App for Ioto
+
+    This is included by app.c 
  */
 
 /********************************* Includes ***********************************/
 #include "ioto.h"
 
-#if ESP32
-#include "driver/gpio.h"
-#include "rom/gpio.h"
-#endif
-
 /********************************* Defines ************************************/
 
-#if ESP32
-#define GPIO         2
-#endif
-
 /*
-    SECURITY Acceptable:: This is the public eval product ID.
+    SECURITY Acceptable: This is the public eval product ID.
     Disclosure here is not a security risk.
  */
 #define EVAL_PRODUCT "01H4R15D3478JD26YDYK408XE6"
@@ -93,15 +86,6 @@ static void demo(void)
     count = ioGetConfigInt("demo.count", 30);
     rInfo("demo", "Running demo with %d iterations and delay of %d", count, (int) delay);
 
-#if ESP32
-    /*
-        Toggle the LED to give visual feedback via GPIO pin 2
-     */
-    int level = 1;
-    gpio_reset_pin(GPIO);
-    gpio_set_direction(GPIO, GPIO_MODE_OUTPUT);
-    gpio_set_level(GPIO, level);
-#endif
     expires = rGetTime() + 2 * 3600 * TPS;
     dbRemoveExpired(ioto->db, 1);
 
@@ -161,17 +145,8 @@ static void demo(void)
             }
         }
         if (++counter < count) {
-#if ESP32
-            //  Trace task and memory usage
-            rPlatformReport("DEMO Task Report");
-#endif
             rSleep(delay);
         }
-#if ESP32
-        //  Toggle the LED to give visual feedback via GPIO pin 2
-        level = !level;
-        gpio_set_level(GPIO, level);
-#endif
     }
     rInfo("demo", "Demo complete");
     rSignal("demo:complete");
@@ -193,6 +168,7 @@ static void deviceCommand(void *ctx, DbItem *item)
 
 static void customCommand(void *ctx, DbItem *item)
 {
+#if ME_UNIX_LIKE
     cchar *parameters, *program;
     int   status;
 
@@ -203,7 +179,6 @@ static void customCommand(void *ctx, DbItem *item)
         WARNING: no error checking of program or parameters here
         SECURITY Acceptable:: This is demo code and is not used in production.
      */
-#if ME_UNIX_LIKE
     char cmd[160], *output;
     print("Run custom command: %s %s", program, parameters ? parameters : "");
     SFMT(cmd, "%s %s", program, parameters ? parameters : "");

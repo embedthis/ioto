@@ -27,7 +27,6 @@ void app_main(void)
         Run Ioto services and the demoApp.c via ioStart() and continue until commanded to exit
      */
     ioRun(ioStart);
-
     ioStopRuntime();
 }
 
