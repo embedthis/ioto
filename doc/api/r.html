@@ -36,6 +36,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a8a257ecb7db62931d0c93cc45cab746c" class="nameRef">rDaemonize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>For the current process and run as a daemon.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1aabf9e67e1d6c74c7878b7c6d4c803b9b" class="nameRef">rDirname</a>(char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the directory name portion of a filename.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a27e34757cdd320b8640b46e5c1e5465e" class="nameRef">rDisconnectSocket</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Disconnect a socket.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a2e8e2be71c5d3f4e746eb50a8a4cd8a3" class="nameRef">rEndFiberBlock</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>End a fiber block.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a2fc82aa07dbb13002a6204c042acddf8" class="nameRef">rEnter</a>(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> *access, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Enter a fiber critical section.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool</td><td><a href="#r_8h_1a9471a80488de99e7b78794424863006e" class="nameRef">rFileExists</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if a file exists.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1ae261ef8ca8c72bfcf1f444c5e14d3d69" class="nameRef">rFlushFile</a>(int fd)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Flush file buffers.</td></tr>
@@ -1592,6 +1593,19 @@ Does not return
     <tr><td class="param">sp</td><td>Socket object returned from rAllocSocket.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a2e8e2be71c5d3f4e746eb50a8a4cd8a3"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rEndFiberBlock
+(void )
+  </div>
+  <div class="apiDetail">
+<p>End a fiber block.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This restores the signal mask to the original state.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
   </div>
 </div>
 <a name="r_8h_1a2fc82aa07dbb13002a6204c042acddf8"></a>

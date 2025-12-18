@@ -1,6 +1,6 @@
 # Ioto Device Agent v3.0.0 Release Notes
 
-Release Date: December 9, 2025
+Release Date: December 10, 2025
 
 ## Recommended Action
 
@@ -15,9 +15,10 @@ Version 3.0.0 is a major feature and security release adding HTTP Basic and Dige
 ## Major Features
 
 ### Web Server Authentication
-- **HTTP Basic Authentication** - Username/password with configurable TLS enforcement and SHA-256 password hashing
+- **HTTP Basic Authentication** - Username/password with configurable TLS enforcement (defaults to required) and SHA-256 password hashing
 - **HTTP Digest Authentication** - Challenge-response authentication with MD5/SHA-256 algorithms and replay protection
 - **Password Tool** - New `password` command for generating hashed passwords
+- **Flexible User Management** - `webAddUser()` allows null password, `webLogin()` auto-creates users for custom auth schemes
 
 ### Client-Side Cache Control
 - Route-based `Cache-Control`, `Expires`, and `Pragma` headers
@@ -35,6 +36,13 @@ Version 3.0.0 is a major feature and security release adding HTTP Basic and Dige
 - **Fiber Pool** - Pool of pre-allocated fibers for reuse
 - **Guard Page Auto-Growing Stacks** - Uses virtual memory guard pages for automatic stack growth
 - Configurable initial, maximum, and growth sizes via `limits.fiberStack*` properties
+- Async-signal-safe stack growth handler
+
+### Builder Configuration
+- **Flexible Builder Endpoint** - `cmdBuilder` available with `SERVICES_REGISTER` (not just `SERVICES_CLOUD`)
+
+### Standalone Web Server
+- **Web Server Only Mode** - Run `web` program standalone without full Ioto agent for local-only management
 
 ### Web Server Exception Handling
 - **Fiber Exception Blocks** - Optional crash recovery for web request handlers
@@ -80,15 +88,28 @@ Version 3.0.0 is a major feature and security release adding HTTP Basic and Dige
 - Fixed Windows pollFds clearing in `rFreeWait`
 - Fixed socket connection verification with `getpeername()`
 
+### Samples Fixes
+- Fixed sample build configuration to use simplified relative paths
+- Updated samples to use current API signatures (`rInit` with 2 parameters)
+- Added explicit callback type casts for stricter compilation
+
 ## Breaking Changes
 
 - **`rParseIsoDate()` now returns -1 on error** (previously returned 0)
 - **URL command `--count` renamed to `--iterations`**
 
+## FreeRTOS and ESP32 Improvements
+
+- **FreeRTOS Fiber Implementation** - Semaphore-based synchronization with mutex + condition semaphore pairs
+- **ESP32-C6 Support** - Added support for ESP32-C6 (RISC-V based) devices
+- **OS Type Constants** - Added `ME_OS_*` constants for compile-time OS detection
+- **FreeRTOS Demo App** - New `apps/demo/freertos/` with complete integration example
+- **Improved Build Documentation** - Simplified README-FREERTOS.md and README-ESP32.md
+
 ## Platform Support
 
 - **Tier 1**: Linux (x86, x64, ARM, ARM64, RISC-V), macOS (Intel, Apple Silicon), Windows 11 (VS2022, WSL)
-- **Tier 2**: FreeRTOS, BSD, ESP32 (ESP-IDF), VxWorks
+- **Tier 2**: FreeRTOS, BSD, ESP32 (ESP-IDF) including ESP32-S3 and ESP32-C6, VxWorks
 
 ## Security Considerations
 
