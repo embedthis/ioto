@@ -80,9 +80,15 @@ Creates amalgamated source files for easy distribution:
 - Tested on VxWorks 6.x and 7.x
 
 ### ESP32/FreeRTOS
-- Uses Xtensa architecture implementation based on pthreads
-- Special handling for FreeRTOS task stacks
-- Limited to single-core context switching
+- Uses semaphore-based synchronization for cooperative fiber scheduling
+- Each context has a mutex and condition semaphore pair
+- Tasks block on condition semaphore until explicitly resumed
+- Predicate-based wait functions protect against spurious wakeups
+- Main fiber uses current FreeRTOS task; child fibers spawn new tasks
+- `swapcontext` signals target to resume, then blocks until re-signaled
+- `freecontext` signals task to terminate and cleans up semaphores
+- ESP32 stack size integrates with `CONFIG_ESP_MAIN_TASK_STACK_SIZE`
+- RISC-V ESP32 variants use native assembler implementations
 
 ### Windows
 - Uses native Windows Fibers API

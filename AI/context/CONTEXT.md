@@ -139,37 +139,145 @@ This documentation should be updated when:
 
 ## Recent Activity
 
-### Version 3.0.0 Release (December 10, 2025)
+### README Documentation Improvements (December 18, 2025)
 
-Major release with performance optimizations, growable fiber stacks, and API enhancements.
+Comprehensive cleanup of README.md for improved readability and correctness.
 
-**Major Features**:
-- **Growable Fiber Stacks** - Auto-growing stacks via guard pages (`ME_FIBER_GROWABLE_STACK`)
-  - Reserves large virtual address space, commits memory on demand
-  - Configurable via `limits.fiberStack`, `limits.fiberStackMax`, `limits.fiberStackGrow`
-  - New APIs: `rAllocPages()`, `rFreePages()`, `rProtectPages()`, `rGetPageSize()`
-  - New APIs: `rSetFiberStackLimits()`, `rGetFiberStackLimits()`
-- **Fiber Exception Blocks** - Crash recovery for web handlers (`ME_WEB_FIBER_BLOCKS`)
-  - Enable via `web.fiberBlocks` configuration
-  - New `WEB_HOOK_EXCEPTION` hook for exception notification
-- **Zero-Copy I/O** - `webReadDirect()` and sendfile support
-- **HTTP Authentication** - Basic and Digest authentication for web server
-- **Event-Driven I/O** - 10x connection scalability via non-blocking keep-alive
-- **Simplified SSE/WebSocket APIs** - `urlSseRun()` and `webSocketRun()` replace async/wait pairs
+**Line Wrapping**:
+- Wrapped all lines to 120 character limit for better readability
+- Maintains consistent formatting throughout the document
 
-**API Changes**:
-- `rSetWaitHandler()` signature changed: added `flags` parameter
-- `rSetFiberLimits()` signature changed: added `poolMin`, `poolMax` parameters
-- `webSendFile()` signature changed: added `offset`, `len` parameters
-- Removed `urlSseAsync()`, `urlSseWait()`, `urlWait()` - use `urlSseRun()` instead
-- Removed `webSocketAsync()`, `webSocketWait()` - use `webSocketRun()` instead
+**Spelling Fixes**:
+- "extentension" → "extension"
+- "developement" → "development"
 
-**Documentation Updated**:
-- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry for v3.0.0
-- [../../doc/releases/3.0.0.md](../../doc/releases/3.0.0.md) - Full release notes
+**Grammar Corrections**:
+- "a HTTP" → "an HTTP" (vowel sound)
+- "a OPTIMIZE" → "an OPTIMIZE" (vowel sound)
+- "What is unique about Ioto, is that" → removed errant comma
+- "Demonstrate using" → "Demonstrates using" (parallel structure)
+- "little or not effort" → "little or no effort"
+- "first time build" → "initial build"
+- "on windows the command line" → "on Windows from the command line"
+- "It will define use local directories" → "It will use local directories"
 
-**Status**: Version 3.0.0 committed and ready for release.
+**Consistency Improvements**:
+- "FREERTOS" → "FreeRTOS" (link text)
+- "SubSystem" → "Subsystem" (standard capitalization)
+- "cloud based" → "cloud-based" (hyphenated for consistency)
+- "lower performing" → "lower-performing" (compound adjective)
+
+**Sentence Completions**:
+- Fixed incomplete sentence: "To link, reference the Ioto library"
+- Fixed incomplete phrase: "unless the built app requires."
+- Fixed awkward colon usage: "skip these steps: If" → "skip these steps. If"
+
+**Files Modified**:
+- `README.md`
 
 ---
 
-**Last Updated:** 2025-12-10
+### FreeRTOS Fiber Support and OS Abstraction (December 17, 2025)
+
+Major improvements to FreeRTOS support and cross-platform OS detection.
+
+**Uctx FreeRTOS Implementation**:
+- Rewrote FreeRTOS context switching with semaphore-based synchronization
+- Each fiber context has a mutex and condition semaphore for cooperative scheduling
+- Implemented predicate-based wait functions (`resumed_or_done`, `resumed`)
+- Tasks block on condition semaphore until explicitly resumed via swapcontext
+- Proper lifecycle: main fiber uses current task, child fibers spawn new tasks
+
+**OS Type Constants**:
+- Added `ME_OS_*` constants to `osdep.h` for compile-time OS detection
+- ME_OS_MACOSX, ME_OS_LINUX, ME_OS_FREEBSD, ME_OS_WINDOWS, etc.
+- Enables cleaner platform-specific code with numeric comparisons
+
+**Fiber Stack Configuration**:
+- `ME_FIBER_DEFAULT_STACK` now integrates with ESP32's `CONFIG_ESP_MAIN_TASK_STACK_SIZE`
+- Platform-specific defaults: 64KB (64-bit), 32KB (32-bit)
+- Moved stack defines earlier in r.h for broader visibility
+
+**New Demo App**:
+- Added `apps/demo/freertos/` with FreeRTOSConfig.h, Makefile, main.c
+- Complete example for FreeRTOS POSIX/GCC integration
+
+**Files Modified**:
+- `lib/uctxLib.c`, `paks/uctx/dist/uctxLib.c` - FreeRTOS implementation
+- `include/osdep.h`, `paks/osdep/dist/osdep.h` - OS constants
+- `include/r.h` - Stack configuration
+- `README-FREERTOS.md`, `README-ESP32.md` - Simplified docs
+
+**Commit**: `77d01e39` - DEV: improve FreeRTOS fiber support and OS abstraction
+
+---
+
+### FreeRTOS and ESP32 Documentation Update (December 11, 2025)
+
+Improved step-by-step documentation for building Ioto on FreeRTOS and ESP32 platforms.
+
+**README-FREERTOS.md Changes**:
+- Added "Getting FreeRTOS" section with git clone instructions
+- Added "Project Structure" diagram showing expected directory layout
+- Added "Finding Your App Makefile" section with platform-specific paths
+- Fixed Makefile example (`//` comments → `#` comments)
+- Fixed function name typos (`iotStart` → `ioStart`, `iotStop` → `ioStop`)
+- Fixed typo "performace" → "performance"
+
+**README-ESP32.md Changes**:
+- Added "Getting ESP-IDF" section with install steps for Ubuntu/Debian and macOS
+- Added "Project Structure" diagram showing myproject layout
+- Added WiFi configuration code example showing `#define` statements
+- Converted build instructions to numbered workflow steps
+- Streamlined redundant ESP-IDF sourcing instructions
+
+**Files Modified**:
+- `README-FREERTOS.md`
+- `README-ESP32.md`
+
+---
+
+### Builder Configuration Update (December 10, 2025)
+
+Enhanced builder configuration availability for provision-only builds.
+
+**Changes**:
+- Enable `cmdBuilder` configuration when `SERVICES_REGISTER` is defined (not just `SERVICES_CLOUD`)
+- Moved `cmdBuilder` member outside `#if SERVICES_CLOUD` block in `ioto.h`
+- Changed `#if SERVICES_CLOUD` to `#if SERVICES_REGISTER` in `setup.c` for builder initialization
+- Enable `SERVICES_REGISTER` when either `SERVICES_PROVISION` or `SERVICES_CLOUD` is set
+
+**Documentation**:
+- Added README section for running standalone web server (`web` program)
+- Useful for local-only management without cloud or embedded database
+
+**Commit**: `f178a94d` - DEV: enable builder config for register service and document standalone web server
+
+---
+
+### Version 3.0.0 Release (December 9, 2025)
+
+Major release with performance optimizations and API enhancements.
+
+**Key Changes**:
+- Socket accept optimization with `R_WAIT_MAIN_FIBER` flag
+- New `rGrowBufSize()` for growing buffers to specific sizes
+- New `rGetSocketLimit()` / `rSetSocketLimit()` for runtime socket limits
+- New `webReadDirect()` for zero-copy body reading
+- New `webWriteResponseString()` for efficient static responses
+- Fixed Windows pollFds clearing in `rFreeWait()`
+- Dynamic poll table growth for Windows/WSAPoll
+
+**API Changes**:
+- `rSetWaitHandler()` signature changed: added `flags` parameter
+- Added `flags` field to `RWait` structure
+- New constant `R_WAIT_MAIN_FIBER` for main fiber execution
+
+**Documentation Updated**:
+- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry for v3.0.0
+
+**Status**: Version 3.0.0 released.
+
+---
+
+**Last Updated:** 2025-12-18

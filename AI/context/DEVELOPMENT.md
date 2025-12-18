@@ -105,6 +105,7 @@ Each project shall have a ./doc directory with the following structure:
   * Contains benchmark results for the project
 
 After each session, update the CONTEXT.md and save a SESSION-DATE.md with details of progress and context of the latest session.
+After commiting features, update the current release notes document.
 
 ### Designs
 

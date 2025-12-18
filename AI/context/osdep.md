@@ -18,6 +18,13 @@ The **osdep** module provides the foundational Operating System Dependent abstra
 - **Compiler Detection**: GCC, Clang, MSVC, and embedded toolchains
 - **Endianness Detection**: Big/little endian with runtime and compile-time support
 
+### OS Type Constants
+Numeric constants for compile-time OS identification via `ME_OS_TYPE`:
+- `ME_OS_MACOSX` (1), `ME_OS_LINUX` (2), `ME_OS_FREEBSD` (3), `ME_OS_OPENBSD` (4)
+- `ME_OS_WINDOWS` (5), `ME_OS_QNX` (11), `ME_OS_HPUX` (12), `ME_OS_AIX` (13)
+- `ME_OS_SOLARIS` (14), `ME_OS_VXWORKS` (15), `ME_OS_ESP32` (16), `ME_OS_FREERTOS` (17)
+- Additional: OS2, MSDOS, NETWARE, BSDI, NETBSD, UNIX, IRIX
+
 ### Type Definitions
 - **Standardized Integer Types**: int8, uint8, int16, uint16, int32, uint32, int64, uint64, ssize
 - **Boolean Types**: Consistent bool/true/false across C and C++
@@ -48,9 +55,19 @@ int64 timestamp = getTime();    // Not long long
 
 ### Platform-Specific Code
 ```c
-#if ME_OS == ME_OS_LINUX
+// Using ME_OS_TYPE numeric constant
+#if ME_OS_TYPE == ME_OS_LINUX
     // Linux-specific code
-#elif ME_OS == ME_OS_WINDOWS
+#elif ME_OS_TYPE == ME_OS_WINDOWS
+    // Windows-specific code
+#elif ME_OS_TYPE == ME_OS_FREERTOS
+    // FreeRTOS-specific code
+#endif
+
+// Using boolean convenience macros
+#if LINUX
+    // Linux-specific code
+#elif WINDOWS
     // Windows-specific code
 #endif
 
