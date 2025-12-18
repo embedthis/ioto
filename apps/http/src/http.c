@@ -1,5 +1,7 @@
 /*
     http.c -- App for the http app
+
+    This file is included by app.c 
  */
 #include "http.h"
 #include "httpUser.c"
@@ -28,3 +30,8 @@ PUBLIC int ioStart(void)
 PUBLIC void ioStop(void)
 {
 }
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */

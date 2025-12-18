@@ -1,6 +1,6 @@
 # Http (Server) App
 
-The Http app is a simple, local, browser app to test the Ioto web server without any cloud-based services..
+The Http app is a simple, local, browser app to test the Ioto web server without any cloud-based services.
 
 ## Building
 

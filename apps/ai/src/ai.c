@@ -1,5 +1,7 @@
 /*
     ai.c -- Demonstration of AI OpenAI APIs
+
+    This file is included by app.c 
  */
 /********************************** Includes **********************************/
 

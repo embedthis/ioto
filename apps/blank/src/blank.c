@@ -2,6 +2,7 @@
     blank.c - Library stub for start()
 
     This is where you can add or hook your custom code.
+    This file is included by app.c 
  */
 
 /********************************** Includes **********************************/

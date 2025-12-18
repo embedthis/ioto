@@ -44,7 +44,6 @@ static void logoutUser(Web *web)
     webLogout(web);
 }
 
-
 /*
     Return current authentication status if logged in
  */
@@ -67,3 +66,8 @@ PUBLIC int httpAddUser(WebHost *host)
     webAddAction(host, "/api/user/logout", logoutUser, NULL);
     return 0;
 }
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */

@@ -1,5 +1,5 @@
 /*
-    main.c - Ioto auth example app
+    main.c - Ioto http server example app
 
     This app demonstrates the use of the Ioto web server with web server authentication
  */

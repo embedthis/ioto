@@ -63,10 +63,10 @@ PUBLIC void ioStop(void)
  */
 static void unitTestAction(Web *web)
 {
-    REvent   timeoutEvent;
-    cchar    *name;
-    int64    delay, i, count;
-    bool     exit;
+    REvent timeoutEvent;
+    cchar  *name;
+    int64  delay, i, count;
+    bool   exit;
 
     name = webGetVar(web, "name", 0);
     if (!name) {
@@ -182,7 +182,7 @@ static int dbUpdateTest(void)
 
     rInfo("test", "Run test: dbLocal");
     /*
-        Update the lastUpdate field in the SyncState entity. 
+        Update the lastUpdate field in the SyncState entity.
         This table is local to the device and is not synchronized to the cloud.
      */
     lastUpdate = dbGetField(ioto->db, "SyncState", "lastUpdate", NULL, NULL);
@@ -261,7 +261,7 @@ static int mqttWithMetrics(void)
          "}}");
     SFMT(msg, "{\"key\":\"%s\",\"value\":%d,\"type\":\"number\"}", "counter", counter++);
     return mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
-                "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
+                       "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
 }
 #endif
 
