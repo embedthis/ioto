@@ -306,11 +306,11 @@ PUBLIC int ioGetConfigInt(cchar *key, int defaultValue)
 /*
     Expand ${references} in the "str" using properties variables in ioto->properties
  */
- PUBLIC char *ioExpand(cchar *str)
- {
-     return jsonTemplate(ioto->properties, str, 1);
- }
- 
+PUBLIC char *ioExpand(cchar *str)
+{
+    return jsonTemplate(ioto->properties, str, 1);
+}
+
 /*
     Copyright (c) Embedthis Software. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.

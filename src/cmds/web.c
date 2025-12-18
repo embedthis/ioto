@@ -228,9 +228,9 @@ static void start(void)
         jsonSetString(config, 0, "profile", profile);
     }
     //  Configure fiber limits if specified in config. A value of zero uses the default values
-    maxFibers = (int) svalue(jsonGet(config, 0, "limits.fibers", "0"));
-    poolMin = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMin", "0"));
-    poolMax = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMax", "0"));
+    maxFibers = (int) svalue(jsonGet(config, 0, "limits.fibers", "4"));
+    poolMin = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMin", "2"));
+    poolMax = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMax", "4"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
 
     //  Configure fiber stack limits if specified. A value of zero keeps the default.

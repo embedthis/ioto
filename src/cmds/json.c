@@ -28,7 +28,7 @@
     Advanced:
         json --blend config.json                    # Merge files from blend[] array
         json --expand config.json                   # Expand ${var} templates
-        json --env . config.json                    # Output as shell environment variables
+        json --env config.json                      # Output as shell environment variables
 
     For full documentation: man json
 

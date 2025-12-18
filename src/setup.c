@@ -47,11 +47,11 @@ PUBLIC int ioInitConfig(void)
      */
     json = ioto->config;
     ioConfig(json);
-    
+
     // Configure the fiber pool. A value of zero keeps the default.
-    maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "0"));
+    maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "4"));
     poolMin = svaluei(jsonGet(json, 0, "limits.fiberPoolMin", "0"));
-    poolMax = svaluei(jsonGet(json, 0, "limits.fiberPoolMax", "0"));
+    poolMax = svaluei(jsonGet(json, 0, "limits.fiberPoolMax", "4"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
 
     //  Configure fiber stack limits if specified. A value of zero keeps the default.
@@ -109,7 +109,7 @@ PUBLIC int ioInitConfig(void)
     ioto->version = jsonGetClone(json, 0, "version", "1.0.0");
     ioto->properties = makeTemplate();
 
-#if SERVICES_CLOUD
+#if SERVICES_REGISTER
     if (ioto->cmdBuilder) {
         ioto->builder = sclone(ioto->cmdBuilder);
     } else {
@@ -154,7 +154,7 @@ PUBLIC int ioInitConfig(void)
 #endif
     ioUpdateLog(0);
     rInfo("ioto", "Starting Ioto %s, with \"%s\" app %s, using \"%s\" profile",
-            ME_VERSION, ioto->app, ioto->version, ioto->profile);
+          ME_VERSION, ioto->app, ioto->version, ioto->profile);
     enableServices();
     return 0;
 }
@@ -365,20 +365,20 @@ static void enableServices(void)
          */
         ioto->registerService = jsonGetBool(config, sid, "register", ioto->provisionService ? 1 : 0);
     }
-        rInfo("ioto", "Enabling services: %s%s%s%s%s%s%s%s%s%s%s%s",
-              ioto->aiService ? "ai " : "",
-              ioto->dbService ? "db " : "",
-              ioto->logService ? "log " : "",
-              ioto->mqttService ? "mqtt " : "",
-              ioto->provisionService ? "provision " : "",
-              ioto->registerService ? "register " : "",
-              ioto->shadowService ? "shadow " : "",
-              ioto->syncService ? "sync " : "",
-              ioto->serializeService ? "serialize " : "",
-              ioto->testService ? "test " : "",
-              ioto->updateService ? "update " : "",
-              ioto->webService ? "web" : ""
-              );
+    rInfo("ioto", "Enabling services: %s%s%s%s%s%s%s%s%s%s%s%s",
+          ioto->aiService ? "ai " : "",
+          ioto->dbService ? "db " : "",
+          ioto->logService ? "log " : "",
+          ioto->mqttService ? "mqtt " : "",
+          ioto->provisionService ? "provision " : "",
+          ioto->registerService ? "register " : "",
+          ioto->shadowService ? "shadow " : "",
+          ioto->syncService ? "sync " : "",
+          ioto->serializeService ? "serialize " : "",
+          ioto->testService ? "test " : "",
+          ioto->updateService ? "update " : "",
+          ioto->webService ? "web" : ""
+          );
 }
 
 /*

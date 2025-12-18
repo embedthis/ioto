@@ -71,7 +71,7 @@
     #define SERVICES_PROVISION 1
 #endif
 
-#if SERVICES_PROVISION
+#if SERVICES_PROVISION || SERVICES_CLOUD
     #undef SERVICES_REGISTER
     #define SERVICES_REGISTER 1
 #endif
@@ -216,6 +216,7 @@ typedef struct Ioto {
     bool webService : 1;       /** Web server */
 
     char *serializeService;    /** Manufacturing serialization (factory, auto, none) */
+    cchar *cmdBuilder;         /**< Command line override builder API endpoint */
 
 #if SERVICES_CLOUD || DOXYGEN
     char *instance;            /**< EC2 instance */
@@ -227,7 +228,6 @@ typedef struct Ioto {
     Time blockedUntil;         /**< Time to wait before reprovisioning after blocked connection */
 
     cchar *cmdAccount;         /**< Command line override owning manager account for self-claiming */
-    cchar *cmdBuilder;         /**< Command line override builder API endpoint */
     cchar *cmdCloud;           /**< Command line override builder cloud for self-claiming */
 
     char *account;             /**< Owning manager accountId (provision.json5) */

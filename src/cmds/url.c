@@ -236,6 +236,7 @@ static int parseArgs(int argc, char **argv)
     Json *json;
     char *argp, *data, *item, *key, *value, *path;
     char buf[80];
+    size_t len;
     int  nextArg;
 
     start = rGetTime();
@@ -551,8 +552,8 @@ static int parseArgs(int argc, char **argv)
             if (upload) {
                 rAddItem(files, path);
             } else {
-                data = rReadFile(path, NULL);
-                rPutStringToBuf(body, data);
+                data = rReadFile(path, &len);
+                rPutBlockToBuf(body, data, len);
                 rFree(data);
             }
         } else if (item[0] == '{' /*}*/ &&

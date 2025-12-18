@@ -631,7 +631,7 @@ static void cleanSyncChanges(Json *json)
             }
         }
     }
-    rDebug("sync", "After syncing %ld changes %d changes pending", count, rGetHashLength(ioto->syncHash));
+    rDebug("sync", "After syncing %d changes %d changes pending", (int) count, rGetHashLength(ioto->syncHash));
     if (count && rGetHashLength(ioto->syncHash) == 0) {
         //  OPTIMIZE
         recreateSyncLog();

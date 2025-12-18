@@ -564,7 +564,7 @@ PUBLIC double ioGetMetric(cchar *metric, cchar *dimensions, cchar *statistic, in
 PUBLIC int ioSetMetric(cchar *metric, double value, cchar *dimensions, int elapsed)
 {
     char *msg;
-    int rc;
+    int  rc;
 
     if (dimensions == NULL || *dimensions == '\0') {
         dimensions = "[{\"Device\":\"${deviceId}\"}]";
@@ -572,7 +572,7 @@ PUBLIC int ioSetMetric(cchar *metric, double value, cchar *dimensions, int elaps
     msg = sfmt("{\"metric\":\"%s\",\"value\":%g,\"dimensions\":%s,\"buffer\":{\"elapsed\":%d}}",
                metric, value, dimensions, elapsed);
     rc = mqttPublish(ioto->mqtt, msg, 0, 1, MQTT_WAIT_NONE,
-                "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
+                     "$aws/rules/IotoDevice/ioto/service/%s/metric/set", ioto->id);
     rFree(msg);
     return rc;
 }
@@ -607,15 +607,15 @@ PUBLIC int ioSetNum(cchar *key, double value)
     rc = 0;
 #if SERVICES_SYNC
     if (dbUpdate(ioto->db, "Store",
-             DB_JSON("{key: '%s', value: '%g', type: 'number'}", key, value),
-             DB_PARAMS(.upsert = 1)) == NULL) {
+                 DB_JSON("{key: '%s', value: '%g', type: 'number'}", key, value),
+                 DB_PARAMS(.upsert = 1)) == NULL) {
         return R_ERR_CANT_WRITE;
     }
 #else
     //  Optimize by using AWS basic ingest topic
     char *msg = sfmt("{\"key\":\"%s\",\"value\":%lf,\"type\":\"number\"}", key, value);
     rc = mqttPublish(ioto->mqtt, msg, -1, 1, MQTT_WAIT_NONE,
-                "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
+                     "$aws/rules/IotoDevice/ioto/service/%s/store/set", ioto->id);
     rFree(msg);
 #endif
     return rc;

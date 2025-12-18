@@ -50,7 +50,7 @@ PUBLIC int ioInitWeb(void)
         }
     }
 #endif
-#if ESP32 || FREERTOS
+#if ESP32
     webSetHostDefaultIP(webHost, rGetIP());
 #endif
 
@@ -182,6 +182,7 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey)
         return 0;
     }
     signatures = web->host->signatures;
+    sid = -1;
     if (signatures) {
         if (sigKey) {
             sid = jsonGetId(signatures, 0, sigKey);

@@ -142,7 +142,7 @@ PUBLIC int ioUpload(cchar *path, uchar *buf, size_t len)
         "command" : "put",
         "filename" : "%s",
         "mimeType" : "image/jpeg",
-        "size" : "%ld"
+        "size" : "%zu"
     }), ioto->id, path, len);
 
     rc = R_ERR_CANT_COMPLETE;

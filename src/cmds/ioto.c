@@ -276,11 +276,11 @@ PUBLIC int main(int argc, char **argv, char **envp)
         }
         rSetLogFormat(TRACE_FORMAT, 1);
     }
-#if ME_UNIX_LIKE
     if (background) {
+#if ME_UNIX_LIKE
         rDaemonize();
-    }
 #endif
+    }
     /*
         Service events until instructed to stop. Handles restarts.
      */

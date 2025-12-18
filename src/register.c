@@ -106,7 +106,7 @@ PUBLIC int ioRegister(void)
  */
 static int parseRegisterResponse(Json *json)
 {
-    char       *path;
+    char *path;
 
     /*
         Security: The registration response is trusted and is used to configure the device.
