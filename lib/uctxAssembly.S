@@ -2421,8 +2421,8 @@ END(__uctx_swapcontext)
 
 #if UCTX_ARCH == UCTX_RISCV
 
-#ifndef __ARCH_RISCV64_DEFS_H
-#define __ARCH_RISCV64_DEFS_H
+#ifndef __ARCH_RISCV_DEFS_H
+#define __ARCH_RISCV_DEFS_H
 
 #define REG_SZ		(4)
 #define MCONTEXT_GREGS	(160)

@@ -33,14 +33,14 @@
 
 /*
     Use compiler definitions to determine the CPU type and select the relevant fiber module.
-
-    Note: VxWorks does not require special handling as it runs on standard CPU architectures
-    (ARM, x86, PowerPC, MIPS) and the compiler provides appropriate CPU detection macros.
-    The architecture-specific assembly implementations are OS-agnostic and work correctly on
-    VxWorks. VxWorks-specific concerns (task management, stack allocation) are handled by the
-    application layer (e.g., Safe Runtime).
  */
-#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+#if defined(ESP_PLATFORM) || defined(INC_FREERTOS_H) || defined(FREERTOS)
+    // ESP32/FreeRTOS uses FreeRTOS tasks
+    #define UCTX_ARCH UCTX_FREERTOS
+    #undef FREERTOS
+    #define FREERTOS  1
+
+#elif defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
     #define UCTX_ARCH UCTX_WINDOWS
 
 #elif defined(__alpha__)
@@ -82,16 +82,14 @@
 #elif defined(__sh__)
     #define UCTX_ARCH UCTX_SH
 
-#elif defined(__riscv_32)
+#elif defined(__riscv) && (__riscv_xlen == 32)
     #define UCTX_ARCH UCTX_RISCV
 
-#elif defined(__riscv_64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
     #define UCTX_ARCH UCTX_RISCV64
 
-#elif defined(ESP_PLATFORM) || defined(INC_FREERTOS_H)
-    #define UCTX_ARCH UCTX_FREERTOS
-
 #elif defined(__XTENSA__)
+// Not supported yet
     #define UCTX_ARCH UCTX_XTENSA
 
 #elif __loongarch__ || __loongarch64
@@ -102,13 +100,9 @@
     #define UCTX_ARCH UCTX_PTHREADS
 #endif
 
-#if defined(ESP_PLATFORM) || defined(INC_FREERTOS_H)
-    #define FREERTOS  1
-#endif
-
 #if UCTX_OVERRIDE
-#undef UCTX_ARCH
-#define UCTX_ARCH UCTX_PTHREADS
+    #undef UCTX_ARCH
+    #define UCTX_ARCH UCTX_PTHREADS
 #endif
 
 #endif /* _h_UCTX_OS */

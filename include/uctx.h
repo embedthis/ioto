@@ -90,8 +90,9 @@ typedef struct uctx {
     #include <stdio.h>
     #include <pthread.h>
     #include <stdarg.h>
-    #include "freertos/FreeRTOS.h"
-    #include "freertos/task.h"
+    #include "FreeRTOS.h"
+    #include "task.h"
+    #include "semphr.h"
 
 #define UCTX_MAX_ARGS 4
 
@@ -708,7 +709,7 @@ typedef struct uctx_t {
 
 
 #ifndef UCTX_MIN_STACK_SIZE
-    #define UCTX_MIN_STACK_SIZE (32 * 1024) /**< Minimum stack size in bytes */
+    #define UCTX_MIN_STACK_SIZE (8 * 1024)        /**< Minimum stack size in bytes */
 #endif
 
 #ifndef UCTX_MAX_STACK_SIZE
@@ -822,9 +823,12 @@ PUBLIC int uctx_setstack(uctx_t *up, void *stack, size_t stackSize);
 /**
     Retrieve the stack base pointer for a context.
     @description Returns the stack memory base address that was previously configured with uctx_setstack().
-    The address returned points to the end of the stack memory region, not the current stack pointer. To use the stack, you would need to subtract the stack size from the address returned. To push items onto the stack, you would decrement first and then store the item.
+    The address returned points to the end of the stack memory region, not the current stack pointer. To use the stack,
+       you would need to subtract the stack size from the address returned. To push items onto the stack, you would
+       decrement first and then store the item.
     @param up Pointer to context structure to query
-    @return Pointer to the base of the stack memory region, or NULL if no stack is configured. This is the same pointer that was passed to uctx_setstack(), not the current stack pointer.
+    @return Pointer to the base of the stack memory region, or NULL if no stack is configured. This is the same pointer
+       that was passed to uctx_setstack(), not the current stack pointer.
     @stability Evolving
  */
 PUBLIC void *uctx_getstack(uctx_t *up);
