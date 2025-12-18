@@ -139,6 +139,42 @@ This documentation should be updated when:
 
 ## Recent Activity
 
+### v3.0.0 Release Commits (December 18, 2025)
+
+Created 15 discrete commits from the v3.0.0 release changes for clear git history.
+
+**Commit Summary:**
+1. OS type constants (ME_OS_*) in osdep.h
+2. FreeRTOS fiber implementation with semaphore synchronization
+3. Fiber stack configuration and runtime improvements
+4. Web server authentication, cache control, and performance features
+5. URL client authentication and security hardening
+6. Security fixes in JSON and crypto libraries (fuzzing)
+7. MQTT library updates
+8. FreeRTOS demo and ESP32 app updates
+9. App configurations for v3.0.0
+10. Agent core source files
+11. Samples updates for v3.0.0 API
+12. Build system and project files
+13. Tests and CI updates
+14. Documentation for v3.0.0
+15. AI context updates
+
+**Major Features Committed:**
+- HTTP Basic and Digest authentication with HMAC-SHA256
+- Event-driven non-blocking I/O (10x connection scalability)
+- Client-side cache control headers
+- Pre-compressed content serving (.gz, .br)
+- Fiber exception blocks for crash recovery
+- Growable fiber stacks via guard pages
+- ESP32-C6 (RISC-V) support
+
+**Breaking Changes:**
+- `rParseIsoDate()` returns -1 on error (was 0)
+- URL command `--count` renamed to `--iterations`
+
+---
+
 ### README Documentation Improvements (December 18, 2025)
 
 Comprehensive cleanup of README.md for improved readability and correctness.
@@ -274,7 +310,8 @@ Major release with performance optimizations and API enhancements.
 - New constant `R_WAIT_MAIN_FIBER` for main fiber execution
 
 **Documentation Updated**:
-- [../logs/CHANGELOG.md](../logs/CHANGELOG.md) - Changelog entry for v3.0.0
+- Release notes at [doc/releases/3.0.0.md](../../doc/releases/3.0.0.md)
+- Changelog at [../logs/CHANGELOG.md](../logs/CHANGELOG.md)
 
 **Status**: Version 3.0.0 released.
 
