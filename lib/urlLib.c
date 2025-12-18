@@ -291,17 +291,18 @@ static int connectHost(Url *up)
     if (!up) {
         return R_ERR_BAD_ARGS;
     }
+    //  Save prior host and port to detect if connection can be reused
+    scopy(host, sizeof(host), up->host ? up->host : "");
+    port = up->port;
+
     if (urlParse(up, up->url) < 0) {
         urlError(up, "Bad URL");
         return R_ERR_BAD_ARGS;
     }
-    //  Validate host length before copying to prevent buffer overflow
+    //  Validate new host length to prevent buffer overflow in future comparisons
     if (up->host && slen(up->host) >= sizeof(host)) {
         return urlError(up, "Host name too long");
     }
-    //  Save prior host and port incase connection can be reused
-    scopy(host, sizeof(host), up->host);
-    port = up->port;
 
     if (up->sock) {
         if (((smatch(up->scheme, "https") || smatch(up->scheme, "wss")) != rIsSocketSecure(up->sock)) ||
@@ -863,7 +864,7 @@ static ssize readChunk(Url *up, char *buf, size_t bufsize)
         }
         cbuf[sizeof(cbuf) - 1] = '\0';
         chunkSize = strtol(cbuf, &end, 16);
-        if (chunkSize < 0 || chunkSize > SSIZE_MAX || (*end != '\0' && !isspace(*end))) {
+        if (chunkSize < 0 || chunkSize > SSIZE_MAX || (*end != '\0' && !isspace((int) *end))) {
             return urlError(up, "Bad chunk specification");
         }
         if (chunkSize) {
