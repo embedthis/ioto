@@ -591,7 +591,7 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, MqttWaitFl
         rTrace("mqtt", "Publish with null buffer");
         return R_ERR_BAD_ARGS;
     }
-    if (topic == 0 || *topic == '\0' || isspace(*topic)) {
+    if (topic == 0 || *topic == '\0' || isspace((int) *topic)) {
         rTrace("mqtt", "Publish with null or empty topic");
         return R_ERR_BAD_ARGS;
     }
@@ -619,7 +619,7 @@ PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, Mq
         rTrace("mqtt", "Publish on bad Mqtt object");
         return R_ERR_BAD_ARGS;
     }
-    if (topic == 0 || *topic == '\0' || isspace(*topic)) {
+    if (topic == 0 || *topic == '\0' || isspace((int) *topic)) {
         rTrace("mqtt", "Publish with null or empty topic");
         return R_ERR_BAD_ARGS;
     }
@@ -657,7 +657,7 @@ static int publish(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, MqttWaitFlags 
     }
     id = getId(mq);
 
-    if (topic == NULL || *topic == '\0' || isspace(*topic) || slen(topic) > MQTT_MAX_TOPIC_SIZE) {
+    if (topic == NULL || *topic == '\0' || isspace((int) *topic) || slen(topic) > MQTT_MAX_TOPIC_SIZE) {
         return R_ERR_BAD_NULL;
     }
     flags = (retain ? MQTT_RETAIN : 0) | (qos << 1 & 0x6);
