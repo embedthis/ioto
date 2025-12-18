@@ -47,39 +47,39 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_HTTP_AUTH
-    #define ME_WEB_HTTP_AUTH       1               /**< Enable HTTP Basic and Digest authentication protocols */
+    #define ME_WEB_HTTP_AUTH        1               /**< Enable HTTP Basic and Digest authentication protocols */
 #endif
 #if ME_WEB_HTTP_AUTH
     #ifndef ME_WEB_AUTH_BASIC
-        #define ME_WEB_AUTH_BASIC  1               /**< Enable HTTP Basic authentication */
+        #define ME_WEB_AUTH_BASIC   1               /**< Enable HTTP Basic authentication */
     #endif
     #ifndef ME_WEB_AUTH_DIGEST
-        #define ME_WEB_AUTH_DIGEST 1               /**< Enable HTTP Digest authentication */
+        #define ME_WEB_AUTH_DIGEST  1               /**< Enable HTTP Digest authentication */
     #endif
     #ifndef ME_WEB_MAX_AUTH
-        #define ME_WEB_MAX_AUTH    256             /**< Default maximum length for usernames and password hashes */
+        #define ME_WEB_MAX_AUTH     256             /**< Default maximum length for usernames and password hashes */
     #endif
 #endif
 #ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS          1               /**< Enable resource limits and security constraints */
+    #define ME_WEB_LIMITS           1               /**< Enable resource limits and security constraints */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS        1               /**< Enable session management support */
+    #define ME_WEB_SESSIONS         1               /**< Enable session management support */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD          1               /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD           1               /**< Enable file upload functionality */
 #endif
 #ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK         1               /**< Enable WebSocket protocol support */
+    #define ME_COM_WEBSOCK          1               /**< Enable WebSocket protocol support */
 #endif
 #ifndef ME_HTTP_SENDFILE
-    #define ME_HTTP_SENDFILE       ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
+    #define ME_HTTP_SENDFILE        ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
 #endif
 #ifndef ME_WEB_FIBER_BLOCKS
     #if ME_WIN_LIKE || ME_UNIX_LIKE
-        #define ME_WEB_FIBER_BLOCKS    1               /**< Enable fiber exception blocks for handler crash recovery */
+        #define ME_WEB_FIBER_BLOCKS 1               /**< Enable fiber exception blocks for handler crash recovery */
     #else
-        #define ME_WEB_FIBER_BLOCKS    0
+        #define ME_WEB_FIBER_BLOCKS 0
     #endif
 #endif
 /** @} */
@@ -538,23 +538,23 @@ PUBLIC int webProcessUpload(struct Web *web);
  *     These events allow custom handling at important points in the request lifecycle.
  * @{
  */
-#define WEB_HOOK_CONNECT    1 /**< New socket connection established */
-#define WEB_HOOK_DISCONNECT 2 /**< Socket connection being closed */
-#define WEB_HOOK_START      3 /**< New HTTP request started */
-#define WEB_HOOK_RUN        4 /**< Ready to run request or custom request processing */
-#define WEB_HOOK_ACTION     5 /**< About to invoke an action callback */
-#define WEB_HOOK_NOT_FOUND  6 /**< Requested document/resource not found */
-#define WEB_HOOK_ERROR      7 /**< Request processing error occurred */
-#define WEB_HOOK_EXCEPTION  8 /**< Exception occurred during request processing */
-#define WEB_HOOK_CLOSE      9 /**< WebSocket connection being closed */
-#define WEB_HOOK_END       10 /**< End of request processing */
+#define WEB_HOOK_CONNECT    1  /**< New socket connection established */
+#define WEB_HOOK_DISCONNECT 2  /**< Socket connection being closed */
+#define WEB_HOOK_START      3  /**< New HTTP request started */
+#define WEB_HOOK_RUN        4  /**< Ready to run request or custom request processing */
+#define WEB_HOOK_ACTION     5  /**< About to invoke an action callback */
+#define WEB_HOOK_NOT_FOUND  6  /**< Requested document/resource not found */
+#define WEB_HOOK_ERROR      7  /**< Request processing error occurred */
+#define WEB_HOOK_EXCEPTION  8  /**< Exception occurred during request processing */
+#define WEB_HOOK_CLOSE      9  /**< WebSocket connection being closed */
+#define WEB_HOOK_END        10 /**< End of request processing */
 /** @} */
 
 typedef struct WebListen {
-    RSocket *sock;            /**< Socket */
-    char *endpoint;           /**< Endpoint definition */
-    int port;                 /**< Listening port */
-    WebHost *host;            /**< Host owning this listener */
+    RSocket *sock;             /**< Socket */
+    char *endpoint;            /**< Endpoint definition */
+    int port;                  /**< Listening port */
+    WebHost *host;             /**< Host owning this listener */
 } WebListen;
 
 /**

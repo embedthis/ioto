@@ -13,9 +13,11 @@
 /*
     auth.c -- Authorization Management
 
-    This module supports HTTP Basic and Digest authentication with a user/role/ability based authorization scheme.
+    This module supports a general user authentication scheme. 
+    It support web-form based login and HTTP Basic and Digest authentication.
+    Users with role/ability based authorization is supported.
 
-    In this scheme, Users have passwords and roles. A role grants abilities (permissions) to perform actions.
+    In this module, Users have passwords and roles. A role grants abilities (permissions) to perform actions.
     Roles can inherit from other roles, creating a hierarchy of permissions.
 
     Three authentication protocols are supported:
@@ -54,6 +56,165 @@ static void removeNonceEntry(Web *web);
 #endif /* ME_WEB_HTTP_AUTH */
 
 /************************************ Code ************************************/
+
+/*
+    Authenticate the current request.
+    This checks if the request has a current session by using the request cookie.
+    Returns true if authenticated. Residual: set web->authenticated.
+ */
+PUBLIC bool webAuthenticate(Web *web)
+{
+    WebUser *user;
+    cchar   *username;
+
+    if (web->authChecked) {
+        return web->authenticated;
+    }
+    web->authChecked = 1;
+
+    if (web->cookie && webGetSession(web, 0) != 0) {
+        /*
+            SECURITY Acceptable:: Retrieve authentication state from the session storage.
+            Faster than re-authenticating.
+         */
+        if ((username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
+            rFree(web->username);
+            web->username = sclone(username);
+            web->role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
+            if (web->role) {
+                //  Look up user from session username
+                if ((user = webLookupUser(web->host, web->username)) != 0) {
+                    //  Verify user still has the cached role
+                    if (smatch(user->role, web->role)) {
+                        web->user = user;
+                        web->authenticated = 1;
+                        return 1;
+                    } else {
+                        rError("web", "User %s role changed from %s to %s", web->username, web->role, user->role);
+                    }
+                } else {
+                    rError("web", "Unknown user in session: %s", web->username);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+PUBLIC bool webIsAuthenticated(Web *web)
+{
+    if (!web->authChecked) {
+        return webAuthenticate(web);
+    }
+    return web->authenticated;
+}
+
+/*
+    Check if user has required ability
+ */
+PUBLIC bool webUserCan(WebUser *user, cchar *ability)
+{
+    if (!user || !ability) {
+        return 0;
+    }
+    // Check specific ability first (common case) for better performance
+    if (rLookupName(user->abilities, ability)) {
+        return 1;
+    }
+    // Wildcard ability grants everything (rare case)
+    return rLookupName(user->abilities, "*") != 0;
+}
+
+/*
+    Check if the authenticated user has the required ability/role
+    Uses the new ability-based authorization system
+ */
+PUBLIC bool webCan(Web *web, cchar *requiredRole)
+{
+    assert(web);
+
+    if (!requiredRole || *requiredRole == '\0' || smatch(requiredRole, "public")) {
+        return 1;
+    }
+    if (!web->authenticated && !webAuthenticate(web)) {
+        return 0;
+    }
+    //  Use the new ability-based system
+    if (!web->user) {
+        return 0;
+    }
+    return webUserCan(web->user, requiredRole);
+}
+
+/*
+    Return the role of the authenticated user
+ */
+PUBLIC cchar *webGetRole(Web *web)
+{
+    if (!web->authenticated || !web->user) {
+        return 0;
+    }
+    return web->user->role;
+}
+
+/*
+    Login and authorize a user with a given role/ability.
+    This creates the login session and defines a session cookie for responses.
+    This assumes the caller has already validated the user password.
+    The role parameter can be a role name or an ability - checks if user has it.
+ */
+PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
+{
+    WebUser *user;
+
+    assert(web);
+    assert(username);
+    assert(role);
+
+    rFree(web->username);
+    web->username = 0;
+    web->role = 0;
+    web->user = 0;
+
+    webRemoveSessionVar(web, WEB_SESSION_USERNAME);
+
+    if ((user = webLookupUser(web->host, username)) == 0) {
+        // This is used by users that manage their own users (via database)
+        user = webAddUser(web->host, username, NULL, role);
+        if (!user) {
+            rError("web", "Failed to add user %s", username);
+            return 0;
+        }
+    }
+    //  Verify user has the required ability/role
+    if (!webUserCan(user, role)) {
+        rError("web", "User %s does not have ability %s", username, role);
+        return 0;
+    }
+    webCreateSession(web);
+    webSetSessionVar(web, WEB_SESSION_USERNAME, username);
+    web->username = sclone(username);
+    web->role = webSetSessionVar(web, WEB_SESSION_ROLE, user->role);   // Store user's actual role
+    web->user = user;
+    web->authenticated = 1;
+    return 1;
+}
+
+/*
+    Logout the authenticated user by destroying the user session
+ */
+PUBLIC void webLogout(Web *web)
+{
+    assert(web);
+
+    rFree(web->username);
+    web->username = 0;
+    web->role = 0;
+    web->user = 0;
+    web->authenticated = 0;
+    webRemoveSessionVar(web, WEB_SESSION_USERNAME);
+    webDestroySession(web);
+}
 /*
     Lookup user by username
  */
@@ -67,14 +228,14 @@ PUBLIC WebUser *webLookupUser(WebHost *host, cchar *username)
 
 /*
     Add a user to the authentication database
-    Password should be pre-hashed: H(username:realm:password)
-    Role is a single role name
+    Password should be pre-hashed: H(username:realm:password). For users that manage their own authentication, 
+    the password can be null.  Role is a single role name.
  */
 PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, cchar *role)
 {
     WebUser *user;
 
-    if (!host || !username || !password || !role) {
+    if (!host || !username || !role) {
         return 0;
     }
     if (slen(password) > ME_WEB_MAX_AUTH) {
@@ -100,7 +261,7 @@ PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, ccha
         webFreeUser(user);
         return NULL;
     }
-    rAddName(host->users, username, user, 0);
+    rAddName(host->users, username, user, R_TEMPORAL_NAME);
     return user;
 }
 
@@ -288,22 +449,6 @@ static int expandRole(WebHost *host, cchar *roleName, RHash *abilities)
     return 0;
 }
 
-/*
-    Check if user has required ability
- */
-PUBLIC bool webUserCan(WebUser *user, cchar *ability)
-{
-    if (!user || !ability) {
-        return 0;
-    }
-    // Check specific ability first (common case) for better performance
-    if (rLookupName(user->abilities, ability)) {
-        return 1;
-    }
-    // Wildcard ability grants everything (rare case)
-    return rLookupName(user->abilities, "*") != 0;
-}
-
 /******************* HTTP Authentication (Basic & Digest) ********************/
 #if ME_WEB_HTTP_AUTH
 /*
@@ -474,146 +619,6 @@ static void sendAuthChallenge(Web *web, WebRoute *route)
 #else
     webError(web, 401, "Authentication required but not configured");
 #endif
-}
-
-/*
-    Authenticate the current request.
-    This checks if the request has a current session by using the request cookie.
-    Returns true if authenticated. Residual: set web->authenticated.
- */
-PUBLIC bool webAuthenticate(Web *web)
-{
-    WebUser *user;
-    cchar   *username;
-
-    if (web->authChecked) {
-        return web->authenticated;
-    }
-    web->authChecked = 1;
-
-    if (web->cookie && webGetSession(web, 0) != 0) {
-        /*
-            SECURITY Acceptable:: Retrieve authentication state from the session storage.
-            Faster than re-authenticating.
-         */
-        if ((username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
-            rFree(web->username);
-            web->username = sclone(username);
-            web->role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
-            if (web->role) {
-                //  Look up user from session username
-                if ((user = webLookupUser(web->host, web->username)) != 0) {
-                    //  Verify user still has the cached role
-                    if (smatch(user->role, web->role)) {
-                        web->user = user;
-                        web->authenticated = 1;
-                        return 1;
-                    } else {
-                        rError("web", "User %s role changed from %s to %s", web->username, web->role, user->role);
-                    }
-                } else {
-                    rError("web", "Unknown user in session: %s", web->username);
-                }
-            }
-        }
-    }
-    return 0;
-}
-
-PUBLIC bool webIsAuthenticated(Web *web)
-{
-    if (!web->authChecked) {
-        return webAuthenticate(web);
-    }
-    return web->authenticated;
-}
-
-/*
-    Check if the authenticated user has the required ability/role
-    Uses the new ability-based authorization system
- */
-PUBLIC bool webCan(Web *web, cchar *requiredRole)
-{
-    assert(web);
-
-    if (!requiredRole || *requiredRole == '\0' || smatch(requiredRole, "public")) {
-        return 1;
-    }
-    if (!web->authenticated && !webAuthenticate(web)) {
-        return 0;
-    }
-    //  Use the new ability-based system
-    if (!web->user) {
-        return 0;
-    }
-    return webUserCan(web->user, requiredRole);
-}
-
-/*
-    Return the role of the authenticated user
- */
-PUBLIC cchar *webGetRole(Web *web)
-{
-    if (!web->authenticated || !web->user) {
-        return 0;
-    }
-    return web->user->role;
-}
-
-/*
-    Login and authorize a user with a given role/ability.
-    This creates the login session and defines a session cookie for responses.
-    This assumes the caller has already validated the user password.
-    The role parameter can be a role name or an ability - checks if user has it.
- */
-PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
-{
-    WebUser *user;
-
-    assert(web);
-    assert(username);
-    assert(role);
-
-    rFree(web->username);
-    web->username = 0;
-    web->role = 0;
-    web->user = 0;
-
-    webRemoveSessionVar(web, WEB_SESSION_USERNAME);
-
-    if ((user = webLookupUser(web->host, username)) == 0) {
-        rError("web", "Unknown user %s", username);
-        return 0;
-    }
-    //  Verify user has the required ability/role
-    if (!webUserCan(user, role)) {
-        rError("web", "User %s does not have ability %s", username, role);
-        return 0;
-    }
-    webCreateSession(web);
-
-    webSetSessionVar(web, WEB_SESSION_USERNAME, username);
-    web->username = sclone(username);
-    web->role = webSetSessionVar(web, WEB_SESSION_ROLE, user->role);  // Store user's actual role
-    web->user = user;
-    web->authenticated = 1;
-    return 1;
-}
-
-/*
-    Logout the authenticated user by destroying the user session
- */
-PUBLIC void webLogout(Web *web)
-{
-    assert(web);
-
-    rFree(web->username);
-    web->username = 0;
-    web->role = 0;
-    web->user = 0;
-    web->authenticated = 0;
-    webRemoveSessionVar(web, WEB_SESSION_USERNAME);
-    webDestroySession(web);
 }
 
 /******************************** Helper Functions ****************************/
@@ -1319,7 +1324,8 @@ static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
     int  rc;
 
     //  Generate unquoted ETag for faster comparison
-    sitosbuf(etag, sizeof(etag), (int64) ((uint64) info->st_ino ^ (uint64) info->st_size ^ (uint64) info->st_mtime), 10);
+    sitosbuf(etag, sizeof(etag), (int64) ((uint64) info->st_ino ^ (uint64) info->st_size ^ (uint64) info->st_mtime),
+             10);
 
     /*
         Check conditional request headers (If-None-Match, If-Modified-Since)
@@ -1396,7 +1402,8 @@ static int putFile(Web *web, char *path, size_t pathSize)
         If-Match and If-Unmodified-Since ensure the client has the current version
      */
     if ((web->ifMatchPresent || web->ifUnmodified) && stat(path, &info) == 0) {
-        sitosbuf(etag, sizeof(etag), (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime), 10);
+        sitosbuf(etag, sizeof(etag), (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime),
+                 10);
 
         //  Check If-Match precondition (must match to proceed)
         if (web->ifMatchPresent && !webMatchEtag(web, etag)) {
@@ -1453,7 +1460,8 @@ static int deleteFile(Web *web, char *path, size_t pathSize)
      */
     if (web->ifMatchPresent || web->ifUnmodified) {
         if (stat(path, &info) == 0) {
-            sitosbuf(etag, sizeof(etag), (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime), 10);
+            sitosbuf(etag, sizeof(etag),
+                     (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime), 10);
 
             //  Check If-Match precondition (must match to proceed)
             if (web->ifMatchPresent && !webMatchEtag(web, etag)) {
@@ -1620,7 +1628,8 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
     } else {
         //  Single range - set Content-Range header
         range = web->ranges;
-        webAddHeader(web, "Content-Range", "bytes %lld-%lld/%lld", web->ranges->start, range->end - 1, (int64) info->st_size);
+        webAddHeader(web, "Content-Range", "bytes %lld-%lld/%lld", web->ranges->start, range->end - 1,
+                     (int64) info->st_size);
         web->txLen = range->len;
     }
     return 0;
@@ -2420,7 +2429,7 @@ static void loadAuth(WebHost *host)
     if (host->digestTimeout <= 0 || host->digestTimeout > 3600) {
         host->digestTimeout = 60;
     }
-    host->requireTlsForBasic = jsonGetBool(json, 0, "web.auth.requireTlsForBasic", 0);
+    host->requireTlsForBasic = jsonGetBool(json, 0, "web.auth.requireTlsForBasic", 1);
     host->opaque = cryptID(32);
     // Generate random secret if not provided
     secret = jsonGet(json, 0, "web.auth.secret", 0);
@@ -2448,7 +2457,7 @@ static void loadAuth(WebHost *host)
             password = jsonGet(json, id, "password", 0);
             role = jsonGet(json, id, "role", "public");
             if (username && password) {
-                if (webAddUser(host, username, password, role) < 0) {
+                if (webAddUser(host, username, password, role) == NULL) {
                     rError("web", "Cannot add user %s", username);
                 }
             }
@@ -2727,7 +2736,7 @@ static void freeWebFields(Web *web, bool keepAlive)
 #endif
 
     /*
-        If keepAlive is true, we reuse buffers and lists 
+        If keepAlive is true, we reuse buffers and lists
      */
     if (keepAlive) {
         rFlushBuf(rxHeaders);
@@ -2846,37 +2855,38 @@ static void webProcessRequest(Web *web)
         }
         if (!host->fiberBlocks || blockResult == 0) {
 #endif
-            web->fiber = rGetFiber();
+        web->fiber = rGetFiber();
 
-            while (!web->close) {
-                //  Process one complete request (blocks for I/O as needed)
-                if (serveRequest(web) < 0) {
-                    break;
-                }
-                //  Check if we should continue
-                if (web->close || web->sock->fd == INVALID_SOCKET) {
-                    break;
-                }
-                //  Reset web instance object for next request
-                resetWeb(web);
-
-                if (rGetBufLength(web->rx) == 0) {
-                    //  No buffered data, setup wait for next request
-                    webSetupKeepAliveWait(web);
-                    return;
-                }
-                //  Continue loop to process pipelined requests
+        while (!web->close) {
+            //  Process one complete request (blocks for I/O as needed)
+            if (serveRequest(web) < 0) {
+                break;
             }
-#if ME_WEB_FIBER_BLOCKS
-        } else {
-            /*
-                This is a best effort to allow the server to continue serving other requests. The user should cleanup resources via the HOOK.
-             */
-            rEndFiberBlock();
-            webHook(web, WEB_HOOK_EXCEPTION);
-            rError("web", "Exception in handler processing for %s\n", web->path);
-            web->close = 1;
+            //  Check if we should continue
+            if (web->close || web->sock->fd == INVALID_SOCKET) {
+                break;
+            }
+            //  Reset web instance object for next request
+            resetWeb(web);
+
+            if (rGetBufLength(web->rx) == 0) {
+                //  No buffered data, setup wait for next request
+                webSetupKeepAliveWait(web);
+                return;
+            }
+            //  Continue loop to process pipelined requests
         }
+#if ME_WEB_FIBER_BLOCKS
+    } else {
+        /*
+            This is a best effort to allow the server to continue serving other requests. The user should cleanup
+               resources via the HOOK.
+         */
+        rEndFiberBlock();
+        webHook(web, WEB_HOOK_EXCEPTION);
+        rError("web", "Exception in handler processing for %s\n", web->path);
+        web->close = 1;
+    }
 #endif
     }
     if (host->flags & WEB_SHOW_REQ_HEADERS) {
@@ -3834,6 +3844,7 @@ PUBLIC int webReadBody(Web *web)
 
     route = web->route;
     if ((route && route->stream) || web->webSocket || web->put || (web->rxRemaining <= 0 && !web->chunked)) {
+        // Delay reading request body
         return 0;
     }
     if (!web->body) {
@@ -5455,6 +5466,10 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
     cchar   *httpOnly, *secure, *sameSite;
     Ticks   maxAge;
 
+    if (value == NULL) {
+        // Clearing the cookie
+        value = "";
+    }
     if (slen(name) > 4096) {
         return R_ERR_WONT_FIT;
     }
@@ -6043,13 +6058,14 @@ static void xsrfAction(Web *web)
 
 /*
     NOTE: this does not work in the Xcode debugger because the signal is intercepted by
-    the Mach layer first. 
+    the Mach layer first.
  */
 static void recurse(Web *web, int depth)
 {
     char buf[1024];
 
     buf[0] = 'a';
+    assert(buf[0] == 'a');
     if (depth > 0) {
         recurse(web, depth - 1);
     }
@@ -6147,6 +6163,8 @@ static void crashDivideAction(Web *web)
 PUBLIC void webTestInit(WebHost *host, cchar *prefix)
 {
     char url[128];
+
+    rInfo("test", "Built with development web/test.c for testing -- not for production (DO NOT DISTRIBUTE)");
 
     webAddAction(host, SFMT(url, "%s/event", prefix), eventAction, NULL);
     webAddAction(host, SFMT(url, "%s/form", prefix), formAction, NULL);
@@ -6526,7 +6544,7 @@ static int processUploadData(Web *web)
     return 0;
 }
 
-/* 
+/*
     Get the maximum amount of user data that can be read from the buffer.
     This is the amount of data that can be read without reading past the boundary.
  */
@@ -6647,7 +6665,7 @@ PUBLIC cchar *webGetStatusMsg(int status)
 }
 
 /*
-    HTTP date is always 29 characters long 
+    HTTP date is always 29 characters long
     Format as RFC 7231 IMF-fixdate: "Mon, 10 Nov 2025 21:28:28 GMT"
     Caller must free
  */
@@ -6952,7 +6970,7 @@ PUBLIC char *webNormalizePath(cchar *pathArg)
         *dst++ = '/';
     }
     for (i = 0; i < nseg; i++) {
-        char *sp = segments[i];
+        char   *sp = segments[i];
         size_t segLen = slen(sp);
         memmove(dst, sp, segLen);
         dst += segLen;
