@@ -1,7 +1,13 @@
 # EmbedThis Ioto Device Agent
 
+<p align="center">
+  <a href="https://github.com/embedthis/ioto/actions/workflows/ci.yml"><img
+src="https://github.com/embedthis/ioto/actions/workflows/ci.yml/badge.svg"
+alt="CI Status"></a>
+</p>
+
 The EmbedThis Ioto device agent is an IoT Device Management agent that can be
-used for cloud-based management or
+used for cloud-based management or 
 direct management over a local network.
 
 Ioto provides everything you need in an IoT device agent, including: an HTTP

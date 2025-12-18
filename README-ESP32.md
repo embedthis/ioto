@@ -82,14 +82,48 @@ bin/setup-esp32
 cd ../..
 ```
 
-## Step 5: Board Target
+## Step 5: Select App
+
+The Ioto source distribution includes three ESP32 test apps. Each app includes
+the necessary configuration files that 
+are copied from the relevant app directory into the build tree.
+
+Name | Directory | Description
+-|-|-
+blink | apps/blink | Blink a GPIO LED within the Ioto agent framework
+demo | apps/demo | Create a demo counter and synchronize with the local and
+cloud databases
+http | apps/http | Simple, local, browser app to test the Ioto web server
+without cloud services.
+
+You select an app by providing an **APP=NAME** option to the make command.
+
+To prepare for building the app and Ioto, invoke `make APP=NAME config`:
+
+    make APP=blink config
+
+This command will perform the following steps:
+
+* Create the blink app at main/main.c
+* Create the app CMakeLists.txt
+* Create the file system partitions.csv
+* Create the app sdkconfig.defaults
+* Initialize the components/ioto for the blink app 
+* Create some test certificates that may be required by the app
+
+The **components/ioto/apps** contains master copies of the Ioto demonstration
+apps. When you select an app, the code
+and configuration for the app are copied to the **./main** and
+**./state/config** directories.
+
+## Step 6: Board Target
 
 Next, ensure your ESP target device is defined. For example, to set the target
 to **esp32-s3** or **esp32-c6**:
 
     idf.py set-target esp32-c6
 
-## Step 6: Board Configuration
+## Step 7: Board Configuration
 
 Edit your **sdkconfig.defaults** to match your board.
 
@@ -120,9 +154,9 @@ You can tailor these default settings by running:
 
 The Ioto services are enabled via the Ioto menu config option. Navigate to:
 
-    Components config ---> 
+    Components config --->
     Ioto
-    
+
 Then enable the desired Ioto services. When you build, these settings will be
 applied to the Ioto build configuration.
 This will update the **state/config/ioto.json5** and **include/config.h** files.
@@ -133,40 +167,6 @@ running:
 ```bash
     idf.py reconfigure
 ```
-
-## Step 7: Select App
-
-The Ioto source distribution includes three ESP32 test apps. Each app includes
-the necessary configuration files that 
-are copied from the relevant app directory into the build tree.
-
-Name | Directory | Description
--|-|-
-blink | apps/blink | Blink a GPIO LED within the Ioto agent framework
-demo | apps/demo | Create a demo counter and synchronize with the local and
-cloud databases
-http | apps/http | Simple, local, browser app to test the Ioto web server
-without cloud services.
-
-You select an app by providing an **APP=NAME** option to the make command.
-
-To prepare for building the app and Ioto, invoke `make APP=NAME config`:
-
-    make APP=blink config
-
-This command will perform the following steps:
-
-* Create the blink app at main/main.c
-* Create the app CMakeLists.txt
-* Create the file system partitions.csv
-* Create the app sdkconfig.defaults
-* Initialize the components/ioto for the blink app 
-* Create some test certificates that may be required by the app
-
-The **components/ioto/apps** contains master copies of the Ioto demonstration
-apps. When you select an app, the code 
-and configuration for the app are copied to the **./main** and
-**./state/config** directories.
 
 ## Step 8: Set WiFi Credentials
 
