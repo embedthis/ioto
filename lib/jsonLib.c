@@ -1794,17 +1794,17 @@ static void compactProperties(RBuf *buf, char *sol, int indent)
 
     // Count redundant spaces to see how much the line can be shortened
     for (spaces = 0, cp = sol; cp < buf->end; cp++) {
-        if (isspace(*cp) && isspace(*(cp + 1))) {
+        if (isspace((int) *cp) && isspace((int) *(cp + 1))) {
             spaces++;
         }
     }
     if (buf->end - sol - spaces + indent * 4 < maxLength) {
         for (sp = dp = sol; sp < buf->end; sp++) {
-            if (isspace(*sp)) {
+            if (isspace((int) *sp)) {
                 *dp++ = ' ';
                 // Eat all spaces
                 while (++sp < buf->end) {
-                    if (!isspace(*sp)) {
+                    if (!isspace((int) *sp)) {
                         break;
                     }
                 }

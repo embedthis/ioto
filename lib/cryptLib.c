@@ -1949,9 +1949,7 @@ PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
 
 
 /********************************** MbedTLS Wrappers ****************************/
-
 #if ME_CRYPT_MBEDTLS && ME_COM_MBEDTLS
-  #include "mbedtls.h"
 
 typedef mbedtls_pk_context AsyKey;
 
@@ -1974,11 +1972,11 @@ PUBLIC int rGenKey(RKey *skey)
 PUBLIC int rGetPubKey(RKey *skey, uchar *buf, size_t bufsize)
 {
     AsyKey *key = skey;
-    size_t len;
     uchar  pubkey[MBEDTLS_MPI_MAX_SIZE];
+    size_t len;
 
     memset(pubkey, 0, sizeof(pubkey));
-    if ((len = mbedtls_pk_write_pubkey_der(key, pubkey, sizeof(pubkey))) == 0) {
+    if ((len = (size_t) mbedtls_pk_write_pubkey_der(key, pubkey, sizeof(pubkey))) == 0) {
         rTrace("crypt", "Cannot extract public key");
         return R_ERR_BAD_ARGS;
     }
@@ -2003,7 +2001,7 @@ PUBLIC int rSign(RKey *skey, uchar *sum, size_t sumsize)
     uchar  signature[MBEDTLS_MPI_MAX_SIZE];
     size_t len;
 
-    if ((mbedtls_pk_sign(key, MBEDTLS_MD_SHA256, sum, (size_t) sumsize, signature, &len,
+    if ((mbedtls_pk_sign(key, MBEDTLS_MD_SHA256, sum, (size_t) sumsize, signature, sizeof(signature), &len,
                          mbedtls_ctr_drbg_random, rGetTlsRng())) < 0) {
         rTrace("crypt", "Cannot sign with key");
         return R_ERR_BAD_STATE;
@@ -2057,7 +2055,7 @@ PUBLIC ssize rBase64Encode(cuchar *buf, size_t bufsize, char *dest, size_t destL
     size_t len;
 
     mbedtls_base64_encode((uchar*) dest, destLen, &len, buf, bufsize);
-    return len;
+    return (ssize) len;
 }
 
 PUBLIC ssize rBase64Decode(cchar *buf, size_t bufsize, uchar *dest, size_t destLen)
@@ -2068,7 +2066,7 @@ PUBLIC ssize rBase64Decode(cchar *buf, size_t bufsize, uchar *dest, size_t destL
         bufsize = slen(buf);
     }
     mbedtls_base64_decode(dest, destLen, &len, (cuchar*) buf, bufsize);
-    return len;
+    return (ssize) len;
 }
 
 #endif /* MBedTLS wrappers */
@@ -2124,7 +2122,7 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
     CryptReleaseContext(prov, 0);
     return rc;
 
-#elif ME_CRYPT_MBEDTLS && ME_COM_MBEDTLS
+#elif ME_COM_MBEDTLS
     /*
         Fallback: use MbedTLS CTR-DRBG if available; otherwise, fail securely.
      */
@@ -2137,7 +2135,10 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
         return -1;
     }
 #else
-    rError("security", "No secure random number generator available");
+    static int once = 0;
+    if (once++ == 0) {
+        rError("security", "No secure random number generator available");
+    }
     return -1;
 #endif
     return 0;

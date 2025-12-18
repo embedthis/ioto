@@ -44,10 +44,26 @@
     #define ME_CRYPT_HMAC         1         /** Enable HMAC support */
 #endif
 #ifndef ME_CRYPT_MBEDTLS
-    #define ME_CRYPT_MBEDTLS      0         /** Enable MbedTLS backend integration */
+    #define ME_CRYPT_MBEDTLS      0         /** Enable MbedTLS additional crypto support */
 #endif
 #if ME_CRYPT_BASE64 || ME_CRYPT_BCRYPT
     #define ME_CRYPT_BASE64       1
+#endif
+
+#if ME_COM_MBEDTLS
+    #if defined(MBEDTLS_CONFIG_FILE)
+        #include MBEDTLS_CONFIG_FILE
+    #else
+        #include "mbedtls/mbedtls_config.h"
+    #endif
+    #include "mbedtls/ctr_drbg.h"    // mbedtls_ctr_drbg_random, mbedtls_ctr_drbg_context
+    #if ME_CRYPT_MBEDTLS
+        #include "mbedtls/pk.h"          // mbedtls_pk_context, mbedtls_pk_setup, mbedtls_pk_sign, etc.
+        #include "mbedtls/rsa.h"         // mbedtls_rsa_gen_key
+        #include "mbedtls/bignum.h"      // MBEDTLS_MPI_MAX_SIZE
+        #include "mbedtls/base64.h"      // mbedtls_base64_encode, mbedtls_base64_decode
+        #include "mbedtls/md.h"          // MBEDTLS_MD_SHA256
+    #endif
 #endif
 
 #ifdef __cplusplus
