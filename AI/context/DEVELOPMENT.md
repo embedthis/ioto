@@ -107,6 +107,7 @@ Each project shall have a ./doc directory with the following structure:
 After each session, update the CONTEXT.md and save a SESSION-DATE.md with details of progress and context of the latest session.
 After commiting features, update the current release notes document.
 
+
 ### Designs
 
 The ./AI/designs/ directory shall contain the designs for the project. There shall be one overview design file called `DESIGN.md`, and there shall be documents for major components of the project. The DESIGN.md shall keep an contents index of the other design documents.
@@ -114,6 +115,8 @@ The ./AI/designs/ directory shall contain the designs for the project. There sha
 ### Plans
 
 The ./AI/plans/ directory shall contain the plans for the project. There shall be one overview plan file called `PLAN.md`, and there shall be documents for major components of the project. The PLAN.md shall keep an contents index of the other plan documents.
+
+All task and project plans are to be saved under AI/plans. A plans should be created for any task that requires multiple steps and is of significant complexity. Plans should include goals, constraints, deliverables  and should provide detailed task checklists. Where possible, it should provide exit criteria that must be satisfied before the plan is complete.
 
 ### Procedures
 

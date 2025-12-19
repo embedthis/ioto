@@ -198,15 +198,6 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1ad7bb397f0f184b6545fc1fcaa94a91fe" class="nameRef">rWriteSocketSync</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *buf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write to a socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a6b9d3bcad8bf23dd62c1aa211589490a" class="nameRef">rYieldFiber</a>(void *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Yield a fiber back to the main fiber.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a1d8ceeece44bf21437f0abe15f539a25" class="nameRef">rassert</a>(<a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> cond)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Assert that a condition is true.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbTree,*</td><td><a href="#r_8h_1a4d9c98ff278641f68a32ffad8d1f9381" class="nameRef">rbAlloc</a>(int flags, <a href="#r_8h_1ad22beb71648c702810f53925002ce5d0" class="ref">RbCompare</a> compare, <a href="#r_8h_1a8c5ebd9bc0614a2dc33c9cf0f5f03e70" class="ref">RbFree</a> free, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a red/black tree.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1a271473d46ace8c89ff041d31c2b0e769" class="nameRef">rbFirst</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the lexically first node.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a9fbbeb3160a0f7532bd4221e00ee559a" class="nameRef">rbFree</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a red/black tree.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1a068c808c40fd4c059a2959dfbc364061" class="nameRef">rbInsert</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Insert a new data item in the tree.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1aa8fb9f8561823ab17f6bcb42e414fbe3" class="nameRef">rbLookup</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Lookup a data item.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1abe3a9de0f817dab7d15bc0d04e975e07" class="nameRef">rbLookupFirst</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the lexically first matching node.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1a07e54c53a0d8c147153d9e8ba0b78987" class="nameRef">rbLookupNext</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the next matching node after the given node.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*</td><td><a href="#r_8h_1a8867e29c0fc3b200c90d54634aca925c" class="nameRef">rbNext</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the next node in sequence.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a72566f45ba572537b0a9a73c72c9d8ec" class="nameRef">rbRemove</a>(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node, int keep)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a data item from the tree.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1aa791963082fc7b16bd60c7878a345b98" class="nameRef">scamel</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create a camel case version of the string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a25f8b0848a573b555aca9dfc4d14b065" class="nameRef">scaselesscmp</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s1, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s2)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Compare strings ignoring case.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> bool</td><td><a href="#r_8h_1af6dba65d34e3f194b3b3eea1cf26dc48" class="nameRef">scaselessmatch</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s1, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s2)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Compare strings ignoring case.</td></tr>
@@ -287,8 +278,6 @@
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a489c3016ecc64ff8fffdd663a6249fbe" class="nameRef">RWaitProc</a></td><td class="apiBrief">Callback function for IO wait events.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a3d6ff45f976d1c59d5c261e3b4e8d456" class="nameRef">RWalkDirProc</a></td><td class="apiBrief">Callback function for rWalkDir.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="nameRef">RWatchProc</a></td><td class="apiBrief">Callback function for watched events.</td></tr>
-<tr class="apiDef"><td class="apiName"><a href="#r_8h_1ad22beb71648c702810f53925002ce5d0" class="nameRef">RbCompare</a></td><td class="apiBrief">Callback to compare a data nodes.</td></tr>
-<tr class="apiDef"><td class="apiName"><a href="#r_8h_1a8c5ebd9bc0614a2dc33c9cf0f5f03e70" class="nameRef">RbFree</a></td><td class="apiBrief">Callback to free a nodes associated data.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="nameRef">Socket</a></td><td class="apiBrief">Argument for sockets.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="nameRef">size_t</a></td><td class="apiBrief">Unsigned integral type.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1aec517130c026730881898750d76e596f" class="nameRef">time_t</a></td><td class="apiBrief">Unsigned time type.</td></tr>
@@ -297,14 +286,6 @@
 
 <h2>Defines</h2>
 <table class="apiIndex" title="Defines">
-<tr class="apiDef">
-<td>#define</td><td><a href="#r_8h_1ae79e77238043821f40e3f4e3b98b7ea3" class="nameRef">ITERATE_INDEX</a>&nbsp;&nbsp;&nbsp;                                                                                                            node = rbLookupFirst(rbt, data, ctx); node; node = rbLookupNext(rbt, node, \
-                                                                                                            data, ctx)</td>
-</tr>
-<tr class="apiBrief"><td>&nbsp;</td><td>Traverse an index over matching nodes.</td></tr>
-<tr class="apiDef">
-<td>#define</td><td><a href="#r_8h_1a44e66e9ee337cabf6aaf955237afd0e4" class="nameRef">ITERATE_TREE</a>&nbsp;&nbsp;&nbsp;node = rbFirst(rbt); node; node = rbNext(rbt, node)</td>
-</tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#r_8h_1adad78526d377a1168f1569afa676e242" class="nameRef">R_DEFAULT_DATE</a>&nbsp;&nbsp;&nbsp;&quot;%a %b %d %T %Y %Z&quot;</td>
 </tr>
@@ -473,44 +454,8 @@
 <td>#define</td><td><a href="#r_8h_1a682a32f0cd725352c8344787e2523aa2" class="nameRef">R_WRITABLE</a>&nbsp;&nbsp;&nbsp;0x4</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Wait mask for writable events.</td></tr>
-<tr class="apiDef">
-<td>#define</td><td><a href="#r_8h_1a510fe2b629135f54b432746381c46eea" class="nameRef">RB_DUP</a>&nbsp;&nbsp;&nbsp;0x1</td>
-</tr>
-<tr class="apiBrief"><td>&nbsp;</td><td>Red/Black Tree.</td></tr>
   </table>
 <h2>Typedefs</h2>
-<a name="r_8h_1ad22beb71648c702810f53925002ce5d0"></a>
-<div class="api">
-  <div class="prototype">
-    typedef int(* RbCompare) (cvoid *n1, cvoid *n2, cvoid *ctx)
-  </div>
-  <div class="apiDetail">
-<p>Callback to compare a data nodes.</p>
-    <dl><dt><b>Description</b>:</dt><dd>The comparison function may perform a simple &quot;strcmp&quot; style comparison function or it may perform a modified comparison using the supplied context information. For example: a comparison could perform a &quot;startsWith&quot; style comparison. The context argument can control the type of comparison that is performed.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">n1</td><td>Reference to first item.</td></tr>
-    <tr><td class="param">n2</td><td>Reference to item to compare.</td></tr>
-    <tr><td class="param">ctx</td><td>Context provided to rbLookup.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Return -1 if n1 is lexically less than n2. Zero if equal and 1 if n1 is greater than n2.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a8c5ebd9bc0614a2dc33c9cf0f5f03e70"></a>
-<div class="api">
-  <div class="prototype">
-    typedef void(* RbFree) (void *arg, void *data)
-  </div>
-  <div class="apiDetail">
-<p>Callback to free a nodes associated data.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">data</td><td>Reference to the associated data for a node.</td></tr>
-    </table></dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
 <a name="r_8h_1a1149ec39f6cdb2f2d68612836de380b5"></a>
 <div class="api">
   <div class="prototype">
@@ -1257,26 +1202,6 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="r_8h_1a4d9c98ff278641f68a32ffad8d1f9381"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbTree,*
-    rbAlloc
-(int flags, <a href="#r_8h_1ad22beb71648c702810f53925002ce5d0" class="ref">RbCompare</a> compare, <a href="#r_8h_1a8c5ebd9bc0614a2dc33c9cf0f5f03e70" class="ref">RbFree</a> free, void *arg)
-  </div>
-  <div class="apiDetail">
-<p>Allocate a red/black tree.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">flags</td><td>Set to RB_DUP if you wish to store duplicate nodes.</td></tr>
-    <tr><td class="param">compare</td><td>Callback to compare two nodes.</td></tr>
-    <tr><td class="param">free</td><td>Callback to free a node&apos;s item data.</td></tr>
-    <tr><td class="param">arg</td><td>Arg to pass to callback.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>An RbTree instance.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
 <a name="r_8h_1ab393b25f1ef0cf0c5f5a726e703b8311"></a>
 <div class="api">
   <div class="prototype">
@@ -1294,134 +1219,6 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="r_8h_1a271473d46ace8c89ff041d31c2b0e769"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbFirst
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt)
-  </div>
-  <div class="apiDetail">
-<p>Return the lexically first node.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The first node.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a9fbbeb3160a0f7532bd4221e00ee559a"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
-    rbFree
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt)
-  </div>
-  <div class="apiDetail">
-<p>Free a red/black tree.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree to free. Allocated via rbAlloc.</td></tr>
-    </table></dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a068c808c40fd4c059a2959dfbc364061"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbInsert
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, void *data)
-  </div>
-  <div class="apiDetail">
-<p>Insert a new data item in the tree.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">data</td><td>User data to store in the tree. The data should contain the lookup key value for the data. The comparison callback will be passed the data and it should be able to extract the key from the data.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The inserted node.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1aa8fb9f8561823ab17f6bcb42e414fbe3"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbLookup
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)
-  </div>
-  <div class="apiDetail">
-<p>Lookup a data item.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">data</td><td>User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.</td></tr>
-    <tr><td class="param">ctx</td><td>Context to provide to the comparison callback.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1abe3a9de0f817dab7d15bc0d04e975e07"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbLookupFirst
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)
-  </div>
-  <div class="apiDetail">
-<p>Return the lexically first matching node.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">data</td><td>User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.</td></tr>
-    <tr><td class="param">ctx</td><td>Context to provide to the comparison callback.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a07e54c53a0d8c147153d9e8ba0b78987"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbLookupNext
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, void *ctx)
-  </div>
-  <div class="apiDetail">
-<p>Return the next matching node after the given node.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This call finds the next matching node after the current node. It is assumed that the given node matches the supplied user data.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">node</td><td>Starting node for the search.</td></tr>
-    <tr><td class="param">data</td><td>User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.</td></tr>
-    <tr><td class="param">ctx</td><td>Context to provide to the comparison callback.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a8867e29c0fc3b200c90d54634aca925c"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RbNode,*
-    rbNext
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node)
-  </div>
-  <div class="apiDetail">
-<p>Return the next node in sequence.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">node</td><td>Starting node.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The next node in the tree.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
 <a name="r_8h_1a1ee5682992282644ea9f86d2b6fd0ac0"></a>
 <div class="api">
   <div class="prototype">
@@ -1432,25 +1229,6 @@ Does not return
   <div class="apiDetail">
 <p>Trigger a breakpoint.</p>
     <dl><dt><b>Description</b>:</dt><dd>This routine is invoked for asserion errors from rAssert and errors from rError. It is useful in debuggers as breakpoint location for detecting errors.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="r_8h_1a72566f45ba572537b0a9a73c72c9d8ec"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*
-    rbRemove
-(<a href="#struct_rb_tree" class="ref">RbTree</a> *rbt, <a href="#struct_rb_node" class="ref">RbNode</a> *node, int keep)
-  </div>
-  <div class="apiDetail">
-<p>Remove a data item from the tree.</p>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">rbt</td><td>RbTree allocated via rbAlloc.</td></tr>
-    <tr><td class="param">node</td><td>Node to remove. The node is identified by calling rbLookup.</td></tr>
-    <tr><td class="param">keep</td><td>If true, the data item will not be freed. Otherwise the free callback will be invoked on the data item.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The node data item.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1604,7 +1382,7 @@ Does not return
   </div>
   <div class="apiDetail">
 <p>End a fiber block.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This restores the signal mask to the original state.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This restores the signal mask to the original state. This is only available on Unix-like systems.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
   </div>
 </div>
@@ -3411,6 +3189,7 @@ This is a secure verion of printf that can handle null args
   </div>
   <div class="apiDetail">
 <p>Run an event now.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This routine is THREAD SAFE.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">id</td><td>Event id allocated by rStartEvent.</td></tr>
@@ -4022,7 +3801,7 @@ from a socket
   </div>
   <div class="apiDetail">
 <p>Start a fiber block.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This prepares a fiber block to use setjmp/longjmp.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This prepares a fiber block to use setjmp/longjmp. This is only available on Unix-like systems.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Prototype.</dd></dl>
   </div>
 </div>

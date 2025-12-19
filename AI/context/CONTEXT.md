@@ -139,6 +139,40 @@ This documentation should be updated when:
 
 ## Recent Activity
 
+### Safe Runtime and Web Module Updates (December 19, 2025)
+
+Updates to Safe runtime API documentation and web module platform support.
+
+**Safe Runtime (R) Changes**:
+- `rRunEvent` now documented as thread-safe
+- Removed Red/Black tree from r module (moved to db module)
+- Removed `R_USE_RB` compile-time flag
+
+**Database Module Changes**:
+- Red/Black tree implementation moved from r module to db module
+- Added RbTree, RbNode types and associated functions
+- Includes `rbAlloc`, `rbFree`, `rbInsert`, `rbRemove`, `rbLookup`, etc.
+
+**Web Module Changes**:
+- Added platform-specific buffer sizing macros for embedded platforms
+- New macros: `WEB_BUF_BOOST_2X`, `WEB_BUF_BOOST_4X`, `WEB_BUF_BOOST_16X`
+- ESP32/FreeRTOS/VxWorks use base `ME_BUFSIZE` for memory constraints
+- Desktop/server platforms use boosted sizes (2x, 4x, 16x) for performance
+- Updated `webValidateSignature` documentation for clarity
+
+**URL Module Changes**:
+- Added new test for connection reuse (`test/url/reuse.tst.c`)
+
+**Files Modified**:
+- `include/r.h`, `lib/rLib.c` - Removed Red/Black tree
+- `include/db.h`, `lib/dbLib.c` - Added Red/Black tree
+- `include/web.h`, `lib/webLib.c` - Buffer sizing macros
+- `paks/r/`, `paks/db/`, `paks/web/`, `paks/url/` - Updated pak distributions
+
+**Commit**: `a269d9bd` - DEV: update Safe runtime rWakeup API and web webValidateSignature
+
+---
+
 ### README Documentation Improvements (December 18, 2025)
 
 Comprehensive cleanup of README.md for improved readability and correctness.
@@ -280,4 +314,4 @@ Major release with performance optimizations and API enhancements.
 
 ---
 
-**Last Updated:** 2025-12-18
+**Last Updated:** 2025-12-19

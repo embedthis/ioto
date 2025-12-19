@@ -19,6 +19,29 @@ This is the **DB** (Database) module from the EmbedThis Ioto suite - an embedded
 - `src/dbLib.c` — Core database implementation (storage, indexing, query logic)
 - `src/mains/db.c` — Command-line database tool for testing and administration
 
+## Red-Black Tree (RbTree)
+
+The db module includes a self-balancing red-black tree implementation for ordered collections and efficient indexing.
+
+### Key Types
+- `RbTree` — Tree container with comparison and free callbacks
+- `RbNode` — Individual tree node with data pointer
+
+### Key APIs
+- `rbAlloc()` — Create a new red-black tree
+- `rbFree()` — Free the tree and all nodes
+- `rbInsert()` — Insert a node into the tree
+- `rbRemove()` — Remove a node from the tree
+- `rbLookup()` — Find a node by key
+- `rbLookupFirst()` / `rbLookupNext()` — Iterate matching nodes
+- `rbFirst()` / `rbNext()` — Iterate all nodes in order
+
+### Iteration Macros
+- `ITERATE_TREE(rbt, node)` — Traverse all nodes
+- `ITERATE_INDEX(rbt, node, data, ctx)` — Traverse matching nodes
+
+> **Note**: The RbTree implementation was moved from the r (Safe Runtime) module as of version 3.0.4.
+
 ## DB-Specific Build Configuration
 
 Module-specific environment variables:

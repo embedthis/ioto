@@ -62,6 +62,21 @@ cp doc/benchmarks/macosx/latest.md doc/benchmarks/macosx/v1.2.0.md
 - Certificate: `../certs/test.crt`
 - Private key: `../certs/test.key`
 
+## Platform-Specific Buffer Sizing
+
+The web module uses adaptive buffer sizes based on platform memory constraints:
+
+### Buffer Boost Macros
+- `WEB_BUF_BOOST_2X` — 2x ME_BUFSIZE on desktop, ME_BUFSIZE on constrained platforms
+- `WEB_BUF_BOOST_4X` — 4x ME_BUFSIZE on desktop, ME_BUFSIZE on constrained platforms
+- `WEB_BUF_BOOST_16X` — 16x ME_BUFSIZE on desktop, ME_BUFSIZE on constrained platforms
+
+### Platform Detection
+- **Constrained platforms** (ESP32, FreeRTOS, VxWorks): Use base `ME_BUFSIZE` for all buffer operations
+- **Desktop/server platforms**: Use boosted sizes (2x, 4x, 16x) for performance
+
+This ensures efficient memory usage on memory-constrained embedded devices while maintaining high performance on desktop/server platforms.
+
 ## Web Module Architecture
 
 ### Core Implementation Files

@@ -28,8 +28,9 @@ The **Safe Runtime** (R) is the foundational layer providing secure, high-perfor
 - **src/buf.c** - Dynamic buffer implementation with growth management
 - **src/list.c** - Linked list data structure
 - **src/hash.c** - Hash table implementation
-- **src/rb.c** - Red-black tree for ordered collections
 - **src/string.c** - Safe string operations replacing standard C functions
+
+> **Note**: Red-black tree (RbTree) implementation has been moved to the db module.
 
 **I/O & Networking:**
 - **src/file.c** - File operations with fiber-aware blocking
@@ -100,6 +101,7 @@ The **Safe Runtime** (R) is the foundational layer providing secure, high-perfor
 - Global memory allocator handles allocation failures centrally
 - Fiber stacks are at least 64K
 - Safe string functions replace standard C routines
+- `rRunEvent` is thread-safe for cross-thread event signaling
 
 ## Project Documentation
 
