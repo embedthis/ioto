@@ -8,6 +8,680 @@
 
 
 
+/********* Start of file src/rb.c ************/
+
+/*
+    rb.c - Red/black tree
+
+    Copyright (c) All Rights Reserved. See copyright notice at the bottom of the file.
+ */
+
+/********************************** Includes **********************************/
+
+
+
+/*********************************** Locals ***********************************/
+
+#define RB_RED   0
+#define RB_BLACK 1
+
+#define RB_ROOT(rbt)  (&(rbt)->root)
+#define RB_NIL(rbt)   (&(rbt)->nil)
+#define RB_FIRST(rbt) ((rbt)->root.left)
+
+/********************************** Forwards **********************************/
+
+static void deleteFixup(RbTree *rbt, RbNode *current);
+static void freeNode(RbTree *rbt, RbNode *node);
+static void insertFixup(RbTree *rbt, RbNode *current);
+static void printTree(RbTree *rbt, RbNode *node, void (*proc)(void*), int depth, char *label);
+static void rotateLeft(RbTree*, RbNode*);
+static void rotateRight(RbTree*, RbNode*);
+
+#if KEEP
+static int checkOrder(RbTree *rbt, RbNode *n, void *min, void *max);
+static int checkHeight(RbTree *rbt, RbNode *node);
+#endif
+
+/************************************* Code ***********************************/
+
+PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg)
+{
+    RbTree *rbt;
+
+    if (!compare) {
+        return 0;
+    }
+    if ((rbt = rAllocType(RbTree)) == 0) {
+        return NULL;
+    }
+    rbt->dup = flags & RB_DUP;
+    rbt->compare = compare;
+    rbt->free = free;
+    rbt->arg = arg;
+
+    // Sentinel nil node
+    rbt->nil.left = rbt->nil.right = rbt->nil.parent = RB_NIL(rbt);
+    rbt->nil.color = RB_BLACK;
+    rbt->nil.data = NULL;
+
+    // Sentinel root node
+    rbt->root.left = rbt->root.right = rbt->root.parent = RB_NIL(rbt);
+    rbt->root.color = RB_BLACK;
+    rbt->root.data = NULL;
+    rbt->min = NULL;
+    return rbt;
+}
+
+PUBLIC void rbFree(RbTree *rbt)
+{
+    if (rbt) {
+        //  SECURITY: Acceptable - This is recursive
+        freeNode(rbt, RB_FIRST(rbt));
+        rFree(rbt);
+    }
+}
+
+//  SECURITY: Acceptable - This is recursive
+static void freeNode(RbTree *rbt, RbNode *n)
+{
+    assert(rbt);
+    assert(n);
+
+    if (n != RB_NIL(rbt)) {
+        freeNode(rbt, n->left);
+        freeNode(rbt, n->right);
+        if (rbt->free) {
+            rbt->free(rbt->arg, n->data);
+        }
+        rFree(n);
+    }
+}
+
+PUBLIC RbNode *rbLookup(RbTree *rbt, cvoid *data, void *ctx)
+{
+    RbNode *p;
+    int    cmp;
+
+    if (rbt == 0 || data == 0) {
+        return 0;
+    }
+    for (p = RB_FIRST(rbt); p != RB_NIL(rbt); ) {
+        if ((cmp = rbt->compare(data, p->data, ctx)) == 0) {
+            //  Found
+            return p;
+        }
+        p = (cmp < 0) ? p->left : p->right;
+    }
+    return 0;
+}
+
+/*
+    Find the first node matching the given data item
+ */
+PUBLIC RbNode *rbLookupFirst(RbTree *rbt, cvoid *data, void *ctx)
+{
+    RbNode *found, *p;
+    int    cmp;
+
+    if (rbt == 0 || data == 0) {
+        return 0;
+    }
+    found = 0;
+    for (p = RB_FIRST(rbt); p != RB_NIL(rbt); ) {
+        if ((cmp = rbt->compare(data, p->data, ctx)) == 0) {
+            found = p;
+            p = p->left;
+            continue;
+        }
+        p = (cmp < 0) ? p->left : p->right;
+    }
+    if (found) {
+        return found;
+    }
+    return 0;
+}
+
+/*
+    Find the next node matching the given data item after the given node
+    It is assumed that node matches the supplied data.
+    NOTE: this only examines the next node.
+ */
+PUBLIC RbNode *rbLookupNext(RbTree *rbt, RbNode *node, cvoid *data, void *ctx)
+{
+    assert(rbt);
+    assert(node);
+
+    node = rbNext(rbt, node);
+    if (node && rbt->compare(data, node->data, ctx) == 0) {
+        return node;
+    }
+    return 0;
+}
+
+/*
+    Return the lexically first node
+ */
+PUBLIC RbNode *rbFirst(RbTree *rbt)
+{
+    if (rbt == 0) {
+        return 0;
+    }
+    return rbt->min;
+}
+
+PUBLIC RbNode *rbNext(RbTree *rbt, RbNode *node)
+{
+    RbNode *p;
+
+    if (rbt == 0 || node == 0) {
+        return 0;
+    }
+    p = node->right;
+
+    if (p != RB_NIL(rbt)) {
+        // move down until we find it
+        for ( ; p->left != RB_NIL(rbt); p = p->left) {
+        }
+    } else {
+        // move up until we find it or hit the root
+        for (p = node->parent; node == p->right; node = p, p = p->parent) {
+        }
+        if (p == RB_ROOT(rbt)) {
+            //  Not found
+            p = NULL;
+        }
+    }
+    return p;
+}
+
+#if KEEP
+/*
+    Recursive walk. The Safe runtime uses fiber coroutines and it is best to limit the fiber's stack
+    size. So this API isn't ideal.
+ */
+PUBLIC int rbWalk(RbTree *rbt, RbNode *node, int (*func)(void*, void*), void *cookie, RbOrder order)
+{
+    int err;
+
+    if (node != RB_NIL(rbt)) {
+        if (order == RB_PREORDER && (err = func(node->data, cookie)) != 0) {  /* preorder */
+            return err;
+        }
+        if ((err = rbWalk(rbt, node->left, func, cookie, order)) != 0) {      /* left */
+            return err;
+        }
+        if (order == RB_INORDER && (err = func(node->data, cookie)) != 0) {   /* inorder */
+            return err;
+        }
+        if ((err = rbWalk(rbt, node->right, func, cookie, order)) != 0) {     /* right */
+            return err;
+        }
+        if (order == RB_POSTORDER && (err = func(node->data, cookie)) != 0) { /* postorder */
+            return err;
+        }
+    }
+    return 0;
+}
+#endif
+
+static void rotateLeft(RbTree *rbt, RbNode *x)
+{
+    RbNode *y;
+
+    //  Child
+    assert(rbt);
+    assert(x);
+
+    y = x->right;
+
+    //  tree x
+    x->right = y->left;
+    if (x->right != RB_NIL(rbt)) {
+        x->right->parent = x;
+    }
+    // tree y
+    y->parent = x->parent;
+    if (x == x->parent->left) {
+        x->parent->left = y;
+    } else {
+        x->parent->right = y;
+    }
+    // assemble tree x and tree y
+    y->left = x;
+    x->parent = y;
+}
+
+static void rotateRight(RbTree *rbt, RbNode *x)
+{
+    RbNode *y;
+
+    assert(rbt);
+    assert(x);
+
+    //  Child
+    y = x->left;
+
+    // tree x
+    x->left = y->right;
+    if (x->left != RB_NIL(rbt)) {
+        x->left->parent = x;
+    }
+
+    // tree y
+    y->parent = x->parent;
+    if (x == x->parent->left) {
+        x->parent->left = y;
+    } else {
+        x->parent->right = y;
+    }
+    // assemble tree x and tree y
+    y->right = x;
+    x->parent = y;
+}
+
+/*
+    Insert or update
+ */
+PUBLIC RbNode *rbInsert(RbTree *rbt, void *data)
+{
+    RbNode *current, *parent;
+    RbNode *newNode;
+    int    cmp;
+
+    assert(rbt);
+    assert(data);
+
+    //  Do binary search to find where it should be
+
+    current = RB_FIRST(rbt);
+    parent = RB_ROOT(rbt);
+
+    while (current != RB_NIL(rbt)) {
+        cmp = rbt->compare(data, current->data, NULL);
+
+        if (cmp == 0 && !rbt->dup) {
+            if (rbt->free) {
+                rbt->free(rbt->arg, current->data);
+            }
+            current->data = data;
+            return current;
+        }
+        parent = current;
+        current = cmp < 0 ? current->left : current->right;
+    }
+
+    //  Replace the termination NIL pointer with the new node pointer
+
+    current = newNode = (RbNode*) rAllocType(RbNode);
+    if (current == NULL) {
+        //  Memory error
+        return NULL;
+    }
+    current->left = current->right = RB_NIL(rbt);
+    current->parent = parent;
+    current->color = RB_RED;
+    current->data = data;
+
+    if (parent == RB_ROOT(rbt) || rbt->compare(data, parent->data, NULL) < 0) {
+        parent->left = current;
+    } else {
+        parent->right = current;
+    }
+    if (rbt->min == NULL || rbt->compare(current->data, rbt->min->data, NULL) < 0) {
+        rbt->min = current;
+    }
+    /*
+       insertion into a red-black tree:
+            0-children root cluster (parent node is BLACK) becomes 2-children root cluster (new root node)
+                paint root node BLACK, and done
+            2-children cluster (parent node is BLACK) becomes 3-children cluster
+                done
+            3-children cluster (parent node is BLACK) becomes 4-children cluster
+                done
+            3-children cluster (parent node is RED) becomes 4-children cluster
+                rotate, and done
+            4-children cluster (parent node is RED) splits into 2-children cluster and 3-children cluster
+                split, and insert grandparent node into parent cluster
+     */
+    if (current->parent->color == RB_RED) {
+        // insertion into 3-children cluster (parent node is RED)
+        // insertion into 4-children cluster (parent node is RED)
+        insertFixup(rbt, current);
+    } else {
+        /*
+           insertion into 0-children root cluster (parent node is BLACK)
+           insertion into 2-children cluster (parent node is BLACK)
+           insertion into 3-children cluster (parent node is BLACK)
+         */
+    }
+
+    /*
+        The root is always BLACK. Insertion into 0-children root cluster or
+        insertion into 4-children root cluster require this recoloring.
+     */
+    RB_FIRST(rbt)->color = RB_BLACK;
+    return newNode;
+}
+
+/*
+    Rebalance after insertion
+    RB_ROOT(rbt) is always BLACK, thus never reach beyond RB_FIRST(rbt) after insertFixup, RB_FIRST(rbt) might be RED
+ */
+static void insertFixup(RbTree *rbt, RbNode *current)
+{
+    RbNode *uncle;
+
+    assert(rbt);
+    assert(current);
+
+    do {
+        // current node is RED and parent node is RED
+
+        if (current->parent == current->parent->parent->left) {
+            uncle = current->parent->parent->right;
+            if (uncle->color == RB_RED) {
+                // insertion into 4-children cluster, split
+                current->parent->color = RB_BLACK;
+                uncle->color = RB_BLACK;
+
+                // send grandparent node up the tree
+                current = current->parent->parent;
+                current->color = RB_RED;
+
+            } else {
+                // insertion into 3-children cluster
+                if (current == current->parent->right) {
+                    current = current->parent;
+                    rotateLeft(rbt, current);
+                }
+                // 3-children cluster has two representations
+                current->parent->color = RB_BLACK;
+                current->parent->parent->color = RB_RED;
+                rotateRight(rbt, current->parent->parent);
+            }
+
+        } else {
+            uncle = current->parent->parent->left;
+            if (uncle->color == RB_RED) {
+                // insertion into 4-children cluster, split
+                current->parent->color = RB_BLACK;
+                uncle->color = RB_BLACK;
+
+                // send grandparent node up the tree
+                current = current->parent->parent;
+                current->color = RB_RED;
+
+            } else {
+                // insertion into 3-children cluster
+                if (current == current->parent->left) {
+                    current = current->parent;
+                    rotateRight(rbt, current);
+                }
+                // 3-children cluster has two representations
+                current->parent->color = RB_BLACK;
+                current->parent->parent->color = RB_RED;
+                rotateLeft(rbt, current->parent->parent);
+            }
+        }
+    } while (current->parent->color == RB_RED);
+}
+
+PUBLIC void *rbRemove(RbTree *rbt, RbNode *node, int keep)
+{
+    RbNode *target, *child;
+    void   *data;
+
+    assert(rbt);
+    assert(node);
+
+    data = node->data;
+
+    // choose node's in-order successor if it has two children
+
+    if (node->left == RB_NIL(rbt) || node->right == RB_NIL(rbt)) {
+        target = node;
+        if (rbt->min == target) {
+            rbt->min = rbNext(rbt, target);                               // deleted, thus min = successor
+        }
+    } else {
+        target = rbNext(rbt, node);                                       // node->right must not be NIL, thus move down
+        node->data = target->data;                                        // data swapped
+        /*
+            if min == node, then min = successor = node (swapped), thus idle
+            if min == target, then min = successor, which is not the minimal, thus impossible
+         */
+    }
+    child = (target->left == RB_NIL(rbt)) ? target->right : target->left; /* child may be NIL */
+
+    /*
+       deletion from red-black tree
+         4-children cluster (RED target node) becomes 3-children cluster
+           done
+         3-children cluster (RED target node) becomes 2-children cluster
+           done
+         3-children cluster (BLACK target node, RED child node) becomes 2-children cluster
+           paint child node BLACK, and done
+
+         2-children root cluster (BLACK target node, BLACK child node) becomes 0-children root cluster
+           done
+
+         2-children cluster (BLACK target node, 4-children sibling cluster) becomes 3-children cluster
+           transfer, and done
+         2-children cluster (BLACK target node, 3-children sibling cluster) becomes 2-children cluster
+           transfer, and done
+
+         2-children cluster (BLACK target node, 2-children sibling cluster, 3/4-children parent cluster) becomes
+            3-children cluster
+           fuse, paint parent node BLACK, and done
+         2-children cluster (BLACK target node, 2-children sibling cluster, 2-children parent cluster) becomes
+            3-children cluster
+           fuse, and delete parent node from parent cluster
+     */
+    if (target->color == RB_BLACK) {
+        if (child->color == RB_RED) {
+            // deletion from 3-children cluster (BLACK target node, RED child node)
+            child->color = RB_BLACK;
+        } else if (target == RB_FIRST(rbt)) {
+            // deletion from 2-children root cluster (BLACK target node, BLACK child node)
+        } else {
+            // deletion from 2-children cluster (BLACK target node, ...)
+            deleteFixup(rbt, target);
+        }
+    } else {
+        /*
+            deletion from 4-children cluster (RED target node)
+            deletion from 3-children cluster (RED target node)
+         */
+    }
+    if (child != RB_NIL(rbt)) {
+        child->parent = target->parent;
+    }
+    if (target == target->parent->left) {
+        target->parent->left = child;
+    } else {
+        target->parent->right = child;
+    }
+    rFree(target);
+
+    // keep or discard data
+    if (keep == 0) {
+        if (rbt->free) {
+            rbt->free(rbt->arg, data);
+        }
+        data = NULL;
+    }
+    return data;
+}
+
+static void deleteFixup(RbTree *rbt, RbNode *current)
+{
+    RbNode *sibling;
+
+    assert(rbt);
+    assert(current);
+
+    do {
+        if (current == current->parent->left) {
+            sibling = current->parent->right;
+
+            if (sibling->color == RB_RED) {
+                // perform an adjustment (3-children parent cluster has two representations)
+                sibling->color = RB_BLACK;
+                current->parent->color = RB_RED;
+                rotateLeft(rbt, current->parent);
+                sibling = current->parent->right;
+            }
+
+            // sibling node must be BLACK now
+
+            if (sibling->right->color == RB_BLACK && sibling->left->color == RB_BLACK) {
+                // 2-children sibling cluster, fuse by recoloring
+                sibling->color = RB_RED;
+                if (current->parent->color == RB_RED) { // 3/4-children parent cluster
+                    current->parent->color = RB_BLACK;
+                    break;                              // goto break
+                } else {                                // 2-children parent cluster
+                    current = current->parent;          // goto loop
+                }
+
+            } else {
+                // 3/4-children sibling cluster. perform an adjustment (3-children sibling cluster has two
+                // representations)
+                if (sibling->right->color == RB_BLACK) {
+                    sibling->left->color = RB_BLACK;
+                    sibling->color = RB_RED;
+                    rotateRight(rbt, sibling);
+                    sibling = current->parent->right;
+                }
+                // transfer by rotation and recoloring
+                sibling->color = current->parent->color;
+                current->parent->color = RB_BLACK;
+                sibling->right->color = RB_BLACK;
+                rotateLeft(rbt, current->parent);
+                break;
+            }
+        } else {
+            sibling = current->parent->left;
+
+            if (sibling->color == RB_RED) {
+                // perform an adjustment (3-children parent cluster has two representations)
+                sibling->color = RB_BLACK;
+                current->parent->color = RB_RED;
+                rotateRight(rbt, current->parent);
+                sibling = current->parent->left;
+            }
+
+            // sibling node must be RB_BLACK now
+
+            if (sibling->right->color == RB_BLACK && sibling->left->color == RB_BLACK) {
+                // 2-children sibling cluster, fuse by recoloring
+                sibling->color = RB_RED;
+                if (current->parent->color == RB_RED) { // 3/4-children parent cluster
+                    current->parent->color = RB_BLACK;
+                    break;
+                } else {                                // 2-children parent cluster
+                    current = current->parent;          // goto loop
+                }
+            } else {
+                // 3/4-children sibling cluster. Perform an adjustment (3-children sibling cluster has two
+                // representations)
+                if (sibling->left->color == RB_BLACK) {
+                    sibling->right->color = RB_BLACK;
+                    sibling->color = RB_RED;
+                    rotateLeft(rbt, sibling);
+                    sibling = current->parent->left;
+                }
+                // transfer by rotation and recoloring
+                sibling->color = current->parent->color;
+                current->parent->color = RB_BLACK;
+                sibling->left->color = RB_BLACK;
+                rotateRight(rbt, current->parent);
+                break; /* goto break */
+            }
+        }
+    } while (current != RB_FIRST(rbt));
+}
+
+#if KEEP
+PUBLIC int rbCheckOrder(RbTree *rbt, void *min, void *max)
+{
+    return checkOrder(rbt, RB_FIRST(rbt), min, max);
+}
+
+static int checkOrder(RbTree *rbt, RbNode *n, void *min, void *max)
+{
+    if (n == RB_NIL(rbt)) {
+        return 1;
+    }
+    if (rbt->dup) {
+        if (rbt->compare(n->data, min, NULL) < 0 || rbt->compare(n->data, max, NULL) > 0) {
+            return 0;
+        }
+    } else if (rbt->compare(n->data, min, NULL) <= 0 || rbt->compare(n->data, max, NULL) >= 0) {
+        return 0;
+    }
+    return checkOrder(rbt, n->left, min, n->data) && checkOrder(rbt, n->right, n->data, max);
+}
+
+PUBLIC int rbCheckHeight(RbTree *rbt)
+{
+    if (RB_ROOT(rbt)->color == RB_RED || RB_FIRST(rbt)->color == RB_RED || RB_NIL(rbt)->color == RB_RED) {
+        return 0;
+    }
+    return checkHeight(rbt, RB_FIRST(rbt));
+}
+
+static int checkHeight(RbTree *rbt, RbNode *n)
+{
+    int lbh, rbh;
+
+    if (n == RB_NIL(rbt)) {
+        return 1;
+    }
+    if (n->color == RB_RED && (n->left->color == RB_RED || n->right->color == RB_RED || n->parent->color == RB_RED)) {
+        return 0;
+    }
+    if ((lbh = checkHeight(rbt, n->left)) == 0) {
+        return 0;
+    }
+    if ((rbh = checkHeight(rbt, n->right)) == 0) {
+        return 0;
+    }
+    if (lbh != rbh) {
+        return 0;
+    }
+    return lbh + (n->color == RB_BLACK ? 1 : 0);
+}
+#endif
+
+PUBLIC void rbPrint(RbTree *rbt, void (*proc)(void*))
+{
+    printTree(rbt, RB_FIRST(rbt), proc, 0, "T");
+}
+
+static void printTree(RbTree *rbt, RbNode *n, void (*proc)(void*), int depth, char *label)
+{
+    char path[256];
+
+    if (n == RB_NIL(rbt)) return;
+
+    printTree(rbt, n->left, proc, depth + 1, sfmtbuf(path, sizeof(path), "%sL", label));
+    if (label) {
+        rPrintf("%d:%s: ", depth, label);
+    }
+    proc(n->data);
+    rPrintf(" (%s)\n\n", n->color == RB_RED ? "red" : "black");
+    printTree(rbt, n->right, proc, depth + 1, sfmtbuf(path, sizeof(path), "%sR", label));
+}
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    Portion copyright (c) 2019 xieqing. https://github.com/xieqing - See LICENSE for details.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
 /********* Start of file src/dbLib.c ************/
 
 /*

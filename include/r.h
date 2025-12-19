@@ -101,9 +101,6 @@
 #ifndef R_USE_SOCKET
     #define R_USE_SOCKET          1
 #endif
-#ifndef R_USE_RB
-    #define R_USE_RB              1
-#endif
 #ifndef R_USE_RUN
     #define R_USE_RUN             1
 #endif
@@ -1377,6 +1374,7 @@ PUBLIC int rStopEvent(REvent id);
 
 /**
     Run an event now
+    @description This routine is THREAD SAFE.
     @param id Event id allocated by rStartEvent
     @return Zero if the event is found and can be run.
     @stability Evolving
@@ -4770,171 +4768,6 @@ PUBLIC void rSetTlsSession(RSocket *sp, void *session);
  */
 PUBLIC void rFreeTlsSession(void *session);
 #endif /* R_USE_TLS */
-
-/********************************* Red Black Tree ********************************/
-#if R_USE_RB
-/**
-    Red/Black Tree
-    @description Self-balancing binary search tree.
-    @stability Evolving
- */
-#define RB_DUP 0x1              /**< Flags for rbAlloc to permit duplicate keys */
-
-typedef struct RbNode {
-    struct RbNode *left;
-    struct RbNode *right;
-    struct RbNode *parent;
-    uint color : 1;
-    void *data;
-} RbNode;
-
-/**
-    Callback to free a nodes associated data
-    @param data Reference to the associated data for a node
-    @stability Evolving
- */
-typedef void (*RbFree)(void *arg, void *data);
-
-/**
-    Callback to compare a data nodes
-    @description The comparison function may perform a simple "strcmp" style comparison function or it may
-        perform a modified comparison using the supplied context information. For example: a comparison could
-        perform a "startsWith" style comparison. The context argument can control the type of comparison that is
-        performed.
-    @param n1 Reference to first item
-    @param n2 Reference to item to compare
-    @param ctx Context provided to rbLookup.
-    @return Return -1 if n1 is lexically less than n2. Zero if equal and 1 if n1 is greater than n2.
-    @stability Evolving
- */
-typedef int (*RbCompare)(cvoid *n1, cvoid *n2, cvoid *ctx);
-
-typedef struct {
-    RbCompare compare;
-    RbFree free;
-    RbNode root;
-    RbNode nil;
-    RbNode *min;
-    void *arg;
-    uint dup : 1;                           //  Storing duplicate keys
-} RbTree;
-
-/**
-        Traverse an index over all nodes
-    @stability Evolving
- */
-#define ITERATE_TREE(rbt, node)             node = rbFirst(rbt); node; node = rbNext(rbt, node)
-
-/**
-    Traverse an index over matching nodes
-    @description This calls rLookupFirst to find the first node matching the supplied user data.
-        It then calls rLookupNext to find the next sequential matching ndoes.
-        The node argument will be set to point to the current node. It will be NULL at the termination of the loop.
-    @param rbt An RbTree instance
-    @param node The current node being traversed
-    @param data User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.
-    @param ctx Context to provide to the comparison callback
-    @stability Evolving
- */
-#define ITERATE_INDEX(rbt, node, data, ctx) node = rbLookupFirst(rbt, data, ctx); node; node = rbLookupNext(rbt, node, \
-                                                                                                            data, ctx)
-
-/**
-    Allocate a red/black tree
-    @param flags Set to RB_DUP if you wish to store duplicate nodes.
-    @param compare Callback to compare two nodes.
-    @param free Callback to free a node's item data.
-    @param arg Arg to pass to callback.
-    @return An RbTree instance.
-    @stability Evolving
- */
-PUBLIC RbTree *rbAlloc(int flags, RbCompare compare, RbFree free, void *arg);
-
-/**
-    Free a red/black tree
-    @param rbt RbTree to free. Allocated via rbAlloc.
-    @stability Evolving
- */
-PUBLIC void rbFree(RbTree *rbt);
-
-/**
-    Return the lexically first node.
-    @param rbt RbTree allocated via rbAlloc.
-    @return The first node.
-    @stability Evolving
- */
-PUBLIC RbNode *rbFirst(RbTree *rbt);
-
-/**
-    Lookup a data item.
-    @param rbt RbTree allocated via rbAlloc.
-    @param data User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.
-    @param ctx Context to provide to the comparison callback.
-    @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
-       returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @stability Evolving
- */
-PUBLIC RbNode *rbLookup(RbTree *rbt, cvoid *data, void *ctx);
-
-/**
-    Return the lexically first matching node.
-    @param rbt RbTree allocated via rbAlloc.
-    @param data User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.
-    @param ctx Context to provide to the comparison callback.
-    @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
-       returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @stability Evolving
- */
-PUBLIC RbNode *rbLookupFirst(RbTree *rbt, cvoid *data, void *ctx);
-
-/**
-    Return the next matching node after the given node.
-    @description This call finds the next matching node after the current node.
-    It is assumed that the given node matches the supplied user data.
-    @param rbt RbTree allocated via rbAlloc.
-    @param node Starting node for the search.
-    @param data User data item to search for. This is passed to the comparison callback supplied when calling rbOpen.
-    @param ctx Context to provide to the comparison callback.
-    @return The located node or NULL if not found. If there are multiple matching nodes, the first node encountered is
-       returned which may not be the first lexically. If you need the first item lexically, use rbLookupFirst.
-    @stability Evolving
- */
-PUBLIC RbNode *rbLookupNext(RbTree *rbt, RbNode *node, cvoid *data, void *ctx);
-
-/**
-    Return the next node in sequence.
-    @param rbt RbTree allocated via rbAlloc.
-    @param node Starting node
-    @return The next node in the tree.
-    @stability Evolving
- */
-PUBLIC RbNode *rbNext(RbTree *rbt, RbNode *node);
-
-/**
-    Insert a new data item in the tree
-    @param rbt RbTree allocated via rbAlloc.
-    @param data User data to store in the tree. The data should contain the lookup key value for the data.
-        The comparison callback will be passed the data and it should be able to extract the key from the data.
-    @return The inserted node.
-    @stability Evolving
- */
-PUBLIC RbNode *rbInsert(RbTree *rbt, void *data);
-
-/**
-    Remove a data item from the tree
-    @param rbt RbTree allocated via rbAlloc.
-    @param node Node to remove. The node is identified by calling rbLookup.
-    @param keep If true, the data item will not be freed. Otherwise the free callback will be invoked on the data item.
-    @return The node data item
-    @stability Evolving
- */
-PUBLIC void *rbRemove(RbTree *rbt, RbNode *node, int keep);
-
-//  Debugging utilities
-PUBLIC int rbCheckOrder(RbTree *rbt, void *min, void *max);
-PUBLIC int rbCheckHeight(RbTree *rbt);
-PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
-#endif /* R_USE_RB */
 
 /*********************************** Platform APIs *******************************/
 
