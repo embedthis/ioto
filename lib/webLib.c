@@ -1424,7 +1424,7 @@ static int putFile(Web *web, char *path, size_t pathSize)
     }
     total = 0;
     //  Zero-copy: read directly from rx buffer
-    bufsize = min(ME_BUFSIZE * 16, (size_t) web->rxRemaining);
+    bufsize = min(WEB_BUF_BOOST_16X, (size_t) web->rxRemaining);
     while ((nbytes = webReadDirect(web, &ptr, bufsize)) > 0) {
         if (write(fd, ptr, (uint) nbytes) != nbytes) {
             close(fd);
@@ -1511,7 +1511,7 @@ PUBLIC ssize webSendFile(Web *web, int fd, Offset offset, ssize len)
     if (offset > 0 && lseek(fd, (off_t) offset, SEEK_SET) != offset) {
         return webError(web, 500, "Cannot seek in file");
     }
-    bufSize = len < ME_BUFSIZE ? ME_BUFSIZE : ME_BUFSIZE * 4;
+    bufSize = len < ME_BUFSIZE ? ME_BUFSIZE : WEB_BUF_BOOST_4X;
     buf = rAlloc(bufSize);
     for (written = 0; written < len; ) {
         toRead = min(len - written, (ssize) bufSize);
@@ -4227,7 +4227,7 @@ static ssize readSocketBuffer(Web *web, size_t desiredSize)
         Size the buffer as large as possible to minimize the number of socket reads.
         Limit to the remaining body data, the desired size or 64K
      */
-    bufsize = max(desiredSize, ME_BUFSIZE * 4);
+    bufsize = max(desiredSize, WEB_BUF_BOOST_4X);
     if (web->rxRemaining > 0 && (size_t) web->rxRemaining < bufsize) {
         bufsize = (size_t) web->rxRemaining;
     }
@@ -4273,7 +4273,7 @@ static ssize readSocketBlock(Web *web, size_t desiredSize)
     Usage pattern:
         char *ptr;
         ssize nbytes;
-        while ((nbytes = webReadDirect(web, &ptr, ME_BUFSIZE * 4)) > 0) {
+        while ((nbytes = webReadDirect(web, &ptr, WEB_BUF_BOOST_4X)) > 0) {
             write(fd, ptr, nbytes);
         }
  */
@@ -6372,7 +6372,7 @@ PUBLIC int webProcessUpload(Web *web)
         if (web->host->maxUploads > 0 && ++web->numUploads > web->host->maxUploads) {
             return webError(web, 413, "Too many files uploaded");
         }
-        if ((nbytes = webBufferUntil(web, web->boundary, ME_BUFSIZE * 2)) <= 0) {
+        if ((nbytes = webBufferUntil(web, web->boundary, WEB_BUF_BOOST_2X)) <= 0) {
             return webError(web, -400, "Bad upload request boundary");
         }
         rAdjustBufStart(buf, nbytes);
@@ -6407,7 +6407,7 @@ static int processUploadHeaders(Web *web)
     char      *content, *field, *key, *next, *rest, *value, *type;
     ssize     nbytes;
 
-    if ((nbytes = webBufferUntil(web, "\r\n\r\n", ME_BUFSIZE * 2)) < 2) {
+    if ((nbytes = webBufferUntil(web, "\r\n\r\n", WEB_BUF_BOOST_2X)) < 2) {
         webError(web, -400, "Bad upload headers");
         return R_ERR_BAD_REQUEST;
     }
@@ -6477,7 +6477,7 @@ static int processUploadData(Web *web)
     upload = web->upload;
     buf = web->rx;
     do {
-        if ((nbytes = webBufferUntil(web, web->boundary, ME_BUFSIZE * 16)) < 0) {
+        if ((nbytes = webBufferUntil(web, web->boundary, WEB_BUF_BOOST_16X)) < 0) {
             return webError(web, -400, "Bad upload request boundary");
         }
         if (upload && upload->fd >= 0) {
@@ -7305,7 +7305,9 @@ PUBLIC bool webValidateRequest(Web *web, cchar *path)
 }
 
 /*
-    Check a JSON payload against the API signature. This evaluates the json properties starting at the "jid" node.
+    Validate a JSON object against the API signature and write the validated JSON to a buffer.
+
+    This evaluates the json properties starting at the "jid" node.
     If buf is provided, it will be used to store the validated JSON. If fields are "dropped" they will not be
     added to the buf. The routine will recurse as required over arrays and objects.
     Returns true if the payload is valid. If invalid, we return 0 and a response is written.
@@ -7339,7 +7341,8 @@ PUBLIC bool webValidateSignature(Web *web, RBuf *buf, const Json *cjson, int jid
         return 0;
     }
     if (!web->host->signatures || sid < 0) {
-        return 1;
+        rError("web", "Missing signatures or signature ID");
+        return 0;
     }
     if (depth > WEB_MAX_SIG_DEPTH) {
         webError(web, 400, "Signature validation failed");

@@ -116,6 +116,19 @@ struct Url;
 #define URL_SHOW_FLAGS                  (URL_SHOW_REQ_BODY | URL_SHOW_REQ_HEADERS | URL_SHOW_RESP_BODY | \
                                          URL_SHOW_RESP_HEADERS)
 
+/*
+    Platform-specific buffer sizing
+    Constrained platforms (ESP32, FreeRTOS, VxWorks) use base ME_BUFSIZE
+    Desktop/server platforms use boosted sizes for performance
+ */
+#if ESP32 || FREERTOS || VXWORKS
+    #define URL_BUF_BOOST_2X    ME_BUFSIZE
+    #define URL_BUF_BOOST_1024X ME_BUFSIZE
+#else
+    #define URL_BUF_BOOST_2X    (ME_BUFSIZE * 2)
+    #define URL_BUF_BOOST_1024X (ME_BUFSIZE * 1024)
+#endif
+
 #if URL_SSE
 /**
     URL SSE callback

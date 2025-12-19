@@ -913,7 +913,7 @@ static ssize readSocket(Url *up, size_t bufsize)
 
     bp = up->rx;
     rCompactBuf(bp);
-    space = min(bufsize <= ME_BUFSIZE ? ME_BUFSIZE : ME_BUFSIZE * 2, up->rxRemaining);
+    space = min(bufsize <= ME_BUFSIZE ? ME_BUFSIZE : URL_BUF_BOOST_2X, up->rxRemaining);
     rReserveBufSpace(bp, space);
     toRead = min(rGetBufSpace(bp), up->rxRemaining);
     if ((nbytes = rReadSocket(up->sock, bp->start, toRead, up->deadline)) < 0) {
@@ -1154,7 +1154,7 @@ PUBLIC RBuf *urlGetResponseBuf(Url *up)
     }
     if (!up->gotResponse && clen != 0) {
         do {
-            len = contentLength ? (size_t) clen : min((buf->buflen * 2), ME_BUFSIZE * 1024);
+            len = contentLength ? (size_t) clen : min((buf->buflen * 2), URL_BUF_BOOST_1024X);
             if (up->bufLimit > 0) {
                 len = min(len, (up->bufLimit - rGetBufLength(buf)));
                 if (len <= 0) {

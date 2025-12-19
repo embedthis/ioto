@@ -92,6 +92,25 @@ extern "C" {
 #define WEB_MAX_SIG         160         /**< Maximum size of controller.method URL portion in API signatures */
 #define WEB_MAX_COOKIE_SIZE 8192        /**< Maximum size of cookie header (security limit) */
 #define WEB_MAX_SIG_DEPTH   16          /**< Maximum recursion depth for signature validation */
+/** @} */
+
+/**
+ * @name Platform-Specific Buffer Sizing
+ * @description Buffer size definitions that adapt to platform memory constraints.
+ *     Constrained platforms (ESP32, FreeRTOS, VxWorks) use base ME_BUFSIZE.
+ *     Desktop/server platforms use boosted sizes for performance.
+ * @{
+ */
+#if ESP32 || FREERTOS || VXWORKS
+    #define WEB_BUF_BOOST_2X   ME_BUFSIZE
+    #define WEB_BUF_BOOST_4X   ME_BUFSIZE
+    #define WEB_BUF_BOOST_16X  ME_BUFSIZE
+#else
+    #define WEB_BUF_BOOST_2X   (ME_BUFSIZE * 2)
+    #define WEB_BUF_BOOST_4X   (ME_BUFSIZE * 4)
+    #define WEB_BUF_BOOST_16X  (ME_BUFSIZE * 16)
+#endif
+/** @} */
 
 /*
     Dependencies
@@ -1113,7 +1132,7 @@ PUBLIC bool webValidateData(Web *web, RBuf *buf, cchar *data, cchar *sigKey, cch
 PUBLIC bool webValidateJson(Web *web, RBuf *buf, const Json *cjson, int jid, cchar *sigKey, cchar *tag);
 
 /**
-    Low level validate a JSON object against a signature using a signature specified by a signature ID.
+    Validate a JSON object against the API signature and write the validated JSON to a buffer.
     @param web Web object
     @param buf Optional buffer to store the validated JSON.
     @param cjson JSON object
