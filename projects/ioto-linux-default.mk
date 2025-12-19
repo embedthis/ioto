@@ -295,6 +295,7 @@ $(BUILD)/inc/json.h: $(DEPS_7)
 #   db.h
 #
 DEPS_8 += include/db.h
+DEPS_8 += $(BUILD)/inc/r.h
 DEPS_8 += $(BUILD)/inc/json.h
 
 $(BUILD)/inc/db.h: $(DEPS_8)
