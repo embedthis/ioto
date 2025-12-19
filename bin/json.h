@@ -288,179 +288,386 @@
 #endif
 
 /**
+    @section Operating System Constants
+
+    Operating system constants for cross-platform compilation. These constants are used with the ME_OS_TYPE macro
+    to determine the target operating system at compile time. The osdep module automatically detects the
+    operating system based on compiler-defined symbols and sets ME_OS_TYPE to the appropriate numeric value.
+*/
+
+/**
+    Unknown or unsupported operating system.
+    @stability Stable
+*/
+#define ME_OS_UNKNOWN   0
+
+/**
+    macOS / Mac OS X operating system.
+    @stability Stable
+*/
+#define ME_OS_MACOSX    1
+
+/**
+    Linux operating system.
+    @stability Stable
+*/
+#define ME_OS_LINUX     2
+
+/**
+    FreeBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_FREEBSD   3
+
+/**
+    OpenBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_OPENBSD   4
+
+/**
+    Microsoft Windows operating system.
+    @stability Stable
+*/
+#define ME_OS_WINDOWS   5
+
+/**
+    OS/2 operating system.
+    @stability Stable
+*/
+#define ME_OS_OS2       6
+
+/**
+    MS-DOS operating system.
+    @stability Stable
+*/
+#define ME_OS_MSDOS     7
+
+/**
+    NetWare operating system.
+    @stability Stable
+*/
+#define ME_OS_NETWARE   8
+
+/**
+    BSDi operating system.
+    @stability Stable
+*/
+#define ME_OS_BSDI      9
+
+/**
+    NetBSD operating system.
+    @stability Stable
+*/
+#define ME_OS_NETBSD    10
+
+/**
+    QNX operating system.
+    @stability Stable
+*/
+#define ME_OS_QNX       11
+
+/**
+    HP-UX operating system.
+    @stability Stable
+*/
+#define ME_OS_HPUX      12
+
+/**
+    IBM AIX operating system.
+    @stability Stable
+*/
+#define ME_OS_AIX       13
+
+/**
+    Cygwin POSIX compatibility layer on Windows.
+    @stability Stable
+*/
+#define ME_OS_CYGWIN    14
+
+/**
+    OpenVMS operating system.
+    @stability Stable
+*/
+#define ME_OS_VMS       15
+
+/**
+    VxWorks real-time operating system.
+    @stability Stable
+*/
+#define ME_OS_VXWORKS   16
+
+/**
+    eCos embedded operating system.
+    @stability Stable
+*/
+#define ME_OS_ECOS      17
+
+/**
+    Texas Instruments DSP platform.
+    @stability Stable
+*/
+#define ME_OS_TIDSP     18
+
+/**
+    FreeRTOS real-time operating system (including ESP32).
+    @stability Stable
+*/
+#define ME_OS_FREERTOS  19
+
+/**
+    Sun/Oracle Solaris operating system.
+    @stability Stable
+*/
+#define ME_OS_SOLARIS   20
+
+/**
     @section Operating System Detection
 
     Automatic detection of the target operating system based on compiler-defined preprocessor symbols.
-    The osdep module examines compiler-specific OS macros and sets appropriate platform flags including
-    ME_OS, ME_UNIX_LIKE, ME_WIN_LIKE, ME_BSD_LIKE, and threading support flags. Most operating systems
-    provide standard compiler symbols, with VxWorks being a notable exception requiring explicit detection.
+    The osdep module examines compiler-specific OS macros and sets ME_OS_TYPE to the appropriate numeric constant.
+    Most operating systems provide standard compiler symbols, with VxWorks being a notable exception
+    requiring explicit detection via VXWORKS define.
+
+    Order matters for cross compilation
 */
-#if defined(__APPLE__)
+#ifndef ME_OS_TYPE
+    #if defined(__APPLE__)
+        #define ME_OS_TYPE ME_OS_MACOSX
+    #elif defined(__linux__)
+        #define ME_OS_TYPE ME_OS_LINUX
+    #elif defined(__FreeBSD__)
+        #define ME_OS_TYPE ME_OS_FREEBSD
+    #elif defined(__OpenBSD__)
+        #define ME_OS_TYPE ME_OS_OPENBSD
+    #elif defined(_WIN32)
+        #define ME_OS_TYPE ME_OS_WINDOWS
+    #elif defined(__OS2__)
+        #define ME_OS_TYPE ME_OS_OS2
+    #elif defined(MSDOS) || defined(__DME__)
+        #define ME_OS_TYPE ME_OS_MSDOS
+    #elif defined(__NETWARE_386__)
+        #define ME_OS_TYPE ME_OS_NETWARE
+    #elif defined(__bsdi__)
+        #define ME_OS_TYPE ME_OS_BSDI
+    #elif defined(__NetBSD__)
+        #define ME_OS_TYPE ME_OS_NETBSD
+    #elif defined(__QNX__)
+        #define ME_OS_TYPE ME_OS_QNX
+    #elif defined(__hpux)
+        #define ME_OS_TYPE ME_OS_HPUX
+    #elif defined(_AIX)
+        #define ME_OS_TYPE ME_OS_AIX
+    #elif defined(__CYGWIN__)
+        #define ME_OS_TYPE ME_OS_CYGWIN
+    #elif defined(__VMS)
+        #define ME_OS_TYPE ME_OS_VMS
+    #elif defined(VXWORKS)
+        #define ME_OS_TYPE ME_OS_VXWORKS
+    #elif defined(ESP_PLATFORM) || defined(INC_FREERTOS_H) || defined(FREERTOS_CONFIG_H) || defined(ARDUINO) || defined(FREERTOS)
+        #define ME_OS_TYPE ME_OS_FREERTOS
+    #elif defined(ECOS)
+        #define ME_OS_TYPE ME_OS_ECOS
+    #elif defined(TIDSP)
+        #define ME_OS_TYPE ME_OS_TIDSP
+    #elif defined(__sun) && defined(__SVR4)
+        #define ME_OS_TYPE ME_OS_SOLARIS
+    #else
+        #define ME_OS_TYPE ME_OS_UNKNOWN
+    #endif
+#endif
+
+/**
+    @section Operating System Platform Attributes
+
+    Based on the detected ME_OS_TYPE value, this section sets platform-specific attributes including:
+    - ME_OS string name for the platform
+    - OS name macros (LINUX, MACOSX, WINDOWS, etc.)
+    - POSIX compliance flag
+    - ME_UNIX_LIKE and ME_WIN_LIKE classification
+    - ME_BSD_LIKE for BSD-derived systems
+    - HAS_USHORT, HAS_UINT type availability
+    - PTHREADS threading support
+*/
+#if ME_OS_TYPE == ME_OS_MACOSX
     #define ME_OS "macosx"
     #define MACOSX 1
+    #define HAS_USHORT 1
+    #define HAS_UINT 1
+    #define PTHREADS 1
     #define POSIX 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define HAS_USHORT 1
-    #define HAS_UINT 1
 
-#elif defined(__linux__)
+#elif ME_OS_TYPE == ME_OS_LINUX
     #define ME_OS "linux"
     #define LINUX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__FreeBSD__)
+#elif ME_OS_TYPE == ME_OS_FREEBSD
     #define ME_OS "freebsd"
     #define FREEBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
     #define HAS_USHORT 1
     #define HAS_UINT 1
-    #define PTHREADS 1
 
-#elif defined(__OpenBSD__)
+#elif ME_OS_TYPE == ME_OS_OPENBSD
     #define ME_OS "openbsd"
     #define OPENBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(_WIN32)
+#elif ME_OS_TYPE == ME_OS_WINDOWS
     #define ME_OS "windows"
     #define WINDOWS 1
     #define POSIX 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 1
 
-#elif defined(__OS2__)
+#elif ME_OS_TYPE == ME_OS_OS2
     #define ME_OS "os2"
-    #define OS2 0
+    #define OS2 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(MSDOS) || defined(__DME__)
+#elif ME_OS_TYPE == ME_OS_MSDOS
     #define ME_OS "msdos"
-    #define WINDOWS 0
+    #define MSDOS 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(__NETWARE_386__)
+#elif ME_OS_TYPE == ME_OS_NETWARE
     #define ME_OS "netware"
-    #define NETWARE 0
+    #define NETWARE 1
+    #define PTHREADS 0
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(__bsdi__)
+#elif ME_OS_TYPE == ME_OS_BSDI
     #define ME_OS "bsdi"
     #define BSDI 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(__NetBSD__)
+#elif ME_OS_TYPE == ME_OS_NETBSD
     #define ME_OS "netbsd"
     #define NETBSD 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
     #define ME_BSD_LIKE 1
-    #define PTHREADS 1
 
-#elif defined(__QNX__)
+#elif ME_OS_TYPE == ME_OS_QNX
     #define ME_OS "qnx"
-    #define QNX 0
+    #define QNX 1
+    #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__hpux)
+#elif ME_OS_TYPE == ME_OS_HPUX
     #define ME_OS "hpux"
     #define HPUX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(_AIX)
+#elif ME_OS_TYPE == ME_OS_AIX
     #define ME_OS "aix"
     #define AIX 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
-    #define PTHREADS 1
 
-#elif defined(__CYGWIN__)
+#elif ME_OS_TYPE == ME_OS_CYGWIN
     #define ME_OS "cygwin"
     #define CYGWIN 1
+    #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 1
     #define ME_WIN_LIKE 0
 
-#elif defined(__VMS)
+#elif ME_OS_TYPE == ME_OS_VMS
     #define ME_OS "vms"
     #define VMS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(VXWORKS)
-    /* VxWorks does not have a pre-defined symbol */
+#elif ME_OS_TYPE == ME_OS_VXWORKS
     #define ME_OS "vxworks"
+    #define VXWORKS 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
     #define HAS_USHORT 1
-    #define PTHREADS 1
 
-#elif defined(ECOS)
-    /* ECOS may not have a pre-defined symbol */
+#elif ME_OS_TYPE == ME_OS_ECOS
     #define ME_OS "ecos"
+    #define ECOS 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
 
-#elif defined(TIDSP)
+#elif ME_OS_TYPE == ME_OS_TIDSP
     #define ME_OS "tidsp"
+    #define TIDSP 1
+    #define HAS_INT32 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define HAS_INT32 1
 
-#elif defined(ESP_PLATFORM)
+#elif ME_OS_TYPE == ME_OS_FREERTOS
     #define ME_OS "freertos"
     #define FREERTOS 1
-    #define ESP32 1
+    #define HAS_INT32 1
     #define POSIX 1
+    #define PTHREADS 1
     #define ME_UNIX_LIKE 0
     #define ME_WIN_LIKE 0
-    #define PLATFORM "esp"
-    #define PTHREADS 1
-    #define HAS_INT32 1
+    #if defined(ESP_PLATFORM)
+        #define ESP32 1
+        #define PLATFORM "esp"
+    #endif
 
-#elif defined(INC_FREERTOS_H) || defined(FREERTOS_CONFIG_H)
-    #define ME_OS "freertos"
-    #define FREERTOS 1
+#elif ME_OS_TYPE == ME_OS_SOLARIS
+    #define ME_OS "solaris"
+    #define SOLARIS 1
     #define POSIX 1
-    #define ME_UNIX_LIKE 0
-    #define ME_WIN_LIKE 0
     #define PTHREADS 1
-    #define HAS_INT32 1
+    #define ME_UNIX_LIKE 1
+    #define ME_WIN_LIKE 0
+#endif
 
-#elif defined(ARDUINO)
-    #define ME_OS "freertos"
-    #define FREERTOS 1
-    #define POSIX 1
-    #define ME_UNIX_LIKE 0
-    #define ME_WIN_LIKE 0
-    #define PTHREADS 1
-    #define HAS_INT32 1
+/*
+    Simulated platforms hosted on MacOS, Linux, or Windows
+ */
+#if defined(__APPLE__) || defined(__linux__)
+    #define ME_SIMULATED 1
+    #define ME_ON_UNIX 1
+#elif defined(_WIN32)
+    #define ME_SIMULATED 1
+    #define ME_ON_WINDOWS 1
 #endif
 
 /**
@@ -790,6 +997,7 @@
 
 #if FREERTOS
     #include <string.h>
+    #include <stdbool.h>
     #include "time.h"
 #if ESP32
     #include "freertos/FreeRTOS.h"
@@ -800,9 +1008,25 @@
     #include "event_groups.h"
     #include "task.h"
 #endif /* ESP32 */
+#if defined(__APPLE__) || defined(__linux__)
+    // Simulation of FreeRTOS on MacOS or Linux
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
+    #include <netdb.h>
+    #include <sys/types.h>
+    #include <netinet/tcp.h>
+    #include <sys/time.h>
+    #define closesocket(x)  close(x)
+#endif
 #endif
 
 #if ESP32
+    #include "sdkconfig.h"
     #include "esp_system.h"
     #include "esp_log.h"
     #include "esp_heap_caps.h"
@@ -1079,6 +1303,10 @@ typedef int64 Offset;
     typedef int Socklen;
 #elif VXWORKS
     typedef int Socklen;
+#elif ESP32
+    typedef socklen_t Socklen;
+#elif FREERTOS
+    typedef uint Socklen;
 #else
     typedef socklen_t Socklen;
 #endif
@@ -1868,9 +2096,6 @@ typedef int64 Ticks;
 #endif
 
 #if FREERTOS
-#if !ESP32
-    typedef unsigned int socklen_t;
-#endif
 #ifndef SOMAXCONN
     #define SOMAXCONN 5
 #endif
@@ -2174,14 +2399,64 @@ extern "C" {
     #endif
 #endif
 
-#ifndef ME_FIBER_GUARD_STACK
-//  Only use fiber guards when not using VM stack (VM provides guard pages)
-    #if ME_DEBUG && !ME_FIBER_VM_STACK
-        #define ME_FIBER_GUARD_STACK 1
+//  Growable stacks use guard pages and reserve-then-commit memory model
+#ifndef ME_FIBER_GROWABLE_STACK
+    #if ME_FIBER_VM_STACK && (ME_UNIX_LIKE || ME_WIN_LIKE)
+        #define ME_FIBER_GROWABLE_STACK 1
     #else
-        #define ME_FIBER_GUARD_STACK 0
+        #define ME_FIBER_GROWABLE_STACK 0
     #endif
 #endif
+
+//  Pattern-based guard pad only when growable stacks not available
+#ifndef ME_FIBER_GUARD_PAD
+    #if ME_DEBUG && !ME_FIBER_GROWABLE_STACK
+        #define ME_FIBER_GUARD_PAD 1
+    #else
+        #define ME_FIBER_GUARD_PAD 0
+    #endif
+#endif
+
+#ifndef ME_FIBER_DEFAULT_STACK
+// Standard printf alone can use 8k on Linux/MacOS/Windows.
+    #if defined(CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+// ESP32: Use the FreeRTOS main task stack size from sdkconfig.
+        #define ME_FIBER_DEFAULT_STACK ((size_t) CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+    #elif ME_64
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
+    #else
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
+    #endif
+#endif
+
+/*
+    Minimum safe stack size - uses uctx minimum. Routines like getaddrinfo are stack intensive.
+ */
+#ifndef ME_FIBER_MIN_STACK
+    #define ME_FIBER_MIN_STACK ((size_t) UCTX_MIN_STACK_SIZE)
+#endif
+
+#ifndef ME_FIBER_MAX_STACK
+    #if ME_64
+        #define ME_FIBER_MAX_STACK ((size_t) (8 * 1024 * 1024))
+    #else
+        #define ME_FIBER_MAX_STACK ((size_t) (1024 * 1024))
+    #endif
+#endif
+
+#ifndef ME_FIBER_STACK_GROW_SIZE
+    #define ME_FIBER_STACK_GROW_SIZE   ((size_t) (16 * 1024))
+#endif
+
+#ifndef ME_FIBER_STACK_RESET_LIMIT
+    #define ME_FIBER_STACK_RESET_LIMIT ((size_t) (64 * 1024))
+#endif
+
+//  Memory protection flags for rProtectPages
+#define R_PROT_NONE                    0
+#define R_PROT_READ                    1
+#define R_PROT_WRITE                   2
+#define R_PROT_EXEC                    4
 
 #if R_USE_FIBER
     #include "uctx.h"
@@ -2545,6 +2820,48 @@ PUBLIC void *rAllocVirt(size_t size);
  */
 PUBLIC void rFreeVirt(void *ptr, size_t size);
 
+#if ME_FIBER_GROWABLE_STACK
+/**
+    Reserve virtual address space without committing physical memory.
+    @description Reserves a region of virtual address space with PROT_NONE protection.
+        Memory must be committed via rProtectPages before use.
+        Used for guard page stack allocation.
+    @param size Size of virtual address space to reserve in bytes.
+    @return Pointer to reserved region, or NULL on failure.
+    @stability Evolving
+ */
+PUBLIC void *rAllocPages(size_t size);
+
+/**
+    Free reserved virtual address space.
+    @description Releases virtual address space reserved via rAllocPages.
+    @param ptr Pointer to reserved region. NULL is safely ignored.
+    @param size Size of the reserved region in bytes.
+    @stability Evolving
+ */
+PUBLIC void rFreePages(void *ptr, size_t size);
+
+/**
+    Change memory protection on a region.
+    @description Commits and/or changes protection on a region of virtual memory.
+        On Unix, uses mprotect. On Windows, uses VirtualAlloc to commit then protect.
+    @param addr Start address of the region (must be page-aligned).
+    @param size Size of the region in bytes (must be page-aligned).
+    @param prot Protection flags: R_PROT_NONE, R_PROT_READ, R_PROT_WRITE, R_PROT_EXEC.
+    @return Zero on success, negative on error.
+    @stability Evolving
+ */
+PUBLIC int rProtectPages(void *addr, size_t size, int prot);
+
+/**
+    Get system page size.
+    @description Returns the system memory page size. Result is cached for efficiency.
+    @return Page size in bytes (typically 4096).
+    @stability Evolving
+ */
+PUBLIC size_t rGetPageSize(void);
+#endif
+
 /**
     Compare two blocks of memory
     @description Compare two blocks of memory.
@@ -2600,24 +2917,6 @@ PUBLIC void rSetMemHandler(RMemProc handler);
 typedef void (*RFiberProc)(void *data);
 
 #if R_USE_FIBER
-
-#ifndef ME_FIBER_DEFAULT_STACK
-/*
-    Standard printf alone can use 8k
- */
-    #if ME_64
-        #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
-    #else
-        #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
-    #endif
-#endif
-
-/*
-    Empirically tested minimum safe stack. Routines like getaddrinfo are stack intenstive.
- */
-#ifndef ME_FIBER_MIN_STACK
-    #define ME_FIBER_MIN_STACK   ((size_t) (16 * 1024))
-#endif
 /*
     Guard character for stack overflow detection when not using VM stacks
  */
@@ -2656,6 +2955,25 @@ typedef void (*RFiberProc)(void *data);
     #include <valgrind/memcheck.h>
 #endif
 
+#if ME_FIBER_GROWABLE_STACK
+/**
+    Guard page stack metadata for growable stacks.
+    @description Tracks the reserved and committed regions of a guard-page protected stack.
+    @stability Evolving
+    @ingroup RFiber
+ */
+typedef struct RFiberStack {
+    void *base;           // Lowest address (start of reserved region, PROT_NONE)
+    void *usable;         // Start of usable (committed) stack space
+    void *top;            // Highest address (stack top, end of reserved region)
+    size_t reserved;      // Total reserved virtual address space
+    size_t committed;     // Currently committed (usable) size
+    size_t initialSize;   // Initial committed size (for pool reset)
+    size_t maxSize;       // Maximum growth allowed
+    bool guarded;         // Using guard pages (vs pattern)
+} RFiberStack;
+#endif
+
 /**
     Fiber state
     @stability Evolving
@@ -2680,12 +2998,14 @@ typedef struct RFiber {
 #if FIBER_WITH_VALGRIND
     uint stackId;
 #endif
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
     //  SECURITY: Acceptable - small guard is enough for embedded systems
     char guard[128];
 #endif
-#if ME_FIBER_VM_STACK
-    uchar *stack;        // Pointer to VM-allocated stack
+#if ME_FIBER_GROWABLE_STACK
+    RFiberStack stackInfo; // Guard page stack metadata
+#elif ME_FIBER_VM_STACK
+    uchar *stack;          // Pointer to VM-allocated stack
 #else
 #if _MSC_VER
     #pragma warning(push)
@@ -2773,16 +3093,14 @@ PUBLIC void *rYieldFiber(void *value);
 
 /**
     Start a fiber block
-    @description This starts a fiber block using setjmp/longjmp. Use rEndFiberBlock to jump out of the block.
-    @return Zero on first call. Returns 1 when jumping out of the block.
+    @description This prepares a fiber block to use setjmp/longjmp. This is only available on Unix-like systems.
     @stability Prototype
  */
-PUBLIC int rStartFiberBlock(void);
+PUBLIC void rStartFiberBlock(void);
 
 /**
     End a fiber block
-    @description This jumps out of a fiber block using longjmp. This is typically called when an exception occurs
-    in the fiber block.
+    @description This restores the signal mask to the original state. This is only available on Unix-like systems.
     @stability Prototype
  */
 PUBLIC void rEndFiberBlock(void);
@@ -2817,7 +3135,7 @@ PUBLIC bool rIsMain(void);
  */
 PUBLIC bool rIsForeignThread(void);
 
-#if ME_FIBER_GUARD_STACK
+#if ME_FIBER_GUARD_PAD
 /**
     CHECK fiber stack usage
     @description This will log peak fiber stack use to the log file
@@ -2843,17 +3161,24 @@ PUBLIC int64 rGetStackUsage(void);
 PUBLIC void *rGetFiberStack(void);
 
 /**
-    Get the current fiber stack size
-    @description Returns the configured fiber stack size in bytes.
-    @return The fiber stack size in bytes.
+    Get the initial fiber stack size
+    @description Returns the initial fiber stack size in bytes. When guard pages are enabled,
+        this is the initially committed size that can grow automatically. Use rGetFiberStackLimits
+        for full stack configuration including max size and growth parameters.
+    @return The initial fiber stack size in bytes.
     @stability Evolving
+    @see rGetFiberStackLimits
  */
 PUBLIC size_t rGetFiberStackSize(void);
 
 /**
-    Set the default fiber stack size
-    @param size Size of fiber stack in bytes. This should typically be in the range of 64K to 512K.
+    Set the initial fiber stack size
+    @description Sets the initial stack size for new fibers. When guard pages are enabled,
+        this is the initially committed size (stacks can grow beyond this). Use rSetFiberStackLimits
+        for full configuration including max size, growth increment, and reset threshold.
+    @param size Size of fiber stack in bytes. This should typically be in the range of 32K to 512K.
     @stability Evolving
+    @see rSetFiberStackLimits
  */
 PUBLIC void rSetFiberStackSize(size_t size);
 
@@ -2883,6 +3208,33 @@ PUBLIC int rSetFiberLimits(int maxFibers, int poolMin, int poolMax);
  */
 PUBLIC void rGetFiberStats(int *active, int *max, int *pooled, int *poolMax, int *poolMin, uint64 *hits,
                            uint64 *misses);
+
+/**
+    Configure fiber stack limits.
+    @description Sets runtime limits for fiber stack allocation. Values of 0 leave the current
+        setting unchanged. When guard pages are enabled, all sizes are rounded up to page boundaries
+        and stacks can grow automatically. When guard pages are disabled, only initialSize is used
+        (maxSize, growSize, resetLimit are silently ignored).
+    @param initialSize Initial stack size for new fibers. If 0, unchanged.
+    @param maxSize Maximum stack size fibers can grow to (guard pages only). If 0, unchanged.
+    @param growSize Size increment when stack grows (guard pages only). If 0, unchanged.
+    @param resetLimit Only reset stacks above this size on pool reuse (guard pages only). If 0, unchanged.
+    @return Zero on success, negative on error.
+    @stability Evolving
+ */
+PUBLIC int rSetFiberStackLimits(size_t initialSize, size_t maxSize, size_t growSize, size_t resetLimit);
+
+/**
+    Get current fiber stack limit settings.
+    @description Retrieves the current fiber stack configuration. Any pointer may be NULL.
+        When guard pages are disabled, maxSize, growSize, and resetLimit return 0.
+    @param initialSize Pointer to receive initial stack size (may be NULL).
+    @param maxSize Pointer to receive max stack size, 0 if guard pages disabled (may be NULL).
+    @param growSize Pointer to receive growth increment, 0 if guard pages disabled (may be NULL).
+    @param resetLimit Pointer to receive reset limit, 0 if guard pages disabled (may be NULL).
+    @stability Evolving
+ */
+PUBLIC void rGetFiberStackLimits(size_t *initialSize, size_t *maxSize, size_t *growSize, size_t *resetLimit);
 
 /**
     Allocate a fiber coroutine object
@@ -3212,9 +3564,11 @@ typedef int64 REvent;
         #define ME_EVENT_NOTIFIER R_EVENT_KQUEUE
     #elif WINDOWS
         #define ME_EVENT_NOTIFIER R_EVENT_WSAPOLL
-    #elif VXWORKS || ESP32
+    #elif VXWORKS || ESP32 || FREERTOS
         #define ME_EVENT_NOTIFIER R_EVENT_SELECT
-    #elif (LINUX || ME_BSD_LIKE) && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+    #elif LINUX && (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
+        #define ME_EVENT_NOTIFIER R_EVENT_EPOLL
+    #elif ME_BSD_LIKE
         #define ME_EVENT_NOTIFIER R_EVENT_EPOLL
     #else
         #define ME_EVENT_NOTIFIER R_EVENT_SELECT
@@ -5251,10 +5605,12 @@ PUBLIC void dump(cchar *msg, uchar *block, size_t len);
     Order of values matters as RList uses R_DYNAMIC_VALUE and it must be 0x1 to fit in one bit flags.
  */
 #define R_DYNAMIC_VALUE  0x1         /**< Dynamic (allocated) value provided, hash/list will free */
-#define R_STATIC_VALUE   0x2         /**< Static value provided, no need to clone or free */
+#define R_STATIC_VALUE   0x2         /**< Static value provided, no need to clone or free.
+                                          WARNING: the value must be persistent for the lifetime of the hash/list.*/
 #define R_TEMPORAL_VALUE 0x4         /**< Temporal value provided, hash/list will clone and free */
 #define R_DYNAMIC_NAME   0x8         /**< Dynamic name provided, hash will free */
-#define R_STATIC_NAME    0x10        /**< Static name provided no need to clone or free */
+#define R_STATIC_NAME    0x10        /**< Static name provided no need to clone or free.
+                                          WARNING: the name must be persistent for the lifetime of the hash/list. */
 #define R_TEMPORAL_NAME  0x20        /**< Temporal name provided, hash will clone and free */
 #define R_HASH_CASELESS  0x40        /**< Ignore case in comparisons */
 #define R_NAME_MASK      0x38
@@ -6435,7 +6791,7 @@ PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len);
 /*
     The threading APIs are THREAD SAFE
  */
-#if ME_UNIX_LIKE || PTHREADS
+#if PTHREADS
 typedef pthread_t RThread;
 #elif ME_64
 typedef int64 RThread;
@@ -6456,7 +6812,7 @@ typedef struct RLock {
     CRITICAL_SECTION cs;                /**< Internal mutex critical section */
 #elif VXWORKS
     SEM_ID cs;
-#elif ME_UNIX_LIKE || PTHREADS
+#elif PTHREADS
     pthread_mutex_t cs;
 #else
         #warning "Unsupported OS in RLock definition in r.h"
@@ -6529,7 +6885,7 @@ PUBLIC void rMemoryBarrier(void);
 /*
     Lock macros
  */
-    #if ME_UNIX_LIKE || PTHREADS
+    #if PTHREADS
         #define rLock(lock)   pthread_mutex_lock(&((lock)->cs))
         #define rUnlock(lock) pthread_mutex_unlock(&((lock)->cs))
     #elif ME_WIN_LIKE
