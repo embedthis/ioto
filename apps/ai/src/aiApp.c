@@ -1,7 +1,5 @@
 /*
     ai.c -- Demonstration of AI OpenAI APIs
-
-    This file is included by app.c 
  */
 /********************************** Includes **********************************/
 
@@ -13,7 +11,6 @@ static void aiChatCompletionAction(Web *web);
 static void aiResponsesAction(Web *web);
 static void aiPatientAction(Web *web);
 static void aiStreamAction(Web *web);
-static void aiChatRealTimeAction(Web *web);
 static char *runAgentWorkflow(cchar *input, OpenAIAgent agent, void *arg);
 
 // #define EXAMPLES 1
@@ -35,7 +32,6 @@ int ioStart(void)
         webAddAction(ioto->webHost, "/ai/responses", aiResponsesAction, NULL);
         webAddAction(ioto->webHost, "/ai/stream", aiStreamAction, NULL);
         webAddAction(ioto->webHost, "/ai/completion", aiChatCompletionAction, NULL);
-        webAddAction(ioto->webHost, "/ai/realtime", aiChatRealTimeAction, NULL);
         webAddAction(ioto->webHost, "/ai/patient", aiPatientAction, NULL);
         rInfo("ai", "AI started\n");
 
@@ -98,7 +94,7 @@ static char *getTemp(void)
     static cchar *temps[] = { "36", "37", "38", "39", "40", "41", "42" };
     static int   index = 0;
 
-    if (index >= sizeof(temps) / sizeof(temps[0])) {
+    if (index >= (int) (sizeof(temps) / sizeof(temps[0]))) {
         index = 0;
     }
     return sclone(temps[index++]);
@@ -118,6 +114,10 @@ static char *callEmergency(void)
  */
 static char *agentCallback(cchar *name, Json *request, Json *response, void *arg)
 {
+    (void) request;
+    (void) response;
+    (void) arg;
+
     if (smatch(name, "getTemp")) {
         return getTemp();
     } else if (smatch(name, "callEmergency")) {
@@ -138,7 +138,7 @@ static void aiPatientAction(Web *web)
     if ((output = runAgentWorkflow(input, agentCallback, 0)) == NULL) {
         webError(web, 500, "Cannot issue request to OpenAI");
     } else {
-        webWrite(web, output, -1);
+        webWrite(web, output, slen(output));
     }
     rFree(output);
     webFinalize(web);
@@ -154,7 +154,7 @@ static char *runAgentWorkflow(cchar *input, OpenAIAgent agent, void *arg)
     Json *request, *response;
     char *text;
 
-    request = jsonAlloc(0);
+    request = jsonAlloc();
     jsonSetString(request, 0, "input", input);
     jsonSetString(request, 0, "model", ioGetConfig("ai.model", "gpt-4o-mini"));
 
@@ -194,6 +194,7 @@ static void aiStreamCallback(Url *up, ssize id, cchar *event, cchar *data, void 
 {
     Web *web = arg;
 
+    (void) up;
     webWriteFmt(web, "id: %ld\nevent: %s\ndata: %s\n", id, event, data);
 }
 
@@ -206,68 +207,6 @@ static void aiStreamAction(Web *web)
         webError(web, 500, "Cannot connect to OpenAI");
         return;
     }
-    urlWait(up);
-    urlFree(up);
-    webFinalize(web);
-}
-
-/*
-    Callback for the OpenAI Real Time API.
-    This is called when a message is received from OpenAI.
- */
-static void realTimeCallback(WebSocket *ws, int event, cchar *message, ssize len, Web *web)
-{
-    if (event == WS_EVENT_MESSAGE) {
-        webSocketSend(web->webSocket, "%s", message);
-
-    } else if (event == WS_EVENT_CLOSE) {
-        rResumeFiber(ws->fiber, 0);
-
-    } else if (event == WS_EVENT_ERROR) {
-        rInfo("openai", "WebSocket error: %s", ws->errorMessage);
-        rResumeFiber(ws->fiber, 0);
-    }
-}
-
-/*
-    Callback for the browser. This is called when a message is received from the browser.
- */
-static void browserCallback(WebSocket *ws, int event, cchar *message, ssize len, Url *up)
-{
-    if (event == WS_EVENT_MESSAGE) {
-        webSocketSend(up->webSocket, "%s", message);
-
-    } else if (event == WS_EVENT_CLOSE) {
-        rResumeFiber(ws->fiber, 0);
-
-    } else if (event == WS_EVENT_ERROR) {
-        rInfo("openai", "WebSocket error: %s", ws->errorMessage);
-        rResumeFiber(ws->fiber, 0);
-    }
-}
-
-static void aiChatRealTimeAction(Web *web)
-{
-    Url *up;
-
-    if (!web->upgrade) {
-        webError(web, 400, "Connection not upgraded to WebSocket");
-        return;
-    }
-    if ((up = openaiRealTimeConnect(NULL)) == NULL) {
-        webError(web, 400, "Cannot connect to OpenAI");
-        return;
-    }
-    /*
-        Create a proxy connection between the browser and the OpenAI server using WebSockets.
-        We cross link the two WebSocket objects so that we can send messages back and forth.
-     */
-    urlWebSocketAsync(up, (WebSocketProc) realTimeCallback, web);
-    webAsync(web, (WebSocketProc) browserCallback, up);
-
-    //  Wait till either browser or OpenAI closes the connection
-    rYieldFiber(0);
-
     urlFree(up);
     webFinalize(web);
 }

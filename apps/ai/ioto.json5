@@ -1,11 +1,12 @@
 {
     version: '1.0.0',
     profile: 'dev',
-    app: 'blank',
+    app: 'ai',
     conditional: {
         profile: {
             dev: {
                 directories: {
+                    certs: '../../certs',
                     log: '.',
                     state: 'state',
                 },
@@ -23,6 +24,9 @@
                     log: '/var/log',
                     state: '/var/lib/ioto',
                 },
+                log: {
+                    path: 'ioto.log'
+                },
                 optimize: 'release',
             },
         },
@@ -35,8 +39,16 @@
         maxSyncSize: '10k',
         service: '1hr',
     },
+    ai: {
+        enable: true,
+        provider: 'openai',
+        model: 'gpt-4o',
+        endpoint: 'https://api.openai.com/v1',
+        key: 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+    },
     limits: {
         reprovision: 5,
+        _fibers: 10,
         _fiberStack: '64k'
     },
     log: {
@@ -57,18 +69,18 @@
         database: true,
         keys: false,
         logs: false,
-        mqtt: true,
-        provision: true,
+        mqtt: false,
+        provision: false,
         register: true,
         serialize: 'auto',
         shadow: false,
-        sync: true,
-        update: true,
+        sync: false,
+        update: false,
         url: true,
         web: true,
     },
     scripts: {
-        update: 'scripts/update',
+        update: 'bin/updater',
     },
     tls: {
         authority: '@certs/roots.crt',
@@ -76,7 +88,7 @@
         key: '@certs/test.key',
     },
     update: {
-        enable: true,
+        enable: false,
         schedule: '* * * * *',
         period: '24 hr',
         jitter: 0,

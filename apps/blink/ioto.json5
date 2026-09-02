@@ -1,28 +1,13 @@
 {
-    version: '1.0.1',
+    version: '1.0.0',
+    app: "blink",
     profile: 'dev',
-    app: 'http',
     conditional: {
         profile: {
             dev: {
-                directories: {
-                    log: '.',
-                    state: 'state',
-                },
                 optimize: 'debug',
-                log: {
-                    path: 'stdout',
-                    format: '%S: %M',
-                    types: 'error,info',
-                    sources: 'all,!mbedtls',
-                    show: '',
-                },
             },
             prod: {
-                directories: {
-                    log: '/var/log',
-                    state: '/var/lib/ioto',
-                },
                 optimize: 'release',
             },
         },
@@ -30,36 +15,61 @@
     database: {
         path: '@db/device.db',
         schema: '@config/schema.json5',
-        maxJournalSize: '50k',
         maxJournalAge: '15secs',
+        maxJournalSize: '50k',
         maxSyncSize: '10k',
         service: '1hr',
     },
+    demo: {
+        count: 60,
+        delay: '2sec',
+        enable: true,
+    },
+    directories: {
+        certs: '../../certs',
+        log: '/state',
+        state: '/state',
+    },
+    limits: {
+        reprovision: 5,
+    },
     log: {
-        path: 'stdout',
-        format: '%D %H %A[%P] (%T, %S): %M',
+        path: 'stdout:all:all,!mbedtls',
+        format: '%S: %M',
         types: 'error,info',
         sources: 'all,!mbedtls',
         show: '',
     },
+    mqtt: {
+        authority: '@certs/aws.crt',
+        timeout: 0,
+    },
     services: {
         ai: false,
-        database: true,
+        database: false,
         keys: false,
         logs: false,
         mqtt: false,
         provision: false,
-        register: true,
-        serialize: 'auto',
+        register: false,
+        serialize: false,
         shadow: false,
         sync: false,
         update: false,
-        url: true,
-        web: true,
+        url: false,
+        web: false,
     },
     tls: {
         authority: '@certs/roots.crt',
         certificate: '@certs/test.crt',
         key: '@certs/test.key',
     },
+    update: {
+        enable: false,
+        schedule: '* * * * *',
+        period: '24 hr',
+        jitter: 0,
+        throttle: 0,
+        apply: '* * * * *',
+    }
 }

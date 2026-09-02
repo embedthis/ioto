@@ -10,10 +10,9 @@
             owner: ['admin'],
             super: ['owner']
         },
-        login: '/api/public/login',
-        logout: '/api/public/logout',
     },
-    documents: '@site',
+    documents: 'site',
+    fiberBlocks: true,  
     headers: {},
     index: 'index.html',
     limits: {
@@ -25,13 +24,11 @@
         maxFrame: '100K',
         maxMessage: '100K',
     },
-    listen: ['http://:80', 'https://:443'],
-    redirect: [{status: 302, from: 'http://:80', to: 'https://:443'}],
+    listen: ['http://127.0.0.1:9090', 'https://127.0.0.1:4443'],
+    redirect: [{status: 302, from: 'http://:9090', to: 'https://:4443'}],
     routes: [
-        {match: '/api/user/', handler: 'action', role: 'user', validate: true},
-        {match: '/api/public/', handler: 'action', validate: true},
-        {match: '/admin/', handler: 'file', role: 'admin'},
-        {match: '/user/', handler: 'file', role: 'user'},
+        {match: '/api/public/', handler: 'action'},
+        {match: '/api/', handler: 'action', role: 'user'},
         {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
     ],
     signatures: {

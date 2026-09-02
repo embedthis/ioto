@@ -1,0 +1,52 @@
+/*
+    web.json5 - Web server configuration file
+
+    For a full list of properties: https://www.embedthis.com/agent/doc/web/properties/
+
+    SECURE DEFAULTS - READ BEFORE DEPLOYING
+    ---------------------------------------
+    This template binds the loopback interface on an unprivileged port, so out of the box the
+    server is reachable only from the device itself and does not need root to run. That is
+    deliberate: a template that is reachable from the network the moment it is built is a template
+    that ships insecure by accident.
+
+    Before the device leaves a trusted network you must:
+
+      1. Change "listen" to the interface you intend to serve, and use an https endpoint with a
+         real certificate. The certificates under state/certs are self-signed development
+         material and must never reach production.
+      2. Give every route an explicit "role" unless it is genuinely public. An unrecognised key is
+         ignored with a warning - a mistyped "role" leaves the route unauthenticated.
+      3. Review the limits and timeouts below against your device's real capacity.
+*/
+{
+    documents: 'site',
+    listen: ['http://127.0.0.1:8080'],
+    routes: [
+        {match: '/ai/', handler: 'action', methods: ['GET', 'POST']},
+        {match: '', handler: 'file', methods: ['GET']},
+    ],
+    headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Referrer-Policy': 'no-referrer',
+        'Content-Security-Policy': "default-src 'self'",
+    },
+    limits: {
+        connections: '100',
+        sessions: '100',
+    },
+    timeouts: {
+        parse: '5 secs',
+        inactivity: '60 secs',
+        request: '120 secs',
+    },
+    signatures: {
+        enable: false,
+    },
+    webSockets: {
+        ping: 'never',
+        protocol: 'chat',
+        validateUTF: false,
+    },
+}
