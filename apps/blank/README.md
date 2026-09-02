@@ -6,20 +6,23 @@ When Ioto builds, it must resolve application start/stop hook functions. The "bl
 
 ## Building
 
-To select the "blank" app and build Ioto, type:
+To build Ioto with all apps including the blank app, type:
 
-    make APP=blank
+    make
+
+To build just the blank app:
+
+    make blank
 
 ## Directories
 
 | Directory | Purpose                                               |
 | --------- | ------------------------------------------------------|
-| config    | Configuration files                                   |
 | src       | C source code to link with Ioto                       |
 
 ## Key Files
 
 | File                | Purpose                                     |
 | ------------------- | --------------------------------------------|
-| config/ioto.json5   | Primary Ioto configuration file             |
+| ioto.json5          | Primary Ioto configuration file             |
 | src/main.c          | Code to run when Ioto starts/stops          |

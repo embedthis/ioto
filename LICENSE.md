@@ -6,27 +6,17 @@ This software is distributed under three licenses:
 * [EmbedThis Commercial License](https://www.embedthis.com/about/terms/)
 * [EmbedThis Evaluation License](./EVAL.md)
 
-The GPL License does not generally permit incorporating this software into
-non-open source programs. Commercial licenses for this software and support
-services are available from EmbedThis Software.
+The GPL License does not generally permit incorporating this software into non-open source programs. Commercial licenses for this software and support services are available from EmbedThis Software.
 
-The commercial license enables you to embed the software and distribute and
-sell your products containing the software. With a paid-up subscription you can
-incorporate new releases, updates and patches for the software into your
-products. If you do not have an active subscription, you cannot apply
-commerical patches from the software to your products.
+The commercial license enables you to embed the software and distribute and sell your products containing the software. With a paid-up subscription you can incorporate new releases, updates and patches for the software into your products. If you do not have an active subscription, you cannot apply commerical patches from the software to your products.
 
 The eval license is for shorter-term commercial evaluations.
 
-The EmbedThis Ioto service is provided subject to a commercial license and
-subscription as described in the [Terms of
-Use](https://www.embedthis.com/about/terms.html).
+The EmbedThis Ioto service is provided subject to a commercial license and subscription as described in the [Terms of Use](https://www.embedthis.com/about/terms.html).
 
-Please read the following document for more information or contact
-[sales@embedthis.com](mailto:sales@embdthis.com) if you have questions.
+Please read the following document for more information or contact [sales@embedthis.com](mailto:sales@embdthis.com) if you have questions.
 
-- [EmbedThis License
-Plans](https://www.embedthis.com/doc/builder/plans/overview/)
+- [EmbedThis License Plans](https://www.embedthis.com/doc/builder/plans/overview/)
 
 ## Third Party Licenses
 
@@ -37,8 +27,7 @@ The Software contains third party software under the agreements that follow.
 Portions used in rb.c
 
 - Portion copyright (c) 2019 xieqing. https://github.com/xieqing
-- License on GitHub: "May be freely redistributed, but copyright notice must be
-retained"
+- License on GitHub: "May be freely redistributed, but copyright notice must be retained"
 
 ## MQTT portions
 

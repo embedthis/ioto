@@ -30,11 +30,11 @@ To build the Ioto agent with AI extensions, first extract the source files from 
 
     $ tar xvfz ioto-eval-src.tgz
 
-Then build Ioto with the AI app, by typing:
+Then build Ioto by typing:
 
-    $ make APP=ai
+    $ make
 
-This will build Ioto, the AI app and will copy the AI config files to the top-level `state/config` directory.
+This will build the Ioto library and all apps including the AI app. Each app binary is placed in `build/bin/`.
 
 The `state/site` directory will contain some test web pages.
 
@@ -84,13 +84,12 @@ The ioStart routine checks if the `ai.enable` property is true in the `ioto.json
 
 | Directory | Purpose                      |
 | --------- | -----------------------------|
-| config    | Configuration files          |
 | src       | AI App C source code         |
 
 ## Key Files
 
 | File                      | Purpose                                   |
 | ------------------------- | ------------------------------------------|
-| config/ioto.json5         | Primary Ioto configuration file           |
+| ioto.json5                | Primary Ioto configuration file           |
 | schema.json5              | Complete database schema file             |
 | src/*.c                   | Device-side app service code              |
