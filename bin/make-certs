@@ -15,8 +15,6 @@ if [ ! -f certs/openssl.conf ] ; then
     echo "Must invoke from the top directory"
     exit 2
 fi
-mkdir -p state/certs
-
 if [ ! -f certs/test.crt ] ; then
 (
 	cd certs >/dev/null
@@ -50,7 +48,7 @@ if [ ! -f certs/test.crt ] ; then
 	echo Make test server certificate for web server
 	openssl ecparam -genkey -name prime256v1 -out ec.key
 	openssl req -new -key ec.key -out ec.csr <ec.ans
-	openssl req -x509 -days 365 -key ec.key -in ec.csr -out ec.crt
+	openssl req -x509 -days 3650 -key ec.key -in ec.csr -out ec.crt
 
 	echo ; echo
 	echo Get root certificates
