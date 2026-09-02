@@ -145,6 +145,9 @@ PUBLIC int main(int argc, char **argv, char **envp)
             }
             home = argv[++argind];
 
+        } else if (smatch(argp, "--listen")) {
+            ioto->cmdListen = argv[++argind];
+
         } else if (smatch(argp, "--nosave")) {
             ioto->nosave = 1;
 

@@ -42,10 +42,34 @@
 
 /********************************** Includes **********************************/
 
+#ifndef ME_NAME
+    #define ME_NAME    "json"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE   ME_NAME
+#endif
+
+/*
+    Disable TLS for the JSON library if built for stand-alone json command
+ */
+#ifndef ME_COM_SSL
+    #define ME_COM_SSL     0
+#endif
+#ifndef ME_COM_OPENSSL
+    #define ME_COM_OPENSSL 0
+#endif
+#ifndef ME_COM_MBEDTLS
+    #define ME_COM_MBEDTLS 0
+#endif
 
 #include "r.h"
 
 /*********************************** Defines **********************************/
+
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON 1
+#endif
+
 #if ME_COM_JSON
 
 #ifdef __cplusplus

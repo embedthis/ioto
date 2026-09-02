@@ -18,13 +18,10 @@ static void dbService(void);
 
 PUBLIC int ioInitDb(void)
 {
-    RList  *devices;
-    DbItem *device;
     Ticks  maxAge, service;
     size_t maxSize;
-    cchar  *id;
     char   *path, *schema;
-    int    flags, index;
+    int    flags;
 
     schema = rGetFilePath(jsonGet(ioto->config, 0, "database.schema", "@config/schema.json5"));
     path = rGetFilePath(jsonGet(ioto->config, 0, "database.path", "@db/device.db"));
@@ -44,43 +41,11 @@ PUBLIC int ioInitDb(void)
     maxSize = (size_t) svalue(jsonGet(ioto->config, 0, "database.maxJournalSize", "1mb"));
     dbSetJournalParams(ioto->db, maxAge, maxSize);
 
-    dbAddContext(ioto->db, "deviceId", ioto->id);
 #if SERVICES_CLOUD
-    if (ioto->account) {
-        dbAddContext(ioto->db, "accountId", ioto->account);
-    }
-#endif
-#if SERVICES_SYNC
-    if (dbGet(ioto->db, "SyncState", NULL, DB_PARAMS()) == 0) {
-        dbCreate(ioto->db, "SyncState", DB_PROPS("lastSync", "0", "lastUpdate", "0"), DB_PARAMS());
-    }
-    if (ioto->syncService && (ioInitSync() < 0)) {
+    if (ioInitCloudDb() < 0) {
         return R_ERR_CANT_READ;
     }
 #endif
-    /*
-        When testing, can have multiple devices in the database. Remove all but the current device.
-     */
-    devices = dbFind(ioto->db, "Device", NULL, DB_PARAMS());
-    for (ITERATE_ITEMS(devices, device, index)) {
-        id = dbField(device, "id");
-        if (!smatch(id, ioto->id)) {
-            dbRemove(ioto->db, "Device", DB_PROPS("id", id), DB_PARAMS());
-        }
-    }
-    rFreeList(devices);
-
-    /*
-        Update Device entry. Delay if not yet provisioned.
-     */
-#if SERVICES_CLOUD
-    if (!ioto->account) {
-        rWatch("device:provisioned", (RWatchProc) ioUpdateDevice, 0);
-    } else
-#endif
-    if (!dbGet(ioto->db, "Device", DB_PROPS("id", ioto->id), DB_PARAMS())) {
-        ioUpdateDevice();
-    }
     if (service) {
         rStartEvent((RFiberProc) dbService, 0, service);
     }
@@ -123,17 +88,14 @@ PUBLIC void ioUpdateDevice(void)
 {
     Json *json;
 
-    assert(ioto->id);
-
     json = jsonAlloc();
-    jsonSet(json, 0, "id", ioto->id, JSON_STRING);
+
 #if SERVICES_CLOUD
-    if (!ioto->account) {
-        //  Update later when we have an account ID
+    if (!ioSetCloudDevice(json)) {
         return;
     }
-    jsonSet(json, 0, "accountId", ioto->account, JSON_STRING);
 #endif
+
     jsonSet(json, 0, "description", jsonGet(ioto->config, 0, "device.description", 0), JSON_STRING);
     jsonSet(json, 0, "model", jsonGet(ioto->config, 0, "device.model", 0), JSON_STRING);
     jsonSet(json, 0, "name", jsonGet(ioto->config, 0, "device.name", 0), JSON_STRING);

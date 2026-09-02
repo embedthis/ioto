@@ -71,10 +71,7 @@ void uctx_term(void)
 
 
 
-
-
 #if UCTX_ARCH == UCTX_ARM
-
 #ifndef __ARCH_ARM_DEFS_H
 
 #define REG_SZ		(4)
@@ -108,7 +105,6 @@ void uctx_term(void)
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -155,7 +151,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -173,13 +168,12 @@ void uctx_trampoline(void)
 	uctx_setcontext(uc_link);
 }
 
+
 #endif // ARM
 
 
 
-
 #if UCTX_ARCH == UCTX_ARM64
-
 #ifndef __ARCH_AARCH64_DEFS_H
 #define __ARCH_AARCH64_DEFS_H
 
@@ -224,7 +218,6 @@ void uctx_trampoline(void)
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -273,10 +266,10 @@ void uctx_freecontext(uctx_t *up) { }
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
 extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("uctx_makecontext")));
 #endif
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -293,13 +286,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // ARM64
 
 
 
-
 #if UCTX_ARCH == UCTX_FREERTOS
-
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
 
@@ -546,13 +538,12 @@ int uctx_setcontext(uctx_t *ucp)
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
+
 #endif // FREERTOS
 
 
 
-
 #if UCTX_ARCH == UCTX_LOONGARCH64
-
 #ifndef __ARCH_LOONGARCH64_DEFS_H
 #define __ARCH_LOONGARCH64_DEFS_H
 
@@ -636,13 +627,12 @@ int uctx_setcontext(uctx_t *ucp)
 
 #endif
 
+
 #endif // LOONGARCH64
 
 
 
-
 #if UCTX_ARCH == UCTX_M68K
-
 #ifndef __ARCH_M68K_DEFS_H
 #define __ARCH_M68K_DEFS_H
 
@@ -695,7 +685,6 @@ int uctx_setcontext(uctx_t *ucp)
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -743,7 +732,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -760,13 +748,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // M68K
 
 
 
-
 #if UCTX_ARCH == UCTX_MIPS
-
 #ifndef __ARCH_MIPS64_DEFS_H
 #define __ARCH_MIPS64_DEFS_H
 
@@ -866,13 +853,12 @@ void uctx_trampoline(void)
 #include "uctx.h"
 
 void uctx_freecontext(uctx_t *up) { }
+
 #endif // MIPS
 
 
 
-
 #if UCTX_ARCH == UCTX_MIPS64
-
 #ifndef __ARCH_MIPS64_DEFS_H
 #define __ARCH_MIPS64_DEFS_H
 
@@ -970,13 +956,12 @@ void uctx_freecontext(uctx_t *up) { }
 #include "uctx.h"
 
 void uctx_freecontext(uctx_t *up) { }
+
 #endif // MIPS64
 
 
 
-
 #if UCTX_ARCH == UCTX_OR1K
-
 #ifndef __ARCH_OR1K_DEFS_H
 #define __ARCH_OR1K_DEFS_H
 
@@ -1017,7 +1002,6 @@ void uctx_freecontext(uctx_t *up) { }
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -1062,7 +1046,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -1079,13 +1062,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // OR1K
 
 
 
-
 #if UCTX_ARCH == UCTX_PPC
-
 #ifndef __ARCH_PPC_DEFS_H
 #define __ARCH_PPC_DEFS_H
 
@@ -1166,7 +1148,6 @@ void uctx_trampoline(void)
 
 #include <stdarg.h>
 #include <stdint.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -1235,13 +1216,13 @@ int __retfromsyscall(long retval)
 	return 0;
 }
 
+
+
 #endif // PPC
 
 
 
-
 #if UCTX_ARCH == UCTX_PPC64
-
 #ifndef __ARCH_PPC_DEFS_H
 #define __ARCH_PPC_DEFS_H
 
@@ -1325,7 +1306,6 @@ int __retfromsyscall(long retval)
 
 #include <stdarg.h>
 #include <stdint.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -1395,13 +1375,13 @@ int __retfromsyscall(long retval)
 	return 0;
 }
 
+
+
 #endif // PPC64
 
 
 
-
 #if UCTX_ARCH == UCTX_PTHREADS
-
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
 
@@ -1539,13 +1519,12 @@ void uctx_freecontext(uctx_t *ucp)
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
+
 #endif // PTHREADS
 
 
 
-
 #if UCTX_ARCH == UCTX_RISCV
-
 #ifndef __ARCH_RISCV_DEFS_H
 #define __ARCH_RISCV_DEFS_H
 
@@ -1619,7 +1598,6 @@ void uctx_freecontext(uctx_t *ucp)
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 _Static_assert(offsetof(uctx_t, uc_mcontext.__gregs[0]) == MCONTEXT_GREGS, "MCONTEXT_GREGS is invalid");
@@ -1672,7 +1650,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -1690,13 +1667,12 @@ void uctx_trampoline(void)
 	uctx_setcontext(uc_link);
 }
 
+
 #endif // RISCV
 
 
 
-
 #if UCTX_ARCH == UCTX_RISCV64
-
 #ifndef __ARCH_RISCV64_DEFS_H
 #define __ARCH_RISCV64_DEFS_H
 
@@ -1770,7 +1746,6 @@ void uctx_trampoline(void)
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -1819,7 +1794,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -1836,13 +1810,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // RISCV64
 
 
 
-
 #if UCTX_ARCH == UCTX_S390X
-
 #ifndef __ARCH_S390X_DEFS_H
 #define __ARCH_S390X_DEFS_H
 
@@ -1875,7 +1848,6 @@ void uctx_trampoline(void)
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -1926,13 +1898,12 @@ extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uc
 extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("uctx_makecontext")));
 #endif
 
+
 #endif // S390X
 
 
 
-
 #if UCTX_ARCH == UCTX_SH
-
 #ifndef __ARCH_SH4_DEFS_H
 #define __ARCH_SH4_DEFS_H
 
@@ -1971,7 +1942,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -2017,7 +1987,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -2034,13 +2003,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // SH
 
 
 
-
 #if UCTX_ARCH == UCTX_WINDOWS
-
 /*
     windows.c - Windows Fiber-based context switching implementation
 
@@ -2167,13 +2135,12 @@ PUBLIC void uctx_freecontext(uctx_t *ucp)
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
 */
+
 #endif // WINDOWS
 
 
 
-
 #if UCTX_ARCH == UCTX_X64
-
 #ifndef __ARCH_X86_64_DEFS_H
 #define __ARCH_X86_64_DEFS_H
 
@@ -2297,7 +2264,6 @@ PUBLIC void uctx_freecontext(uctx_t *ucp)
 #include <string.h>
 #include <stdint.h>
 
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -2366,7 +2332,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -2383,13 +2348,12 @@ void uctx_trampoline(void)
 	}
 	uctx_setcontext(uc_link);
 }
+
 #endif // X64
 
 
 
-
 #if UCTX_ARCH == UCTX_X86
-
 #ifndef __ARCH_X86_DEFS_H
 #define __ARCH_X86_DEFS_H
 
@@ -2473,7 +2437,6 @@ void uctx_trampoline(void)
 #include <stdarg.h>
 #include <string.h>
 #include <stdint.h>
-
 #include "uctx.h"
 
 extern void uctx_trampoline(void);
@@ -2519,7 +2482,6 @@ extern __typeof(uctx_makecontext) __makecontext __attribute__((weak, __alias__("
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "uctx.h"
 
 __attribute__ ((visibility ("hidden")))
@@ -2537,13 +2499,13 @@ void uctx_trampoline(void)
 	uctx_setcontext(uc_link);
 }
 
+
+
 #endif // X86
 
 
 
-
 #if UCTX_ARCH == UCTX_XTENSA
-
 #ifndef PROC_NAME
 # ifdef __MACH__
 #  define PROC_NAME(__proc) _ ## __proc
@@ -2615,6 +2577,6 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 
 void uctx_freecontext(uctx_t *ucp) {}
 
-#endif // XTENSA
 
+#endif // XTENSA
 

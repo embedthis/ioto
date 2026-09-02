@@ -13,7 +13,26 @@
 
 /********************************** Includes **********************************/
 
-#include "me.h"
+#ifndef ME_NAME
+    #define ME_NAME    "websock"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE   "Embedthis WebSockets"
+#endif
+
+/*
+    Components
+ */
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT   1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON    1
+#endif
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1
+#endif
+
 #include "r.h"
 #include "crypt.h"
 #include "json.h"

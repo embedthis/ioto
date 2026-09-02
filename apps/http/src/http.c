@@ -1,10 +1,7 @@
 /*
     http.c -- App for the http app
-
-    This file is included by app.c 
  */
 #include "http.h"
-#include "httpUser.c"
 
 /************************************* Code ***********************************/
 /*

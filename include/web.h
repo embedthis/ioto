@@ -24,9 +24,31 @@
 #ifndef _h_WEB
 #define _h_WEB 1
 
-/********************************** Includes **********************************/
+/*
+    ME_COM defaults -- must be before includes so dependent headers see them.
+    r.h defines: ME_COM_R, ME_COM_OSDEP, ME_COM_UCTX, ME_COM_SSL, ME_COM_OPENSSL, ME_COM_MBEDTLS
+    crypt.h defines: ME_COM_CRYPT
+ */
+#ifndef ME_NAME
+    #define ME_NAME         "web"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE        ME_NAME
+#endif
+#ifndef ME_COM_WEB
+    #define ME_COM_WEB      1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON     1
+#endif
+#ifndef ME_COM_URL
+    #define ME_COM_URL      1
+#endif
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK  1
+#endif
 
-#include "me.h"
+/********************************** Includes **********************************/
 
 #include "r.h"
 #include "json.h"
@@ -68,9 +90,6 @@ extern "C" {
 #endif
 #ifndef ME_WEB_UPLOAD
     #define ME_WEB_UPLOAD           1               /**< Enable file upload functionality */
-#endif
-#ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK          1               /**< Enable WebSocket protocol support */
 #endif
 #ifndef ME_HTTP_SENDFILE
     #define ME_HTTP_SENDFILE        ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
@@ -374,13 +393,14 @@ typedef struct WebHost {
     cchar *sameSite;            /**< SameSite cookie attribute ("strict", "lax", or "none") */
     cchar *sessionCookie;       /**< Cookie name used for session state storage */
     char *docs;                 /**< Document root directory path for serving static files */
+    char *canonicalDocs;        /**< Canonical (realpath) document root used for containment checks */
     char *ip;                   /**< Default IP address for redirects when host IP is indeterminate */
 
     //  Timeout configuration (in seconds)
-    int inactivityTimeout;      /**< Maximum seconds of inactivity before closing connection */
-    int parseTimeout;           /**< Maximum seconds allowed for parsing HTTP request headers */
-    int requestTimeout;         /**< Maximum seconds for complete request processing */
-    int sessionTimeout;         /**< Maximum seconds of inactivity before session expires */
+    Ticks inactivityTimeout;    /**< Maximum inactivity before closing connection (ticks) */
+    Ticks parseTimeout;         /**< Maximum time allowed for parsing HTTP request headers (ticks) */
+    Ticks requestTimeout;       /**< Maximum time for complete request processing (ticks) */
+    Ticks sessionTimeout;       /**< Maximum inactivity before a session expires (ticks) */
     int connections;            /**< Current count of active client connections */
     int64 connSequence;         /**< Connection sequence number for per-host connection tracking */
 
@@ -736,7 +756,7 @@ typedef struct Web {
     @param ... Arguments for the format string
     @stability Evolving
  */
-PUBLIC void webAddHeader(Web *web, cchar *key, cchar *fmt, ...);
+PUBLIC void webAddHeader(Web *web, cchar *key, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Add a static string header to the request response
@@ -812,7 +832,7 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit);
     @return Zero if successful, negative on failure
     @stability Evolving
  */
-PUBLIC int webError(Web *web, int status, cchar *fmt, ...);
+PUBLIC int webError(Web *web, int status, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Extend the request timeout
@@ -929,7 +949,7 @@ PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue);
     @return Zero if successful
     @stability Evolving
  */
-PUBLIC int webNetError(Web *web, cchar *msg, ...);
+PUBLIC int webNetError(Web *web, cchar *msg, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Parse a cookie header string and return a cookie value
@@ -1150,11 +1170,12 @@ PUBLIC bool webValidateSignature(Web *web, RBuf *buf, const Json *cjson, int jid
     @description Write data to the HTTP response body. This function automatically writes
         response headers if they haven't been sent yet. The function will yield the current
         fiber if the socket buffer is full, allowing other fibers to continue execution.
-        Passing NULL buffer or zero size finalizes the response.
+        This function does NOT call webFinalize(). You must call webFinalize() after all
+        response content has been written to complete the request.
     @pre Must only be called from a fiber
     @param web Web request object
-    @param buf Buffer containing data to write, or NULL to finalize
-    @param bufsize Number of bytes to write, or 0 to finalize
+    @param buf Buffer containing data to write
+    @param bufsize Number of bytes to write
     @return Number of bytes written, or negative on error
     @stability Evolving
  */
@@ -1165,6 +1186,8 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize);
     @description Write a formatted string to the HTTP response body using printf-style
         formatting. This is a convenience function that formats the string and calls webWrite().
         The function will yield the current fiber if necessary.
+        This function does NOT call webFinalize(). You must call webFinalize() after all
+        response content has been written to complete the request.
     @pre Must only be called from a fiber
     @param web Web request object
     @param fmt Printf-style format string
@@ -1172,13 +1195,15 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize);
     @return Number of bytes written, or negative on error
     @stability Evolving
  */
-PUBLIC ssize webWriteFmt(Web *web, cchar *fmt, ...);
+PUBLIC ssize webWriteFmt(Web *web, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Write JSON object as response data
     @description Serialize a JSON object and write it to the HTTP response body.
         Automatically sets the Content-Type header to "application/json" if not already set.
         The function will yield the current fiber if necessary.
+        This function does NOT call webFinalize(). You must call webFinalize() after all
+        response content has been written to complete the request.
     @pre Must only be called from a fiber
     @param web Web request object
     @param json JSON object to serialize and send
@@ -1192,6 +1217,8 @@ PUBLIC ssize webWriteJson(Web *web, const Json *json);
     @description This will write the HTTP response headers. This writes the supplied headers and any required headers if
        not supplied.
         This routine will block the current fiber if necessary. Other fibers continue to run.
+        This function does NOT call webFinalize(). You must call webFinalize() after all
+        response content has been written to complete the request.
     @pre Must only be called from a fiber.
     @param web Web object
     @return The number of bytes written.
@@ -1233,10 +1260,14 @@ PUBLIC ssize webWriteResponseString(Web *web, int status, cchar *msg);
     @return The number of bytes written.
     @stability Evolving
  */
-PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...);
+PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Write an SSE event to the client
+    @description Write a Server-Sent Events (SSE) event to the client. This function does NOT
+        call webFinalize(). For SSE streams, you typically do not call webFinalize() until
+        the stream is complete. For regular responses, you must call webFinalize() after all
+        response content has been written to complete the request.
     @param web Web object
     @param id Event ID
     @param name Event name
@@ -1244,11 +1275,13 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...);
     @param ... Format arguments.
     @stability Evolving
  */
-PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...);
+PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Write response data from a JSON object and validate against the API signature
     This routine will block the current fiber if necessary. Other fibers continue to run.
+    This function does NOT call webFinalize(). You must call webFinalize() after all
+    response content has been written to complete the request.
     @pre Must only be called from a fiber.
     @param web Web object
     @param json JSON object
@@ -1260,6 +1293,9 @@ PUBLIC ssize webWriteValidatedJson(Web *web, const Json *json, cchar *sigKey);
 
 /**
     Write a buffer with a validated signature
+    @description Write response data from a buffer and validate against the API signature.
+        This function does NOT call webFinalize(). You must call webFinalize() after all
+        response content has been written to complete the request.
     @pre Must only be called from a fiber.
     @param web Web object
     @param buf Buffer of data to write.
@@ -1306,7 +1342,7 @@ PUBLIC int webValidateUrl(Web *web);
 
 typedef struct WebSession {
     char *id;                              /**< Session ID key */
-    int lifespan;                          /**< Session inactivity timeout (secs) */
+    Ticks lifespan;                        /**< Session inactivity timeout (ticks) */
     Ticks expires;                         /**< When the session expires */
     RHash *cache;                          /**< Cache of session variables */
 } WebSession;
@@ -1418,7 +1454,7 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
     @return The value set for the variable. Caller must not free.
     @stability Evolving
  */
-PUBLIC cchar *webSetSessionVar(Web *web, cchar *name, cchar *fmt, ...);
+PUBLIC cchar *webSetSessionVar(Web *web, cchar *name, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 //  Internal
 PUBLIC int webInitSessions(WebHost *host);

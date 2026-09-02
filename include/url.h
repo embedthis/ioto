@@ -31,9 +31,34 @@
 
 /********************************** Includes **********************************/
 
-#include "me.h"
+#ifndef ME_NAME
+    #define ME_NAME "url"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE ME_NAME
+#endif
+
 #include "r.h"
 #include "json.h"
+
+/*
+    Components
+ */
+#ifndef ME_COM_URL
+    #define ME_COM_URL     1
+#endif
+#ifndef ME_COM_WEB
+    #define ME_COM_WEB     1
+#endif
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON    1
+#endif
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT   1
+#endif
 
 #if ME_COM_WEBSOCK
 #include "websock.h"

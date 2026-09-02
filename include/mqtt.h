@@ -12,10 +12,31 @@
 #ifndef _h_MQTT
 #define _h_MQTT 1
 
+/********************************** Product ***********************************/
+
+#ifndef ME_NAME
+    #define ME_NAME              "mqtt"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE             ME_NAME
+#endif
+
 /********************************** Includes **********************************/
 
-#include "me.h"
 #include "r.h"
+
+/*
+    Components
+ */
+#ifndef ME_COM_MQTT
+    #define ME_COM_MQTT    1
+#endif
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT   1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON    1
+#endif
 
 /*********************************** Defines **********************************/
 #if ME_COM_MQTT

@@ -2,7 +2,6 @@
 
 
 #if UCTX_ARCH == UCTX_ARM
-
 #ifndef __ARCH_ARM_DEFS_H
 
 #define REG_SZ		(4)
@@ -30,7 +29,6 @@
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(getcontext, uctx_getcontext)
@@ -82,7 +80,6 @@ END(uctx_getcontext)
  */
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -126,7 +123,6 @@ END(uctx_setcontext)
  */
 
 
-
 ALIAS(swapcontext, uctx_swapcontext)
 ALIAS(__swapcontext, uctx_swapcontext)
 
@@ -167,13 +163,12 @@ FUNC(uctx_swapcontext)
 	ldmia	r14, {r14, pc}
 END(uctx_swapcontext)
 
+
 #endif // ARM
 
 
 
-
 #if UCTX_ARCH == UCTX_ARM64
-
 #ifndef __ARCH_AARCH64_DEFS_H
 #define __ARCH_AARCH64_DEFS_H
 
@@ -212,7 +207,6 @@ END(uctx_swapcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(getcontext, uctx_getcontext)
@@ -281,7 +275,6 @@ END(uctx_getcontext)
  */
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -333,7 +326,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -392,23 +384,21 @@ PROC_NAME(uctx_swapcontext):
 	ret
 END(uctx_swapcontext)
 
+
 #endif // ARM64
 
 
 
-
 #if UCTX_ARCH == UCTX_FREERTOS
-
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
+
 
 #endif // FREERTOS
 
 
 
-
 #if UCTX_ARCH == UCTX_LOONGARCH64
-
 #ifndef __ARCH_LOONGARCH64_DEFS_H
 #define __ARCH_LOONGARCH64_DEFS_H
 
@@ -507,7 +497,6 @@ END(uctx_swapcontext)
 #define LOCALSZ (1)
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 
 FUNC(uctx_getcontext)
@@ -553,7 +542,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 #define LOCALSZ (6)
@@ -666,7 +654,6 @@ END(uctx_makecontext)
 #define LOCALSZ (1)
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 
 FUNC(uctx_setcontext)
@@ -722,7 +709,6 @@ END(uctx_setcontext)
 #define LOCALSZ (4)
 
 
-
 FUNC(uctx_trampoline)
 
 	/* call setcontext */
@@ -754,7 +740,6 @@ END(uctx_trampoline)
  */
 
 #define	LOCALSZ	(4)
-
 
 
 #define A1_OFFSET (FRAMESZ - (1 * REG_SZ))
@@ -832,13 +817,12 @@ fail:
 	move	$a0, $zero
 END(uctx_swapcontext)
 
+
 #endif // LOONGARCH64
 
 
 
-
 #if UCTX_ARCH == UCTX_M68K
-
 #ifndef __ARCH_M68K_DEFS_H
 #define __ARCH_M68K_DEFS_H
 
@@ -887,7 +871,6 @@ END(uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -916,7 +899,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(setcontext, uctx_setcontext)
@@ -950,7 +932,6 @@ END(uctx_setcontext)
  */
 
 
-
 ALIAS(swapcontext, uctx_swapcontext)
 ALIAS(__swapcontext, uctx_swapcontext)
 
@@ -978,13 +959,12 @@ FUNC(uctx_swapcontext)
 	jmp		(%a1)					/* jump to *$a1 */
 END(uctx_swapcontext)
 
+
 #endif // M68K
 
 
 
-
 #if UCTX_ARCH == UCTX_MIPS
-
 #ifndef __ARCH_MIPS64_DEFS_H
 #define __ARCH_MIPS64_DEFS_H
 
@@ -1095,7 +1075,6 @@ END(uctx_swapcontext)
 LOCALSZ = 1
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -1141,7 +1120,6 @@ END(uctx_getcontext)
  */
 
 LOCALSZ = 2
-
 
 
 A3_OFF = FRAMESZ + (3 * REG_SZ)
@@ -1245,7 +1223,6 @@ END(uctx_makecontext)
 LOCALSZ = 1
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -1297,7 +1274,6 @@ END(uctx_setcontext)
 LOCALSZ = 1
 
 
-
 .hidden uctx_trampoline
 FUNC(uctx_trampoline)
 	move	$gp, $s1
@@ -1331,7 +1307,6 @@ END(uctx_trampoline)
  */
 
 LOCALSZ = 2
-
 
 
 A1_OFFSET = FRAMESZ - (1 * REG_SZ)
@@ -1401,13 +1376,12 @@ fail:
 	jalr	$t9
 END(uctx_swapcontext)
 
+
 #endif // MIPS
 
 
 
-
 #if UCTX_ARCH == UCTX_MIPS64
-
 #ifndef __ARCH_MIPS64_DEFS_H
 #define __ARCH_MIPS64_DEFS_H
 
@@ -1516,7 +1490,6 @@ END(uctx_swapcontext)
 LOCALSZ = 1
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -1563,7 +1536,6 @@ END(uctx_getcontext)
 
 /* $gp + 5 args */
 LOCALSZ = 6
-
 
 
 A3_OFF = FRAMESZ - (5 * REG_SZ)
@@ -1672,7 +1644,6 @@ END(uctx_makecontext)
 LOCALSZ = 1
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -1728,7 +1699,6 @@ END(uctx_setcontext)
 LOCALSZ = 1
 
 
-
 .hidden uctx_trampoline
 FUNC(uctx_trampoline)
 	move	$gp, $s1
@@ -1762,7 +1732,6 @@ END(uctx_trampoline)
  */
 
 LOCALSZ = 2
-
 
 
 A1_OFFSET = FRAMESZ - (1 * REG_SZ)
@@ -1837,13 +1806,12 @@ fail:
 	jalr	$t9
 END(uctx_swapcontext)
 
+
 #endif // MIPS64
 
 
 
-
 #if UCTX_ARCH == UCTX_OR1K
-
 #ifndef __ARCH_OR1K_DEFS_H
 #define __ARCH_OR1K_DEFS_H
 
@@ -1878,7 +1846,6 @@ END(uctx_swapcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(getcontext, uctx_getcontext)
@@ -1918,7 +1885,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(setcontext, uctx_setcontext)
@@ -1967,7 +1933,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -2025,13 +1990,12 @@ FUNC(uctx_swapcontext)
 	l.jr		r9					/* jump to new starting address */
 END(uctx_swapcontext)
 
+
 #endif // OR1K
 
 
 
-
 #if UCTX_ARCH == UCTX_PPC
-
 #ifndef __ARCH_PPC_DEFS_H
 #define __ARCH_PPC_DEFS_H
 
@@ -2203,13 +2167,12 @@ FUNC(__uctx_swapcontext)
 	b __retfromsyscall@local
 END(__uctx_swapcontext)
 
+
 #endif // PPC
 
 
 
-
 #if UCTX_ARCH == UCTX_PPC64
-
 #ifndef __ARCH_PPC_DEFS_H
 #define __ARCH_PPC_DEFS_H
 
@@ -2404,23 +2367,21 @@ FUNC(__uctx_swapcontext)
 	b __retfromsyscall
 END(__uctx_swapcontext)
 
+
 #endif // PPC64
 
 
 
-
 #if UCTX_ARCH == UCTX_PTHREADS
-
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
+
 
 #endif // PTHREADS
 
 
 
-
 #if UCTX_ARCH == UCTX_RISCV
-
 #ifndef __ARCH_RISCV_DEFS_H
 #define __ARCH_RISCV_DEFS_H
 
@@ -2490,7 +2451,6 @@ END(__uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -2535,7 +2495,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(setcontext, uctx_setcontext)
@@ -2592,7 +2551,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -2663,13 +2621,12 @@ FUNC(uctx_swapcontext)
 	jr t1
 END(uctx_swapcontext)
 
+
 #endif // RISCV
 
 
 
-
 #if UCTX_ARCH == UCTX_RISCV64
-
 #ifndef __ARCH_RISCV64_DEFS_H
 #define __ARCH_RISCV64_DEFS_H
 
@@ -2739,7 +2696,6 @@ END(uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -2784,7 +2740,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(setcontext, uctx_setcontext)
@@ -2841,7 +2796,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -2912,13 +2866,12 @@ FUNC(uctx_swapcontext)
 	jr t1
 END(uctx_swapcontext)
 
+
 #endif // RISCV64
 
 
 
-
 #if UCTX_ARCH == UCTX_S390X
-
 #ifndef __ARCH_S390X_DEFS_H
 #define __ARCH_S390X_DEFS_H
 
@@ -2948,7 +2901,6 @@ END(uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -2975,7 +2927,6 @@ END(uctx_getcontext)
  */
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -2999,7 +2950,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 .hidden uctx_trampoline
@@ -3032,7 +2982,6 @@ END(uctx_trampoline)
  */
 
 
-
 ALIAS(swapcontext, uctx_swapcontext)
 ALIAS(__swapcontext, uctx_swapcontext)
 
@@ -3052,13 +3001,12 @@ FUNC(uctx_swapcontext)
 	br	%r14				/* return to new link register address */
 END(uctx_swapcontext)
 
+
 #endif // S390X
 
 
 
-
 #if UCTX_ARCH == UCTX_SH
-
 #ifndef __ARCH_SH4_DEFS_H
 #define __ARCH_SH4_DEFS_H
 
@@ -3091,7 +3039,6 @@ END(uctx_swapcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(getcontext, uctx_getcontext)
@@ -3148,7 +3095,6 @@ END(uctx_getcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(setcontext, uctx_setcontext)
@@ -3209,7 +3155,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -3294,8 +3239,8 @@ FUNC(uctx_swapcontext)
 	mov.l	@r15+, r0					/* pop original r0 from stack */
 END(uctx_swapcontext)
 
-#endif // SH
 
+#endif // SH
 
 
 
@@ -3305,9 +3250,7 @@ END(uctx_swapcontext)
 
 
 
-
 #if UCTX_ARCH == UCTX_X64
-
 #ifndef __ARCH_X86_64_DEFS_H
 #define __ARCH_X86_64_DEFS_H
 
@@ -3427,7 +3370,6 @@ END(uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -3477,7 +3419,6 @@ END(uctx_getcontext)
  */
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -3522,7 +3463,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -3587,13 +3527,12 @@ FUNC(uctx_swapcontext)
 	ret
 END(uctx_swapcontext)
 
+
 #endif // X64
 
 
 
-
 #if UCTX_ARCH == UCTX_X86
-
 #ifndef __ARCH_X86_DEFS_H
 #define __ARCH_X86_DEFS_H
 
@@ -3673,7 +3612,6 @@ END(uctx_swapcontext)
  */
 
 
-
 ALIAS(getcontext, uctx_getcontext)
 ALIAS(__getcontext, uctx_getcontext)
 
@@ -3724,7 +3662,6 @@ END(uctx_getcontext)
  */
 
 
-
 ALIAS(setcontext, uctx_setcontext)
 ALIAS(__setcontext, uctx_setcontext)
 
@@ -3768,7 +3705,6 @@ END(uctx_setcontext)
  * implied.  In no event shall the authors be liable for any damages arising
  * from the use of this software.
  */
-
 
 
 ALIAS(swapcontext, uctx_swapcontext)
@@ -3831,13 +3767,12 @@ FUNC(uctx_swapcontext)
 	ret
 END(uctx_swapcontext)
 
+
 #endif // X86
 
 
 
-
 #if UCTX_ARCH == UCTX_XTENSA
-
 #ifndef PROC_NAME
 # ifdef __MACH__
 #  define PROC_NAME(__proc) _ ## __proc
@@ -3897,7 +3832,6 @@ PROC_NAME(__proc):				\
 #define PS_UM			    PS_UM_MASK
 #define PS_WOE_MASK		    0x00040000
 #define PS_WOE			    PS_WOE_MASK
-
 
     .data
 from:                                           //  Save "from" arg
@@ -4055,10 +3989,10 @@ set_done:
     movi    a2, 0                           //  Return 0
     retw
 END(uctx_swapcontext)
-#endif // XTENSA
 
+
+#endif // XTENSA
 
 #if defined(__ELF__) && !defined(__APPLE__)
     .section .note.GNU-stack,"",@progbits
 #endif
-

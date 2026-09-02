@@ -12,15 +12,41 @@
 #ifndef _h_CRYPT
 #define _h_CRYPT 1
 
+/********************************** Product ***********************************/
+
+#ifndef ME_NAME
+    #define ME_NAME              "crypt"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE             "Crypto library"
+#endif
+
 /********************************** Includes **********************************/
 
-#include "me.h"
 #include "r.h"
 
 /*********************************** Defines **********************************/
 
 #ifndef ME_COM_CRYPT
     #define ME_COM_CRYPT          1         /** Enable the Crypt module */
+#endif
+
+/*
+    TLS provider paths. Override with -DME_COM_OPENSSL_PATH or -DME_COM_MBEDTLS_PATH
+ */
+#if ME_COM_OPENSSL
+    #ifndef ME_COM_OPENSSL_PATH
+        #if __APPLE__
+            #define ME_COM_OPENSSL_PATH "/opt/homebrew"
+        #else
+            #define ME_COM_OPENSSL_PATH "/usr"
+        #endif
+    #endif
+#endif
+#if ME_COM_MBEDTLS
+    #ifndef ME_COM_MBEDTLS_PATH
+        #define ME_COM_MBEDTLS_PATH "/usr"
+    #endif
 #endif
 #ifndef ME_CRYPT_MAX_PASSWORD
     #define ME_CRYPT_MAX_PASSWORD 64        /** Maximum password length */
@@ -725,6 +751,18 @@ PUBLIC bool cryptMatchHmacSha256(cuchar hmac1[CRYPT_HMAC_SHA256_SIZE], cuchar hm
 #define CRYPT_BLOWFISH             "BF1"        /**< Blowfish hash algorithm identifier tag */
 #define CRYPT_BLOWFISH_SALT_LENGTH 16           /**< Default length of salt text in bytes */
 #define CRYPT_BLOWFISH_ROUNDS      128          /**< Default number of computation rounds */
+
+/**
+    Maximum Blowfish key length in bytes.
+    @description The Blowfish key schedule initializes (BF_ROUNDS + 2) = 18 P-array entries from four
+        key bytes each, so it consumes exactly 72 bytes. Key material beyond that offset is never read.
+        A longer key is therefore silently truncated, and two keys sharing their first 72 bytes produce
+        the same hash - which for a key of the form "salt:username:realm:password" means a sufficiently
+        long identity displaces the password entirely and every password verifies.
+        \n\n
+        cryptEncodePassword refuses a key longer than this rather than truncating it.
+ */
+#define CRYPT_BLOWFISH_MAX_KEY     72
 
 /**
     Make a password using the Blowfish cipher (Bcrypt).

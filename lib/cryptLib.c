@@ -1,8 +1,16 @@
 /*
- * Crypto library Library Source 
-*/
+    cryptLib.c -- Crypt Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the Crypt library.
+
+    Prepared by: buildLib.sh
+ */
 
 #include "crypt.h"
+
+#if ME_COM_CRYPT
 
 
 /********* Start of file src/crypt.c ************/
@@ -17,7 +25,6 @@
  */
 
 /********************************** Includes **********************************/
-
 
 
 /******************************* Base 64 Data *********************************/
@@ -1857,6 +1864,23 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, size_t rounds)
         return 0;
     }
     key = sfmt("%s:%s", salt, password);
+
+    /*
+        The Blowfish key schedule reads exactly CRYPT_BLOWFISH_MAX_KEY bytes. Anything beyond that
+        offset never enters the hash, so a longer key would be silently truncated and two keys that
+        share a prefix would collide. Callers pass an identity-bound string here ("user:realm:pass"),
+        so a long identity would push the password past the limit and make every password verify.
+        Refuse rather than truncate: both cryptMakePassword and cryptCheckPassword route through
+        here, so refusing fails closed on creation and on verification alike.
+     */
+    if (slen(key) > CRYPT_BLOWFISH_MAX_KEY) {
+        rError("crypt", "Blowfish key of %d bytes exceeds the %d byte key schedule; refusing to "
+               "truncate. Shorten the username or realm, or use SHA-256.",
+               (int) slen(key), CRYPT_BLOWFISH_MAX_KEY);
+        memset(key, 0, slen(key));
+        rFree(key);
+        return 0;
+    }
     binit(&bf, (uchar*) key, slen(key));
     len = sizeof(cipherText);
     text = rMemdup(cipherText, len);
@@ -1902,6 +1926,7 @@ PUBLIC char *cryptMakeSalt(size_t size)
 PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds)
 {
     cchar *salt;
+    char  *hash, *result;
 
     if (slen(password) > ME_CRYPT_MAX_PASSWORD) {
         return 0;
@@ -1912,8 +1937,16 @@ PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds
     if (rounds <= 0) {
         rounds = CRYPT_BLOWFISH_ROUNDS;
     }
-    salt = cryptMakeSalt(saltLength);
-    return sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, (int) rounds, salt, cryptEncodePassword(password, salt, rounds));
+    if ((salt = cryptMakeSalt(saltLength)) == 0) {
+        return 0;
+    }
+    if ((hash = cryptEncodePassword(password, salt, rounds)) == 0) {
+        //  Key too long for the Blowfish schedule, or no entropy available
+        return 0;
+    }
+    result = sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, (int) rounds, salt, hash);
+    rFree(hash);
+    return result;
 }
 
 PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
@@ -2282,3 +2315,6 @@ PUBLIC bool cryptMatch(cchar *s1, cchar *s2)
     This is proprietary software and requires a commercial license from the author.
  */
 
+#else
+void dummyCrypt(){}
+#endif /* ME_COM_CRYPT */

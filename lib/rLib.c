@@ -1,11 +1,16 @@
 /*
- * R Runtime Library Source
+    rLib.c -- R Runtime Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the R library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "r.h"
 
 #if ME_COM_R
-
 
 
 /********* Start of file src/r.c ************/
@@ -18,7 +23,7 @@
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 /*********************************** Globals **********************************/
 
@@ -27,7 +32,7 @@ PUBLIC int  rState = R_STARTED;
 
 /*********************************** Locals ***********************************/
 
-static char *rAppName = ME_NAME;
+static char *rAppName = "Runtime";
 
 /************************************* Code ***********************************/
 /*
@@ -151,7 +156,7 @@ PUBLIC int rWritePid(void)
     pid_t pid;
 
     if (getuid() == 0) {
-        path = "/var/run/" ME_NAME ".pid";
+        path = "/var/run/runtime.pid";
         if ((buf = rReadFile(path, NULL)) != 0) {
             //  SECURITY Acceptable: acceptable risk reading pid file
             pid = atoi(buf);
@@ -194,7 +199,7 @@ PUBLIC int rWritePid(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_BUF
 /*********************************** Locals ***********************************/
@@ -704,270 +709,6 @@ PUBLIC char *rBufToStringAndFree(RBuf *bp)
  */
 
 
-/********* Start of file src/esp32.c ************/
-
-/**
-    esp32.c - ESP32 specific adaptions
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************* Includes ***********************************/
-
-
-
-#if ESP32
-/********************************** Locals ************************************/
-
-#define ETAG           ME_NAME
-#define WIFI_MAX_RETRY 5
-
-#define WIFI_SUCCESS   0x1
-#define WIFI_FAILURE   0x2
-
-static char *wifiIP;
-static EventGroupHandle_t      wifiEvent;
-static esp_netif_t             *sta_netif;
-static esp_vfs_littlefs_conf_t fsconf;
-
-/********************************** Forwards **********************************/
-
-#ifndef R_USE_PLATFORM_REPORT
-    #define R_USE_PLATFORM_REPORT 0
-#endif
-
-#if R_USE_TLS
-static void customTls(RSocket *sp, int cmd, void *arg, int flags);
-#endif
-
-/*********************************** Code *************************************/
-
-PUBLIC int rInitOs(void)
-{
-#if R_USE_TLS
-    /*
-        Register a custom TLS callback to define the MbedTLS certificate bundle
-     */
-    rSetSocketCustom(customTls);
-#endif
-    return 0;
-}
-
-PUBLIC void rTermOs(void)
-{
-    if (fsconf.partition_label) {
-        esp_vfs_littlefs_unregister(fsconf.partition_label);
-    }
-    rFree(wifiIP);
-    wifiIP = NULL;
-}
-
-#if R_USE_TLS
-static void customTls(RSocket *sp, int cmd, void *arg, int flags)
-{
-    if (cmd == R_SOCKET_CONFIG_TLS) {
-        if (!(flags & R_TLS_HAS_AUTHORITY)) {
-            /*
-                Attach the MbedTLS certificate bundle
-             */
-            mbedtls_ssl_config *conf = (mbedtls_ssl_config*) arg;
-            if (esp_crt_bundle_attach(conf) != ESP_OK) {
-                rError(ETAG, "Failed to attach certificate bundle");
-            }
-        }
-    }
-}
-#endif
-
-/*
-    Initialize the LittleFS file system from "storage" to the nominated path
- */
-PUBLIC int rInitFilesystem(cchar *path, cchar *storage)
-{
-    esp_err_t ret;
-
-    fsconf.base_path = path;
-    fsconf.partition_label = storage;
-    fsconf.format_if_mount_failed = true;
-    fsconf.dont_mount = false;
-
-    ret = esp_vfs_littlefs_register(&fsconf);
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            rError(ETAG, "Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            rError(ETAG, "Failed to find LittleFS partition");
-        } else {
-            rError(ETAG, "Failed to initialize LittleFS (%s)", esp_err_to_name(ret));
-        }
-        return R_ERR_CANT_INITIALIZE;
-    }
-#if SHOW_USAGE
-    size_t total, used;
-    total = used = 0;
-    ret = esp_littlefs_info(fsconf.partition_label, &total, &used);
-    if (ret != ESP_OK) {
-        rError(ETAG, "Failed to get LittleFS partition (%s)", esp_err_to_name(ret));
-        return R_ERR_CANT_INITIALIZE;
-    }
-    rInfo(ETAG, "FS size: total: %d, used: %d\n", total, used);
-#endif
-    return 0;
-}
-
-/*
-    Initialize NVM flash
- */
-PUBLIC int rInitFlash(void)
-{
-    esp_err_t rc;
-
-    rc = nvs_flash_init();
-    if (rc == ESP_ERR_NVS_NO_FREE_PAGES || rc == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        nvs_flash_erase();
-        rc = nvs_flash_init();
-        if (rc != ESP_OK) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    return 0;
-}
-
-/*
-    WIFI handler progress callback
- */
-static void wifiHandler(void *arg, esp_event_base_t base, int32_t id, void *event_data)
-{
-    static int wifiRetries = 0;
-
-    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-
-    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
-        wifi_event_sta_disconnected_t *dp = (wifi_event_sta_disconnected_t*) event_data;
-        rError(ETAG, "WIFI connection error for ssid %s, reason %d\n", dp->ssid, (int) dp->reason);
-        if (wifiRetries < WIFI_MAX_RETRY) {
-            esp_wifi_connect();
-            wifiRetries++;
-            rInfo(ETAG, "retry to connect to the AP");
-        } else {
-            xEventGroupSetBits(wifiEvent, WIFI_FAILURE);
-            rError(ETAG, "WIFI connect failed");
-        }
-
-    } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t*) event_data;
-        rFree(wifiIP);
-        wifiIP = sfmt(IPSTR, IP2STR(&event->ip_info.ip));
-        wifiRetries = 0;
-        xEventGroupSetBits(wifiEvent, WIFI_SUCCESS);
-    }
-}
-
-PUBLIC cchar *rGetIP(void)
-{
-    return wifiIP;
-}
-
-/*
-    Initialize WIFI networking
- */
-PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname)
-{
-    EventBits_t                  bits;
-    wifi_config_t                config = { 0 };
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    sta_netif = esp_netif_create_default_wifi_sta();
-    ESP_ERROR_CHECK(esp_netif_set_hostname(sta_netif, hostname));
-
-    wifiEvent = xEventGroupCreate();
-    wifi_init_config_t icfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&icfg));
-
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiHandler, NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiHandler, NULL,
-                                                        &instance_got_ip));
-
-    strlcpy((char*) config.sta.ssid, ssid, sizeof(config.sta.ssid));
-    strlcpy((char*) config.sta.password, password, sizeof(config.sta.password));
-    config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    bits = xEventGroupWaitBits(wifiEvent, WIFI_SUCCESS | WIFI_FAILURE, pdFALSE, pdFALSE, portMAX_DELAY);
-    if (bits & WIFI_SUCCESS) {
-        rInfo(ETAG, "WIFI connected with SSID:%s", ssid);
-    } else if (bits & WIFI_FAILURE) {
-        rInfo(ETAG, "Failed to connect to SSID:%s", ssid);
-    } else {
-        rInfo(ETAG, "Unexpected WIFI error %x", (uint) bits);
-    }
-    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
-    esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
-    vEventGroupDelete(wifiEvent);
-    return 0;
-}
-
-#if R_USE_PLATFORM_REPORT
-/*
-    Just for debug to trace memory usage
- */
-PUBLIC void rPlatformReport(char *label)
-{
-    static char reportBuf[1024];
-    char        *base;
-    int         hiw, stackSize;
-    ptrdiff_t   current;
-
-    //  GetStackHighWaterMark  is the minimum stack that was available in the past in words
-    hiw = (int) uxTaskGetStackHighWaterMark(NULL) * sizeof(int);
-    stackSize = (int) rGetFiberStackSize();
-    base = (char*) rGetFiberStack();
-    current = base - (char*) &base;
-
-    size_t intern = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-    size_t free = esp_get_free_heap_size();
-    size_t total = heap_caps_get_total_size(MALLOC_CAP_8BIT);
-
-    vTaskList(reportBuf);
-
-    rPrintf("\n%s\nTask List:\n%s", label, reportBuf);
-    rPrintf("Free internal: %d bytes\n", intern);
-    rPrintf("Free heap size: %d of %d bytes\n", free, total);
-    rPrintf("Stack current %d, max %d, size %d\n\n", current, stackSize - hiw, stackSize);
-}
-#endif
-
-PUBLIC int gethostname(char *name, size_t namelen)
-{
-    cchar *buf;
-
-    if (sta_netif && esp_netif_get_hostname(sta_netif, &buf) == 0) {
-        scopy(name, namelen, buf);
-        return 0;
-    }
-    return -1;
-}
-
-
-#else
-void freeEspDummy(void)
-{
-}
-#endif /* ESP32 */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
 /********* Start of file src/event.c ************/
 
 /*
@@ -978,7 +719,7 @@ void freeEspDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_EVENT
 /*********************************** Locals ***********************************/
@@ -1446,7 +1187,7 @@ PUBLIC void rSignalSync(cchar *name, cvoid *arg)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_FIBER
 /*********************************** Locals ***********************************/
@@ -2521,53 +2262,6 @@ static void setupFiberSignalHandlers(void)
  */
 
 
-/********* Start of file src/freertos.c ************/
-
-/**
-    freertos.c - FreeRTOS specific adaptions
-
-    NOTE: ESP32 does not use this -- it has its own customized version
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************* Includes ***********************************/
-
-
-
-#if FREERTOS && !ESP32
-/*********************************** Code *************************************/
-
-PUBLIC int rInitOs(void)
-{
-    // FreeRTOS requires no additional initialization
-    return 0;
-}
-
-PUBLIC void rTermOs(void)
-{
-    // FreeRTOS requires no cleanup
-}
-
-/*
-    FreeRTOS does not support hostname resolution
- */
-int gethostname(char *name, size_t namelen)
-{
-    return -1;
-}
-
-#else
-void freeRtosDummy(void)
-{
-}
-#endif /* FREERTOS */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
 /********* Start of file src/fs.c ************/
 
 /**
@@ -2578,7 +2272,7 @@ void freeRtosDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_FILE
 /********************************** Defines ***********************************/
@@ -2604,6 +2298,10 @@ void freeRtosDummy(void)
 #endif
 
 static RHash *directories;
+#if ME_WIN_LIKE
+static WIN32_FIND_DATA dirFindData;
+static bool            dirHaveFirst;
+#endif
 
 /*********************************** Forwards *********************************/
 
@@ -3229,16 +2927,16 @@ static void *openDirList(cchar *path)
 #if ME_UNIX_LIKE
     return opendir((char*) path);
 #elif ME_WIN_LIKE
-    WIN32_FIND_DATA f;
-    HANDLE          h;
-    char            *dir;
+    HANDLE h;
+    char   *dir;
 
     dir = rJoinFile(path, "*.*");
-    if ((h = FindFirstFile(dir, &f)) == INVALID_HANDLE_VALUE) {
+    if ((h = FindFirstFile(dir, &dirFindData)) == INVALID_HANDLE_VALUE) {
         rFree(dir);
         return 0;
     }
     rFree(dir);
+    dirHaveFirst = 1;
     return h;
 #else
     return 0;
@@ -3277,12 +2975,21 @@ static cchar *getNextFile(void *dir, int flags, bool *isDir)
     }
 
 #elif ME_WIN_LIKE
-    static WIN32_FIND_DATA f;
-    HANDLE                 h = (HANDLE) dir;
+    WIN32_FIND_DATA *f;
+    HANDLE          h = (HANDLE) dir;
 
-    while (FindNextFile(h, &f) != 0) {
-        if (f.cFileName[0] == '.') {
-            if (f.cFileName[1] == '\0' || f.cFileName[1] == '.') {
+    for (; ;) {
+        if (dirHaveFirst) {
+            dirHaveFirst = 0;
+            f = &dirFindData;
+        } else {
+            f = &dirFindData;
+            if (FindNextFile(h, f) == 0) {
+                break;
+            }
+        }
+        if (f->cFileName[0] == '.') {
+            if (f->cFileName[1] == '\0' || f->cFileName[1] == '.') {
                 continue;
             }
             if (!(flags & R_WALK_HIDDEN)) {
@@ -3290,10 +2997,9 @@ static cchar *getNextFile(void *dir, int flags, bool *isDir)
             }
         }
         if (isDir) {
-            *isDir = (f.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+            *isDir = (f->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
         }
-        // WARNING: this is static data. Caller must copy
-        return f.cFileName;
+        return f->cFileName;
     }
 #endif
     return 0;
@@ -3319,6 +3025,127 @@ PUBLIC char *rGetCwd(void)
         return sclone(".");
     }
     return sclone(buf);
+}
+
+/*
+    Return the fully resolved path of an open file descriptor.
+
+    The name a caller passed to open() is not necessarily the name the file system resolved it to.
+    Case-folding file systems (APFS, HFS+, NTFS, vfat, exfat) and Unicode-normalizing file systems
+    (APFS, HFS+) accept many spellings of the same name, and Windows additionally accepts 8.3 short
+    names, trailing dots and spaces, and the ::$DATA stream suffix. Callers that make a security
+    decision from a requested path must compare it against the name the file system actually used.
+
+    Resolving from the descriptor rather than from the path closes the TOCTOU window that a
+    path-based realpath() leaves open: the descriptor already refers to the object to be served.
+
+    Returns the length of the resolved path, or a negative error code if it cannot be determined.
+    Fail closed when this returns an error - an unresolvable name must not be served.
+ */
+PUBLIC ssize rGetFdPath(int fd, char *buf, size_t bufsize)
+{
+    if (!buf || bufsize == 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    buf[0] = '\0';
+    if (fd < 0) {
+        return R_ERR_BAD_ARGS;
+    }
+#if MACOSX || (defined(F_GETPATH) && ME_BSD_LIKE)
+    /*
+        F_GETPATH requires a buffer of at least MAXPATHLEN and corrects both case and
+        Unicode normalization form.
+     */
+    if (bufsize < MAXPATHLEN) {
+        char path[MAXPATHLEN];
+        if (fcntl(fd, F_GETPATH, path) < 0) {
+            return R_ERR_CANT_FIND;
+        }
+        if (scopy(buf, bufsize, path) < 0) {
+            buf[0] = '\0';
+            return R_ERR_WONT_FIT;
+        }
+        return (ssize) slen(buf);
+    }
+    if (fcntl(fd, F_GETPATH, buf) < 0) {
+        return R_ERR_CANT_FIND;
+    }
+    return (ssize) slen(buf);
+
+#elif ME_LINUX_LIKE
+    {
+        char  link[64];
+        ssize len;
+
+        sfmtbuf(link, sizeof(link), "/proc/self/fd/%d", fd);
+        if ((len = readlink(link, buf, bufsize - 1)) < 0) {
+            buf[0] = '\0';
+            return R_ERR_CANT_FIND;
+        }
+        buf[len] = '\0';
+        /*
+            readlink does not truncate-and-tell. If the result exactly fills the buffer it may
+            have been truncated, so refuse rather than compare against a partial name.
+         */
+        if ((size_t) len >= bufsize - 1) {
+            buf[0] = '\0';
+            return R_ERR_WONT_FIT;
+        }
+        return len;
+    }
+
+#elif ME_WIN_LIKE
+    {
+        HANDLE handle;
+        DWORD  len;
+
+        handle = (HANDLE) _get_osfhandle(fd);
+        if (handle == INVALID_HANDLE_VALUE) {
+            return R_ERR_CANT_FIND;
+        }
+        len = GetFinalPathNameByHandleA(handle, buf, (DWORD) bufsize, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        if (len == 0 || len >= bufsize) {
+            buf[0] = '\0';
+            return R_ERR_CANT_FIND;
+        }
+        buf[len] = '\0';
+        return (ssize) len;
+    }
+
+#else
+    /*
+        No descriptor-to-name call on this platform (VxWorks, some RTOS libcs). Callers must
+        fail closed. Case-insensitive file systems are not supported on such platforms.
+     */
+    return R_ERR_NOT_READY;
+#endif
+}
+
+/*
+    Return the canonical absolute path of an existing file or directory, or NULL on failure.
+    Caller must free the result.
+ */
+PUBLIC char *rGetRealPath(cchar *path)
+{
+    char buf[ME_MAX_FNAME];
+
+    if (!path || *path == '\0') {
+        return 0;
+    }
+#if ME_WIN_LIKE
+    if (GetFullPathNameA(path, (DWORD) sizeof(buf), buf, NULL) == 0) {
+        return 0;
+    }
+    if (!rFileExists(buf)) {
+        return 0;
+    }
+    return sclone(buf);
+#else
+    if (realpath(path, buf) == NULL) {
+        return 0;
+    }
+    return sclone(buf);
+#endif
 }
 
 /*
@@ -3399,8 +3226,9 @@ PUBLIC char *rGetAppDir(void)
         }
         return sclone(pbuf);
     }
-#endif
+#else
     return rGetCwd();
+#endif
 }
 
 PUBLIC int rBackupFile(cchar *path, int count)
@@ -3644,7 +3472,7 @@ PUBLIC int rFlushFile(int fd)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_HASH
 /*********************************** Locals ***********************************/
@@ -4261,7 +4089,7 @@ PUBLIC char *rHashToJson(RHash *hash, int pretty)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_LIST
 /********************************** Defines ***********************************/
@@ -4735,7 +4563,7 @@ PUBLIC void rPushItem(RList *list, void *item)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_LOG
 /********************************** Locals ************************************/
@@ -5182,7 +5010,7 @@ PUBLIC void rDefaultLogHandler(cchar *type, cchar *source, cchar *msg)
 
 PUBLIC void rLogConfig(void)
 {
-    rTrace("app", ME_TITLE " Configuration");
+    rTrace("app", "Configuration");
     rTrace("app", "---------------------------");
 #ifdef ME_VERSION
     rTrace("app", "Version:   %s", ME_VERSION);
@@ -5589,773 +5417,6 @@ PUBLIC void dump(cchar *msg, uchar *data, size_t len)
  */
 
 
-/********* Start of file src/mbedtls.c ************/
-
-/**
-    mbedtls.c - Transport Layer Security for mbedTLS
-
-    To build MbedTLS, use:
-        git checkout RELEASE-TAG
-        cmake -DCMAKE_BUILD_TYPE=Debug .
-        make VERBOSE=1
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************** Includes **********************************/
-
-
-
-#if R_USE_TLS
-#if ME_COM_MBEDTLS
-
-    #if defined(MBEDTLS_CONFIG_FILE)
-        #include MBEDTLS_CONFIG_FILE
-    #else
-        #include "mbedtls/mbedtls_config.h"
-    #endif
-    #include "mbedtls/ssl.h"
-    #include "mbedtls/ssl_cache.h"
-    #include "mbedtls/ssl_ticket.h"
-    #include "mbedtls/ctr_drbg.h"
-    #include "mbedtls/net_sockets.h"
-    #include "psa/crypto.h"
-    #include "mbedtls/debug.h"
-    #include "mbedtls/error.h"
-    #include "mbedtls/check_config.h"
-
-/*********************************** Locals ***********************************/
-
-#define R_MAX_CERT_SIZE                 (512 * 1024)
-
-#ifndef MBEDTLS_SSL_MAX_CONTENT_LEN
-    #define MBEDTLS_SSL_MAX_CONTENT_LEN 8192
-#endif
-
-typedef struct Rtls {
-    RSocket *sock;                         /* Owning socket */
-    Socket fd;                             /* Socket file descriptor */
-    RList *alpnList;                       /* ALPN protocols as a list */
-    char *alpn;                            /* ALPN protocols */
-    char *caFile;                          /* Certificate verification file or bundle */
-    char *certFile;                        /* Certificate filename */
-    char *keyFile;                         /* Alternatively, locate the key in a file */
-    char *revokeFile;                      /* Certificate revocation list */
-    char *ciphers;                         /* Ciphers to use for connection */
-    int *cipherSuite;                      /* Ciphersuite codes */
-    uint connected : 1;                    /* Connection established */
-    uint configured : 1;                   /* TLS configured -- requires a free */
-    uint server : 1;
-    int verifyPeer : 2;                    /* Verify the peer certificate */
-    int verifyIssuer : 2;                  /* Verify issuer of peer cer. Set to 0 to permit self signed cers */
-    mbedtls_ssl_context ctx;               /* SSL state */
-    mbedtls_ssl_config conf;               /* SSL configuration */
-    mbedtls_x509_crt ca;                   /* Certificate authority bundle to verify peer */
-    mbedtls_x509_crt cert;                 /* Certificate (own) */
-    mbedtls_x509_crl revoke;               /* Certificate revoke list */
-    mbedtls_pk_context key;                /* Private key */
-} Rtls;
-
-static mbedtls_ssl_cache_context  cache;   /* Session cache context */
-static mbedtls_ctr_drbg_context   ctr;     /* Counter random generator state */
-static mbedtls_ssl_ticket_context tickets; /* Session tickets */
-static mbedtls_entropy_context    entropy; /* Entropy context */
-
-static char *defaultAlpn;                  /* Default ALPN protocols */
-static char *defaultCaFile;                /* Default certificate verification cer file or bundle */
-static char *defaultCertFile;              /* Default certificate filename */
-static char *defaultKeyFile;               /* Default Alternatively, locate the key in a file */
-static char *defaultRevokeFile;            /* Default certificate revocation list */
-static char *defaultCiphers;               /* Default Ciphers to use for connection */
-
-static int defaultVerifyPeer = 1;          /* Verify peer certificates */
-static int defaultVerifyIssuer = 1;        /* Verify issuer of peer certificates */
-
-/********************************** Forwards **********************************/
-
-static int *getCipherSuite(char *ciphers);
-static int handshake(Rtls *tp, Ticks deadline);
-static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path);
-static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path);
-static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path);
-static char *replaceHyphen(char *cipher, char from, char to);
-static void logCiphers(Rtls *tp);
-static void logMbedtls(void *context, int level, cchar *file, int line, cchar *str);
-
-/************************************ Code ************************************/
-
-PUBLIC int rInitTls(void)
-{
-    int rc;
-
-    psa_crypto_init();
-    mbedtls_ssl_cache_init(&cache);
-    mbedtls_ctr_drbg_init(&ctr);
-    mbedtls_ssl_ticket_init(&tickets);
-    mbedtls_entropy_init(&entropy);
-
-#if !defined(ESP32)
-    mbedtls_debug_set_threshold(6);
-#endif
-
-    if ((rc = mbedtls_ctr_drbg_seed(&ctr, mbedtls_entropy_func, &entropy, 0, 0)) < 0) {
-        rError("runtime", "Cannot seed TLS rng");
-        return R_ERR_CANT_INITIALIZE;
-    }
-    return 0;
-}
-
-PUBLIC void rTermTls(void)
-{
-    mbedtls_ctr_drbg_free(&ctr);
-    mbedtls_ssl_cache_free(&cache);
-    mbedtls_ssl_ticket_free(&tickets);
-    mbedtls_entropy_free(&entropy);
-    mbedtls_psa_crypto_free();
-    rFree(defaultAlpn);
-    rFree(defaultCaFile);
-    rFree(defaultCertFile);
-    rFree(defaultCiphers);
-    rFree(defaultKeyFile);
-    rFree(defaultRevokeFile);
-    defaultAlpn = 0;
-    defaultCaFile = 0;
-    defaultCertFile = 0;
-    defaultCiphers = 0;
-    defaultKeyFile = 0;
-    defaultRevokeFile = 0;
-}
-
-PUBLIC Rtls *rAllocTls(RSocket *sock)
-{
-    Rtls *tp;
-
-    if ((tp = rAllocType(Rtls)) == 0) {
-        return 0;
-    }
-    tp->sock = sock;
-    tp->verifyPeer = -1;
-    tp->verifyIssuer = -1;
-    return tp;
-}
-
-PUBLIC void rFreeTls(Rtls *tp)
-{
-    if (!tp) {
-        return;
-    }
-    rFreeList(tp->alpnList);
-    rFree(tp->alpn);
-    rFree(tp->certFile);
-    rFree(tp->caFile);
-    rFree(tp->ciphers);
-    rFree(tp->cipherSuite);
-    rFree(tp->keyFile);
-    rFree(tp->revokeFile);
-    mbedtls_pk_free(&tp->key);
-    mbedtls_x509_crt_free(&tp->cert);
-    mbedtls_x509_crt_free(&tp->ca);
-    mbedtls_x509_crl_free(&tp->revoke);
-    if (tp->configured) {
-        mbedtls_ssl_config_free(&tp->conf);
-    }
-    mbedtls_ssl_free(&tp->ctx);
-    rFree(tp);
-}
-
-PUBLIC void rCloseTls(Rtls *tp)
-{
-    if (tp && tp->fd != INVALID_SOCKET) {
-        mbedtls_ssl_close_notify(&tp->ctx);
-        mbedtls_ssl_free(&tp->ctx);
-    }
-}
-
-PUBLIC int rConfigTls(Rtls *tp, bool server)
-{
-    RSocketCustom custom;
-    char          *alpn, *last, *token;
-    int           flags, rc;
-
-    if (tp->configured) {
-        return 0;
-    }
-    tp->server = server;
-    tp->configured = 1;
-
-    mbedtls_ssl_config_init(&tp->conf);
-    mbedtls_pk_init(&tp->key);
-    mbedtls_x509_crt_init(&tp->cert);
-    mbedtls_ssl_conf_dbg(&tp->conf, logMbedtls, NULL);
-
-    if (tp->verifyIssuer < 0) {
-        tp->verifyIssuer = defaultVerifyIssuer;
-    }
-    if (tp->verifyPeer < 0) {
-        tp->verifyPeer = defaultVerifyPeer;
-    }
-    tp->alpn = tp->alpn ? tp->alpn : scloneNull(defaultAlpn);
-    tp->caFile = tp->caFile ? tp->caFile : (server ? 0 : scloneNull(defaultCaFile));
-    tp->certFile = tp->certFile ? tp->certFile : scloneNull(defaultCertFile);
-    tp->keyFile = tp->keyFile ? tp->keyFile : scloneNull(defaultKeyFile);
-    tp->revokeFile = tp->revokeFile ? tp->revokeFile : scloneNull(defaultRevokeFile);
-    tp->ciphers = tp->ciphers ? tp->ciphers : scloneNull(defaultCiphers);
-
-    if (tp->certFile) {
-        if (parseCert(tp, &tp->cert, tp->certFile) != 0) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-        if (!tp->keyFile) {
-            // Can include the private key with the cert file
-            tp->keyFile = tp->certFile;
-        }
-    }
-    if (tp->keyFile) {
-        if (parseKey(tp, &tp->key, tp->keyFile) != 0) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    if (tp->caFile) {
-        if (parseCert(tp, &tp->ca, tp->caFile) != 0) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    if (tp->revokeFile) {
-        if (parseRevoke(tp, &tp->revoke, tp->revokeFile) != 0) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    if ((rc = mbedtls_ssl_config_defaults(&tp->conf,
-                                          server ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT,
-                                          MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) < 0) {
-        rSetSocketError(tp->sock, "Cannot set mbedtls defaults");
-        return R_ERR_CANT_INITIALIZE;
-    }
-#if defined(MBEDTLS_SSL_MAJOR_VERSION_3) && defined(MBEDTLS_SSL_MINOR_VERSION_3)
-    // Enforce TLS >= 1.2
-    mbedtls_ssl_conf_min_version(&tp->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
-#endif
-    mbedtls_ssl_conf_rng(&tp->conf, mbedtls_ctr_drbg_random, &ctr);
-
-    /*
-        Verify optional means continue with handshake even if certificate verification fails.
-        We handle verification here.
-     */
-    mbedtls_ssl_conf_authmode(&tp->conf,
-                              tp->verifyPeer == 1 ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_NONE);
-
-    if (tp->ciphers) {
-        tp->cipherSuite = getCipherSuite(tp->ciphers);
-        //  MbedTLS does not store the cipherSuite array -- must persist
-        mbedtls_ssl_conf_ciphersuites(&tp->conf, tp->cipherSuite);
-    }
-    if (tp->keyFile && tp->certFile) {
-        if (mbedtls_ssl_conf_own_cert(&tp->conf, &tp->cert, &tp->key) < 0) {
-            rSetSocketError(tp->sock, "Cannot define certificate and private key");
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    if (tp->caFile || tp->revokeFile) {
-        mbedtls_ssl_conf_ca_chain(&tp->conf, tp->caFile ? &tp->ca : NULL,
-                                  tp->revokeFile ? &tp->revoke : NULL);
-    }
-    if (tp->alpn) {
-        //  Must be null terminated
-        rFreeList(tp->alpnList);
-        tp->alpnList = rAllocList(2, R_DYNAMIC_VALUE);
-        if (!tp->alpnList) {
-            return R_ERR_MEMORY;
-        }
-        alpn = sclone(tp->alpn);
-        for (token = stok(alpn, ", \t", &last); token; token = stok(NULL, ", \t", &last)) {
-            if (rAddItem(tp->alpnList, sclone(token)) < 0) {
-                rFree(alpn);
-                return R_ERR_MEMORY;
-            }
-        }
-        rFree(alpn);
-        mbedtls_ssl_conf_alpn_protocols(&tp->conf, (cchar**) tp->alpnList->items);
-    }
-    if ((custom = rGetSocketCustom()) != NULL) {
-        flags = tp->caFile ? R_TLS_HAS_AUTHORITY : 0;
-        custom(tp->sock, R_SOCKET_CONFIG_TLS, &tp->conf, flags);
-    }
-    if (rEmitLog("debug", "mbedtls")) {
-        logCiphers(tp);
-    }
-    return 0;
-}
-
-PUBLIC Rtls *rAcceptTls(Rtls *tp, Rtls *listen)
-{
-    tp->verifyPeer = listen->verifyPeer;
-    tp->verifyIssuer = listen->verifyIssuer;
-    tp->conf = listen->conf;
-    return tp;
-}
-
-PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
-{
-    tp->fd = fd;
-    mbedtls_ssl_init(&tp->ctx);
-    mbedtls_ssl_setup(&tp->ctx, &tp->conf);
-    mbedtls_ssl_set_bio(&tp->ctx, &tp->fd, mbedtls_net_send, mbedtls_net_recv, 0);
-
-    if (peer && mbedtls_ssl_set_hostname(&tp->ctx, peer) < 0) {
-        return R_ERR_BAD_ARGS;
-    }
-    if (handshake(tp, deadline) < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-    return 0;
-}
-
-static int handshake(Rtls *tp, Ticks deadline)
-{
-    int      mask, rc;
-    uint32_t vrc;
-
-    rc = 0;
-    mask = R_IO;
-    while (rWaitForIO(tp->sock->wait, mask, deadline) >= 0) {
-        if ((rc = mbedtls_ssl_handshake(&tp->ctx)) == 0) {
-            break;
-        }
-        mask = 0;
-        if (rc == MBEDTLS_ERR_SSL_WANT_READ) {
-            mask |= R_READABLE;
-        } else if (rc == MBEDTLS_ERR_SSL_WANT_WRITE) {
-            mask |= R_WRITABLE;
-        } else {
-            break;
-        }
-    }
-    if (rc < 0) {
-        if (rc == MBEDTLS_ERR_SSL_PRIVATE_KEY_REQUIRED && !(tp->keyFile || tp->certFile)) {
-            rSetSocketError(tp->sock, "Peer requires a certificate");
-        } else if (rc == MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED) {
-            rSetSocketError(tp->sock, "Server requires a client certificate");
-        } else {
-            char ebuf[256];
-            mbedtls_strerror(-rc, ebuf, sizeof(ebuf));
-            rSetSocketError(tp->sock, "Handshake failure: %s: error -0x%x", ebuf, -rc);
-        }
-        rSetOsError(EPROTO);
-        return R_ERR_CANT_CONNECT;
-    }
-    if ((vrc = mbedtls_ssl_get_verify_result(&tp->ctx)) != 0) {
-        if (vrc & MBEDTLS_X509_BADCERT_MISSING) {
-            rSetSocketError(tp->sock, "Peer did not supply required certificate");
-        }
-        if (vrc & MBEDTLS_X509_BADCERT_EXPIRED) {
-            rSetSocketError(tp->sock, "Certificate expired");
-        } else if (vrc & MBEDTLS_X509_BADCERT_REVOKED) {
-            rSetSocketError(tp->sock, "Certificate revoked");
-        } else if (vrc & MBEDTLS_X509_BADCERT_CN_MISMATCH) {
-            if (tp->verifyPeer) {
-                rSetSocketError(tp->sock, "Certificate common name mismatch. Expected %s",
-                                mbedtls_ssl_get_hostname(&tp->ctx));
-            }
-        } else if (vrc & MBEDTLS_X509_BADCERT_KEY_USAGE || vrc & MBEDTLS_X509_BADCERT_EXT_KEY_USAGE) {
-            rSetSocketError(tp->sock, "Unauthorized key use in certificate");
-        } else if (vrc & MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
-            if (tp->verifyIssuer != 1) {
-                vrc = 0;
-            } else {
-                rSetSocketError(tp->sock, "Certificate not trusted");
-            }
-        } else if (vrc & MBEDTLS_X509_BADCERT_SKIP_VERIFY) {
-            vrc = 0;
-        } else {
-            if (rc == MBEDTLS_ERR_NET_CONN_RESET) {
-                rSetSocketError(tp->sock, "Peer disconnected");
-            } else {
-                char ebuf[256];
-                mbedtls_x509_crt_verify_info(ebuf, sizeof(ebuf), "", vrc);
-                strim(ebuf, "\n", 0);
-                rSetSocketError(tp->sock, "Cannot handshake: %s, error -0x%x", ebuf, -rc);
-            }
-        }
-    }
-    if (vrc != 0 && tp->verifyPeer == 1) {
-        if (mbedtls_ssl_get_peer_cert(&tp->ctx) == 0) {
-            rSetSocketError(tp->sock, "Peer did not provide a certificate");
-        }
-        rSetOsError(EPROTO);
-        return R_ERR_CANT_READ;
-    }
-    tp->connected = 1;
-    rDebug("tls", "Handshake with %s and %s", mbedtls_ssl_get_version(&tp->ctx), mbedtls_ssl_get_ciphersuite(&tp->ctx));
-    return 1;
-}
-
-PUBLIC bool rIsTlsConnected(Rtls *tp)
-{
-    return tp->connected;
-}
-
-PUBLIC ssize rReadTls(Rtls *tp, void *buf, size_t len)
-{
-    int    rc;
-    size_t toRead;
-
-    if (tp->fd == INVALID_SOCKET) {
-        return R_ERR_CANT_READ;
-    }
-    while (1) {
-        toRead = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
-        rc = mbedtls_ssl_read(&tp->ctx, buf, toRead);
-        if (rc < 0) {
-            if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
-                rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
-                rc == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET ||
-                rc == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-                rc == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-                rc = 0;
-                break;
-            } else if (rc == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-                return R_ERR_CANT_READ;
-            } else {
-                rDebug("tls", "readSSL: error -0x%x", -rc);
-                return R_ERR_CANT_READ;
-            }
-        } else if (rc == 0) {
-            return R_ERR_CANT_READ;
-        }
-        break;
-    }
-    return rc;
-}
-
-/*
-    Write data. Return the number of bytes written or -1 on errors or socket closure.
- */
-PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, size_t len)
-{
-    ssize  totalWritten;
-    int    rc;
-    size_t toWrite;
-
-    if (len <= 0) {
-        return R_ERR_BAD_ARGS;
-    }
-    totalWritten = 0;
-    rc = 0;
-    do {
-        toWrite = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
-        rc = mbedtls_ssl_write(&tp->ctx, (uchar*) buf, toWrite);
-        if (rc <= 0) {
-            if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
-                rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
-                rc == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET ||
-                rc == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-                rc == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-                break;
-            }
-            if (rc == MBEDTLS_ERR_NET_CONN_RESET) {
-                return R_ERR_CANT_WRITE;
-            } else {
-                rDebug("tls", "ssl_write failed rc -0x%x", -rc);
-                return R_ERR_CANT_WRITE;
-            }
-        } else {
-            totalWritten += rc;
-            buf = (void*) ((char*) buf + rc);
-            len -= (size_t) rc;
-        }
-    } while (len > 0);
-
-    if (totalWritten == 0 && (rc == MBEDTLS_ERR_SSL_WANT_READ || rc == MBEDTLS_ERR_SSL_WANT_WRITE)) {
-        rSetOsError(EAGAIN);
-    }
-    return totalWritten;
-}
-
-/*
-    Convert string of IANA ciphers into a list of mbedtls cipher codes
- */
-static int *getCipherSuite(char *ciphers)
-{
-    char *cipher, *next;
-    cint *cp;
-    int  nciphers, i, *result, code;
-
-    if (!ciphers || *ciphers == 0) {
-        return 0;
-    }
-    /*
-        Get all ciphers supported by MbedTLS
-     */
-    for (nciphers = 0, cp = mbedtls_ssl_list_ciphersuites(); cp && *cp; cp++, nciphers++) {
-    }
-
-    if (nciphers + 1 > MAXINT) {
-        rError("runtime", "mbedtls getCipherSuite integer overflow");
-        return NULL;
-    }
-    result = rAlloc((uint) (nciphers + 1) * sizeof(int));
-
-    /*
-        Locate required cipher and convert to an MbedTLS code
-     */
-    next = ciphers = sclone(ciphers);
-    for (i = 0; (cipher = stok(next, ":, \t", &next)) != 0; ) {
-        replaceHyphen(cipher, '_', '-');
-        if ((code = mbedtls_ssl_get_ciphersuite_id(cipher)) <= 0) {
-            cipher = sreplace(cipher, "TLS", "TLS1-3");
-            if ((code = mbedtls_ssl_get_ciphersuite_id(cipher)) <= 0) {
-                rError("mqtt", "Unsupported cipher \"%s\"", cipher);
-                rFree(cipher);
-                continue;
-            }
-            rFree(cipher);
-        }
-        result[i++] = code;
-    }
-    rFree(ciphers);
-    result[i] = 0;
-    return result;
-}
-
-static char *replaceHyphen(char *cipher, char from, char to)
-{
-    char *cp;
-
-    for (cp = cipher; *cp; cp++) {
-        if (*cp == from) {
-            *cp = to;
-        }
-    }
-    return cipher;
-}
-
-static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
-{
-    uchar  *buf, *cp;
-    size_t len;
-
-    if (path[0] == '@') {
-        len = slen(&path[1]);
-        cp = (uchar*) &path[1];
-        buf = 0;
-    } else {
-        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
-            rSetSocketError(tp->sock, "Certificate file is too large %s", path);
-            return R_ERR_CANT_INITIALIZE;
-        }
-        if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
-            rSetSocketError(tp->sock, "Unable to read certificate %s", path);
-            return R_ERR_CANT_INITIALIZE;
-        }
-        cp = buf;
-    }
-    if (scontains((char*) cp, "-----BEGIN ")) {
-        /* Looks PEM encoded so count the null in the length */
-        len++;
-    }
-    if (mbedtls_x509_crt_parse(cert, cp, len) != 0) {
-        rSetSocketError(tp->sock, "Unable to parse certificate %s", path);
-        if (buf) {
-            memset(buf, 0, len);
-            rFree(buf);
-        }
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if (buf) {
-        memset(buf, 0, len);
-        rFree(buf);
-    }
-    return 0;
-}
-
-static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
-{
-    uchar  *buf, *cp;
-    size_t len;
-
-    if (path[0] == '@') {
-        len = slen(&path[1]);
-        cp = (uchar*) &path[1];
-        buf = 0;
-    } else {
-        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
-            rSetSocketError(tp->sock, "Key file is too large %s", path);
-            return R_ERR_CANT_INITIALIZE;
-        }
-        if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
-            rSetSocketError(tp->sock, "Unable to read key %s", path);
-            return R_ERR_CANT_INITIALIZE;
-        }
-        cp = (uchar*) buf;
-    }
-    if (scontains((char*) cp, "-----BEGIN ")) {
-        len++;
-    }
-    if (mbedtls_pk_parse_key(key, cp, len, NULL, 0, mbedtls_ctr_drbg_random, &ctr) != 0) {
-        rSetSocketError(tp->sock, "Unable to parse key %s", path);
-        if (buf) {
-            memset(buf, 0, len);
-            rFree(buf);
-        }
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if (buf) {
-        memset(buf, 0, len);
-        rFree(buf);
-    }
-    return 0;
-}
-
-static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path)
-{
-    uchar  *buf;
-    size_t len;
-
-    if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
-        rSetSocketError(tp->sock, "CRL file is too large %s", path);
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
-        rSetSocketError(tp->sock, "Unable to read crl %s", path);
-        return R_ERR_CANT_INITIALIZE;
-    }
-    if (sstarts((char*) buf, "-----BEGIN ")) {
-        len++;
-    }
-    if (mbedtls_x509_crl_parse(crl, buf, len) != 0) {
-        memset(buf, 0, len);
-        rSetSocketError(tp->sock, "Unable to parse crl %s", path);
-        rFree(buf);
-        return R_ERR_CANT_INITIALIZE;
-    }
-    memset(buf, 0, len);
-    rFree(buf);
-    return 0;
-}
-
-PUBLIC void rSetTlsCerts(Rtls *tp, cchar *ca, cchar *key, cchar *cert, cchar *revoke)
-{
-    if (ca) {
-        rFree(tp->caFile);
-        tp->caFile = sclone(ca);
-    }
-    if (key) {
-        rFree(tp->keyFile);
-        tp->keyFile = sclone(key);
-    }
-    if (cert) {
-        rFree(tp->certFile);
-        tp->certFile = sclone(cert);
-    }
-    if (revoke) {
-        rFree(tp->revokeFile);
-        tp->revokeFile = sclone(revoke);
-    }
-}
-
-PUBLIC void rSetTlsDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke)
-{
-    if (ca) {
-        rFree(defaultCaFile);
-        defaultCaFile = sclone(ca);
-    }
-    if (key) {
-        rFree(defaultKeyFile);
-        defaultKeyFile = sclone(key);
-    }
-    if (cert) {
-        rFree(defaultCertFile);
-        defaultCertFile = sclone(cert);
-    }
-    if (revoke) {
-        rFree(defaultRevokeFile);
-        defaultRevokeFile = sclone(revoke);
-    }
-}
-
-PUBLIC void rSetTlsCiphers(Rtls *tp, cchar *ciphers)
-{
-    rFree(tp->ciphers);
-    tp->ciphers = 0;
-    if (ciphers && *ciphers) {
-        tp->ciphers = sclone(ciphers);
-    }
-}
-
-PUBLIC void rSetTlsDefaultCiphers(cchar *ciphers)
-{
-    rFree(defaultCiphers);
-    defaultCiphers = 0;
-    if (ciphers && *ciphers) {
-        defaultCiphers = sclone(ciphers);
-    }
-}
-
-PUBLIC void rSetTlsAlpn(Rtls *tp, cchar *alpn)
-{
-    rFree(tp->alpn);
-    tp->alpn = sclone(alpn);
-}
-
-PUBLIC void rSetTlsDefaultAlpn(cchar *alpn)
-{
-    rFree(defaultAlpn);
-    defaultAlpn = sclone(alpn);
-}
-
-PUBLIC void rSetTlsVerify(Rtls *tp, int verifyPeer, int verifyIssuer)
-{
-    tp->verifyPeer = verifyPeer;
-    tp->verifyIssuer = verifyIssuer;
-}
-
-PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer)
-{
-    defaultVerifyPeer = verifyPeer;
-    defaultVerifyIssuer = verifyIssuer;
-}
-
-PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
-{
-    //  Not supported
-}
-
-static void logMbedtls(void *context, int level, cchar *file, int line, cchar *str)
-{
-    rDebug("mbedtls", "mbedtls: %s", str);
-}
-
-PUBLIC void *rGetTlsRng(void)
-{
-    return &ctr;
-}
-
-static void logCiphers(Rtls *tp)
-{
-    char cipher[80];
-    cint *cp;
-
-    rDebug("mbedtls", "Supported Ciphers");
-    for (cp = mbedtls_ssl_list_ciphersuites(); *cp; cp++) {
-        scopy(cipher, sizeof(cipher), (char*) mbedtls_ssl_get_ciphersuite_name(*cp));
-        replaceHyphen(cipher, '-', '_');
-        rDebug("mbedtls", "%s (0x%04X)", cipher, *cp);
-    }
-}
-
-#else
-PUBLIC void mbedDummy(void)
-{
-}
-#endif /* ME_COM_MBEDTLS */
-#endif /* R_USE_TLS */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
-
 /********* Start of file src/mem.c ************/
 
 /**
@@ -6366,7 +5427,7 @@ PUBLIC void mbedDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 /*********************************** Locals **********************************/
 
@@ -6640,1009 +5701,6 @@ PUBLIC size_t rGetPageSize(void)
  */
 
 
-/********* Start of file src/openssl.c ************/
-
-/*
-    openssl.c - Transport Layer Security for OpenSSL
-
-    This code expects OpenSSL version >= 1.1.1 (i.e. with TLSv1.3 support)
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************** Includes **********************************/
-
-
-
-#if R_USE_TLS
-#if ME_COM_OPENSSL
-
-// Clashes with WinCrypt.h */
-#undef OCSP_RESPONSE
-
-/*
-   Indent includes to bypass MakeMe dependencies
- */
- #include    <openssl/opensslv.h>
- #include    <openssl/ssl.h>
- #include    <openssl/evp.h>
- #include    <openssl/rand.h>
- #include    <openssl/err.h>
- #include    <openssl/dh.h>
- #include    <openssl/rsa.h>
- #include    <openssl/bio.h>
-
-#if ME_R_TLS_ENGINE
-    #include    <openssl/x509v3.h>
-    #ifndef OPENSSL_NO_ENGINE
-        #include    <openssl/engine.h>
-        #define R_HAS_CRYPTO_ENGINE 1
-    #endif
-#endif
-
-/*
-    Define default OpenSSL options
-    Ensure we generate a new private key for each connection
-    Disable SSLv2, SSLv3 and TLSv1 by default -- they are insecure.
- */
-#ifndef ME_R_TLS_SET_OPTIONS
-    #define ME_R_TLS_SET_OPTIONS   ( \
-                SSL_OP_ALL | \
-                SSL_OP_SINGLE_DH_USE | \
-                SSL_OP_SINGLE_ECDH_USE | \
-                SSL_OP_NO_SSLv2 | \
-                SSL_OP_NO_SSLv3 | \
-                SSL_OP_NO_TLSv1 | \
-                SSL_OP_NO_TLSv1_1)
-#endif
-#ifndef ME_R_TLS_CLEAR_OPTIONS
-    #define ME_R_TLS_CLEAR_OPTIONS 0
-#endif
-
-/************************************ Locals **********************************/
-#if ME_UNIX_LIKE
-/*
-    Mac OS X OpenSSL stack is deprecated. Suppress those warnings.
- */
-    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-typedef struct Rtls {
-    RSocket *sock;                          /* Owning socket */
-    Socket fd;                              /* Socket file descriptor */
-    char *alpn;                             /* ALPN protocols */
-    char *keyFile;                          /* Alternatively, locate the key in a file */
-    char *certFile;                         /* Certificate filename */
-    char *revokeFile;                       /* Certificate revocation list */
-    char *caFile;                           /* Certificate verification cer file or bundle */
-    char *ciphers;                          /* Cipher suite to use for connection */
-    char *cipher;                           /* Cipher in use for connection */
-    char *engine;                           /* Engine device */
-    char *peer;                             /* Peer address */
-    char *protocol;                         /* Cipher in use for connection */
-    uint connected : 1;                     /* Connection established */
-    uint freeCtx : 1;                       /* Ctx owned by this */
-    uint server : 1;
-    int verifyPeer : 2;                     /* Verify the peer certificate */
-    int verifyIssuer : 2;                   /* Verify issuer of peer cert. Set to 0 to permit self signed certs */
-
-    SSL_CTX *ctx;
-    SSL *handle;
-    BIO *bio;
-    SSL_SESSION *session;                   /* Cached session for client resumption */
-    int handshakes;
-} Rtls;
-
-/*
-    Certificate and key formats
- */
-#define FORMAT_PEM 1
-#define FORMAT_DER 2
-
-static char *defaultAlpn;                 /* Default ALPN protocols */
-static char *defaultCaFile;               /* Default certificate verification cer file or bundle */
-static char *defaultCertFile;             /* Default certificate filename */
-static char *defaultKeyFile;              /* Default Alternatively, locate the key in a file */
-static char *defaultRevokeFile;           /* Default certificate revocation list */
-static char *defaultCiphers;              /* Default Ciphers to use for connection */
-static int  defaultVerifyPeer = 1;        /* Verify peer certificates */
-static int  defaultVerifyIssuer = 1;      /* Verify issuer of peer certificates */
-
-/***************************** Forward Declarations ***************************/
-
-static char *getTlsError(Rtls *tp, char *buf, size_t bufsize);
-static int  handshake(Rtls *tp, Ticks deadline);
-static int  initEngine(Rtls *tp);
-static int  parseCert(Rtls *tp, cchar *path);
-static int  parseKey(Rtls *tp, SSL_CTX *ctx, cchar *keyFile);
-static int  selectAlpn(SSL *ssl, cuchar **out, uchar *outlen, cuchar *in, uint inlen, void *arg);
-static int  setCiphers(SSL_CTX *ctx, cchar *ciphers);
-static int  verifyPeerCertificate(int ok, X509_STORE_CTX *xctx);
-
-/************************************* Code ***********************************/
-/*
-    Initialize the SSL layer
- */
-PUBLIC int rInitTls(void)
-{
-    /*
-        Configure the SSL library. Use the crypto ID as a one-time test. This allows
-        users to configure the library and have their configuration used instead.
-     */
-    if (CRYPTO_get_id_callback() == 0) {
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-        // OpenSSL < 1.1.0 requires manual initialization
-#if !ME_WIN_LIKE
-        OpenSSL_add_all_algorithms();
-#endif
-        SSL_library_init();
-        SSL_load_error_strings();
-#endif
-#if R_HAS_CRYPTO_ENGINE
-        ENGINE_load_builtin_engines();
-        ENGINE_add_conf_module();
-        CONF_modules_load_file(NULL, NULL, 0);
-#endif
-    }
-    return 0;
-}
-
-PUBLIC void rTermTls(void)
-{
-#if R_HAS_CRYPTO_ENGINE
-    ENGINE_cleanup();
-#endif
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    // OpenSSL < 1.1.0 requires manual cleanup
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-#endif
-
-    rFree(defaultAlpn);
-    rFree(defaultCaFile);
-    rFree(defaultCertFile);
-    rFree(defaultCiphers);
-    rFree(defaultKeyFile);
-    rFree(defaultRevokeFile);
-
-    defaultAlpn = 0;
-    defaultCaFile = 0;
-    defaultCertFile = 0;
-    defaultCiphers = 0;
-    defaultKeyFile = 0;
-    defaultRevokeFile = 0;
-}
-
-PUBLIC Rtls *rAllocTls(RSocket *sock)
-{
-    Rtls *tp;
-
-    if ((tp = rAllocType(Rtls)) == 0) {
-        return 0;
-    }
-    tp->sock = sock;
-    tp->verifyPeer = -1;
-    tp->verifyIssuer = -1;
-    return tp;
-}
-
-PUBLIC void rFreeTls(Rtls *tp)
-{
-    int ret;
-
-    if (!tp) {
-        return;
-    }
-    rFree(tp->alpn);
-    rFree(tp->certFile);
-    rFree(tp->caFile);
-    rFree(tp->cipher);
-    rFree(tp->ciphers);
-    rFree(tp->keyFile);
-    rFree(tp->engine);
-    rFree(tp->peer);
-    rFree(tp->protocol);
-
-    if (tp->ctx && tp->freeCtx) {
-        SSL_CTX_free(tp->ctx);
-    }
-    if (tp->handle) {
-        //  Bidirectional shutdown: call twice if first returns 0
-        ret = SSL_shutdown(tp->handle);
-        if (ret == 0) {
-            SSL_shutdown(tp->handle);
-        }
-        SSL_free(tp->handle);
-        ERR_clear_error();
-    }
-    rFree(tp);
-}
-
-PUBLIC void rCloseTls(Rtls *tp)
-{
-    int ret;
-
-    if (tp && tp->fd != INVALID_SOCKET) {
-        if (tp->handle) {
-            //  Bidirectional shutdown: call twice if first returns 0
-            ret = SSL_shutdown(tp->handle);
-            if (ret == 0) {
-                SSL_shutdown(tp->handle);
-            }
-            ERR_clear_error();
-        }
-    }
-}
-
-PUBLIC int rConfigTls(Rtls *tp, bool server)
-{
-    X509_STORE *store;
-    SSL_CTX    *ctx;
-    uchar      resume[16];
-
-    STACK_OF(X509_NAME) * certNames;
-    char abuf[128];
-    int  verifyMode;
-
-    tp->server = server;
-
-    if ((ctx = SSL_CTX_new(TLS_method())) == 0) {
-        return rSetSocketError(tp->sock, "Unable to create SSL context");
-    }
-    tp->ctx = ctx;
-    tp->freeCtx = 1;
-    SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
-
-#if defined(TLS1_3_VERSION) && ME_ENFORCE_TLS1_3
-    #if defined(SSL_CTX_set_min_proto_version)
-    SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
-    #else
-        #ifdef SSL_OP_NO_TLSv1
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
-        #endif
-        #ifdef SSL_OP_NO_TLSv1_1
-    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
-        #endif
-    #endif
-#endif
-
-    if (tp->verifyIssuer < 0) {
-        tp->verifyIssuer = defaultVerifyIssuer;
-    }
-    if (tp->verifyPeer < 0) {
-        tp->verifyPeer = defaultVerifyPeer;
-    }
-    tp->alpn = tp->alpn ? tp->alpn : scloneNull(defaultAlpn);
-    tp->caFile = tp->caFile ? tp->caFile : (server ? 0 : scloneNull(defaultCaFile));
-    tp->certFile = tp->certFile ? tp->certFile : scloneNull(defaultCertFile);
-    tp->keyFile = tp->keyFile ? tp->keyFile : scloneNull(defaultKeyFile);
-    tp->revokeFile = tp->revokeFile ? tp->revokeFile : scloneNull(defaultRevokeFile);
-    tp->ciphers = tp->ciphers ? tp->ciphers : scloneNull(defaultCiphers);
-
-    /*
-        Configure the certificates
-     */
-    if (tp->certFile) {
-        if (parseCert(tp, tp->certFile) < 0) {
-            return R_ERR_CANT_INITIALIZE;
-        }
-        tp->keyFile = (tp->keyFile == 0) ? tp->certFile : tp->keyFile;
-        if (tp->keyFile) {
-            if (parseKey(tp, ctx, tp->keyFile) < 0) {
-                return R_ERR_CANT_INITIALIZE;
-            }
-            if (!SSL_CTX_check_private_key(ctx)) {
-                return rSetSocketError(tp->sock, "Check of private key file failed: %s", tp->keyFile);
-            }
-        }
-    }
-    if (tp->ciphers) {
-        if (setCiphers(ctx, tp->ciphers) < 0) {
-            return rSetSocketError(tp->sock, "Unable to define ciphers \"%s\"", tp->ciphers);
-        }
-    }
-    if (tp->verifyPeer == 1) {
-        /*
-            Use either the authority file or the default verify paths
-            OpenSSL currently has issues where loading additional paths may (may not) invalidate the default paths
-         */
-        if (tp->caFile) {
-            if (!SSL_CTX_load_verify_locations(ctx, (char*) tp->caFile, NULL)) {
-                return rSetSocketError(tp->sock, "Unable to set certificate locations: %s", tp->caFile);
-            }
-            certNames = SSL_load_client_CA_file(tp->caFile);
-            if (certNames) {
-                // Define the list of CA certificates to send to the client before they send their client certificate
-                // for validation
-                SSL_CTX_set_client_CA_list(ctx, certNames);
-            }
-        } else if (!SSL_CTX_set_default_verify_paths(ctx)) {
-            // OpenSSL listens to the env vars: SSL_CERT_DIR and SSL_CERT_FILE to override the default certificate
-            // locations
-            return rSetSocketError(tp->sock, "Unable to set default certificate locations");
-        }
-        store = SSL_CTX_get_cert_store(ctx);
-        if (tp->revokeFile && !X509_STORE_load_locations(store, tp->revokeFile, 0)) {
-            return rSetSocketError(tp->sock, "Cannot load certificate revoke list: %s", tp->revokeFile);
-        }
-        X509_STORE_set_ex_data(store, 0, (void*) tp);
-        verifyMode = SSL_VERIFY_PEER;
-        if (server) {
-            verifyMode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-        }
-        SSL_CTX_set_verify(ctx, verifyMode, verifyPeerCertificate);
-    }
-    SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY | SSL_MODE_RELEASE_BUFFERS | SSL_MODE_ENABLE_PARTIAL_WRITE);
-
-    // Enable TLS session resumption for server connections
-    if (server) {
-        RAND_bytes(resume, sizeof(resume));
-        SSL_CTX_set_session_id_context(ctx, resume, sizeof(resume));
-        SSL_CTX_sess_set_cache_size(ctx, ME_R_SSL_CACHE);
-    }
-
-    if (ME_R_TLS_SET_OPTIONS) {
-        SSL_CTX_set_options(ctx, ME_R_TLS_SET_OPTIONS);
-    }
-    if (ME_R_TLS_CLEAR_OPTIONS) {
-        SSL_CTX_clear_options(ctx, ME_R_TLS_CLEAR_OPTIONS);
-    }
-    if (tp->alpn) {
-        if (tp->server) {
-            SSL_CTX_set_alpn_select_cb(ctx, selectAlpn, (void*) tp);
-        } else {
-            size_t alpnLen = slen(tp->alpn);
-            // NOTE: This ALPN protocol string format only supports one protocol
-            // ALPN length is limited to 255 bytes by protocol and buffer is 128 bytes
-            if (alpnLen > 255) {
-                return rSetSocketError(tp->sock, "ALPN protocol name exceeds 255 bytes");
-            }
-            if (alpnLen > 126) {
-                return rSetSocketError(tp->sock, "ALPN protocol name too long: %zu bytes", alpnLen);
-            }
-            SFMT(abuf, "%c%s", (uchar) alpnLen, tp->alpn);
-            SSL_CTX_set_alpn_protos(ctx, (cuchar*) abuf, (uint) slen(abuf));
-        }
-    }
-    if (initEngine(tp) < 0) {
-        // Continue without engine
-    }
-    return 0;
-}
-
-static int initEngine(Rtls *tp)
-{
-#if R_HAS_CRYPTO_ENGINE
-    if (tp->engine) {
-        ENGINE *engine;
-        if (!(engine = ENGINE_by_id(tp->engine))) {
-            return rSetSocketError(tp->sock, "Cannot find crypto device %s", tp->engine);
-        }
-        if (!ENGINE_set_default(engine, ENGINE_METHOD_ALL)) {
-            ENGINE_free(engine);
-            return rSetSocketError(tp->sock, "Cannot find crypto device %s", tp->engine);
-        }
-        rInfo("tls", "Loaded crypto device %s", tp->engine);
-        ENGINE_free(engine);
-    }
-#endif
-    return 0;
-}
-
-static int selectAlpn(SSL *ssl, cuchar **out, uchar *outlen, cuchar *in, uint inlen, void *arg)
-{
-    Rtls  *tp;
-    cchar *alpn;
-
-    tp = arg;
-    alpn = tp->alpn;
-    if (alpn == 0) {
-        return SSL_TLSEXT_ERR_NOACK;
-    }
-    /*
-        WARNING: this appalling API expects pbuf to be static / persistent and sets *out to refer to it.
-        NOTE: ALPN protocol string only supports one protocol.
-     */
-    if (SSL_select_next_proto((uchar**) out, outlen, (cuchar*) alpn, (uint) slen(alpn), in,
-                              inlen) != OPENSSL_NPN_NEGOTIATED) {
-        return SSL_TLSEXT_ERR_NOACK;
-    }
-    return SSL_TLSEXT_ERR_OK;
-}
-
-PUBLIC Rtls *rAcceptTls(Rtls *tp, Rtls *listen)
-{
-    tp->verifyPeer = listen->verifyPeer;
-    tp->verifyIssuer = listen->verifyIssuer;
-    tp->ctx = listen->ctx;
-    tp->server = 1;
-    return tp;
-}
-
-PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
-{
-    int rc;
-
-    assert(tp);
-
-    tp->fd = fd;
-
-    if ((tp->handle = (SSL*) SSL_new(tp->ctx)) == 0) {
-        return R_ERR_BAD_STATE;
-    }
-    SSL_set_app_data(tp->handle, (void*) tp);
-    SSL_set_SSL_CTX(tp->handle, tp->ctx);
-
-    // Apply cached session for client-side resumption
-    if (tp->session) {
-        SSL_set_session(tp->handle, tp->session);
-    }
-
-    /*
-        Create a socket bio. We don't use the BIO except as storage for the fd
-     */
-    if ((tp->bio = BIO_new_socket((int) tp->fd, BIO_NOCLOSE)) == 0) {
-        SSL_free(tp->handle);
-        tp->handle = NULL;
-        return R_ERR_BAD_STATE;
-    }
-    SSL_set_bio(tp->handle, tp->bio, tp->bio);
-
-    if (tp->server) {
-        SSL_set_accept_state(tp->handle);
-        rc = 0;
-    } else {
-        if (peer) {
-            tp->peer = sclone(peer);
-            X509_VERIFY_PARAM *param = SSL_get0_param(tp->handle);
-            X509_VERIFY_PARAM_set_hostflags(param, 0);
-            X509_VERIFY_PARAM_set1_host(param, peer, 0);
-            SSL_set_tlsext_host_name(tp->handle, peer);
-        }
-
-        ERR_clear_error();
-        if ((rc = SSL_connect(tp->handle)) < 1) {
-            int error = SSL_get_error(tp->handle, rc);
-            if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_CONNECT) {
-                rc = 0;
-            } else {
-                char ebuf[80];
-                getTlsError(tp, ebuf, sizeof(ebuf));
-                return rSetSocketError(tp->sock, "Connect failed: error %s", ebuf);
-            }
-        }
-    }
-    if (handshake(tp, deadline) < 0) {
-        return R_ERR_CANT_INITIALIZE;
-    }
-    return rc;
-}
-
-static int handshake(Rtls *tp, Ticks deadline)
-{
-    int error, mask, rc;
-
-    mask = R_IO;
-    for (;;) {
-        ERR_clear_error();
-        if ((rc = SSL_do_handshake(tp->handle)) >= 0) {
-            break;
-        }
-        error = SSL_get_error(tp->handle, rc);
-        mask = 0;
-        if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_ACCEPT) {
-            mask |= R_READABLE;
-        } else if (error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_CONNECT) {
-            mask |= R_WRITABLE;
-        } else {
-#if ME_R_DEBUG_LOGGING
-            if (rEmitLog("debug", "tls")) {
-                char ebuf[80];
-                getTlsError(tp, ebuf, sizeof(ebuf));
-                rDebug("tls", "SSL_read %s", ebuf);
-            }
-#endif
-            return R_ERR_CANT_CONNECT;
-        }
-        if (rWaitForIO(tp->sock->wait, mask, deadline) < 0) {
-            return R_ERR_TIMEOUT;
-        }
-    }
-    tp->protocol = sclone(SSL_get_version(tp->handle));
-    tp->cipher = sclone(SSL_get_cipher(tp->handle));
-    tp->connected = 1;
-
-#if ME_R_DEBUG_LOGGING
-    if (rEmitLog("debug", "tls")) {
-        rDebug("tls", "Handshake with %s and %s", tp->protocol, tp->cipher);
-    }
-#endif
-    return 1;
-}
-
-/*
-    Return the number of bytes read. Return -1 on errors and EOF. Distinguish EOF via mprIsSocketEof.
-    If non-blocking, may return zero if no data or still handshaking.
-    Let rReadSync do a wait for I/O if required.
- */
-PUBLIC ssize rReadTls(Rtls *tp, void *buf, size_t len)
-{
-    int rc, error, toRead;
-
-    if (tp->handle == 0) {
-        return R_ERR_BAD_STATE;
-    }
-    ERR_clear_error();
-    toRead = (len > INT_MAX) ? INT_MAX : (int) len;
-    rc = SSL_read(tp->handle, buf, toRead);
-    if (rc <= 0) {
-        error = SSL_get_error(tp->handle, rc);
-        if (!(error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_CONNECT || error == SSL_ERROR_WANT_ACCEPT)) {
-            if (error != SSL_ERROR_ZERO_RETURN) {
-                char ebuf[80];
-                getTlsError(tp, ebuf, sizeof(ebuf));
-                rDebug("tls", "SSL_read %s", ebuf);
-            }
-            return R_ERR_CANT_READ;
-        }
-        rc = 0;
-    }
-    return rc;
-}
-
-/*
-    Write data. Return the number of bytes written or -1 on errors.
- */
-PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, size_t len)
-{
-    size_t totalWritten;
-    int    error, rc, toWrite;
-
-    if (tp->bio == 0 || tp->handle == 0 || len <= 0) {
-        return R_ERR_BAD_STATE;
-    }
-    totalWritten = 0;
-
-    do {
-        ERR_clear_error();
-        toWrite = (len > INT_MAX) ? INT_MAX : (int) len;
-        rc = SSL_write(tp->handle, buf, toWrite);
-        if (rc <= 0) {
-            error = SSL_get_error(tp->handle, rc);
-            if (error != SSL_ERROR_WANT_WRITE) {
-                return R_ERR_CANT_WRITE;
-            }
-            break;
-        }
-        totalWritten += (size_t) rc;
-        buf = (void*) ((char*) buf + rc);
-        len -= (size_t) rc;
-    } while (len > 0);
-
-    return (ssize) totalWritten;
-}
-
-/*
-    Load a certificate into the context from the supplied buffer. Type indicates the desired format. The path is only
-       used for errors.
- */
-static int loadCert(Rtls *tp, SSL_CTX *ctx, cchar *buf, size_t len, int type, cchar *path)
-{
-    X509 *cert;
-    BIO  *bio;
-    bool loaded;
-
-    assert(ctx);
-    assert(buf);
-    assert(type);
-    assert(path && *path);
-
-    cert = 0;
-    loaded = 0;
-
-    if ((bio = BIO_new_mem_buf((void*) buf, (int) len)) == 0) {
-        rSetSocketError(tp->sock, "Unable to allocate memory for certificate %s", path);
-    } else {
-        if (type == FORMAT_PEM) {
-            if ((cert = PEM_read_bio_X509(bio, NULL, 0, NULL)) == 0) {
-                // Error reported by caller if loading all formats fail
-            }
-        } else if (type == FORMAT_DER) {
-            if ((cert = d2i_X509_bio(bio, NULL)) == 0) {
-                // Error reported by caller
-            }
-        }
-        if (cert) {
-            if (SSL_CTX_use_certificate(ctx, cert) != 1) {
-                rSetSocketError(tp->sock, "Unable to use certificate %s", path);
-            } else {
-                loaded = 1;
-            }
-        }
-    }
-    if (bio) {
-        BIO_free(bio);
-    }
-    if (cert) {
-        X509_free(cert);
-    }
-    return loaded ? 0 : R_ERR_CANT_LOAD;
-}
-
-/*
-    Load a certificate file in either PEM or DER format
- */
-static int parseCert(Rtls *tp, cchar *certFile)
-{
-    SSL_CTX *ctx;
-    char    *buf;
-    size_t  len;
-    int     rc;
-
-    assert(tp);
-    assert(certFile);
-    ctx = tp->ctx;
-
-    rc = 0;
-    if (ctx == NULL || certFile == NULL) {
-        return rc;
-    }
-    if ((buf = rReadFile(certFile, &len)) == 0) {
-        rc = rSetSocketError(tp->sock, "Unable to read certificate %s", certFile);
-    } else {
-        if (loadCert(tp, ctx, buf, len, FORMAT_PEM, certFile) < 0 &&
-            loadCert(tp, ctx, buf, len, FORMAT_DER, certFile) < 0) {
-            rc = rSetSocketError(tp->sock, "Unable to load certificate %s", certFile);
-        }
-    }
-    if (buf) {
-        memset(buf, 0, len);
-        rFree(buf);
-    }
-    return rc;
-}
-
-/*
-    Load a key into the context from the supplied buffer. Type indicates the key format.  Path only used for
-       diagnostics.
- */
-static int loadKey(Rtls *tp, SSL_CTX *ctx, cchar *buf, size_t len, int type, cchar *path)
-{
-    EVP_PKEY *pkey;
-    BIO      *bio;
-    bool     loaded;
-    cchar    *cp;
-
-    assert(ctx);
-    assert(buf);
-    assert(type);
-    assert(path && *path);
-
-    pkey = 0;
-    loaded = 0;
-
-    /*
-        Strip off EC parameters
-     */
-    if ((cp = sncontains(buf, "-----END EC PARAMETERS-----", len)) != NULL) {
-        buf = &cp[28];
-    }
-    if ((bio = BIO_new_mem_buf((void*) buf, (int) len)) == 0) {
-        rSetSocketError(tp->sock, "Unable to allocate memory for key %s", path);
-        return R_ERR_MEMORY;
-    }
-    if (type == FORMAT_PEM) {
-        // Headless: No support for passwords for encrypted private keys
-        pkey = PEM_read_bio_PrivateKey(bio, NULL, 0, NULL);
-    } else if (type == FORMAT_DER) {
-        pkey = d2i_PrivateKey_bio(bio, NULL);
-    }
-    if (pkey) {
-        if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
-            rSetSocketError(tp->sock, "Unable to use key %s", path);
-        } else {
-            loaded = 1;
-        }
-        EVP_PKEY_free(pkey);
-    }
-    if (bio) {
-        BIO_free(bio);
-    }
-    return loaded ? 0 : R_ERR_CANT_LOAD;
-}
-
-/*
-    Load a key file in either PEM or DER format
- */
-static int parseKey(Rtls *tp, SSL_CTX *ctx, cchar *keyFile)
-{
-    char   *buf;
-    size_t len;
-    int    rc;
-
-    assert(ctx);
-    assert(keyFile);
-
-    buf = 0;
-    rc = 0;
-
-    if (ctx == NULL || keyFile == NULL) {
-        ;
-    } else if ((buf = rReadFile(keyFile, &len)) == 0) {
-        rc = rSetSocketError(tp->sock, "Unable to read key %s", keyFile);
-
-    } else if (loadKey(tp, ctx, buf, len, FORMAT_PEM, keyFile) < 0 &&
-               loadKey(tp, ctx, buf, len, FORMAT_DER, keyFile) < 0) {
-        rc = rSetSocketError(tp->sock, "Unable to load key %s", keyFile);
-    }
-    if (buf) {
-        memset(buf, 0, len);
-        rFree(buf);
-    }
-    return rc;
-}
-
-static int verifyPeerCertificate(int ok, X509_STORE_CTX *xctx)
-{
-    X509 *cert;
-    SSL  *handle;
-    Rtls *tp;
-    char subject[1024], issuer[1024], peerName[1024];
-    int  error;
-
-    subject[0] = issuer[0] = '\0';
-    handle = (SSL*) X509_STORE_CTX_get_ex_data(xctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-    if (!handle) {
-        return 0;
-    }
-    tp = (Rtls*) SSL_get_app_data(handle);
-    if (!tp) {
-        return 0;
-    }
-    cert = X509_STORE_CTX_get_current_cert(xctx);
-    if (!cert) {
-        rSetSocketError(tp->sock, "No certificate provided");
-        return 0;
-    }
-    error = X509_STORE_CTX_get_error(xctx);
-
-    ok = 1;
-    if (X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject) - 1) < 0) {
-        rSetSocketError(tp->sock, "Cannot get subject name");
-        ok = 0;
-    }
-    if (X509_NAME_oneline(X509_get_issuer_name(cert), issuer, sizeof(issuer) - 1) < 0) {
-        rSetSocketError(tp->sock, "Cannot get issuer name");
-        ok = 0;
-    }
-    if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, peerName, sizeof(peerName) - 1) == 0) {
-        rSetSocketError(tp->sock, "Cannot get peer name");
-        ok = 0;
-    }
-    switch (error) {
-    case X509_V_OK:
-        break;
-    case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
-    case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
-        // Normal self signed certificate
-        if (tp->verifyIssuer == 1) {
-            rSetSocketError(tp->sock, "Self-signed certificate");
-            ok = 0;
-        }
-        break;
-
-    case X509_V_ERR_CERT_UNTRUSTED:
-    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
-        if (tp->verifyIssuer == 1) {
-            // Issuer cannot be verified
-            rSetSocketError(tp->sock, "Certificate not trusted");
-            ok = 0;
-        }
-        break;
-
-    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-    case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
-        if (tp->verifyIssuer == 1) {
-            // Issuer cannot be verified
-            rSetSocketError(tp->sock, "Certificate not trusted");
-            ok = 0;
-        }
-        break;
-
-    case X509_V_ERR_CERT_HAS_EXPIRED:
-        rSetSocketError(tp->sock, "Certificate has expired");
-        ok = 0;
-        break;
-
-#ifdef X509_V_ERR_HOSTNAME_MISMATCH
-    case X509_V_ERR_HOSTNAME_MISMATCH:
-        rSetSocketError(tp->sock, "Certificate hostname mismatch. Expecting %s got %s", tp->peer, peerName);
-        ok = 0;
-        break;
-#endif
-    case X509_V_ERR_CERT_CHAIN_TOO_LONG:
-    case X509_V_ERR_CERT_NOT_YET_VALID:
-    case X509_V_ERR_CERT_REJECTED:
-    case X509_V_ERR_CERT_SIGNATURE_FAILURE:
-    case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-    case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-    case X509_V_ERR_INVALID_CA:
-    default:
-        rSetSocketError(tp->sock, "Certificate verification error %d", error);
-        ok = 0;
-        break;
-    }
-    return ok;
-}
-
-static char *getTlsError(Rtls *tp, char *buf, size_t bufsize)
-{
-    ERR_error_string_n(ERR_get_error(), buf, bufsize - 1);
-    buf[bufsize - 1] = '\0';
-    return buf;
-}
-
-static int setCiphers(SSL_CTX *ctx, cchar *ciphers)
-{
-    char *cbuf;
-
-    cbuf = sclone(ciphers);
-    for (char *cp = cbuf; *cp; cp++) {
-        if (*cp == ',') *cp = ':';
-    }
-    rInfo("tls", "Using SSL ciphers: %s", cbuf);
-    //  Try TLS1.3
-    if (SSL_CTX_set_ciphersuites(ctx, cbuf) != 1) {
-        //  Try TLS1.2 and below
-        if (SSL_CTX_set_cipher_list(ctx, cbuf) != 1) {
-            rFree(cbuf);
-            return R_ERR_CANT_INITIALIZE;
-        }
-    }
-    rFree(cbuf);
-    return 0;
-}
-
-PUBLIC void rSetTlsCerts(Rtls *tp, cchar *ca, cchar *key, cchar *cert, cchar *revoke)
-{
-    if (key) {
-        rFree(tp->keyFile);
-        tp->keyFile = sclone(key);
-    }
-    if (cert) {
-        rFree(tp->certFile);
-        tp->certFile = sclone(cert);
-    }
-    if (revoke) {
-        rFree(tp->revokeFile);
-        tp->revokeFile = sclone(revoke);
-    }
-    if (ca) {
-        rFree(tp->caFile);
-        tp->caFile = sclone(ca);
-    }
-}
-
-PUBLIC void rSetTlsDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke)
-{
-    if (ca) {
-        rFree(defaultCaFile);
-        defaultCaFile = sclone(ca);
-    }
-    if (key) {
-        rFree(defaultKeyFile);
-        defaultKeyFile = sclone(key);
-    }
-    if (cert) {
-        rFree(defaultCertFile);
-        defaultCertFile = sclone(cert);
-    }
-    if (revoke) {
-        rFree(defaultRevokeFile);
-        defaultRevokeFile = sclone(revoke);
-    }
-}
-
-PUBLIC void rSetTlsCiphers(Rtls *tp, cchar *ciphers)
-{
-    rFree(tp->ciphers);
-    tp->ciphers = 0;
-    if (ciphers && *ciphers) {
-        tp->ciphers = sclone(ciphers);
-    }
-}
-
-PUBLIC void rSetTlsDefaultCiphers(cchar *ciphers)
-{
-    rFree(defaultCiphers);
-    defaultCiphers = 0;
-    if (ciphers && *ciphers) {
-        defaultCiphers = sclone(ciphers);
-    }
-}
-
-PUBLIC void rSetTlsAlpn(Rtls *tp, cchar *alpn)
-{
-    rFree(tp->alpn);
-    tp->alpn = sclone(alpn);
-}
-
-PUBLIC void rSetTlsDefaultAlpn(cchar *alpn)
-{
-    rFree(defaultAlpn);
-    defaultAlpn = sclone(alpn);
-}
-
-PUBLIC void rSetTlsVerify(Rtls *tp, int verifyPeer, int verifyIssuer)
-{
-    tp->verifyPeer = verifyPeer;
-    tp->verifyIssuer = verifyIssuer;
-}
-
-PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer)
-{
-    defaultVerifyPeer = verifyPeer;
-    defaultVerifyIssuer = verifyIssuer;
-}
-
-PUBLIC bool rIsTlsConnected(Rtls *tp)
-{
-    return tp->connected;
-}
-
-PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
-{
-    rFree(tp->engine);
-    tp->engine = sclone(engine);
-}
-
-PUBLIC void *rGetTlsSession(RSocket *sp)
-{
-    Rtls *tp;
-
-    if (!sp || !sp->tls) {
-        return NULL;
-    }
-    tp = sp->tls;
-    if (tp->handle) {
-        return SSL_get1_session(tp->handle);
-    }
-    return NULL;
-}
-
-PUBLIC void rSetTlsSession(RSocket *sp, void *session)
-{
-    Rtls *tp;
-
-    if (!sp || !sp->tls) {
-        return;
-    }
-    tp = sp->tls;
-    tp->session = (SSL_SESSION*) session;
-}
-
-PUBLIC void rFreeTlsSession(void *session)
-{
-    if (session) {
-        SSL_SESSION_free((SSL_SESSION*) session);
-    }
-}
-
-#else
-void opensslDummy(void)
-{
-}
-#endif /* ME_COM_OPENSSL */
-#endif /* R_USE_TLS */
-
-/*
-    Copyright (c) Embedthis Software. All Rights Reserved.
-    This software is distributed under a commercial license. Consult the LICENSE.md
-    distributed with this software for full details and copyrights.
- */
-
-
 /********* Start of file src/printf.c ************/
 
 /*
@@ -7662,7 +5720,7 @@ void opensslDummy(void)
 
 /*********************************** Includes *********************************/
 
-
+#include    "r.h"
 
 /*
     WARNING: The R_OWN_PRINTF=0 build configuration is not recommended for production use.
@@ -8557,7 +6615,7 @@ PUBLIC ssize rVsaprintf(char **buf, size_t maxsize, cchar *spec, va_list args)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_RUN
 
@@ -8684,7 +6742,7 @@ PUBLIC ssize rMakeArgs(cchar *command, char ***argvp, bool argsOnly)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_SOCKET
 /*********************************** Locals ***********************************/
@@ -9415,15 +7473,6 @@ PUBLIC void rSetSocketLinger(RSocket *sp, int linger)
     }
 }
 
-PUBLIC void rSetSocketNoDelay(RSocket *sp, int enable)
-{
-    int value = enable ? 1 : 0;
-
-    if (sp && sp->fd != INVALID_SOCKET) {
-        setsockopt(sp->fd, IPPROTO_TCP, TCP_NODELAY, (char*) &value, sizeof(value));
-    }
-}
-
 PUBLIC void rSetSocketVerify(RSocket *sp, int verifyPeer, int verifyIssuer)
 {
     if (!sp->tls) {
@@ -9448,6 +7497,15 @@ PUBLIC bool rIsSocketConnected(RSocket *sp)
     return 1;
 }
 #endif
+
+PUBLIC void rSetSocketNoDelay(RSocket *sp, int enable)
+{
+    int value = enable ? 1 : 0;
+
+    if (sp && sp->fd != INVALID_SOCKET) {
+        setsockopt(sp->fd, IPPROTO_TCP, TCP_NODELAY, (char*) &value, sizeof(value));
+    }
+}
 
 PUBLIC void rSetSocketWaitMask(RSocket *sp, int64 mask, Ticks deadline)
 {
@@ -9713,7 +7771,7 @@ PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_STRING
 /*********************************** Locals ***********************************/
@@ -10969,7 +9027,7 @@ PUBLIC RList *stolist(cchar *src)
 
 /********************************* Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_THREAD
 /******************************** Locals *************************************/
@@ -11289,7 +9347,7 @@ PUBLIC void rMemoryBarrier(void)
 
 /********************************* Includes ***********************************/
 
-
+#include    "r.h"
 
 #if R_USE_TIME
 /********************************** Defines ***********************************/
@@ -11858,345 +9916,6 @@ PUBLIC int gettimeofday(struct timeval *tv, struct timezone *tz)
  */
 
 
-/********* Start of file src/unix.c ************/
-
-/**
-    unix.c - Posix specific adaptions
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************* Includes ***********************************/
-
-
-
-#if ME_UNIX_LIKE
-/*********************************** Code *************************************/
-/*
-    Signal handler for SIGUSR1 and SIGUSR2
- */
-static void termHandler(int signo)
-{
-    /*
-        This is safe to call from a signal handler.
-        rSetState is async thread safe.
-     */
-    rSetState(signo == SIGUSR1 ? R_RESTART : R_STOPPED);
-}
-
-#if R_USE_EVENT
-static void setLogFilter(void)
-{
-    rSetLogFilter("all", "all", 1);
-}
-#endif
-
-static void logHandler(int signo)
-{
-#if R_USE_EVENT
-    rStartEvent((RFiberProc) setLogFilter, 0, 0);
-#endif
-}
-
-static void contHandler(int signo)
-{
-}
-
-PUBLIC int rInitOs(void)
-{
-    struct sigaction sa;
-
-    /*
-        Cleanup the environment. IFS is often a security hole
-     */
-    setenv("IFS", "\t ", 1);
-
-    // Deliberately restrictive umask. Mask out group and other permissions.
-    umask(022);
-
-    // Setup signal handlers using sigaction for portability
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_flags = SA_RESTART;
-    sigemptyset(&sa.sa_mask);
-
-    sa.sa_handler = SIG_IGN;
-    sigaction(SIGPIPE, &sa, NULL);
-
-    sa.sa_handler = contHandler;
-    sigaction(SIGCONT, &sa, NULL);
-
-    sa.sa_handler = termHandler;
-    sigaction(SIGQUIT, &sa, NULL);
-    sigaction(SIGHUP, &sa, NULL);
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGUSR1, &sa, NULL);
-
-    sa.sa_handler = logHandler;
-    sigaction(SIGUSR2, &sa, NULL);
-
-    // Initialize syslog
-    openlog("r", LOG_PID | LOG_CONS, LOG_USER);
-
-    return 0;
-}
-
-PUBLIC void rTermOs(void)
-{
-    closelog();
-}
-
-/*
-    Write a message in the O/S native log (syslog in the case of linux)
- */
-PUBLIC void rWriteToOsLog(cchar *message)
-{
-    syslog(LOG_INFO, "%s", message);
-}
-
-#if R_USE_RUN
-PUBLIC int rRun(cchar *command, char **output)
-{
-    RBuf  *buf;
-    pid_t pid;
-    ssize nbytes;
-    char  **argv;
-    int   fds[2] = { -1, -1 };
-    int   exitStatus, status;
-
-    if (!command || *command == '\0') {
-        return R_ERR_BAD_ARGS;
-    }
-    if (output) {
-        *output = NULL;
-    }
-    if (rMakeArgs(command, &argv, 0) <= 0) {
-        rError("run", "Failed to parse command: %s", command);
-        return R_ERR_BAD_ARGS;
-    }
-    if (pipe(fds) < 0) {
-        rError("run", "Failed to create pipe");
-        rFree(argv);
-        return R_ERR_CANT_OPEN;
-    }
-    if ((pid = fork()) < 0) {
-        rError("run", "Failed to fork");
-        close(fds[0]);
-        close(fds[1]);
-        rFree(argv);
-        return R_ERR_CANT_CREATE;
-    }
-    if (pid == 0) {
-        /* Child: redirect stdout & stderr to pipe */
-        dup2(fds[1], STDOUT_FILENO);
-        dup2(fds[1], STDERR_FILENO);
-        close(fds[0]);
-        close(fds[1]);
-
-        /* Use execvp so PATH is searched for the command */
-        execvp(argv[0], argv);
-        _exit(127);
-    }
-    /* Parent */
-    close(fds[1]);
-
-    buf = rAllocBuf(ME_BUFSIZE);
-    while ((nbytes = read(fds[0], rGetBufEnd(buf), rGetBufSpace(buf))) > 0) {
-        if (rGetBufLength(buf) + (size_t) nbytes > R_RUN_MAX_OUTPUT) {
-            break;
-        }
-        if (output) {
-            rAdjustBufEnd(buf, nbytes);
-            if (rGetBufSpace(buf) < ME_BUFSIZE) {
-                if (rGrowBuf(buf, ME_BUFSIZE) < 0) {
-                    break;
-                }
-            }
-        }
-    }
-    close(fds[0]);
-    rAddNullToBuf(buf);
-
-    //  Wait for child completion
-    status = 0;
-    if (waitpid(pid, &status, 0) < 0) {
-        rError("run", "Failed to wait for child");
-        rFree(argv);
-        rFreeBuf(buf);
-        return R_ERR_CANT_COMPLETE;
-    }
-    rFree(argv);
-
-    if (WIFEXITED(status)) {
-        exitStatus = WEXITSTATUS(status);
-        if (exitStatus != 0) {
-            rError("run", "Command failed with status: %d", exitStatus);
-            rFreeBuf(buf);
-            return exitStatus;
-        }
-        //  continue
-
-    } else if (WIFSIGNALED(status)) {
-        rError("run", "Command terminated by signal: %d", WTERMSIG(status));
-        rFreeBuf(buf);
-        return R_ERR_BAD_STATE;
-
-    } else {
-        rError("run", "Command terminated abnormally, status: %d", status);
-        rFreeBuf(buf);
-        return R_ERR_BAD_STATE;
-    }
-    if (output) {
-        *output = rBufToStringAndFree(buf);
-    } else {
-        rFreeBuf(buf);
-    }
-    return 0;
-}
-#endif /* R_USE_RUN */
-
-#endif /* ME_UNIX_LIKE */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
-
-/********* Start of file src/vxworks.c ************/
-
-/**
-    vxworks.c - Vxworks specific adaptions
-
-    Copyright (c) All Rights Reserved. See details at the end of the file.
- */
-
-/********************************* Includes ***********************************/
-
-
-
-#if VXWORKS
-/*********************************** Code *************************************/
-
-PUBLIC int rInitOs(void)
-{
-    return 0;
-}
-
-PUBLIC void rTermOs(void)
-{
-}
-
-#if _WRS_VXWORKS_MAJOR < 6 || (_WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 9)
-PUBLIC int access(const char *path, int mode)
-{
-    struct stat sbuf;
-
-    return stat((char*) path, &sbuf);
-}
-#endif
-
-PUBLIC int rUnloadNativeModule(RModule *mp)
-{
-    if (unldByModuleId((MODULE_ID) mp->handle, 0) != OK) {
-        return R_ERR_CANT_COMPLETE;
-    }
-    return 0;
-}
-
-PUBLIC void rWriteToOsLog(cchar *message, int level)
-{
-    // VxWorks does not have a system log facility
-}
-
-PUBLIC pid_t rGetPid(void)
-{
-    return (pid_t) taskIdSelf();
-}
-
-#if _WRS_VXWORKS_MAJOR < 6 || (_WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 9)
-PUBLIC int fsync(int fd)
-{
-    return 0;
-}
-#endif
-
-
-PUBLIC int usleep(uint usec)
-{
-    struct timespec timeout;
-    int             rc;
-
-    if (usec > MAXINT) {
-        usec = MAXINT;
-    }
-    timeout.tv_sec = usec / (1000 * 1000);
-    timeout.tv_nsec = usec % (1000 * 1000) * 1000;
-    do {
-        rc = nanosleep(&timeout, &timeout);
-    } while (rc < 0 && errno == EINTR);
-    return 0;
-}
-
-#if R_USE_RUN
-/*
-    VxWorks rRun implementation
-    NOTE: This is a simplified implementation that runs commands in the same task context.
-    For full process isolation, this would require taskSpawn with named pipes (pipeDevCreate),
-    which adds significant complexity. This implementation is suitable for simple command execution.
- */
-PUBLIC int rRun(cchar *command, char **output)
-{
-    /*
-        VxWorks doesn't have a simple fork/exec model like Unix or CreateProcess like Windows.
-        A full implementation would require:
-        1. Loading the command as a module or finding it in the symbol table
-        2. Creating named pipes with pipeDevCreate()
-        3. Spawning a task with taskSpawn()
-        4. Redirecting I/O with ioTaskStdSet()
-        5. Coordinating with semaphores
-
-        For now, return an error indicating this platform is not yet fully supported.
-     */
-    rError("run", "rRun is not yet implemented for VxWorks");
-    if (output) {
-        *output = NULL;
-    }
-    return R_ERR_BAD_STATE;
-}
-#endif /* R_USE_RUN */
-
-/*
-    Create a routine to pull in the GCC support routines for double and int64 manipulations for some platforms. Do this
-    incase modules reference these routines. Without this, the modules have to reference them. Which leads to multiple
-    defines if two modules include them. (Code to pull in moddi3, udivdi3, umoddi3)
- */
-double  __R_floating_point_resolution(double a, double b, int64 c, int64 d, uint64 e, uint64 f)
-{
-    a = a / b;
-    a = a * b;
-    c = c / d;
-    c = c % d;
-    e = e / f;
-    e = e % f;
-    c = (int64) a;
-    d = (uint64) a;
-    a = (double) c;
-    a = (double) e;
-    return (a == b) ? a : b;
-}
-
-#else
-void vxworksDummy(void)
-{
-}
-#endif /* VXWORKS */
-
-/*
-    Copyright (c) Michael O'Brien. All Rights Reserved.
-    This is proprietary software and requires a commercial license from the author.
- */
-
-
 /********* Start of file src/wait.c ************/
 
 /*
@@ -12207,7 +9926,7 @@ void vxworksDummy(void)
 
 /********************************** Includes **********************************/
 
-
+#include    "r.h"
 
 #if R_USE_WAIT
 /*********************************** Locals ***********************************/
@@ -12969,6 +10688,210 @@ static int createWakeupSocket(void)
  */
 
 
+/********* Start of file src/unix.c ************/
+
+/**
+    unix.c - Posix specific adaptions
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+#include    "r.h"
+
+#if ME_UNIX_LIKE
+/*********************************** Code *************************************/
+/*
+    Signal handler for SIGUSR1 and SIGUSR2
+ */
+static void termHandler(int signo)
+{
+    /*
+        This is safe to call from a signal handler.
+        rSetState is async thread safe.
+     */
+    rSetState(signo == SIGUSR1 ? R_RESTART : R_STOPPED);
+}
+
+#if R_USE_EVENT
+static void setLogFilter(void)
+{
+    rSetLogFilter("all", "all", 1);
+}
+#endif
+
+static void logHandler(int signo)
+{
+#if R_USE_EVENT
+    rStartEvent((RFiberProc) setLogFilter, 0, 0);
+#endif
+}
+
+static void contHandler(int signo)
+{
+}
+
+PUBLIC int rInitOs(void)
+{
+    struct sigaction sa;
+
+    /*
+        Cleanup the environment. IFS is often a security hole
+     */
+    setenv("IFS", "\t ", 1);
+
+    // Deliberately restrictive umask. Mask out group and other permissions.
+    umask(022);
+
+    // Setup signal handlers using sigaction for portability
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_flags = SA_RESTART;
+    sigemptyset(&sa.sa_mask);
+
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &sa, NULL);
+
+    sa.sa_handler = contHandler;
+    sigaction(SIGCONT, &sa, NULL);
+
+    sa.sa_handler = termHandler;
+    sigaction(SIGQUIT, &sa, NULL);
+    sigaction(SIGHUP, &sa, NULL);
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGUSR1, &sa, NULL);
+
+    sa.sa_handler = logHandler;
+    sigaction(SIGUSR2, &sa, NULL);
+
+    // Initialize syslog
+    openlog("r", LOG_PID | LOG_CONS, LOG_USER);
+
+    return 0;
+}
+
+PUBLIC void rTermOs(void)
+{
+    closelog();
+}
+
+/*
+    Write a message in the O/S native log (syslog in the case of linux)
+ */
+PUBLIC void rWriteToOsLog(cchar *message)
+{
+    syslog(LOG_INFO, "%s", message);
+}
+
+#if R_USE_RUN
+PUBLIC int rRun(cchar *command, char **output)
+{
+    RBuf  *buf;
+    pid_t pid;
+    ssize nbytes;
+    char  **argv;
+    int   fds[2] = { -1, -1 };
+    int   exitStatus, status;
+
+    if (!command || *command == '\0') {
+        return R_ERR_BAD_ARGS;
+    }
+    if (output) {
+        *output = NULL;
+    }
+    if (rMakeArgs(command, &argv, 0) <= 0) {
+        rError("run", "Failed to parse command: %s", command);
+        return R_ERR_BAD_ARGS;
+    }
+    if (pipe(fds) < 0) {
+        rError("run", "Failed to create pipe");
+        rFree(argv);
+        return R_ERR_CANT_OPEN;
+    }
+    if ((pid = fork()) < 0) {
+        rError("run", "Failed to fork");
+        close(fds[0]);
+        close(fds[1]);
+        rFree(argv);
+        return R_ERR_CANT_CREATE;
+    }
+    if (pid == 0) {
+        /* Child: redirect stdout & stderr to pipe */
+        dup2(fds[1], STDOUT_FILENO);
+        dup2(fds[1], STDERR_FILENO);
+        close(fds[0]);
+        close(fds[1]);
+
+        /* Use execvp so PATH is searched for the command */
+        execvp(argv[0], argv);
+        _exit(127);
+    }
+    /* Parent */
+    close(fds[1]);
+
+    buf = rAllocBuf(ME_BUFSIZE);
+    while ((nbytes = read(fds[0], rGetBufEnd(buf), rGetBufSpace(buf))) > 0) {
+        if (rGetBufLength(buf) + (size_t) nbytes > R_RUN_MAX_OUTPUT) {
+            break;
+        }
+        if (output) {
+            rAdjustBufEnd(buf, nbytes);
+            if (rGetBufSpace(buf) < ME_BUFSIZE) {
+                if (rGrowBuf(buf, ME_BUFSIZE) < 0) {
+                    break;
+                }
+            }
+        }
+    }
+    close(fds[0]);
+    rAddNullToBuf(buf);
+
+    //  Wait for child completion
+    status = 0;
+    if (waitpid(pid, &status, 0) < 0) {
+        rError("run", "Failed to wait for child");
+        rFree(argv);
+        rFreeBuf(buf);
+        return R_ERR_CANT_COMPLETE;
+    }
+    rFree(argv);
+
+    if (WIFEXITED(status)) {
+        exitStatus = WEXITSTATUS(status);
+        if (exitStatus != 0) {
+            rError("run", "Command failed with status: %d", exitStatus);
+            rFreeBuf(buf);
+            return exitStatus;
+        }
+        //  continue
+
+    } else if (WIFSIGNALED(status)) {
+        rError("run", "Command terminated by signal: %d", WTERMSIG(status));
+        rFreeBuf(buf);
+        return R_ERR_BAD_STATE;
+
+    } else {
+        rError("run", "Command terminated abnormally, status: %d", status);
+        rFreeBuf(buf);
+        return R_ERR_BAD_STATE;
+    }
+    if (output) {
+        *output = rBufToStringAndFree(buf);
+    } else {
+        rFreeBuf(buf);
+    }
+    return 0;
+}
+#endif /* R_USE_RUN */
+
+#endif /* ME_UNIX_LIKE */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
 /********* Start of file src/win.c ************/
 
 /**
@@ -12979,7 +10902,7 @@ static int createWakeupSocket(void)
 
 /********************************* Includes ***********************************/
 
-
+#include    "r.h"
 
 #if CYGWIN
  #include "w32api/windows.h"
@@ -13166,7 +11089,8 @@ PUBLIC RList *rListRegistry(cchar *key)
     HKEY  top, h;
     wchar name[ME_MAX_PATH];
     RList *list;
-    int   index, size;
+    DWORD size;
+    int   index;
 
     assert(key && *key);
 
@@ -13563,7 +11487,7 @@ PUBLIC int rRun(cchar *command, char **output)
 
     // Create the process
     if (!CreateProcess(NULL, cmdString, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-        rError("run", "Failed to create process: %s", cmdString);
+        rError("run", "Failed to create process: %s, error=%lu", cmdString, GetLastError());
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
         CloseHandle(stderrRead);
@@ -13685,6 +11609,2222 @@ void winDummy(void)
 {
 }
 #endif /* ME_WIN_LIKE || CYGWIN */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
+/********* Start of file src/esp32.c ************/
+
+/**
+    esp32.c - ESP32 specific adaptions
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+#include    "r.h"
+
+#if ESP32
+/********************************** Locals ************************************/
+
+#define ETAG           "Runtime"
+
+#define WIFI_MAX_RETRY 5
+#define WIFI_SUCCESS   0x1
+#define WIFI_FAILURE   0x2
+
+static char *wifiIP;
+static EventGroupHandle_t      wifiEvent;
+static esp_netif_t             *sta_netif;
+static esp_vfs_littlefs_conf_t fsconf;
+
+/********************************** Forwards **********************************/
+
+#ifndef R_USE_PLATFORM_REPORT
+    #define R_USE_PLATFORM_REPORT 0
+#endif
+
+#if R_USE_TLS
+static void customTls(RSocket *sp, int cmd, void *arg, int flags);
+#endif
+
+/*********************************** Code *************************************/
+
+PUBLIC int rInitOs(void)
+{
+#if R_USE_TLS
+    /*
+        Register a custom TLS callback to define the MbedTLS certificate bundle
+     */
+    rSetSocketCustom(customTls);
+#endif
+    return 0;
+}
+
+PUBLIC void rTermOs(void)
+{
+    if (fsconf.partition_label) {
+        esp_vfs_littlefs_unregister(fsconf.partition_label);
+    }
+    rFree(wifiIP);
+    wifiIP = NULL;
+}
+
+#if R_USE_TLS
+static void customTls(RSocket *sp, int cmd, void *arg, int flags)
+{
+    if (cmd == R_SOCKET_CONFIG_TLS) {
+        if (!(flags & R_TLS_HAS_AUTHORITY)) {
+            /*
+                Attach the MbedTLS certificate bundle
+             */
+            mbedtls_ssl_config *conf = (mbedtls_ssl_config*) arg;
+            if (esp_crt_bundle_attach(conf) != ESP_OK) {
+                rError(ETAG, "Failed to attach certificate bundle");
+            }
+        }
+    }
+}
+#endif
+
+/*
+    Initialize the LittleFS file system from "storage" to the nominated path
+ */
+PUBLIC int rInitFilesystem(cchar *path, cchar *storage)
+{
+    esp_err_t ret;
+
+    fsconf.base_path = path;
+    fsconf.partition_label = storage;
+    fsconf.format_if_mount_failed = true;
+    fsconf.dont_mount = false;
+
+    ret = esp_vfs_littlefs_register(&fsconf);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            rError(ETAG, "Failed to mount or format filesystem");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            rError(ETAG, "Failed to find LittleFS partition");
+        } else {
+            rError(ETAG, "Failed to initialize LittleFS (%s)", esp_err_to_name(ret));
+        }
+        return R_ERR_CANT_INITIALIZE;
+    }
+#if SHOW_USAGE
+    size_t total, used;
+    total = used = 0;
+    ret = esp_littlefs_info(fsconf.partition_label, &total, &used);
+    if (ret != ESP_OK) {
+        rError(ETAG, "Failed to get LittleFS partition (%s)", esp_err_to_name(ret));
+        return R_ERR_CANT_INITIALIZE;
+    }
+    rInfo(ETAG, "FS size: total: %d, used: %d\n", total, used);
+#endif
+    return 0;
+}
+
+/*
+    Initialize NVM flash
+ */
+PUBLIC int rInitFlash(void)
+{
+    esp_err_t rc;
+
+    rc = nvs_flash_init();
+    if (rc == ESP_ERR_NVS_NO_FREE_PAGES || rc == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        rc = nvs_flash_init();
+        if (rc != ESP_OK) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    return 0;
+}
+
+/*
+    WIFI handler progress callback
+ */
+static void wifiHandler(void *arg, esp_event_base_t base, int32_t id, void *event_data)
+{
+    static int wifiRetries = 0;
+
+    if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *dp = (wifi_event_sta_disconnected_t*) event_data;
+        rError(ETAG, "WIFI connection error for ssid %s, reason %d\n", dp->ssid, (int) dp->reason);
+        if (wifiRetries < WIFI_MAX_RETRY) {
+            esp_wifi_connect();
+            wifiRetries++;
+            rInfo(ETAG, "retry to connect to the AP");
+        } else {
+            xEventGroupSetBits(wifiEvent, WIFI_FAILURE);
+            rError(ETAG, "WIFI connect failed");
+        }
+
+    } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t *event = (ip_event_got_ip_t*) event_data;
+        rFree(wifiIP);
+        wifiIP = sfmt(IPSTR, IP2STR(&event->ip_info.ip));
+        wifiRetries = 0;
+        xEventGroupSetBits(wifiEvent, WIFI_SUCCESS);
+    }
+}
+
+PUBLIC cchar *rGetIP(void)
+{
+    return wifiIP;
+}
+
+/*
+    Initialize WIFI networking
+ */
+PUBLIC int rInitWifi(cchar *ssid, cchar *password, cchar *hostname)
+{
+    EventBits_t                  bits;
+    wifi_config_t                config = { 0 };
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    sta_netif = esp_netif_create_default_wifi_sta();
+    ESP_ERROR_CHECK(esp_netif_set_hostname(sta_netif, hostname));
+
+    wifiEvent = xEventGroupCreate();
+    wifi_init_config_t icfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&icfg));
+
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiHandler, NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiHandler, NULL,
+                                                        &instance_got_ip));
+
+    strlcpy((char*) config.sta.ssid, ssid, sizeof(config.sta.ssid));
+    strlcpy((char*) config.sta.password, password, sizeof(config.sta.password));
+    config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    bits = xEventGroupWaitBits(wifiEvent, WIFI_SUCCESS | WIFI_FAILURE, pdFALSE, pdFALSE, portMAX_DELAY);
+    if (bits & WIFI_SUCCESS) {
+        rInfo(ETAG, "WIFI connected with SSID:%s", ssid);
+    } else if (bits & WIFI_FAILURE) {
+        rInfo(ETAG, "Failed to connect to SSID:%s", ssid);
+    } else {
+        rInfo(ETAG, "Unexpected WIFI error %x", (uint) bits);
+    }
+    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+    esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+    vEventGroupDelete(wifiEvent);
+    return 0;
+}
+
+#if R_USE_PLATFORM_REPORT
+/*
+    Just for debug to trace memory usage
+ */
+PUBLIC void rPlatformReport(char *label)
+{
+    static char reportBuf[1024];
+    char        *base;
+    int         hiw, stackSize;
+    ptrdiff_t   current;
+
+    //  GetStackHighWaterMark  is the minimum stack that was available in the past in words
+    hiw = (int) uxTaskGetStackHighWaterMark(NULL) * sizeof(int);
+    stackSize = (int) rGetFiberStackSize();
+    base = (char*) rGetFiberStack();
+    current = base - (char*) &base;
+
+    size_t intern = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t free = esp_get_free_heap_size();
+    size_t total = heap_caps_get_total_size(MALLOC_CAP_8BIT);
+
+    vTaskList(reportBuf);
+
+    rPrintf("\n%s\nTask List:\n%s", label, reportBuf);
+    rPrintf("Free internal: %d bytes\n", intern);
+    rPrintf("Free heap size: %d of %d bytes\n", free, total);
+    rPrintf("Stack current %d, max %d, size %d\n\n", current, stackSize - hiw, stackSize);
+}
+#endif
+
+PUBLIC int gethostname(char *name, size_t namelen)
+{
+    cchar *buf;
+
+    if (sta_netif && esp_netif_get_hostname(sta_netif, &buf) == 0) {
+        scopy(name, namelen, buf);
+        return 0;
+    }
+    return -1;
+}
+
+
+#else
+void freeEspDummy(void)
+{
+}
+#endif /* ESP32 */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+/********* Start of file src/freertos.c ************/
+
+/**
+    freertos.c - FreeRTOS specific adaptions
+
+    NOTE: ESP32 does not use this -- it has its own customized version
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+#include    "r.h"
+
+#if FREERTOS && !ESP32
+/*********************************** Code *************************************/
+
+PUBLIC int rInitOs(void)
+{
+    // FreeRTOS requires no additional initialization
+    return 0;
+}
+
+PUBLIC void rTermOs(void)
+{
+    // FreeRTOS requires no cleanup
+}
+
+/*
+    FreeRTOS does not support hostname resolution
+ */
+int gethostname(char *name, size_t namelen)
+{
+    return -1;
+}
+
+#else
+void freeRtosDummy(void)
+{
+}
+#endif /* FREERTOS */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+/********* Start of file src/vxworks.c ************/
+
+/**
+    vxworks.c - Vxworks specific adaptions
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************* Includes ***********************************/
+
+#include    "r.h"
+
+#if VXWORKS
+/*********************************** Code *************************************/
+
+PUBLIC int rInitOs(void)
+{
+    return 0;
+}
+
+PUBLIC void rTermOs(void)
+{
+}
+
+#if _WRS_VXWORKS_MAJOR < 6 || (_WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 9)
+PUBLIC int access(const char *path, int mode)
+{
+    struct stat sbuf;
+
+    return stat((char*) path, &sbuf);
+}
+#endif
+
+PUBLIC int rUnloadNativeModule(RModule *mp)
+{
+    if (unldByModuleId((MODULE_ID) mp->handle, 0) != OK) {
+        return R_ERR_CANT_COMPLETE;
+    }
+    return 0;
+}
+
+PUBLIC void rWriteToOsLog(cchar *message, int level)
+{
+    // VxWorks does not have a system log facility
+}
+
+PUBLIC pid_t rGetPid(void)
+{
+    return (pid_t) taskIdSelf();
+}
+
+#if _WRS_VXWORKS_MAJOR < 6 || (_WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR < 9)
+PUBLIC int fsync(int fd)
+{
+    return 0;
+}
+#endif
+
+
+PUBLIC int usleep(uint usec)
+{
+    struct timespec timeout;
+    int             rc;
+
+    if (usec > MAXINT) {
+        usec = MAXINT;
+    }
+    timeout.tv_sec = usec / (1000 * 1000);
+    timeout.tv_nsec = usec % (1000 * 1000) * 1000;
+    do {
+        rc = nanosleep(&timeout, &timeout);
+    } while (rc < 0 && errno == EINTR);
+    return 0;
+}
+
+#if R_USE_RUN
+/*
+    VxWorks rRun implementation
+    NOTE: This is a simplified implementation that runs commands in the same task context.
+    For full process isolation, this would require taskSpawn with named pipes (pipeDevCreate),
+    which adds significant complexity. This implementation is suitable for simple command execution.
+ */
+PUBLIC int rRun(cchar *command, char **output)
+{
+    /*
+        VxWorks doesn't have a simple fork/exec model like Unix or CreateProcess like Windows.
+        A full implementation would require:
+        1. Loading the command as a module or finding it in the symbol table
+        2. Creating named pipes with pipeDevCreate()
+        3. Spawning a task with taskSpawn()
+        4. Redirecting I/O with ioTaskStdSet()
+        5. Coordinating with semaphores
+
+        For now, return an error indicating this platform is not yet fully supported.
+     */
+    rError("run", "rRun is not yet implemented for VxWorks");
+    if (output) {
+        *output = NULL;
+    }
+    return R_ERR_BAD_STATE;
+}
+#endif /* R_USE_RUN */
+
+/*
+    Create a routine to pull in the GCC support routines for double and int64 manipulations for some platforms. Do this
+    incase modules reference these routines. Without this, the modules have to reference them. Which leads to multiple
+    defines if two modules include them. (Code to pull in moddi3, udivdi3, umoddi3)
+ */
+double  __R_floating_point_resolution(double a, double b, int64 c, int64 d, uint64 e, uint64 f)
+{
+    a = a / b;
+    a = a * b;
+    c = c / d;
+    c = c % d;
+    e = e / f;
+    e = e % f;
+    c = (int64) a;
+    d = (uint64) a;
+    a = (double) c;
+    a = (double) e;
+    return (a == b) ? a : b;
+}
+
+#else
+void vxworksDummy(void)
+{
+}
+#endif /* VXWORKS */
+
+/*
+    Copyright (c) Michael O'Brien. All Rights Reserved.
+    This is proprietary software and requires a commercial license from the author.
+ */
+
+
+/********* Start of file src/openssl.c ************/
+
+/*
+    openssl.c - Transport Layer Security for OpenSSL
+
+    This code expects OpenSSL version >= 1.1.1 (i.e. with TLSv1.3 support)
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************** Includes **********************************/
+
+#include    "r.h"
+
+#if R_USE_TLS
+#if ME_COM_OPENSSL
+
+// Clashes with WinCrypt.h */
+#undef OCSP_RESPONSE
+
+/*
+   Indent includes to bypass build system dependency scanning
+ */
+ #include    <openssl/opensslv.h>
+ #include    <openssl/ssl.h>
+ #include    <openssl/evp.h>
+ #include    <openssl/rand.h>
+ #include    <openssl/err.h>
+ #include    <openssl/dh.h>
+ #include    <openssl/rsa.h>
+ #include    <openssl/bio.h>
+
+#if ME_R_TLS_ENGINE
+    #include    <openssl/x509v3.h>
+    #ifndef OPENSSL_NO_ENGINE
+        #include    <openssl/engine.h>
+        #define R_HAS_CRYPTO_ENGINE 1
+    #endif
+#endif
+
+/*
+    Define default OpenSSL options
+    Ensure we generate a new private key for each connection
+    Disable SSLv2, SSLv3 and TLSv1 by default -- they are insecure.
+ */
+#ifndef ME_R_TLS_SET_OPTIONS
+    #define ME_R_TLS_SET_OPTIONS   ( \
+                SSL_OP_ALL | \
+                SSL_OP_SINGLE_DH_USE | \
+                SSL_OP_SINGLE_ECDH_USE | \
+                SSL_OP_NO_SSLv2 | \
+                SSL_OP_NO_SSLv3 | \
+                SSL_OP_NO_TLSv1 | \
+                SSL_OP_NO_TLSv1_1)
+#endif
+#ifndef ME_R_TLS_CLEAR_OPTIONS
+    #define ME_R_TLS_CLEAR_OPTIONS 0
+#endif
+
+/************************************ Locals **********************************/
+#if ME_UNIX_LIKE
+/*
+    Mac OS X OpenSSL stack is deprecated. Suppress those warnings.
+ */
+    #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+typedef struct Rtls {
+    RSocket *sock;                          /* Owning socket */
+    Socket fd;                              /* Socket file descriptor */
+    char *alpn;                             /* ALPN protocols */
+    char *keyFile;                          /* Alternatively, locate the key in a file */
+    char *certFile;                         /* Certificate filename */
+    char *revokeFile;                       /* Certificate revocation list */
+    char *caFile;                           /* Certificate verification cer file or bundle */
+    char *ciphers;                          /* Cipher suite to use for connection */
+    char *cipher;                           /* Cipher in use for connection */
+    char *engine;                           /* Engine device */
+    char *peer;                             /* Peer address */
+    char *protocol;                         /* Cipher in use for connection */
+    uint connected : 1;                     /* Connection established */
+    uint freeCtx : 1;                       /* Ctx owned by this */
+    uint server : 1;
+    int verifyPeer : 2;                     /* Verify the peer certificate */
+    int verifyIssuer : 2;                   /* Verify issuer of peer cert. Set to 0 to permit self signed certs */
+
+    SSL_CTX *ctx;
+    SSL *handle;
+    BIO *bio;
+    SSL_SESSION *session;                   /* Cached session for client resumption */
+    int handshakes;
+} Rtls;
+
+/*
+    Certificate and key formats
+ */
+#define FORMAT_PEM 1
+#define FORMAT_DER 2
+
+static char *defaultAlpn;                 /* Default ALPN protocols */
+static char *defaultCaFile;               /* Default certificate verification cer file or bundle */
+static char *defaultCertFile;             /* Default certificate filename */
+static char *defaultKeyFile;              /* Default Alternatively, locate the key in a file */
+static char *defaultRevokeFile;           /* Default certificate revocation list */
+static char *defaultCiphers;              /* Default Ciphers to use for connection */
+static int  defaultVerifyPeer = 1;        /* Verify peer certificates */
+static int  defaultVerifyIssuer = 1;      /* Verify issuer of peer certificates */
+
+/***************************** Forward Declarations ***************************/
+
+static char *getTlsError(Rtls *tp, char *buf, size_t bufsize);
+static int  handshake(Rtls *tp, Ticks deadline);
+static int  initEngine(Rtls *tp);
+static int  parseCert(Rtls *tp, cchar *path);
+static int  parseKey(Rtls *tp, SSL_CTX *ctx, cchar *keyFile);
+static int  selectAlpn(SSL *ssl, cuchar **out, uchar *outlen, cuchar *in, uint inlen, void *arg);
+static int  setCiphers(SSL_CTX *ctx, cchar *ciphers);
+static int  verifyPeerCertificate(int ok, X509_STORE_CTX *xctx);
+
+/************************************* Code ***********************************/
+/*
+    Initialize the SSL layer
+ */
+PUBLIC int rInitTls(void)
+{
+    /*
+        Configure the SSL library. Use the crypto ID as a one-time test. This allows
+        users to configure the library and have their configuration used instead.
+     */
+    if (CRYPTO_get_id_callback() == 0) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        // OpenSSL < 1.1.0 requires manual initialization
+#if !ME_WIN_LIKE
+        OpenSSL_add_all_algorithms();
+#endif
+        SSL_library_init();
+        SSL_load_error_strings();
+#endif
+#if R_HAS_CRYPTO_ENGINE
+        ENGINE_load_builtin_engines();
+        ENGINE_add_conf_module();
+        CONF_modules_load_file(NULL, NULL, 0);
+#endif
+    }
+    return 0;
+}
+
+PUBLIC void rTermTls(void)
+{
+#if R_HAS_CRYPTO_ENGINE
+    ENGINE_cleanup();
+#endif
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    // OpenSSL < 1.1.0 requires manual cleanup
+    ERR_free_strings();
+    EVP_cleanup();
+    CRYPTO_cleanup_all_ex_data();
+#endif
+
+    rFree(defaultAlpn);
+    rFree(defaultCaFile);
+    rFree(defaultCertFile);
+    rFree(defaultCiphers);
+    rFree(defaultKeyFile);
+    rFree(defaultRevokeFile);
+
+    defaultAlpn = 0;
+    defaultCaFile = 0;
+    defaultCertFile = 0;
+    defaultCiphers = 0;
+    defaultKeyFile = 0;
+    defaultRevokeFile = 0;
+}
+
+PUBLIC Rtls *rAllocTls(RSocket *sock)
+{
+    Rtls *tp;
+
+    if ((tp = rAllocType(Rtls)) == 0) {
+        return 0;
+    }
+    tp->sock = sock;
+    tp->verifyPeer = -1;
+    tp->verifyIssuer = -1;
+    return tp;
+}
+
+PUBLIC void rFreeTls(Rtls *tp)
+{
+    int ret;
+
+    if (!tp) {
+        return;
+    }
+    rFree(tp->alpn);
+    rFree(tp->certFile);
+    rFree(tp->caFile);
+    rFree(tp->cipher);
+    rFree(tp->ciphers);
+    rFree(tp->keyFile);
+    rFree(tp->engine);
+    rFree(tp->peer);
+    rFree(tp->protocol);
+
+    if (tp->ctx && tp->freeCtx) {
+        SSL_CTX_free(tp->ctx);
+    }
+    if (tp->handle) {
+        //  Bidirectional shutdown: call twice if first returns 0
+        ret = SSL_shutdown(tp->handle);
+        if (ret == 0) {
+            SSL_shutdown(tp->handle);
+        }
+        SSL_free(tp->handle);
+        ERR_clear_error();
+    }
+    rFree(tp);
+}
+
+PUBLIC void rCloseTls(Rtls *tp)
+{
+    int ret;
+
+    if (tp && tp->fd != INVALID_SOCKET) {
+        if (tp->handle) {
+            //  Bidirectional shutdown: call twice if first returns 0
+            ret = SSL_shutdown(tp->handle);
+            if (ret == 0) {
+                SSL_shutdown(tp->handle);
+            }
+            ERR_clear_error();
+        }
+    }
+}
+
+PUBLIC int rConfigTls(Rtls *tp, bool server)
+{
+    X509_STORE *store;
+    SSL_CTX    *ctx;
+    uchar      resume[16];
+
+    STACK_OF(X509_NAME) * certNames;
+    char abuf[128];
+    int  verifyMode;
+
+    tp->server = server;
+
+    if ((ctx = SSL_CTX_new(TLS_method())) == 0) {
+        return rSetSocketError(tp->sock, "Unable to create SSL context");
+    }
+    tp->ctx = ctx;
+    tp->freeCtx = 1;
+    SSL_CTX_set_ex_data(ctx, 0, (void*) tp);
+
+#if defined(TLS1_3_VERSION) && ME_ENFORCE_TLS1_3
+    #if defined(SSL_CTX_set_min_proto_version)
+    SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
+    #else
+        #ifdef SSL_OP_NO_TLSv1
+    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1);
+        #endif
+        #ifdef SSL_OP_NO_TLSv1_1
+    SSL_CTX_set_options(ctx, SSL_OP_NO_TLSv1_1);
+        #endif
+    #endif
+#endif
+
+    if (tp->verifyIssuer < 0) {
+        tp->verifyIssuer = defaultVerifyIssuer;
+    }
+    if (tp->verifyPeer < 0) {
+        tp->verifyPeer = defaultVerifyPeer;
+    }
+    tp->alpn = tp->alpn ? tp->alpn : scloneNull(defaultAlpn);
+    tp->caFile = tp->caFile ? tp->caFile : (server ? 0 : scloneNull(defaultCaFile));
+    tp->certFile = tp->certFile ? tp->certFile : scloneNull(defaultCertFile);
+    tp->keyFile = tp->keyFile ? tp->keyFile : scloneNull(defaultKeyFile);
+    tp->revokeFile = tp->revokeFile ? tp->revokeFile : scloneNull(defaultRevokeFile);
+    tp->ciphers = tp->ciphers ? tp->ciphers : scloneNull(defaultCiphers);
+
+    /*
+        Configure the certificates
+     */
+    if (tp->certFile) {
+        if (parseCert(tp, tp->certFile) < 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+        tp->keyFile = (tp->keyFile == 0) ? tp->certFile : tp->keyFile;
+        if (tp->keyFile) {
+            if (parseKey(tp, ctx, tp->keyFile) < 0) {
+                return R_ERR_CANT_INITIALIZE;
+            }
+            if (!SSL_CTX_check_private_key(ctx)) {
+                return rSetSocketError(tp->sock, "Check of private key file failed: %s", tp->keyFile);
+            }
+        }
+    }
+    if (tp->ciphers) {
+        if (setCiphers(ctx, tp->ciphers) < 0) {
+            return rSetSocketError(tp->sock, "Unable to define ciphers \"%s\"", tp->ciphers);
+        }
+    }
+    if (tp->verifyPeer == 1) {
+        /*
+            Use either the authority file or the default verify paths
+            OpenSSL currently has issues where loading additional paths may (may not) invalidate the default paths
+         */
+        if (tp->caFile) {
+            if (!SSL_CTX_load_verify_locations(ctx, (char*) tp->caFile, NULL)) {
+                return rSetSocketError(tp->sock, "Unable to set certificate locations: %s", tp->caFile);
+            }
+            certNames = SSL_load_client_CA_file(tp->caFile);
+            if (certNames) {
+                // Define the list of CA certificates to send to the client before they send their client certificate
+                // for validation
+                SSL_CTX_set_client_CA_list(ctx, certNames);
+            }
+        } else if (!SSL_CTX_set_default_verify_paths(ctx)) {
+            // OpenSSL listens to the env vars: SSL_CERT_DIR and SSL_CERT_FILE to override the default certificate
+            // locations
+            return rSetSocketError(tp->sock, "Unable to set default certificate locations");
+        }
+        store = SSL_CTX_get_cert_store(ctx);
+        if (tp->revokeFile) {
+            if (!X509_STORE_load_locations(store, tp->revokeFile, 0)) {
+                return rSetSocketError(tp->sock, "Cannot load certificate revoke list: %s", tp->revokeFile);
+            }
+            /*
+                Loading the list is not enough. OpenSSL's check_revocation() early-returns success
+                unless X509_V_FLAG_CRL_CHECK is set, so without this the list is never opened and a
+                revoked certificate is accepted on every handshake - silently, because the operator
+                configured a CRL and has no indication it is inert.
+
+                CRL_CHECK_ALL extends the check to the whole chain, not just the leaf. An operator
+                who supplies a revocation list means it to apply to the intermediates too.
+             */
+            X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
+        }
+        X509_STORE_set_ex_data(store, 0, (void*) tp);
+        verifyMode = SSL_VERIFY_PEER;
+        if (server) {
+            verifyMode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+        }
+        SSL_CTX_set_verify(ctx, verifyMode, verifyPeerCertificate);
+
+        /*
+            Bound the chain length so a peer cannot force unbounded signature verification work.
+         */
+        SSL_CTX_set_verify_depth(ctx, ME_R_TLS_MAX_DEPTH);
+    }
+    SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY | SSL_MODE_RELEASE_BUFFERS | SSL_MODE_ENABLE_PARTIAL_WRITE);
+
+    // Enable TLS session resumption for server connections
+    if (server) {
+        RAND_bytes(resume, sizeof(resume));
+        SSL_CTX_set_session_id_context(ctx, resume, sizeof(resume));
+        SSL_CTX_sess_set_cache_size(ctx, ME_R_SSL_CACHE);
+    }
+
+    if (ME_R_TLS_SET_OPTIONS) {
+        SSL_CTX_set_options(ctx, ME_R_TLS_SET_OPTIONS);
+    }
+    if (ME_R_TLS_CLEAR_OPTIONS) {
+        SSL_CTX_clear_options(ctx, ME_R_TLS_CLEAR_OPTIONS);
+    }
+    if (tp->alpn) {
+        if (tp->server) {
+            SSL_CTX_set_alpn_select_cb(ctx, selectAlpn, (void*) tp);
+        } else {
+            size_t alpnLen = slen(tp->alpn);
+            // NOTE: This ALPN protocol string format only supports one protocol
+            // ALPN length is limited to 255 bytes by protocol and buffer is 128 bytes
+            if (alpnLen > 255) {
+                return rSetSocketError(tp->sock, "ALPN protocol name exceeds 255 bytes");
+            }
+            if (alpnLen > 126) {
+                return rSetSocketError(tp->sock, "ALPN protocol name too long: %zu bytes", alpnLen);
+            }
+            SFMT(abuf, "%c%s", (uchar) alpnLen, tp->alpn);
+            SSL_CTX_set_alpn_protos(ctx, (cuchar*) abuf, (uint) slen(abuf));
+        }
+    }
+    if (initEngine(tp) < 0) {
+        // Continue without engine
+    }
+    return 0;
+}
+
+static int initEngine(Rtls *tp)
+{
+#if R_HAS_CRYPTO_ENGINE
+    if (tp->engine) {
+        ENGINE *engine;
+        if (!(engine = ENGINE_by_id(tp->engine))) {
+            return rSetSocketError(tp->sock, "Cannot find crypto device %s", tp->engine);
+        }
+        if (!ENGINE_set_default(engine, ENGINE_METHOD_ALL)) {
+            ENGINE_free(engine);
+            return rSetSocketError(tp->sock, "Cannot find crypto device %s", tp->engine);
+        }
+        rInfo("tls", "Loaded crypto device %s", tp->engine);
+        ENGINE_free(engine);
+    }
+#endif
+    return 0;
+}
+
+static int selectAlpn(SSL *ssl, cuchar **out, uchar *outlen, cuchar *in, uint inlen, void *arg)
+{
+    Rtls  *tp;
+    cchar *alpn;
+
+    tp = arg;
+    alpn = tp->alpn;
+    if (alpn == 0) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+    /*
+        WARNING: this appalling API expects pbuf to be static / persistent and sets *out to refer to it.
+        NOTE: ALPN protocol string only supports one protocol.
+     */
+    if (SSL_select_next_proto((uchar**) out, outlen, (cuchar*) alpn, (uint) slen(alpn), in,
+                              inlen) != OPENSSL_NPN_NEGOTIATED) {
+        return SSL_TLSEXT_ERR_NOACK;
+    }
+    return SSL_TLSEXT_ERR_OK;
+}
+
+PUBLIC Rtls *rAcceptTls(Rtls *tp, Rtls *listen)
+{
+    tp->verifyPeer = listen->verifyPeer;
+    tp->verifyIssuer = listen->verifyIssuer;
+    tp->ctx = listen->ctx;
+    tp->server = 1;
+    return tp;
+}
+
+PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
+{
+    int rc;
+
+    assert(tp);
+
+    tp->fd = fd;
+
+    if ((tp->handle = (SSL*) SSL_new(tp->ctx)) == 0) {
+        return R_ERR_BAD_STATE;
+    }
+    SSL_set_app_data(tp->handle, (void*) tp);
+    SSL_set_SSL_CTX(tp->handle, tp->ctx);
+
+    // Apply cached session for client-side resumption
+    if (tp->session) {
+        SSL_set_session(tp->handle, tp->session);
+    }
+
+    /*
+        Create a socket bio. We don't use the BIO except as storage for the fd
+     */
+    if ((tp->bio = BIO_new_socket((int) tp->fd, BIO_NOCLOSE)) == 0) {
+        SSL_free(tp->handle);
+        tp->handle = NULL;
+        return R_ERR_BAD_STATE;
+    }
+    SSL_set_bio(tp->handle, tp->bio, tp->bio);
+
+    if (tp->server) {
+        SSL_set_accept_state(tp->handle);
+        rc = 0;
+    } else {
+        if (peer) {
+            tp->peer = sclone(peer);
+            X509_VERIFY_PARAM *param = SSL_get0_param(tp->handle);
+            X509_VERIFY_PARAM_set_hostflags(param, 0);
+            X509_VERIFY_PARAM_set1_host(param, peer, 0);
+            SSL_set_tlsext_host_name(tp->handle, peer);
+        }
+
+        ERR_clear_error();
+        if ((rc = SSL_connect(tp->handle)) < 1) {
+            int error = SSL_get_error(tp->handle, rc);
+            if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_CONNECT) {
+                rc = 0;
+            } else {
+                char ebuf[80];
+                getTlsError(tp, ebuf, sizeof(ebuf));
+                return rSetSocketError(tp->sock, "Connect failed: error %s", ebuf);
+            }
+        }
+    }
+    if (handshake(tp, deadline) < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+    return rc;
+}
+
+static int handshake(Rtls *tp, Ticks deadline)
+{
+    int error, mask, rc;
+
+    mask = R_IO;
+    for (;;) {
+        ERR_clear_error();
+        if ((rc = SSL_do_handshake(tp->handle)) >= 0) {
+            break;
+        }
+        error = SSL_get_error(tp->handle, rc);
+        mask = 0;
+        if (error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_ACCEPT) {
+            mask |= R_READABLE;
+        } else if (error == SSL_ERROR_WANT_WRITE || error == SSL_ERROR_WANT_CONNECT) {
+            mask |= R_WRITABLE;
+        } else {
+#if ME_R_DEBUG_LOGGING
+            if (rEmitLog("debug", "tls")) {
+                char ebuf[80];
+                getTlsError(tp, ebuf, sizeof(ebuf));
+                rDebug("tls", "SSL_read %s", ebuf);
+            }
+#endif
+            return R_ERR_CANT_CONNECT;
+        }
+        if (rWaitForIO(tp->sock->wait, mask, deadline) < 0) {
+            return R_ERR_TIMEOUT;
+        }
+    }
+    tp->protocol = sclone(SSL_get_version(tp->handle));
+    tp->cipher = sclone(SSL_get_cipher(tp->handle));
+    tp->connected = 1;
+
+#if ME_R_DEBUG_LOGGING
+    if (rEmitLog("debug", "tls")) {
+        rDebug("tls", "Handshake with %s and %s", tp->protocol, tp->cipher);
+    }
+#endif
+    return 1;
+}
+
+/*
+    Return the number of bytes read. Return -1 on errors and EOF. Distinguish EOF via mprIsSocketEof.
+    If non-blocking, may return zero if no data or still handshaking.
+    Let rReadSync do a wait for I/O if required.
+ */
+PUBLIC ssize rReadTls(Rtls *tp, void *buf, size_t len)
+{
+    int rc, error, toRead;
+
+    if (tp->handle == 0) {
+        return R_ERR_BAD_STATE;
+    }
+    ERR_clear_error();
+    toRead = (len > INT_MAX) ? INT_MAX : (int) len;
+    rc = SSL_read(tp->handle, buf, toRead);
+    if (rc <= 0) {
+        error = SSL_get_error(tp->handle, rc);
+        if (!(error == SSL_ERROR_WANT_READ || error == SSL_ERROR_WANT_CONNECT || error == SSL_ERROR_WANT_ACCEPT)) {
+            if (error != SSL_ERROR_ZERO_RETURN) {
+                char ebuf[80];
+                getTlsError(tp, ebuf, sizeof(ebuf));
+                rDebug("tls", "SSL_read %s", ebuf);
+            }
+            return R_ERR_CANT_READ;
+        }
+        rc = 0;
+    }
+    return rc;
+}
+
+/*
+    Write data. Return the number of bytes written or -1 on errors.
+ */
+PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, size_t len)
+{
+    size_t totalWritten;
+    int    error, rc, toWrite;
+
+    if (tp->bio == 0 || tp->handle == 0 || len <= 0) {
+        return R_ERR_BAD_STATE;
+    }
+    totalWritten = 0;
+
+    do {
+        ERR_clear_error();
+        toWrite = (len > INT_MAX) ? INT_MAX : (int) len;
+        rc = SSL_write(tp->handle, buf, toWrite);
+        if (rc <= 0) {
+            error = SSL_get_error(tp->handle, rc);
+            if (error != SSL_ERROR_WANT_WRITE) {
+                return R_ERR_CANT_WRITE;
+            }
+            break;
+        }
+        totalWritten += (size_t) rc;
+        buf = (void*) ((char*) buf + rc);
+        len -= (size_t) rc;
+    } while (len > 0);
+
+    return (ssize) totalWritten;
+}
+
+/*
+    Load a certificate into the context from the supplied buffer. Type indicates the desired format. The path is only
+       used for errors.
+ */
+static int loadCert(Rtls *tp, SSL_CTX *ctx, cchar *buf, size_t len, int type, cchar *path)
+{
+    X509 *cert;
+    BIO  *bio;
+    bool loaded;
+
+    assert(ctx);
+    assert(buf);
+    assert(type);
+    assert(path && *path);
+
+    cert = 0;
+    loaded = 0;
+
+    if ((bio = BIO_new_mem_buf((void*) buf, (int) len)) == 0) {
+        rSetSocketError(tp->sock, "Unable to allocate memory for certificate %s", path);
+    } else {
+        if (type == FORMAT_PEM) {
+            if ((cert = PEM_read_bio_X509(bio, NULL, 0, NULL)) == 0) {
+                // Error reported by caller if loading all formats fail
+            }
+        } else if (type == FORMAT_DER) {
+            if ((cert = d2i_X509_bio(bio, NULL)) == 0) {
+                // Error reported by caller
+            }
+        }
+        if (cert) {
+            if (SSL_CTX_use_certificate(ctx, cert) != 1) {
+                rSetSocketError(tp->sock, "Unable to use certificate %s", path);
+            } else {
+                loaded = 1;
+            }
+        }
+    }
+    if (bio) {
+        BIO_free(bio);
+    }
+    if (cert) {
+        X509_free(cert);
+    }
+    return loaded ? 0 : R_ERR_CANT_LOAD;
+}
+
+/*
+    Load a certificate file in either PEM or DER format
+ */
+static int parseCert(Rtls *tp, cchar *certFile)
+{
+    SSL_CTX *ctx;
+    char    *buf;
+    size_t  len;
+    int     rc;
+
+    assert(tp);
+    assert(certFile);
+    ctx = tp->ctx;
+
+    rc = 0;
+    if (ctx == NULL || certFile == NULL) {
+        return rc;
+    }
+    if ((buf = rReadFile(certFile, &len)) == 0) {
+        rc = rSetSocketError(tp->sock, "Unable to read certificate %s", certFile);
+    } else {
+        if (loadCert(tp, ctx, buf, len, FORMAT_PEM, certFile) < 0 &&
+            loadCert(tp, ctx, buf, len, FORMAT_DER, certFile) < 0) {
+            rc = rSetSocketError(tp->sock, "Unable to load certificate %s", certFile);
+        }
+    }
+    if (buf) {
+        memset(buf, 0, len);
+        rFree(buf);
+    }
+    return rc;
+}
+
+/*
+    Load a key into the context from the supplied buffer. Type indicates the key format.  Path only used for
+       diagnostics.
+ */
+static int loadKey(Rtls *tp, SSL_CTX *ctx, cchar *buf, size_t len, int type, cchar *path)
+{
+    EVP_PKEY *pkey;
+    BIO      *bio;
+    bool     loaded;
+    cchar    *cp;
+
+    assert(ctx);
+    assert(buf);
+    assert(type);
+    assert(path && *path);
+
+    pkey = 0;
+    loaded = 0;
+
+    /*
+        Strip off EC parameters
+     */
+    if ((cp = sncontains(buf, "-----END EC PARAMETERS-----", len)) != NULL) {
+        buf = &cp[28];
+    }
+    if ((bio = BIO_new_mem_buf((void*) buf, (int) len)) == 0) {
+        rSetSocketError(tp->sock, "Unable to allocate memory for key %s", path);
+        return R_ERR_MEMORY;
+    }
+    if (type == FORMAT_PEM) {
+        // Headless: No support for passwords for encrypted private keys
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, 0, NULL);
+    } else if (type == FORMAT_DER) {
+        pkey = d2i_PrivateKey_bio(bio, NULL);
+    }
+    if (pkey) {
+        if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+            rSetSocketError(tp->sock, "Unable to use key %s", path);
+        } else {
+            loaded = 1;
+        }
+        EVP_PKEY_free(pkey);
+    }
+    if (bio) {
+        BIO_free(bio);
+    }
+    return loaded ? 0 : R_ERR_CANT_LOAD;
+}
+
+/*
+    Load a key file in either PEM or DER format
+ */
+static int parseKey(Rtls *tp, SSL_CTX *ctx, cchar *keyFile)
+{
+    char   *buf;
+    size_t len = 0;
+    int    rc;
+
+    assert(ctx);
+    assert(keyFile);
+
+    buf = 0;
+    rc = 0;
+
+    if (ctx == NULL || keyFile == NULL) {
+        ;
+    } else if ((buf = rReadFile(keyFile, &len)) == 0) {
+        rc = rSetSocketError(tp->sock, "Unable to read key %s", keyFile);
+
+    } else if (loadKey(tp, ctx, buf, len, FORMAT_PEM, keyFile) < 0 &&
+               loadKey(tp, ctx, buf, len, FORMAT_DER, keyFile) < 0) {
+        rc = rSetSocketError(tp->sock, "Unable to load key %s", keyFile);
+    }
+    if (buf) {
+        memset(buf, 0, len);
+        rFree(buf);
+    }
+    return rc;
+}
+
+static int verifyPeerCertificate(int ok, X509_STORE_CTX *xctx)
+{
+    X509 *cert;
+    SSL  *handle;
+    Rtls *tp;
+    char subject[1024], issuer[1024], peerName[1024];
+    int  error;
+
+    subject[0] = issuer[0] = '\0';
+    handle = (SSL*) X509_STORE_CTX_get_ex_data(xctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+    if (!handle) {
+        return 0;
+    }
+    tp = (Rtls*) SSL_get_app_data(handle);
+    if (!tp) {
+        return 0;
+    }
+    cert = X509_STORE_CTX_get_current_cert(xctx);
+    if (!cert) {
+        rSetSocketError(tp->sock, "No certificate provided");
+        return 0;
+    }
+    error = X509_STORE_CTX_get_error(xctx);
+
+    /*
+        Start from OpenSSL's own verdict. This routine may only ever RELAX that verdict, and only
+        for the specific errors the configuration explicitly waives. It must never widen it.
+        Overriding "ok" here would accept every error not enumerated below -- including expired,
+        revoked, bad-signature and hostname-mismatch certificates.
+     */
+    if (ok) {
+        return 1;
+    }
+    /*
+        Extract names for diagnostics only. A failure to read a name must not decide the handshake.
+        X509_NAME_get_text_by_NID returns -1 when the field is absent, which is normal for a
+        modern SAN-only certificate, so peerName must be initialized before it is used.
+     */
+    peerName[0] = '\0';
+    X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject) - 1);
+    X509_NAME_oneline(X509_get_issuer_name(cert), issuer, sizeof(issuer) - 1);
+    if (X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName,
+                                  peerName, sizeof(peerName) - 1) < 0) {
+        peerName[0] = '\0';
+    }
+    switch (error) {
+    case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+    case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+    case X509_V_ERR_CERT_UNTRUSTED:
+    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+    case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+    case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
+        /*
+            The issuer cannot be established. Waived only when the operator has explicitly
+            disabled issuer verification, which is how self-signed certificates are accepted.
+         */
+        if (tp->verifyIssuer != 1) {
+            return 1;
+        }
+        rSetSocketError(tp->sock, "Certificate issuer not trusted: %s (%s)",
+                        issuer, X509_verify_cert_error_string(error));
+        return 0;
+
+#ifdef X509_V_ERR_HOSTNAME_MISMATCH
+    case X509_V_ERR_HOSTNAME_MISMATCH:
+        rSetSocketError(tp->sock, "Certificate hostname mismatch. Expecting %s got %s",
+                        tp->peer ? tp->peer : "", peerName);
+        return 0;
+#endif
+    default:
+        rSetSocketError(tp->sock, "Certificate verification failed for %s: %s",
+                        subject, X509_verify_cert_error_string(error));
+        return 0;
+    }
+}
+
+static char *getTlsError(Rtls *tp, char *buf, size_t bufsize)
+{
+    ERR_error_string_n(ERR_get_error(), buf, bufsize - 1);
+    buf[bufsize - 1] = '\0';
+    return buf;
+}
+
+static int setCiphers(SSL_CTX *ctx, cchar *ciphers)
+{
+    char *cbuf;
+
+    cbuf = sclone(ciphers);
+    for (char *cp = cbuf; *cp; cp++) {
+        if (*cp == ',') *cp = ':';
+    }
+    rInfo("tls", "Using SSL ciphers: %s", cbuf);
+    //  Try TLS1.3
+    if (SSL_CTX_set_ciphersuites(ctx, cbuf) != 1) {
+        //  Try TLS1.2 and below
+        if (SSL_CTX_set_cipher_list(ctx, cbuf) != 1) {
+            rFree(cbuf);
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    rFree(cbuf);
+    return 0;
+}
+
+PUBLIC void rSetTlsCerts(Rtls *tp, cchar *ca, cchar *key, cchar *cert, cchar *revoke)
+{
+    if (key) {
+        rFree(tp->keyFile);
+        tp->keyFile = sclone(key);
+    }
+    if (cert) {
+        rFree(tp->certFile);
+        tp->certFile = sclone(cert);
+    }
+    if (revoke) {
+        rFree(tp->revokeFile);
+        tp->revokeFile = sclone(revoke);
+    }
+    if (ca) {
+        rFree(tp->caFile);
+        tp->caFile = sclone(ca);
+    }
+}
+
+PUBLIC void rSetTlsDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke)
+{
+    if (ca) {
+        rFree(defaultCaFile);
+        defaultCaFile = sclone(ca);
+    }
+    if (key) {
+        rFree(defaultKeyFile);
+        defaultKeyFile = sclone(key);
+    }
+    if (cert) {
+        rFree(defaultCertFile);
+        defaultCertFile = sclone(cert);
+    }
+    if (revoke) {
+        rFree(defaultRevokeFile);
+        defaultRevokeFile = sclone(revoke);
+    }
+}
+
+PUBLIC void rSetTlsCiphers(Rtls *tp, cchar *ciphers)
+{
+    rFree(tp->ciphers);
+    tp->ciphers = 0;
+    if (ciphers && *ciphers) {
+        tp->ciphers = sclone(ciphers);
+    }
+}
+
+PUBLIC void rSetTlsDefaultCiphers(cchar *ciphers)
+{
+    rFree(defaultCiphers);
+    defaultCiphers = 0;
+    if (ciphers && *ciphers) {
+        defaultCiphers = sclone(ciphers);
+    }
+}
+
+PUBLIC void rSetTlsAlpn(Rtls *tp, cchar *alpn)
+{
+    rFree(tp->alpn);
+    tp->alpn = sclone(alpn);
+}
+
+PUBLIC void rSetTlsDefaultAlpn(cchar *alpn)
+{
+    rFree(defaultAlpn);
+    defaultAlpn = sclone(alpn);
+}
+
+PUBLIC void rSetTlsVerify(Rtls *tp, int verifyPeer, int verifyIssuer)
+{
+    tp->verifyPeer = verifyPeer;
+    tp->verifyIssuer = verifyIssuer;
+}
+
+PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer)
+{
+    defaultVerifyPeer = verifyPeer;
+    defaultVerifyIssuer = verifyIssuer;
+}
+
+PUBLIC bool rIsTlsConnected(Rtls *tp)
+{
+    return tp->connected;
+}
+
+PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
+{
+    rFree(tp->engine);
+    tp->engine = sclone(engine);
+}
+
+PUBLIC void *rGetTlsSession(RSocket *sp)
+{
+    Rtls *tp;
+
+    if (!sp || !sp->tls) {
+        return NULL;
+    }
+    tp = sp->tls;
+    if (tp->handle) {
+        return SSL_get1_session(tp->handle);
+    }
+    return NULL;
+}
+
+PUBLIC void rSetTlsSession(RSocket *sp, void *session)
+{
+    Rtls *tp;
+
+    if (!sp || !sp->tls) {
+        return;
+    }
+    tp = sp->tls;
+    tp->session = (SSL_SESSION*) session;
+}
+
+PUBLIC void rFreeTlsSession(void *session)
+{
+    if (session) {
+        SSL_SESSION_free((SSL_SESSION*) session);
+    }
+}
+
+#else
+void opensslDummy(void)
+{
+}
+#endif /* ME_COM_OPENSSL */
+#endif /* R_USE_TLS */
+
+/*
+    Copyright (c) Embedthis Software. All Rights Reserved.
+    This software is distributed under a commercial license. Consult the LICENSE.md
+    distributed with this software for full details and copyrights.
+ */
+
+
+/********* Start of file src/mbedtls.c ************/
+
+/**
+    mbedtls.c - Transport Layer Security for mbedTLS
+
+    To build MbedTLS, use:
+        git checkout RELEASE-TAG
+        cmake -DCMAKE_BUILD_TYPE=Debug .
+        make VERBOSE=1
+
+    Copyright (c) All Rights Reserved. See details at the end of the file.
+ */
+
+/********************************** Includes **********************************/
+
+#include    "r.h"
+
+#if R_USE_TLS
+#if ME_COM_MBEDTLS
+
+    #if defined(MBEDTLS_CONFIG_FILE)
+        #include MBEDTLS_CONFIG_FILE
+    #else
+        #include "mbedtls/mbedtls_config.h"
+    #endif
+    #include "mbedtls/ssl.h"
+    #include "mbedtls/ssl_cache.h"
+    #include "mbedtls/ssl_ticket.h"
+    #include "mbedtls/ctr_drbg.h"
+    #include "mbedtls/net_sockets.h"
+    #include "psa/crypto.h"
+    #include "mbedtls/debug.h"
+    #include "mbedtls/error.h"
+    #include "mbedtls/check_config.h"
+
+/*********************************** Locals ***********************************/
+
+#define R_MAX_CERT_SIZE                 (512 * 1024)
+
+#ifndef MBEDTLS_SSL_MAX_CONTENT_LEN
+    #define MBEDTLS_SSL_MAX_CONTENT_LEN 8192
+#endif
+
+typedef struct Rtls {
+    RSocket *sock;                         /* Owning socket */
+    Socket fd;                             /* Socket file descriptor */
+    RList *alpnList;                       /* ALPN protocols as a list */
+    char *alpn;                            /* ALPN protocols */
+    char *caFile;                          /* Certificate verification file or bundle */
+    char *certFile;                        /* Certificate filename */
+    char *keyFile;                         /* Alternatively, locate the key in a file */
+    char *revokeFile;                      /* Certificate revocation list */
+    char *ciphers;                         /* Ciphers to use for connection */
+    int *cipherSuite;                      /* Ciphersuite codes */
+    uint connected : 1;                    /* Connection established */
+    uint configured : 1;                   /* TLS configured -- requires a free */
+    uint server : 1;
+    int verifyPeer : 2;                    /* Verify the peer certificate */
+    int verifyIssuer : 2;                  /* Verify issuer of peer cer. Set to 0 to permit self signed cers */
+    mbedtls_ssl_context ctx;               /* SSL state */
+    mbedtls_ssl_config conf;               /* SSL configuration */
+    mbedtls_x509_crt ca;                   /* Certificate authority bundle to verify peer */
+    mbedtls_x509_crt cert;                 /* Certificate (own) */
+    mbedtls_x509_crl revoke;               /* Certificate revoke list */
+    mbedtls_pk_context key;                /* Private key */
+} Rtls;
+
+static mbedtls_ssl_cache_context  cache;   /* Session cache context */
+static mbedtls_ctr_drbg_context   ctr;     /* Counter random generator state */
+static mbedtls_ssl_ticket_context tickets; /* Session tickets */
+static mbedtls_entropy_context    entropy; /* Entropy context */
+
+static char *defaultAlpn;                  /* Default ALPN protocols */
+static char *defaultCaFile;                /* Default certificate verification cer file or bundle */
+static char *defaultCertFile;              /* Default certificate filename */
+static char *defaultKeyFile;               /* Default Alternatively, locate the key in a file */
+static char *defaultRevokeFile;            /* Default certificate revocation list */
+static char *defaultCiphers;               /* Default Ciphers to use for connection */
+
+static int defaultVerifyPeer = 1;          /* Verify peer certificates */
+static int defaultVerifyIssuer = 1;        /* Verify issuer of peer certificates */
+
+/********************************** Forwards **********************************/
+
+static int *getCipherSuite(char *ciphers);
+static int handshake(Rtls *tp, Ticks deadline);
+static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path);
+static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path);
+static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path);
+static char *replaceHyphen(char *cipher, char from, char to);
+static void logCiphers(Rtls *tp);
+static void logMbedtls(void *context, int level, cchar *file, int line, cchar *str);
+
+/************************************ Code ************************************/
+
+PUBLIC int rInitTls(void)
+{
+    int rc;
+
+    psa_crypto_init();
+    mbedtls_ssl_cache_init(&cache);
+    mbedtls_ctr_drbg_init(&ctr);
+    mbedtls_ssl_ticket_init(&tickets);
+    mbedtls_entropy_init(&entropy);
+
+#if !defined(ESP32)
+    mbedtls_debug_set_threshold(6);
+#endif
+
+    if ((rc = mbedtls_ctr_drbg_seed(&ctr, mbedtls_entropy_func, &entropy, 0, 0)) < 0) {
+        rError("runtime", "Cannot seed TLS rng");
+        return R_ERR_CANT_INITIALIZE;
+    }
+    return 0;
+}
+
+PUBLIC void rTermTls(void)
+{
+    mbedtls_ctr_drbg_free(&ctr);
+    mbedtls_ssl_cache_free(&cache);
+    mbedtls_ssl_ticket_free(&tickets);
+    mbedtls_entropy_free(&entropy);
+    mbedtls_psa_crypto_free();
+    rFree(defaultAlpn);
+    rFree(defaultCaFile);
+    rFree(defaultCertFile);
+    rFree(defaultCiphers);
+    rFree(defaultKeyFile);
+    rFree(defaultRevokeFile);
+    defaultAlpn = 0;
+    defaultCaFile = 0;
+    defaultCertFile = 0;
+    defaultCiphers = 0;
+    defaultKeyFile = 0;
+    defaultRevokeFile = 0;
+}
+
+PUBLIC Rtls *rAllocTls(RSocket *sock)
+{
+    Rtls *tp;
+
+    if ((tp = rAllocType(Rtls)) == 0) {
+        return 0;
+    }
+    tp->sock = sock;
+    tp->verifyPeer = -1;
+    tp->verifyIssuer = -1;
+    return tp;
+}
+
+PUBLIC void rFreeTls(Rtls *tp)
+{
+    if (!tp) {
+        return;
+    }
+    rFreeList(tp->alpnList);
+    rFree(tp->alpn);
+    rFree(tp->certFile);
+    rFree(tp->caFile);
+    rFree(tp->ciphers);
+    rFree(tp->cipherSuite);
+    rFree(tp->keyFile);
+    rFree(tp->revokeFile);
+    mbedtls_pk_free(&tp->key);
+    mbedtls_x509_crt_free(&tp->cert);
+    mbedtls_x509_crt_free(&tp->ca);
+    mbedtls_x509_crl_free(&tp->revoke);
+    if (tp->configured) {
+        mbedtls_ssl_config_free(&tp->conf);
+    }
+    mbedtls_ssl_free(&tp->ctx);
+    rFree(tp);
+}
+
+PUBLIC void rCloseTls(Rtls *tp)
+{
+    if (tp && tp->fd != INVALID_SOCKET) {
+        mbedtls_ssl_close_notify(&tp->ctx);
+        mbedtls_ssl_free(&tp->ctx);
+    }
+}
+
+PUBLIC int rConfigTls(Rtls *tp, bool server)
+{
+    RSocketCustom custom;
+    char          *alpn, *last, *token;
+    int           flags, rc;
+
+    if (tp->configured) {
+        return 0;
+    }
+    tp->server = server;
+    tp->configured = 1;
+
+    mbedtls_ssl_config_init(&tp->conf);
+    mbedtls_pk_init(&tp->key);
+    mbedtls_x509_crt_init(&tp->cert);
+    mbedtls_ssl_conf_dbg(&tp->conf, logMbedtls, NULL);
+
+    if (tp->verifyIssuer < 0) {
+        tp->verifyIssuer = defaultVerifyIssuer;
+    }
+    if (tp->verifyPeer < 0) {
+        tp->verifyPeer = defaultVerifyPeer;
+    }
+    tp->alpn = tp->alpn ? tp->alpn : scloneNull(defaultAlpn);
+    tp->caFile = tp->caFile ? tp->caFile : (server ? 0 : scloneNull(defaultCaFile));
+    tp->certFile = tp->certFile ? tp->certFile : scloneNull(defaultCertFile);
+    tp->keyFile = tp->keyFile ? tp->keyFile : scloneNull(defaultKeyFile);
+    tp->revokeFile = tp->revokeFile ? tp->revokeFile : scloneNull(defaultRevokeFile);
+    tp->ciphers = tp->ciphers ? tp->ciphers : scloneNull(defaultCiphers);
+
+    if (tp->certFile) {
+        if (parseCert(tp, &tp->cert, tp->certFile) != 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+        if (!tp->keyFile) {
+            // Can include the private key with the cert file
+            tp->keyFile = tp->certFile;
+        }
+    }
+    if (tp->keyFile) {
+        if (parseKey(tp, &tp->key, tp->keyFile) != 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    if (tp->caFile) {
+        if (parseCert(tp, &tp->ca, tp->caFile) != 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    if (tp->revokeFile) {
+        if (parseRevoke(tp, &tp->revoke, tp->revokeFile) != 0) {
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    if ((rc = mbedtls_ssl_config_defaults(&tp->conf,
+                                          server ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT,
+                                          MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) < 0) {
+        rSetSocketError(tp->sock, "Cannot set mbedtls defaults");
+        return R_ERR_CANT_INITIALIZE;
+    }
+#if defined(MBEDTLS_SSL_MAJOR_VERSION_3) && defined(MBEDTLS_SSL_MINOR_VERSION_3)
+    // Enforce TLS >= 1.2
+    mbedtls_ssl_conf_min_version(&tp->conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
+#endif
+    mbedtls_ssl_conf_rng(&tp->conf, mbedtls_ctr_drbg_random, &ctr);
+
+    /*
+        Verify optional means continue with handshake even if certificate verification fails.
+        We handle verification here.
+     */
+    mbedtls_ssl_conf_authmode(&tp->conf,
+                              tp->verifyPeer == 1 ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_NONE);
+
+    if (tp->ciphers) {
+        tp->cipherSuite = getCipherSuite(tp->ciphers);
+        //  MbedTLS does not store the cipherSuite array -- must persist
+        mbedtls_ssl_conf_ciphersuites(&tp->conf, tp->cipherSuite);
+    }
+    if (tp->keyFile && tp->certFile) {
+        if (mbedtls_ssl_conf_own_cert(&tp->conf, &tp->cert, &tp->key) < 0) {
+            rSetSocketError(tp->sock, "Cannot define certificate and private key");
+            return R_ERR_CANT_INITIALIZE;
+        }
+    }
+    if (tp->caFile || tp->revokeFile) {
+        mbedtls_ssl_conf_ca_chain(&tp->conf, tp->caFile ? &tp->ca : NULL,
+                                  tp->revokeFile ? &tp->revoke : NULL);
+    }
+    if (tp->alpn) {
+        //  Must be null terminated
+        rFreeList(tp->alpnList);
+        tp->alpnList = rAllocList(2, R_DYNAMIC_VALUE);
+        if (!tp->alpnList) {
+            return R_ERR_MEMORY;
+        }
+        alpn = sclone(tp->alpn);
+        for (token = stok(alpn, ", \t", &last); token; token = stok(NULL, ", \t", &last)) {
+            if (rAddItem(tp->alpnList, sclone(token)) < 0) {
+                rFree(alpn);
+                return R_ERR_MEMORY;
+            }
+        }
+        rFree(alpn);
+        mbedtls_ssl_conf_alpn_protocols(&tp->conf, (cchar**) tp->alpnList->items);
+    }
+    if ((custom = rGetSocketCustom()) != NULL) {
+        flags = tp->caFile ? R_TLS_HAS_AUTHORITY : 0;
+        custom(tp->sock, R_SOCKET_CONFIG_TLS, &tp->conf, flags);
+    }
+    if (rEmitLog("debug", "mbedtls")) {
+        logCiphers(tp);
+    }
+    return 0;
+}
+
+PUBLIC Rtls *rAcceptTls(Rtls *tp, Rtls *listen)
+{
+    tp->verifyPeer = listen->verifyPeer;
+    tp->verifyIssuer = listen->verifyIssuer;
+    tp->conf = listen->conf;
+    return tp;
+}
+
+PUBLIC int rUpgradeTls(Rtls *tp, Socket fd, cchar *peer, Ticks deadline)
+{
+    tp->fd = fd;
+    mbedtls_ssl_init(&tp->ctx);
+    mbedtls_ssl_setup(&tp->ctx, &tp->conf);
+    mbedtls_ssl_set_bio(&tp->ctx, &tp->fd, mbedtls_net_send, mbedtls_net_recv, 0);
+
+    if (peer && mbedtls_ssl_set_hostname(&tp->ctx, peer) < 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (handshake(tp, deadline) < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+    return 0;
+}
+
+static int handshake(Rtls *tp, Ticks deadline)
+{
+    int      mask, rc;
+    uint32_t vrc;
+
+    rc = 0;
+    mask = R_IO;
+    while (rWaitForIO(tp->sock->wait, mask, deadline) >= 0) {
+        if ((rc = mbedtls_ssl_handshake(&tp->ctx)) == 0) {
+            break;
+        }
+        mask = 0;
+        if (rc == MBEDTLS_ERR_SSL_WANT_READ) {
+            mask |= R_READABLE;
+        } else if (rc == MBEDTLS_ERR_SSL_WANT_WRITE) {
+            mask |= R_WRITABLE;
+        } else {
+            break;
+        }
+    }
+    if (rc < 0) {
+        if (rc == MBEDTLS_ERR_SSL_PRIVATE_KEY_REQUIRED && !(tp->keyFile || tp->certFile)) {
+            rSetSocketError(tp->sock, "Peer requires a certificate");
+        } else if (rc == MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED) {
+            rSetSocketError(tp->sock, "Server requires a client certificate");
+        } else {
+            char ebuf[256];
+            mbedtls_strerror(-rc, ebuf, sizeof(ebuf));
+            rSetSocketError(tp->sock, "Handshake failure: %s: error -0x%x", ebuf, -rc);
+        }
+        rSetOsError(EPROTO);
+        return R_ERR_CANT_CONNECT;
+    }
+    if ((vrc = mbedtls_ssl_get_verify_result(&tp->ctx)) != 0) {
+        if (vrc & MBEDTLS_X509_BADCERT_MISSING) {
+            rSetSocketError(tp->sock, "Peer did not supply required certificate");
+        }
+        if (vrc & MBEDTLS_X509_BADCERT_EXPIRED) {
+            rSetSocketError(tp->sock, "Certificate expired");
+        } else if (vrc & MBEDTLS_X509_BADCERT_REVOKED) {
+            rSetSocketError(tp->sock, "Certificate revoked");
+        } else if (vrc & MBEDTLS_X509_BADCERT_CN_MISMATCH) {
+            if (tp->verifyPeer) {
+                rSetSocketError(tp->sock, "Certificate common name mismatch. Expected %s",
+                                mbedtls_ssl_get_hostname(&tp->ctx));
+            }
+        } else if (vrc & MBEDTLS_X509_BADCERT_KEY_USAGE || vrc & MBEDTLS_X509_BADCERT_EXT_KEY_USAGE) {
+            rSetSocketError(tp->sock, "Unauthorized key use in certificate");
+        } else if (vrc & MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
+            if (tp->verifyIssuer != 1) {
+                vrc = 0;
+            } else {
+                rSetSocketError(tp->sock, "Certificate not trusted");
+            }
+        } else if (vrc & MBEDTLS_X509_BADCERT_SKIP_VERIFY) {
+            vrc = 0;
+        } else {
+            if (rc == MBEDTLS_ERR_NET_CONN_RESET) {
+                rSetSocketError(tp->sock, "Peer disconnected");
+            } else {
+                char ebuf[256];
+                mbedtls_x509_crt_verify_info(ebuf, sizeof(ebuf), "", vrc);
+                strim(ebuf, "\n", 0);
+                rSetSocketError(tp->sock, "Cannot handshake: %s, error -0x%x", ebuf, -rc);
+            }
+        }
+    }
+    if (vrc != 0 && tp->verifyPeer == 1) {
+        if (mbedtls_ssl_get_peer_cert(&tp->ctx) == 0) {
+            rSetSocketError(tp->sock, "Peer did not provide a certificate");
+        }
+        rSetOsError(EPROTO);
+        return R_ERR_CANT_READ;
+    }
+    tp->connected = 1;
+    rDebug("tls", "Handshake with %s and %s", mbedtls_ssl_get_version(&tp->ctx), mbedtls_ssl_get_ciphersuite(&tp->ctx));
+    return 1;
+}
+
+PUBLIC bool rIsTlsConnected(Rtls *tp)
+{
+    return tp->connected;
+}
+
+PUBLIC ssize rReadTls(Rtls *tp, void *buf, size_t len)
+{
+    int    rc;
+    size_t toRead;
+
+    if (tp->fd == INVALID_SOCKET) {
+        return R_ERR_CANT_READ;
+    }
+    while (1) {
+        toRead = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
+        rc = mbedtls_ssl_read(&tp->ctx, buf, toRead);
+        if (rc < 0) {
+            if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
+                rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
+                rc == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET ||
+                rc == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+                rc == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+                rc = 0;
+                break;
+            } else if (rc == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+                return R_ERR_CANT_READ;
+            } else {
+                rDebug("tls", "readSSL: error -0x%x", -rc);
+                return R_ERR_CANT_READ;
+            }
+        } else if (rc == 0) {
+            return R_ERR_CANT_READ;
+        }
+        break;
+    }
+    return rc;
+}
+
+/*
+    Write data. Return the number of bytes written or -1 on errors or socket closure.
+ */
+PUBLIC ssize rWriteTls(Rtls *tp, cvoid *buf, size_t len)
+{
+    ssize  totalWritten;
+    int    rc;
+    size_t toWrite;
+
+    if (len <= 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    totalWritten = 0;
+    rc = 0;
+    do {
+        toWrite = (len > (ssize) MBEDTLS_SSL_MAX_CONTENT_LEN) ? MBEDTLS_SSL_MAX_CONTENT_LEN : (size_t) len;
+        rc = mbedtls_ssl_write(&tp->ctx, (uchar*) buf, toWrite);
+        if (rc <= 0) {
+            if (rc == MBEDTLS_ERR_SSL_WANT_READ ||
+                rc == MBEDTLS_ERR_SSL_WANT_WRITE ||
+                rc == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET ||
+                rc == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+                rc == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+                break;
+            }
+            if (rc == MBEDTLS_ERR_NET_CONN_RESET) {
+                return R_ERR_CANT_WRITE;
+            } else {
+                rDebug("tls", "ssl_write failed rc -0x%x", -rc);
+                return R_ERR_CANT_WRITE;
+            }
+        } else {
+            totalWritten += rc;
+            buf = (void*) ((char*) buf + rc);
+            len -= (size_t) rc;
+        }
+    } while (len > 0);
+
+    if (totalWritten == 0 && (rc == MBEDTLS_ERR_SSL_WANT_READ || rc == MBEDTLS_ERR_SSL_WANT_WRITE)) {
+        rSetOsError(EAGAIN);
+    }
+    return totalWritten;
+}
+
+/*
+    Convert string of IANA ciphers into a list of mbedtls cipher codes
+ */
+static int *getCipherSuite(char *ciphers)
+{
+    char *cipher, *next;
+    cint *cp;
+    int  nciphers, i, *result, code;
+
+    if (!ciphers || *ciphers == 0) {
+        return 0;
+    }
+    /*
+        Get all ciphers supported by MbedTLS
+     */
+    for (nciphers = 0, cp = mbedtls_ssl_list_ciphersuites(); cp && *cp; cp++, nciphers++) {
+    }
+
+    if (nciphers + 1 > MAXINT) {
+        rError("runtime", "mbedtls getCipherSuite integer overflow");
+        return NULL;
+    }
+    result = rAlloc((uint) (nciphers + 1) * sizeof(int));
+
+    /*
+        Locate required cipher and convert to an MbedTLS code
+     */
+    next = ciphers = sclone(ciphers);
+    for (i = 0; (cipher = stok(next, ":, \t", &next)) != 0; ) {
+        replaceHyphen(cipher, '_', '-');
+        if ((code = mbedtls_ssl_get_ciphersuite_id(cipher)) <= 0) {
+            cipher = sreplace(cipher, "TLS", "TLS1-3");
+            if ((code = mbedtls_ssl_get_ciphersuite_id(cipher)) <= 0) {
+                rError("mqtt", "Unsupported cipher \"%s\"", cipher);
+                rFree(cipher);
+                continue;
+            }
+            rFree(cipher);
+        }
+        result[i++] = code;
+    }
+    rFree(ciphers);
+    result[i] = 0;
+    return result;
+}
+
+static char *replaceHyphen(char *cipher, char from, char to)
+{
+    char *cp;
+
+    for (cp = cipher; *cp; cp++) {
+        if (*cp == from) {
+            *cp = to;
+        }
+    }
+    return cipher;
+}
+
+static int parseCert(Rtls *tp, mbedtls_x509_crt *cert, cchar *path)
+{
+    uchar  *buf, *cp;
+    size_t len;
+
+    if (path[0] == '@') {
+        len = slen(&path[1]);
+        cp = (uchar*) &path[1];
+        buf = 0;
+    } else {
+        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+            rSetSocketError(tp->sock, "Certificate file is too large %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
+        if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
+            rSetSocketError(tp->sock, "Unable to read certificate %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
+        cp = buf;
+    }
+    if (scontains((char*) cp, "-----BEGIN ")) {
+        /* Looks PEM encoded so count the null in the length */
+        len++;
+    }
+    if (mbedtls_x509_crt_parse(cert, cp, len) != 0) {
+        rSetSocketError(tp->sock, "Unable to parse certificate %s", path);
+        if (buf) {
+            memset(buf, 0, len);
+            rFree(buf);
+        }
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if (buf) {
+        memset(buf, 0, len);
+        rFree(buf);
+    }
+    return 0;
+}
+
+static int parseKey(Rtls *tp, mbedtls_pk_context *key, cchar *path)
+{
+    uchar  *buf, *cp;
+    size_t len;
+
+    if (path[0] == '@') {
+        len = slen(&path[1]);
+        cp = (uchar*) &path[1];
+        buf = 0;
+    } else {
+        if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+            rSetSocketError(tp->sock, "Key file is too large %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
+        if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
+            rSetSocketError(tp->sock, "Unable to read key %s", path);
+            return R_ERR_CANT_INITIALIZE;
+        }
+        cp = (uchar*) buf;
+    }
+    if (scontains((char*) cp, "-----BEGIN ")) {
+        len++;
+    }
+    if (mbedtls_pk_parse_key(key, cp, len, NULL, 0, mbedtls_ctr_drbg_random, &ctr) != 0) {
+        rSetSocketError(tp->sock, "Unable to parse key %s", path);
+        if (buf) {
+            memset(buf, 0, len);
+            rFree(buf);
+        }
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if (buf) {
+        memset(buf, 0, len);
+        rFree(buf);
+    }
+    return 0;
+}
+
+static int parseRevoke(Rtls *tp, mbedtls_x509_crl *crl, cchar *path)
+{
+    uchar  *buf;
+    size_t len;
+
+    if (rGetFileSize(path) > R_MAX_CERT_SIZE) {
+        rSetSocketError(tp->sock, "CRL file is too large %s", path);
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if ((buf = (uchar*) rReadFile(path, &len)) == 0) {
+        rSetSocketError(tp->sock, "Unable to read crl %s", path);
+        return R_ERR_CANT_INITIALIZE;
+    }
+    if (sstarts((char*) buf, "-----BEGIN ")) {
+        len++;
+    }
+    if (mbedtls_x509_crl_parse(crl, buf, len) != 0) {
+        memset(buf, 0, len);
+        rSetSocketError(tp->sock, "Unable to parse crl %s", path);
+        rFree(buf);
+        return R_ERR_CANT_INITIALIZE;
+    }
+    memset(buf, 0, len);
+    rFree(buf);
+    return 0;
+}
+
+PUBLIC void rSetTlsCerts(Rtls *tp, cchar *ca, cchar *key, cchar *cert, cchar *revoke)
+{
+    if (ca) {
+        rFree(tp->caFile);
+        tp->caFile = sclone(ca);
+    }
+    if (key) {
+        rFree(tp->keyFile);
+        tp->keyFile = sclone(key);
+    }
+    if (cert) {
+        rFree(tp->certFile);
+        tp->certFile = sclone(cert);
+    }
+    if (revoke) {
+        rFree(tp->revokeFile);
+        tp->revokeFile = sclone(revoke);
+    }
+}
+
+PUBLIC void rSetTlsDefaultCerts(cchar *ca, cchar *key, cchar *cert, cchar *revoke)
+{
+    if (ca) {
+        rFree(defaultCaFile);
+        defaultCaFile = sclone(ca);
+    }
+    if (key) {
+        rFree(defaultKeyFile);
+        defaultKeyFile = sclone(key);
+    }
+    if (cert) {
+        rFree(defaultCertFile);
+        defaultCertFile = sclone(cert);
+    }
+    if (revoke) {
+        rFree(defaultRevokeFile);
+        defaultRevokeFile = sclone(revoke);
+    }
+}
+
+PUBLIC void rSetTlsCiphers(Rtls *tp, cchar *ciphers)
+{
+    rFree(tp->ciphers);
+    tp->ciphers = 0;
+    if (ciphers && *ciphers) {
+        tp->ciphers = sclone(ciphers);
+    }
+}
+
+PUBLIC void rSetTlsDefaultCiphers(cchar *ciphers)
+{
+    rFree(defaultCiphers);
+    defaultCiphers = 0;
+    if (ciphers && *ciphers) {
+        defaultCiphers = sclone(ciphers);
+    }
+}
+
+PUBLIC void rSetTlsAlpn(Rtls *tp, cchar *alpn)
+{
+    rFree(tp->alpn);
+    tp->alpn = sclone(alpn);
+}
+
+PUBLIC void rSetTlsDefaultAlpn(cchar *alpn)
+{
+    rFree(defaultAlpn);
+    defaultAlpn = sclone(alpn);
+}
+
+PUBLIC void rSetTlsVerify(Rtls *tp, int verifyPeer, int verifyIssuer)
+{
+    tp->verifyPeer = verifyPeer;
+    tp->verifyIssuer = verifyIssuer;
+}
+
+PUBLIC void rSetTlsDefaultVerify(int verifyPeer, int verifyIssuer)
+{
+    defaultVerifyPeer = verifyPeer;
+    defaultVerifyIssuer = verifyIssuer;
+}
+
+PUBLIC void rSetTlsEngine(Rtls *tp, cchar *engine)
+{
+    //  Not supported
+}
+
+static void logMbedtls(void *context, int level, cchar *file, int line, cchar *str)
+{
+    rDebug("mbedtls", "mbedtls: %s", str);
+}
+
+PUBLIC void *rGetTlsRng(void)
+{
+    return &ctr;
+}
+
+static void logCiphers(Rtls *tp)
+{
+    char cipher[80];
+    cint *cp;
+
+    rDebug("mbedtls", "Supported Ciphers");
+    for (cp = mbedtls_ssl_list_ciphersuites(); *cp; cp++) {
+        scopy(cipher, sizeof(cipher), (char*) mbedtls_ssl_get_ciphersuite_name(*cp));
+        replaceHyphen(cipher, '-', '_');
+        rDebug("mbedtls", "%s (0x%04X)", cipher, *cp);
+    }
+}
+
+#else
+PUBLIC void mbedDummy(void)
+{
+}
+#endif /* ME_COM_MBEDTLS */
+#endif /* R_USE_TLS */
 
 /*
     Copyright (c) Michael O'Brien. All Rights Reserved.

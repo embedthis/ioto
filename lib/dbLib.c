@@ -1,11 +1,16 @@
 /*
- * DB library Library Source
+    dbLib.c -- DB Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the DB library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "db.h"
 
 #if ME_COM_DB
-
 
 
 /********* Start of file src/rb.c ************/
@@ -17,7 +22,6 @@
  */
 
 /********************************** Includes **********************************/
-
 
 
 /*********************************** Locals ***********************************/
@@ -696,10 +700,8 @@ static void printTree(RbTree *rbt, RbNode *n, void (*proc)(void*), int depth, ch
 
 /********************************** Includes **********************************/
 
-
 #include "crypt.h"
 
-#if ME_COM_DB
 
 /************************************ Locals ***********************************/
 /*
@@ -3142,7 +3144,6 @@ static int dberror(Db *db, int code, cchar *fmt, ...)
     va_end(ap);
     return code;
 }
-#endif /* ME_COM_DB */
 
 #else
 void dummyDb(){}

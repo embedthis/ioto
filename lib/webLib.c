@@ -1,5 +1,11 @@
 /*
- * Embedthis Web Library Source
+    webLib.c -- Web Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the Web library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "web.h"
@@ -7,8 +13,7 @@
 #if ME_COM_WEB
 
 
-
-/********* Start of file ../../../src/auth.c ************/
+/********* Start of file src/auth.c ************/
 
 /*
     auth.c -- Authorization Management
@@ -30,7 +35,7 @@
 
 /********************************* Includes ***********************************/
 
-
+#include    "web.h"
 
 /********************************** Forwards **********************************/
 
@@ -192,9 +197,9 @@ PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
         return 0;
     }
     webCreateSession(web);
-    webSetSessionVar(web, WEB_SESSION_USERNAME, username);
+    webSetSessionVar(web, WEB_SESSION_USERNAME, "%s", username);
     web->username = sclone(username);
-    web->role = webSetSessionVar(web, WEB_SESSION_ROLE, user->role);   // Store user's actual role
+    web->role = webSetSessionVar(web, WEB_SESSION_ROLE, "%s", user->role);   // Store user's actual role
     web->user = user;
     web->authenticated = 1;
     return 1;
@@ -1236,7 +1241,7 @@ static char *computeDigest(Web *web, cchar *password)
  */
 
 
-/********* Start of file ../../../src/file.c ************/
+/********* Start of file src/file.c ************/
 
 /*
     file.c - File handler for serving static content
@@ -1247,7 +1252,6 @@ static char *computeDigest(Web *web, cchar *password)
  */
 
 /********************************** Includes **********************************/
-
 
 
 /************************************ Locals **********************************/
@@ -1293,6 +1297,62 @@ PUBLIC int webFileHandler(Web *web)
     return rc;
 }
 
+/*
+    Verify that the file an open descriptor refers to is the file the request actually named.
+
+    Route selection - the only authorization gate in the server - matches the request path byte
+    for byte. The file system does not. Case-folding file systems (APFS, HFS+, NTFS, vfat, exfat)
+    and Unicode-normalizing file systems (APFS, HFS+) resolve many spellings to one file, and
+    Windows also accepts 8.3 short names, trailing dots and spaces, and the ::$DATA suffix. A
+    request spelled differently from a protected route therefore misses that route, falls through
+    to a later unauthenticated route, and the file system hands back the protected file anyway.
+
+    Rather than trying to enumerate every fold every file system applies, compare the name the
+    file system resolved against the name the request asked for. Two conditions must both hold:
+
+      1. Containment - the resolved file lies inside the document root. This also rejects a
+         symlink or traversal that escapes the root.
+      2. Spelling - the resolved name equals the requested name exactly. This is what closes the
+         authorization bypass.
+
+    Driving this from the descriptor rather than from the path leaves no time-of-check to
+    time-of-use window: the descriptor already refers to the file that will be served.
+
+    A mismatch returns 404, never a redirect to the canonical spelling. A redirect would confirm
+    that the resource exists, which is exactly what must not leak on a protected path.
+
+    Returns true if the descriptor may be served.
+ */
+static bool validateResolvedPath(Web *web, int fd, cchar *path)
+{
+    WebHost *host;
+    char     actual[ME_MAX_FNAME];
+    cchar    *expected;
+    size_t   docsLen;
+
+    host = web->host;
+
+    if (!host->canonicalDocs) {
+        //  The document root could not be resolved at startup. Serve nothing.
+        return 0;
+    }
+    if (rGetFdPath(fd, actual, sizeof(actual)) < 0) {
+        //  Cannot determine what was opened, so cannot prove it is safe to serve
+        return 0;
+    }
+    docsLen = slen(host->canonicalDocs);
+    if (!sstarts(actual, host->canonicalDocs) || (actual[docsLen] != '/' && actual[docsLen] != '\0')) {
+        return 0;
+    }
+    /*
+        The requested name is the part of the joined path after the document root. It already
+        carries any directory index and pre-compressed extension that pickFile appended.
+     */
+    expected = &path[slen(webGetDocs(host))];
+
+    return smatch(&actual[docsLen], expected);
+}
+
 static int getFile(Web *web, char *path, size_t pathSize)
 {
     FileInfo info;
@@ -1312,6 +1372,11 @@ static int getFile(Web *web, char *path, size_t pathSize)
     if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
         webError(web, 404, "Cannot open document");
         return R_ERR_CANT_OPEN;
+    }
+    if (!validateResolvedPath(web, fd, path)) {
+        close(fd);
+        webHook(web, WEB_HOOK_NOT_FOUND);
+        return webError(web, 404, "Cannot locate document");
     }
     rc = sendFile(web, fd, &info, encoding);
     close(fd);
@@ -1434,7 +1499,7 @@ static int putFile(Web *web, char *path, size_t pathSize)
         if (total > web->host->maxUpload) {
             close(fd);
             unlink(path);
-            return webError(web, 414, "Uploaded put file exceeds maximum %lld", web->host->maxUpload);
+            return webError(web, 414, "Uploaded put file exceeds maximum %d", web->host->maxUpload);
         }
     }
     close(fd);
@@ -1766,7 +1831,7 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
  */
 
 
-/********* Start of file ../../../src/host.c ************/
+/********* Start of file src/host.c ************/
 
 /*
     host.c - Web Host. This is responsible for a set of listening endpoints.
@@ -1777,19 +1842,19 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
 /********************************** Includes **********************************/
 
 
-
 /************************************ Forwards *********************************/
 
 static WebListen *allocListen(WebHost *host, cchar *endpoint);
 static RHash *createMethodsHash(cchar *list);
 static void freeListen(WebListen *listen);
-static int getTimeout(WebHost *host, cchar *field, cchar *defaultValue);
+static Ticks getTimeout(WebHost *host, cchar *field, cchar *defaultValue);
 static void initMethods(WebHost *host);
 static void initRedirects(WebHost *host);
 static void initRoutes(WebHost *host);
 static void loadMimeTypes(WebHost *host);
 static void loadAuth(WebHost *host);
 static void parseCacheControl(WebRoute *route, Json *json, int id);
+static void checkRouteKeys(cchar *match, Json *json, int id);
 static cchar *uploadDir(void);
 
 /************************************* Code ***********************************/
@@ -1870,13 +1935,22 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->maxBody = svaluei(jsonGet(host->config, 0, "web.limits.body", "100K"));
     host->maxConnections = svaluei(jsonGet(host->config, 0, "web.limits.connections", "100"));
     host->maxHeader = svaluei(jsonGet(host->config, 0, "web.limits.header", "10K"));
-    host->maxSessions = svaluei(jsonGet(host->config, 0, "web.limits.sessions", "20"));
+    host->maxSessions = svaluei(jsonGet(host->config, 0, "web.limits.sessions", "100"));
     host->maxUpload = svaluei(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
     host->maxUploads = svaluei(jsonGet(host->config, 0, "web.limits.uploads", "0"));
     host->maxRequests = svaluei(jsonGet(host->config, 0, "web.limits.requests", "1000"));
 #endif
 
     host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
+    /*
+        Resolve the document root once. The file handler compares the name the file system
+        resolves a request to against this prefix, so it must be canonical. If it cannot be
+        resolved, canonicalDocs stays null and the file handler serves nothing - fail closed.
+     */
+    host->canonicalDocs = rGetRealPath(host->docs);
+    if (!host->canonicalDocs) {
+        rError("web", "Cannot resolve document root \"%s\". Static files will not be served.", host->docs);
+    }
     host->name = jsonGet(host->config, 0, "web.name", 0);
     host->uploadDir = jsonGet(host->config, 0, "web.upload.dir", uploadDir());
     host->sessionCookie = jsonGet(host->config, 0, "web.sessions.cookie", WEB_SESSION_COOKIE);
@@ -1986,6 +2060,7 @@ PUBLIC void webFreeHost(WebHost *host)
         host->signatures = 0;
     }
     rFree(host->docs);
+    rFree(host->canonicalDocs);
     rFree(host->ip);
     rFree(host);
 }
@@ -2152,15 +2227,21 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
     Get a timeout value in milliseconds. If the value is greater than MAXINT / TPS, return MAXINT / TPS.
     This is to prevent overflow.
  */
-static int getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
+static Ticks getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
 {
     int64 value;
 
+    /*
+        Timeouts are configured in seconds and stored as Ticks (milliseconds).
+        Clamp so the conversion to milliseconds cannot overflow.
+     */
     value = svalue(jsonGet(host->config, 0, field, defaultValue));
-    if (value > MAXINT / TPS) {
-        return MAXINT / TPS;
+    if (value < 0) {
+        value = 0;
+    } else if (value > MAXINT64 / TPS) {
+        value = MAXINT64 / TPS;
     }
-    return (int) value * TPS;
+    return (Ticks) value * TPS;
 }
 
 static cchar *uploadDir(void)
@@ -2299,6 +2380,46 @@ static void parseCacheControl(WebRoute *route, Json *json, int id)
 /*
     Initialize the request routes for the host. Routes match a URL to a request handler and required authenticated role.
  */
+/*
+    Warn about route keys the server does not understand.
+
+    A route is the only authorization gate in the server, and its keys are the whole of that gate's
+    configuration. A typo in "role" or "authType" therefore does not produce a misconfigured route -
+    it produces an *unauthenticated* one, silently, because an unrecognised key simply is not read.
+    That failure is invisible until someone tests the route from outside, which is the wrong moment
+    to discover it.
+
+    Warn rather than refuse: a downstream product may legitimately carry its own keys in the route
+    table, and failing to start is a worse outcome than a loud log line. The warning names the route
+    so it can be found.
+ */
+static void checkRouteKeys(cchar *match, Json *json, int id)
+{
+    static cchar *known[] = {
+        "match", "role", "redirect", "trim", "handler", "stream", "validate", "xsrf",
+        "compressed", "methods", "cache", "authType", "algorithm", 0
+    };
+    JsonNode *child;
+    int      i, found;
+
+    for (ITERATE_JSON_KEY(json, id, NULL, child, cid)) {
+        if (child->name == 0 || *child->name == '\0') {
+            continue;
+        }
+        for (i = 0, found = 0; known[i]; i++) {
+            if (smatch(child->name, known[i])) {
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            rError("web", "Route '%s' has unknown key '%s'. It is ignored. "
+                   "Check the spelling - a mistyped 'role' or 'authType' leaves the route unauthenticated.",
+                   match && *match ? match : "(catch-all)", child->name);
+        }
+    }
+}
+
 static void initRoutes(WebHost *host)
 {
     Json     *json;
@@ -2362,6 +2483,7 @@ static void initRoutes(WebHost *host)
             } else {
                 rp->methods = host->methods;
             }
+            checkRouteKeys(match, json, id);
             rAddItem(host->routes, rp);
         }
     }
@@ -2499,7 +2621,7 @@ PUBLIC void webSetHostDefaultIP(WebHost *host, cchar *ip)
  */
 
 
-/********* Start of file ../../../src/http.c ************/
+/********* Start of file src/http.c ************/
 
 /*
     http.c - Core HTTP request processing
@@ -2517,7 +2639,6 @@ PUBLIC void webSetHostDefaultIP(WebHost *host, cchar *ip)
  */
 
 /********************************** Includes **********************************/
-
 
 
 /************************************ Locals **********************************/
@@ -4053,7 +4174,7 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
  */
 
 
-/********* Start of file ../../../src/io.c ************/
+/********* Start of file src/io.c ************/
 
 /*
     io.c - I/O for the web server
@@ -4062,7 +4183,6 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
  */
 
 /********************************** Includes **********************************/
-
 
 
 /************************************ Forwards *********************************/
@@ -4484,7 +4604,8 @@ PUBLIC ssize webWriteHeaders(Web *web)
     } else {
         connection = "keep-alive";
         remaining = host->requestTimeout - (rGetTicks() - web->connectionStarted);
-        webAddHeader(web, "Keep-Alive", "timeout=%lld, max=%d", remaining / TPS, host->maxRequests - web->count);
+        webAddHeader(web, "Keep-Alive", "timeout=%lld, max=%lld",
+                     (long long) (remaining / TPS), (long long) (host->maxRequests - web->count));
     }
     webAddHeaderStaticString(web, "Connection", connection);
 
@@ -4494,7 +4615,7 @@ PUBLIC ssize webWriteHeaders(Web *web)
             webAddHeaderStaticString(web, "Transfer-Encoding", "chunked");
         } else {
             web->txRemaining = web->txLen;
-            webAddHeader(web, "Content-Length", "%d", web->txLen);
+            webAddHeader(web, "Content-Length", "%lld", (long long) web->txLen);
         }
     }
     if (web->redirect) {
@@ -4565,15 +4686,36 @@ PUBLIC ssize webWriteHeaders(Web *web)
  */
 PUBLIC void webAddStandardHeaders(Web *web)
 {
+    /*
+        Baseline response headers, emitted unless the configuration names them.
+
+        These are in code rather than in the shipped web.json5 on purpose: an integrator who writes
+        their own configuration from scratch - which is the normal case, since the templates are a
+        starting point - would otherwise silently lose them. Configuration becomes a way to
+        override a secure default rather than the only thing that supplies one, which is the right
+        direction for a default to travel.
+     */
+    static cchar *baseline[][2] = {
+        { "X-Content-Type-Options", "nosniff" },
+        { "X-Frame-Options",        "SAMEORIGIN" },
+        { "Referrer-Policy",        "no-referrer" },
+        { 0, 0 }
+    };
     WebHost  *host;
     Json     *json;
     JsonNode *header;
+    int      i;
 
     host = web->host;
     if (host->headers >= 0) {
         json = host->config;
         for (ITERATE_JSON_KEY(json, host->headers, NULL, header, id)) {
             webAddHeaderStaticString(web, header->name, header->value);
+        }
+    }
+    for (i = 0; baseline[i][0]; i++) {
+        if (!rLookupName(web->txHeaders, baseline[i][0])) {
+            webAddHeaderStaticString(web, baseline[i][0], baseline[i][1]);
         }
     }
 }
@@ -4866,7 +5008,7 @@ PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...)
             return R_ERR_CANT_WRITE;
         }
     }
-    nbytes = webWriteFmt(web, "id: %ld\nevent: %s\ndata: %s\n\n", id, name, buf);
+    nbytes = webWriteFmt(web, "id: %lld\nevent: %s\ndata: %s\n\n", (long long) id, name, buf);
     rFree(buf);
     return nbytes;
 }
@@ -5053,7 +5195,7 @@ static bool isprintable(cchar *s, size_t len)
  */
 
 
-/********* Start of file ../../../src/session.c ************/
+/********* Start of file src/session.c ************/
 
 /*
     session.c - User session state control
@@ -5076,7 +5218,6 @@ static bool isprintable(cchar *s, size_t len)
 /********************************** Includes **********************************/
 
 
-
 /************************************ Locals **********************************/
 #if ME_WEB_SESSIONS
 
@@ -5085,6 +5226,8 @@ static bool isprintable(cchar *s, size_t len)
 /*********************************** Forwards *********************************/
 
 static WebSession *createSession(Web *web);
+static bool evictAnonymousSession(WebHost *host);
+static int pruneExpired(WebHost *host);
 static void pruneSessions(WebHost *host);
 
 /************************************ Locals **********************************/
@@ -5095,7 +5238,7 @@ PUBLIC int webInitSessions(WebHost *host)
     return 0;
 }
 
-static WebSession *webAllocSession(Web *web, int lifespan)
+static WebSession *webAllocSession(Web *web, Ticks lifespan)
 {
     WebSession *sp;
 
@@ -5190,6 +5333,16 @@ static WebSession *createSession(Web *web)
 
     count = rGetHashLength(host->sessions);
     if (count >= host->maxSessions) {
+        /*
+            Reclaim before refusing. Pruning is otherwise only periodic, so a burst can hit the
+            limit while the table is largely expired.
+         */
+        pruneExpired(host);
+        count = rGetHashLength(host->sessions);
+    }
+    if (count >= host->maxSessions && !evictAnonymousSession(host)) {
+        //  Still full and every session has authenticated - the limit is genuinely reached
+        rDebug("session", "Session table full (%d) with authenticated sessions", count);
         webError(web, 429, "Failed to create session");
         return 0;
     }
@@ -5296,16 +5449,15 @@ PUBLIC cchar *webSetSessionVar(Web *web, cchar *key, cchar *fmt, ...)
 /*
     Remove expired sessions. Timeout is set in web.json.
  */
-static void pruneSessions(WebHost *host)
+static int pruneExpired(WebHost *host)
 {
     WebSession *sp;
     Ticks      when;
     RName      *np;
     RList      *expired;
-    int        count, oldCount, next;
+    int        removed, next;
 
     when = rGetTicks();
-    oldCount = rGetHashLength(host->sessions);
 
     //  Collect expired sessions first to avoid modifying hash during iteration
     expired = rAllocList(0, 0);
@@ -5320,11 +5472,54 @@ static void pruneSessions(WebHost *host)
         rRemoveName(host->sessions, sp->id);
         webFreeSession(sp);
     }
+    removed = rGetListLength(expired);
     rFreeList(expired);
+    return removed;
+}
 
+/*
+    Evict the least recently used session that has not authenticated.
+
+    Sessions are created before authentication - webAddSecurityToken creates one to hand an
+    anonymous client an XSRF token - so unauthenticated sessions can fill the table and lock out
+    every login. Anonymous traffic must not be able to deny the login path, so when the table is
+    full an anonymous session yields to a new one. A session that has authenticated is never
+    evicted this way; if the table is full of them, the limit is genuinely reached.
+
+    expires slides forward on each access, so the smallest expires is the least recently used.
+ */
+static bool evictAnonymousSession(WebHost *host)
+{
+    WebSession *sp, *oldest;
+    RName      *np;
+
+    oldest = 0;
+    for (ITERATE_NAMES(host->sessions, np)) {
+        sp = (WebSession*) np->value;
+        if (rLookupName(sp->cache, WEB_SESSION_USERNAME) != 0) {
+            //  Authenticated - not a candidate
+            continue;
+        }
+        if (oldest == 0 || sp->expires < oldest->expires) {
+            oldest = sp;
+        }
+    }
+    if (oldest == 0) {
+        return 0;
+    }
+    rRemoveName(host->sessions, oldest->id);
+    webFreeSession(oldest);
+    return 1;
+}
+
+static void pruneSessions(WebHost *host)
+{
+    int count, removed;
+
+    removed = pruneExpired(host);
     count = rGetHashLength(host->sessions);
-    if (oldCount != count || count) {
-        rDebug("session", "Prune %d sessions. Remaining: %d", oldCount - count, count);
+    if (removed || count) {
+        rDebug("session", "Prune %d sessions. Remaining: %d", removed, count);
     }
     host->sessionEvent = rStartEvent((REventProc) pruneSessions, host, WEB_SESSION_PRUNE);
 }
@@ -5351,7 +5546,7 @@ PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
     }
     if (web->securityToken == 0) {
         web->securityToken = cryptID(32);
-        webSetSessionVar(web, WEB_SESSION_XSRF, web->securityToken);
+        webSetSessionVar(web, WEB_SESSION_XSRF, "%s", web->securityToken);
     }
     return web->securityToken;
 }
@@ -5496,8 +5691,13 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
         path = "/";
     }
     maxAge = (lifespan ? lifespan: host->sessionTimeout) / TPS;
-    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%d; path=%s; %s%sSameSite=%s",
-                 name, value, maxAge, path, secure, httpOnly, sameSite);
+    /*
+        Max-Age is a Ticks (int64). It must be passed as a long long with a %lld conversion.
+        A %d conversion would consume only one varargs slot on 32-bit ABIs and shift every
+        pointer argument that follows.
+     */
+    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%lld; path=%s; %s%sSameSite=%s",
+                 name, value, (long long) maxAge, path, secure, httpOnly, sameSite);
     return 0;
 }
 #endif /* ME_WEB_SESSION */
@@ -5509,7 +5709,7 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
  */
 
 
-/********* Start of file ../../../src/sockets.c ************/
+/********* Start of file src/sockets.c ************/
 
 /*
     sockets.c - WebSockets
@@ -5519,7 +5719,7 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
 
 /********************************* Includes ***********************************/
 
-
+#include    "web.h"
 
 #if ME_COM_WEBSOCK
 /********************************** Forwards **********************************/
@@ -5649,8 +5849,8 @@ static int addHeaders(Web *web)
     if (protocol && *protocol) {
         webAddHeaderStaticString(web, "Sec-WebSocket-Protocol", protocol);
     }
-    webAddHeader(web, "X-Request-Timeout", "%lld", web->host->requestTimeout / TPS);
-    webAddHeader(web, "X-Inactivity-Timeout", "%lld", web->host->inactivityTimeout / TPS);
+    webAddHeader(web, "X-Request-Timeout", "%lld", (long long) (web->host->requestTimeout / TPS));
+    webAddHeader(web, "X-Inactivity-Timeout", "%lld", (long long) (web->host->inactivityTimeout / TPS));
     webFinalize(web);
     return 0;
 }
@@ -5664,7 +5864,7 @@ static int addHeaders(Web *web)
  */
 
 
-/********* Start of file ../../../src/test.c ************/
+/********* Start of file src/test.c ************/
 
 /*
     test.c - Test routines for debug mode only
@@ -5675,7 +5875,6 @@ static int addHeaders(Web *web)
  */
 
 /********************************** Includes **********************************/
-
 
 
 #if ME_DEBUG || ME_BENCHMARK
@@ -5833,10 +6032,10 @@ static void showServerContext(Web *web, Json *json)
     jsonSetFmt(json, 0, "host.index", "%s", host->index);
     jsonSetFmt(json, 0, "host.sameSite", "%s", host->sameSite);
     jsonSetFmt(json, 0, "host.uploadDir", "%s", host->uploadDir);
-    jsonSetFmt(json, 0, "host.inactivityTimeout", "%d", host->inactivityTimeout);
-    jsonSetFmt(json, 0, "host.parseTimeout", "%d", host->parseTimeout);
-    jsonSetFmt(json, 0, "host.requestTimeout", "%d", host->requestTimeout);
-    jsonSetFmt(json, 0, "host.sessionTimeout", "%d", host->sessionTimeout);
+    jsonSetFmt(json, 0, "host.inactivityTimeout", "%lld", (long long) host->inactivityTimeout);
+    jsonSetFmt(json, 0, "host.parseTimeout", "%lld", (long long) host->parseTimeout);
+    jsonSetFmt(json, 0, "host.requestTimeout", "%lld", (long long) host->requestTimeout);
+    jsonSetFmt(json, 0, "host.sessionTimeout", "%lld", (long long) host->sessionTimeout);
     jsonSetFmt(json, 0, "host.connections", "%d", host->connections);
     jsonSetFmt(json, 0, "host.maxBody", "%lld", host->maxBody);
     jsonSetFmt(json, 0, "host.maxConnections", "%lld", host->maxConnections);
@@ -5850,10 +6049,19 @@ static void showServerContext(Web *web, Json *json)
  */
 static void eventAction(Web *web)
 {
-    int i;
+    int64 id;
+    int   count, i;
 
-    for (i = 0; i < 100; i++) {
-        webWriteEvent(web, 0, "test", "Event %d", i);
+    /*
+        "id" selects an explicit starting event id. This exercises the int64 id conversion
+        in webWriteEvent, where a narrow conversion would shift the two string arguments
+        that follow it.
+     */
+    id = stoi(webGetQueryVar(web, "id", "0"));
+    count = (int) stoi(webGetQueryVar(web, "count", "100"));
+
+    for (i = 0; i < count; i++) {
+        webWriteEvent(web, id ? id + i : 0, "test", "Event %d", i);
     }
     webFinalize(web);
 }
@@ -5891,7 +6099,7 @@ static void bulkOutput(Web *web)
 
     count = stoi(webGetVar(web, "count", "100"));
     for (i = 0; i < count; i++) {
-        webWriteFmt(web, "Hello World %010d\n", i);
+        webWriteFmt(web, "Hello World %010d\n", (int) i);
     }
     webFinalize(web);
 }
@@ -5919,7 +6127,7 @@ static void putAction(Web *web)
     while ((nbytes = webRead(web, buf, sizeof(buf))) > 0) {
         total += nbytes;
     }
-    webWriteResponse(web, 200, "%d\n", total);
+    webWriteResponse(web, 200, "%lld\n", (long long) total);
 }
 
 static void bufferAction(Web *web)
@@ -5982,16 +6190,20 @@ static void uploadAction(Web *web)
 static void cookieAction(Web *web)
 {
     cchar *name, *path, *value;
+    Ticks lifespan;
 
     name = webGetQueryVar(web, "name", 0);
     value = webGetQueryVar(web, "value", 0);
     path = webGetQueryVar(web, "path", "/path");
 
+    //  Lifespan is supplied in seconds. Zero selects the configured session timeout.
+    lifespan = (Ticks) stoi(webGetQueryVar(web, "lifespan", "0")) * TPS;
+
     if (!name || !value || !path) {
         webError(web, 400, "Missing name or value");
         return;
     }
-    if (webSetCookie(web, name, value, path, 0, 0) < 0) {
+    if (webSetCookie(web, name, value, path, lifespan, 0) < 0) {
         webError(web, 404, "Invalid cookie");
         return;
     }
@@ -6001,7 +6213,7 @@ static void cookieAction(Web *web)
 
 static void sessionAction(Web *web)
 {
-    cchar *sessionToken;
+    cchar *sessionToken, *name, *value;
     char  *token;
 
     if (smatch(web->path, "/test/session/create")) {
@@ -6010,9 +6222,35 @@ static void sessionAction(Web *web)
             It will send it back in the query string to the /check action below.
          */
         token = cryptID(32);
-        webSetSessionVar(web, "token", token);
+        webSetSessionVar(web, "token", "%s", token);
         webWriteFmt(web, "%s", token);
         rFree(token);
+
+    } else if (smatch(web->path, "/test/session/setvar")) {
+        /*
+            Store a caller-supplied value in a session variable and echo it back.
+            Used to verify the value is never interpreted as a printf format string.
+         */
+        name = webGetQueryVar(web, "name", "var");
+        value = webGetQueryVar(web, "value", "");
+        webSetSessionVar(web, name, "%s", value);
+        webWriteFmt(web, "%s", webGetSessionVar(web, name, ""));
+
+    } else if (smatch(web->path, "/test/session/getvar")) {
+        name = webGetQueryVar(web, "name", "var");
+        webWriteFmt(web, "%s", webGetSessionVar(web, name, ""));
+
+    } else if (smatch(web->path, "/test/session/login")) {
+        /*
+            Log in a caller-supplied username. The username must never be used as a format string.
+         */
+        name = webGetQueryVar(web, "user", "");
+        value = webGetQueryVar(web, "role", "user");
+        if (webLogin(web, name, value)) {
+            webWriteFmt(web, "%s", web->username);
+        } else {
+            webWriteFmt(web, "denied");
+        }
 
     } else if (smatch(web->path, "/test/session/check")) {
         /*
@@ -6093,7 +6331,7 @@ static void streamAction(Web *web)
             total += nbytes;
         }
     } while (nbytes > 0);
-    webWriteFmt(web, "{length: %d}", total);
+    webWriteFmt(web, "{length: %lld}", (long long) total);
     webFinalize(web);
 }
 
@@ -6205,7 +6443,7 @@ PUBLIC void dummyTest(void)
  */
 
 
-/********* Start of file ../../../src/upload.c ************/
+/********* Start of file src/upload.c ************/
 
 /*
     upload.c -- File upload handler
@@ -6229,7 +6467,7 @@ PUBLIC void dummyTest(void)
 
 /*********************************** Includes *********************************/
 
-
+#include    "web.h"
 
 /*********************************** Forwards *********************************/
 #if ME_WEB_UPLOAD
@@ -6502,7 +6740,7 @@ static int processUploadData(Web *web)
                         close(upload->fd);
                         upload->fd = -1;
                     }
-                    return webError(web, 414, "Uploaded file exceeds maximum %lld", web->host->maxUpload);
+                    return webError(web, 414, "Uploaded file exceeds maximum %d", web->host->maxUpload);
                 }
                 if ((written = write(upload->fd, buf->start, (uint) len)) < 0) {
                     if (upload->fd >= 0) {
@@ -6574,7 +6812,7 @@ static size_t getUploadDataLength(Web *web)
  */
 
 
-/********* Start of file ../../../src/utils.c ************/
+/********* Start of file src/utils.c ************/
 
 /*
     utils.c -
@@ -6583,7 +6821,6 @@ static size_t getUploadDataLength(Web *web)
  */
 
 /********************************** Includes **********************************/
-
 
 
 /************************************ Locals **********************************/
@@ -7160,7 +7397,7 @@ PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue)
  */
 
 
-/********* Start of file ../../../src/validate.c ************/
+/********* Start of file src/validate.c ************/
 
 /*
     validate.c - Validate request and response signatures
@@ -7242,7 +7479,6 @@ PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue)
  */
 
 /********************************** Includes **********************************/
-
 
 
 

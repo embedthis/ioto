@@ -1,11 +1,16 @@
 /*
- * OpenAI library Library Source
+    openaiLib.c -- OpenAI Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the OpenAI library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "openai.h"
 
 #if ME_COM_OPENAI
-
 
 
 /********* Start of file src/openaiLib.c ************/
@@ -15,7 +20,6 @@
  */
 
 /********************************** Includes **********************************/
-
 
 
 #if ME_COM_OPENAI
@@ -43,7 +47,6 @@ PUBLIC int openaiInit(cchar *endpoint, cchar *key, Json *config, int flags)
         return R_ERR_MEMORY;
     }
     openai->endpoint = sclone(endpoint);
-    openai->realTimeEndpoint = sreplace(endpoint, "https://", "wss://");
     openai->headers = sfmt("Authorization: Bearer %s\r\nContent-Type: application/json\r\n", key);
     openai->flags = flags;
     return 0;
@@ -55,7 +58,6 @@ PUBLIC void openaiTerm(void)
         return;
     }
     rFree(openai->endpoint);
-    rFree(openai->realTimeEndpoint);
     rFree(openai->headers);
     rFree(openai);
     openai = NULL;
@@ -85,7 +87,10 @@ PUBLIC Json *openaiChatCompletion(Json *props)
 
     url = sfmt("%s/chat/completions", openai->endpoint);
     up = urlAlloc(0);
-    response = urlJson(up, "POST", url, data, 0, "%s", openai->headers);
+    urlFetch(up, "POST", url, data, 0, "%s", openai->headers);
+    if (urlGetResponse(up)) {
+        response = jsonParse(urlGetResponse(up), 0);
+    }
     if (!response) {
         rDebug("openai", "Failed to submit request to OpenAI: %s", urlGetError(up));
     } else {
@@ -131,10 +136,11 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
         }
         up = urlAlloc(0);
         url = sfmt("%s/responses", openai->endpoint);
-        response = urlJson(up, "POST", url, data, 0, openai->headers);
+        urlFetch(up, "POST", url, data, 0, "%s", openai->headers);
         rFree(url);
         rFree(data);
 
+        response = urlGetResponse(up) ? jsonParse(urlGetResponse(up), 0) : NULL;
         if (!response) {
             rTrace("openai", "Failed to submit request to OpenAI: %s", urlGetError(up));
             jsonFree(request);
@@ -142,6 +148,10 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
             return NULL;
         }
         urlFree(up);
+        if (jsonGet(response, 0, "error", 0)) {
+            jsonFree(request);
+            break;
+        }
 
         next = processResponse(request, response, agent, arg);
         jsonFree(request);
@@ -269,50 +279,6 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
         return NULL;
     }
     urlSseRun(up, callback, arg, up->rx, 0);
-    return up;
-}
-
-/*
-    Open a WebSocket connection to the OpenAI Real Time API
-    This blocks until the connection is closed
- */
-PUBLIC Url *openaiRealTimeConnect(Json *props)
-{
-    if (!openai) {
-        return NULL;
-    }
-    Json *request;
-    Url  *up;
-    char *headers, *url;
-
-    request = props ? jsonClone(props, 0) : jsonAlloc();
-    if (!jsonGet(request, 0, "model", 0)) {
-        jsonSet(request, 0, "model", "gpt-4o-realtime-preview-2024-12-17", JSON_STRING);
-    }
-    headers = sfmt("%sOpenAI-Beta: realtime=v1\r\n", openai->headers);
-    url = sfmt("%s/realtime?model=%s", openai->realTimeEndpoint, jsonGet(request, 0, "model", 0));
-
-    /*
-        Use low-level API so we can proxy the browser WebSocket to the OpenAI WebSocket
-     */
-    up = urlAlloc(0);
-    if (urlStart(up, "GET", url) < 0) {
-        urlFree(up);
-        jsonFree(request);
-        rFree(headers);
-        rFree(url);
-        return 0;
-    }
-    if (urlWriteHeaders(up, headers) < 0 || urlFinalize(up) < 0) {
-        urlFree(up);
-        jsonFree(request);
-        rFree(headers);
-        rFree(url);
-        return 0;
-    }
-    jsonFree(request);
-    rFree(headers);
-    rFree(url);
     return up;
 }
 

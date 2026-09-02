@@ -15,26 +15,11 @@
 #ifndef _h_OSDEP
 #define _h_OSDEP 1
 
-/********************************** Includes **********************************/
-
-#ifndef OSDEP_USE_ME
-#define OSDEP_USE_ME 1
-#endif
-
-#if OSDEP_USE_ME
-#include "me.h"
-#endif
-
 /******************************* Default Features *****************************/
+
 /*
     Default features
  */
-#ifndef ME_COM_SSL
-    #define ME_COM_SSL 0                /**< Build without SSL support */
-#endif
-#ifndef ME_DEBUG
-    #define ME_DEBUG 0                  /**< Default to a debug build */
-#endif
 #ifndef ME_FLOAT
     #define ME_FLOAT 1                  /**< Build with floating point support */
 #endif
@@ -665,6 +650,239 @@
 #elif defined(_WIN32)
     #define ME_SIMULATED 1
     #define ME_ON_WINDOWS 1
+#endif
+
+/**
+    @section Compiler Feature Detection
+
+    Auto-detection of compiler capabilities based on OS type and compiler. These defaults match
+    MakeMe probe results for supported platforms. All macros are #ifndef guarded so that values
+    from a MakeMe-generated me.h (included before osdep.h) take precedence.
+*/
+
+/*
+    ME_COMPILER_HAS_ATOMIC - C11 __atomic_* builtins.
+    Available with GCC 4.7+ and Clang on all platforms except VxWorks.
+ */
+#ifndef ME_COMPILER_HAS_ATOMIC
+    #if (defined(__GNUC__) && !VXWORKS) || defined(__clang__)
+        #define ME_COMPILER_HAS_ATOMIC 1
+    #else
+        #define ME_COMPILER_HAS_ATOMIC 0
+    #endif
+#endif
+
+#ifndef ME_COMPILER_HAS_ATOMIC64
+    #define ME_COMPILER_HAS_ATOMIC64 ME_COMPILER_HAS_ATOMIC
+#endif
+
+/*
+    ME_COMPILER_HAS_DOUBLE_BRACES - {{0}} aggregate initialization.
+    Supported by GCC and Clang but not VxWorks old toolchains or MSVC.
+ */
+#ifndef ME_COMPILER_HAS_DOUBLE_BRACES
+    #if (defined(__GNUC__) || defined(__clang__)) && !VXWORKS && !defined(_MSC_VER)
+        #define ME_COMPILER_HAS_DOUBLE_BRACES 1
+    #else
+        #define ME_COMPILER_HAS_DOUBLE_BRACES 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_DYN_LOAD - Dynamic library loading (dlopen/LoadLibrary).
+ */
+#ifndef ME_COMPILER_HAS_DYN_LOAD
+    #define ME_COMPILER_HAS_DYN_LOAD 1
+#endif
+
+/*
+    ME_COMPILER_HAS_LIB_EDIT - BSD libedit (editline) library.
+    Only available on macOS by default.
+ */
+#ifndef ME_COMPILER_HAS_LIB_EDIT
+    #if MACOSX
+        #define ME_COMPILER_HAS_LIB_EDIT 1
+    #else
+        #define ME_COMPILER_HAS_LIB_EDIT 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_LIB_RT - POSIX real-time library (librt).
+    Only Linux provides librt as a separate library.
+ */
+#ifndef ME_COMPILER_HAS_LIB_RT
+    #if LINUX
+        #define ME_COMPILER_HAS_LIB_RT 1
+    #else
+        #define ME_COMPILER_HAS_LIB_RT 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_MMU - Memory Management Unit present.
+    Override to 0 for no-MMU embedded targets.
+ */
+#ifndef ME_COMPILER_HAS_MMU
+    #define ME_COMPILER_HAS_MMU 1
+#endif
+
+/*
+    ME_COMPILER_HAS_MTUNE - GCC/Clang -mtune flag support.
+ */
+#ifndef ME_COMPILER_HAS_MTUNE
+    #if (defined(__GNUC__) || defined(__clang__)) && !VXWORKS && !defined(_MSC_VER)
+        #define ME_COMPILER_HAS_MTUNE 1
+    #else
+        #define ME_COMPILER_HAS_MTUNE 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_PAM - Pluggable Authentication Modules.
+    Only macOS ships PAM by default.
+ */
+#ifndef ME_COMPILER_HAS_PAM
+    #if MACOSX
+        #define ME_COMPILER_HAS_PAM 1
+    #else
+        #define ME_COMPILER_HAS_PAM 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_STACK_PROTECTOR - GCC/Clang -fstack-protector support.
+ */
+#ifndef ME_COMPILER_HAS_STACK_PROTECTOR
+    #if defined(__GNUC__) || defined(__clang__)
+        #define ME_COMPILER_HAS_STACK_PROTECTOR 1
+    #else
+        #define ME_COMPILER_HAS_STACK_PROTECTOR 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_HAS_SYNC - GCC __sync_* builtins (pre-C11 atomics).
+    Available on Linux and macOS with GCC/Clang.
+ */
+#ifndef ME_COMPILER_HAS_SYNC
+    #if (LINUX || MACOSX) && (defined(__GNUC__) || defined(__clang__))
+        #define ME_COMPILER_HAS_SYNC 1
+    #else
+        #define ME_COMPILER_HAS_SYNC 0
+    #endif
+#endif
+
+#ifndef ME_COMPILER_HAS_SYNC64
+    #define ME_COMPILER_HAS_SYNC64 ME_COMPILER_HAS_SYNC
+#endif
+
+#ifndef ME_COMPILER_HAS_SYNC_CAS
+    #define ME_COMPILER_HAS_SYNC_CAS ME_COMPILER_HAS_SYNC
+#endif
+
+/*
+    ME_COMPILER_HAS_UNNAMED_UNIONS - Unnamed union support.
+    Supported by all modern compilers.
+ */
+#ifndef ME_COMPILER_HAS_UNNAMED_UNIONS
+    #define ME_COMPILER_HAS_UNNAMED_UNIONS 1
+#endif
+
+/*
+    ME_COMPILER_NOEXECSTACK - Linker noexecstack support (GNU ld).
+ */
+#ifndef ME_COMPILER_NOEXECSTACK
+    #if LINUX
+        #define ME_COMPILER_NOEXECSTACK 1
+    #else
+        #define ME_COMPILER_NOEXECSTACK 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_WARN64TO32 - Clang -Wshorten-64-to-32 warning support.
+ */
+#ifndef ME_COMPILER_WARN64TO32
+    #if defined(__clang__)
+        #define ME_COMPILER_WARN64TO32 1
+    #else
+        #define ME_COMPILER_WARN64TO32 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_WARN_UNUSED - Unused result warning support.
+ */
+#ifndef ME_COMPILER_WARN_UNUSED
+    #if (LINUX || MACOSX) && (defined(__GNUC__) || defined(__clang__))
+        #define ME_COMPILER_WARN_UNUSED 1
+    #else
+        #define ME_COMPILER_WARN_UNUSED 0
+    #endif
+#endif
+
+/*
+    ME_COMPILER_FORTIFY - Compile with _FORTIFY_SOURCE buffer overflow protection.
+ */
+#ifndef ME_COMPILER_FORTIFY
+    #define ME_COMPILER_FORTIFY 1
+#endif
+
+/**
+    @section File Suffix Defaults
+
+    Default file extension suffixes based on the operating system.
+*/
+
+#ifndef ME_EXE
+    #if ME_WIN_LIKE
+        #define ME_EXE ".exe"
+    #elif VXWORKS
+        #define ME_EXE ".out"
+    #else
+        #define ME_EXE ""
+    #endif
+#endif
+
+#ifndef ME_SHLIB
+    #if MACOSX
+        #define ME_SHLIB ".dylib"
+    #elif ME_WIN_LIKE
+        #define ME_SHLIB ".lib"
+    #elif VXWORKS
+        #define ME_SHLIB ".out"
+    #else
+        #define ME_SHLIB ".so"
+    #endif
+#endif
+
+#ifndef ME_SHOBJ
+    #if MACOSX
+        #define ME_SHOBJ ".dylib"
+    #elif ME_WIN_LIKE
+        #define ME_SHOBJ ".dll"
+    #elif VXWORKS
+        #define ME_SHOBJ ".out"
+    #else
+        #define ME_SHOBJ ".so"
+    #endif
+#endif
+
+#ifndef ME_LIB
+    #if ME_WIN_LIKE
+        #define ME_LIB ".lib"
+    #else
+        #define ME_LIB ".a"
+    #endif
+#endif
+
+#ifndef ME_OBJ
+    #if ME_WIN_LIKE
+        #define ME_OBJ ".obj"
+    #else
+        #define ME_OBJ ".o"
+    #endif
 #endif
 
 /**

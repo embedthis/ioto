@@ -1,5 +1,11 @@
 /*
- * URL client Library Source
+    urlLib.c -- URL HTTP Client Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the URL library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "url.h"
@@ -7,8 +13,7 @@
 #if ME_COM_URL
 
 
-
-/********* Start of file ../../../src/urlLib.c ************/
+/********* Start of file src/urlLib.c ************/
 
 /**
     url.c - URL client HTTP library.
@@ -21,7 +26,6 @@
  */
 
 /********************************** Includes **********************************/
-
 
 #include    "crypt.h"
 #include    "websock.h"

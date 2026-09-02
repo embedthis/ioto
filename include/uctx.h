@@ -15,9 +15,6 @@
 #ifndef _h_UCTX
 #define _h_UCTX 1
 
-#if R_USE_ME
-   #include "me.h"
-#endif
 #include "osdep.h"
 #include "uctx-os.h"
 
@@ -48,6 +45,7 @@ typedef struct uctx {
 	unsigned long uc_sigmask[128 / sizeof(long)];
 	unsigned long long uc_regspace[64];
 } uctx_t;
+
 
 #endif // ARM
 
@@ -83,6 +81,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // ARM64
 
 #if UCTX_ARCH == UCTX_FREERTOS
@@ -115,6 +114,7 @@ typedef struct uctx {
     int resumed;                    // Flag to indicate if the thread has started
     int done;                       // Flag to indicate fiber is complete
 } uctx_t;
+
 
 #endif // FREERTOS
 
@@ -159,6 +159,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // LOONGARCH64
 
 #if UCTX_ARCH == UCTX_M68K
@@ -187,6 +188,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // M68K
 
 #if UCTX_ARCH == UCTX_MIPS
@@ -213,6 +215,7 @@ typedef struct uctx {
 	uctx_stack_t uc_stack;
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
+
 
 #endif // MIPS
 
@@ -261,6 +264,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // MIPS64
 
 #if UCTX_ARCH == UCTX_OR1K
@@ -288,6 +292,7 @@ typedef struct uctx {
 	uctx_stack_t uc_stack;
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
+
 
 #endif // OR1K
 
@@ -336,6 +341,8 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
+
 #endif // PPC
 
 #if UCTX_ARCH == UCTX_PPC64
@@ -344,8 +351,8 @@ typedef struct uctx {
 #include <ucontext.h>
 typedef greg_t uctx_greg_t;
 typedef ucontext_t uctx_t;
-
 #endif
+
 
 #endif // PPC64
 
@@ -375,6 +382,7 @@ typedef struct uctx {
     int resumed;                    // Flag to indicate if the thread has started
     int done;                       // Flag to indicate if the context is complete
 } uctx_t;
+
 
 #endif // PTHREADS
 
@@ -424,6 +432,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // RISCV
 
 #if UCTX_ARCH == UCTX_RISCV64
@@ -472,6 +481,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // RISCV64
 
 #if UCTX_ARCH == UCTX_S390X
@@ -513,6 +523,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // S390X
 
 #if UCTX_ARCH == UCTX_SH
@@ -542,6 +553,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // SH
 
 #if UCTX_ARCH == UCTX_WINDOWS
@@ -565,6 +577,7 @@ typedef struct uctx {
     void *args[UCTX_MAX_ARGS];
     int main;
 } uctx_t;
+
 
 #endif // WINDOWS
 
@@ -630,6 +643,7 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
 #endif // X64
 
 #if UCTX_ARCH == UCTX_X86
@@ -679,6 +693,8 @@ typedef struct uctx {
 	uctx_mcontext_t uc_mcontext;
 } uctx_t;
 
+
+
 #endif // X86
 
 #if UCTX_ARCH == UCTX_XTENSA
@@ -704,8 +720,8 @@ typedef struct uctx_t {
     uctx_mcontext uc_mcontext;
 } uctx_t;
 
-#endif // XTENSA
 
+#endif // XTENSA
 
 
 #ifndef UCTX_MIN_STACK_SIZE

@@ -1,11 +1,16 @@
 /*
- * MQTT Client Library Source
+    mqttLib.c -- MQTT Client Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "mqtt.h"
 
 #if ME_COM_MQTT
-
 
 
 /********* Start of file src/mqttLib.c ************/
@@ -23,7 +28,6 @@
  */
 
 /********************************** Includes **********************************/
-
 
 
 #if ME_COM_MQTT

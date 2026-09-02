@@ -55,10 +55,36 @@
 
 /********************************** Includes **********************************/
 
-#if R_USE_ME
-   #include "me.h"
-#endif
 #include "osdep.h"
+
+#ifndef ME_NAME
+    #define ME_NAME    "r"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE   ME_NAME
+#endif
+
+/*
+    Components
+ */
+#ifndef ME_COM_MBEDTLS
+    #define ME_COM_MBEDTLS 0
+#endif
+#ifndef ME_COM_OPENSSL
+    #define ME_COM_OPENSSL 1
+#endif
+#ifndef ME_COM_OSDEP
+    #define ME_COM_OSDEP   1
+#endif
+#ifndef ME_COM_R
+    #define ME_COM_R       1
+#endif
+#ifndef ME_COM_SSL
+    #define ME_COM_SSL     1
+#endif
+#ifndef ME_COM_UCTX
+    #define ME_COM_UCTX    1
+#endif
 
 #ifndef R_USE_FILE
     #define R_USE_FILE            1
@@ -91,9 +117,6 @@
 #endif
 #ifndef R_USE_LIST
     #define R_USE_LIST            1
-#endif
-#ifndef R_USE_ME
-    #define R_USE_ME              1
 #endif
 #ifndef R_USE_STRING
     #define R_USE_STRING          1
@@ -3880,6 +3903,38 @@ PUBLIC ssize rGetFileSize(cchar *path);
     @stability Evolving
  */
 PUBLIC bool rFileExists(cchar *path);
+
+/**
+    Get the fully resolved path of an open file descriptor
+    @description Return the name the file system actually resolved a descriptor to, which may
+        differ from the name that was passed to open(). Case-folding file systems (APFS, HFS+,
+        NTFS, vfat, exfat) and Unicode-normalizing file systems (APFS, HFS+) accept many
+        spellings of one name, and Windows additionally accepts 8.3 short names, trailing dots
+        and spaces, and the ::$DATA stream suffix. Code that makes a security decision from a
+        requested path must compare it against the resolved name.
+        \n\n
+        Resolving from the descriptor closes the time-of-check to time-of-use window that a
+        path-based realpath() leaves open, because the descriptor already refers to the object.
+        \n\n
+        Callers must fail closed on error. Some platforms (VxWorks, some RTOS libcs) provide no
+        such call and always return an error.
+    @param fd Open file descriptor
+    @param buf Buffer to hold the resolved path
+    @param bufsize Size of buf
+    @return The length of the resolved path, or a negative R_ERR code on failure
+    @stability Evolving
+ */
+PUBLIC ssize rGetFdPath(int fd, char *buf, size_t bufsize);
+
+/**
+    Get the canonical absolute path of an existing file or directory
+    @description Resolve symbolic links and relative segments to an absolute path. The file
+        must exist.
+    @param path Path to resolve
+    @return An allocated canonical path, or NULL if it cannot be resolved. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *rGetRealPath(cchar *path);
 #endif /* R_USE_FILE */
 
 /************************************ R *************************************/
@@ -4090,6 +4145,9 @@ PUBLIC void rTermEvents(void);
 #endif
 #ifndef ME_R_DEFAULT_TIMEOUT
     #define ME_R_DEFAULT_TIMEOUT (60 * TPS)
+#endif
+#ifndef ME_R_TLS_MAX_DEPTH
+    #define ME_R_TLS_MAX_DEPTH   8      /**< Maximum peer certificate chain depth */
 #endif
 
 #define R_TLS_HAS_AUTHORITY      0x1    /**< Signal to the custom callback that authority certs are available */

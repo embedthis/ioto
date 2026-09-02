@@ -96,6 +96,9 @@ PUBLIC void ioTerm(void)
 #if SERVICES_CLOUD
     ioTermCloud();
 #endif
+#if SERVICES_MQTT
+    ioTermMqtt();
+#endif
 #if SERVICES_DATABASE
     ioTermDb();
 #endif
@@ -219,6 +222,11 @@ static int initServices(void)
 #endif
 #if SERVICES_CLOUD
     if (ioto->cloudService && ioInitCloud() < 0) {
+        return R_ERR_CANT_INITIALIZE;
+    }
+#endif
+#if SERVICES_MQTT
+    if (ioto->mqttService && (ioInitMqtt() < 0)) {
         return R_ERR_CANT_INITIALIZE;
     }
 #endif

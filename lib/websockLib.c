@@ -1,11 +1,16 @@
 /*
- * Embedthis WebSockets Library Source
+    websockLib.c -- WebSocket Library Source
+
+    This file is a catenation of all the source code. Amalgamating into a
+    single file makes embedding simpler and the resulting application faster,
+    by using compiler optimization within the library.
+
+    Prepared by: buildLib.sh
  */
 
 #include "websock.h"
 
 #if ME_COM_WEBSOCK
-
 
 
 /********* Start of file src/websockLib.c ************/
@@ -18,7 +23,7 @@
 
 /********************************* Includes ***********************************/
 
-
+#include    "websock.h"
 #include    "crypt.h"
 
 /********************************** Locals ************************************/

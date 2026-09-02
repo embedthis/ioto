@@ -12,12 +12,39 @@
 #ifndef _h_OPENAI_H
 #define _h_OPENAI_H 1
 
+/********************************** Product ***********************************/
+
+#ifndef ME_NAME
+    #define ME_NAME              "openai"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE             ME_NAME
+#endif
+
 /********************************** Includes **********************************/
 
-#include "me.h"
 #include "r.h"
 #include "json.h"
 #include "url.h"
+
+/*
+    Components
+ */
+#ifndef ME_COM_OPENAI
+    #define ME_COM_OPENAI  1
+#endif
+#ifndef ME_COM_URL
+    #define ME_COM_URL     1
+#endif
+#ifndef ME_COM_WEBSOCK
+    #define ME_COM_WEBSOCK 1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON    1
+#endif
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT   1
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,7 +53,6 @@ extern "C" {
 #if ME_COM_OPENAI
 /*********************************** Defines **********************************/
 
-struct OpenAIRealTime;
 /**
     OpenAI client configuration structure
     @description Contains the configuration settings for connecting to OpenAI services.
@@ -35,7 +61,6 @@ struct OpenAIRealTime;
  */
 typedef struct OpenAI {
     char *endpoint;                     /**< OpenAI API endpoint URL (default: https://api.openai.com/v1) */
-    char *realTimeEndpoint;             /**< Real-time WebSocket endpoint URL for streaming connections */
     char *headers;                      /**< HTTP headers including authorization bearer token */
     int flags;                          /**< Configuration flags controlling tracing and behavior */
 } OpenAI;
@@ -98,19 +123,6 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg);
     @stability Evolving
  */
 PUBLIC Json *openaiChatCompletion(Json *props);
-
-/**
-    Connect to OpenAI Real-Time API via WebSocket
-    @description Establish a WebSocket connection to the OpenAI Real-Time API for bidirectional
-    real-time communication. This enables voice and streaming text interactions with low latency.
-    The connection supports full-duplex communication for interactive applications.
-    @param props JSON object containing Real-Time API connection parameters.
-    May include 'model', 'voice', 'input_audio_format', 'output_audio_format'.
-    @return Url object representing the active WebSocket connection on success.
-    Returns NULL on connection failure. Use urlClose to terminate the connection.
-    @stability Evolving
- */
-PUBLIC Url *openaiRealTimeConnect(Json *props);
 
 /**
     List available OpenAI models

@@ -34,6 +34,16 @@ PUBLIC int ioInitWeb(void)
     jsonSet(ioto->config, 0, "web.upload.dir", path, JSON_STRING);
     rFree(path);
 
+    if (ioto->cmdListen) {
+        Json *listen = jsonParse(ioto->cmdListen, 0);
+        if (listen) {
+            jsonBlend(ioto->config, 0, "web.listen", listen, 0, 0, 0);
+        } else {
+            rError("web", "Failed to parse listen endpoints: %s", ioto->cmdListen);
+            return R_ERR_CANT_READ;
+        }
+    }
+
     webShow = ioto->cmdWebShow ? ioto->cmdWebShow : jsonGet(ioto->config, 0, "log.show", "");
 
     if ((webHost = webAllocHost(ioto->config, parseShow(webShow))) == 0) {

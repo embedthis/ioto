@@ -181,13 +181,18 @@ static int dbUpdateTest(void)
     cchar *lastUpdate;
 
     rInfo("test", "Run test: dbLocal");
+    if (!ioto->db) {
+        rError("test", "Database not initialized");
+        return R_ERR_CANT_COMPLETE;
+    }
     /*
         Update the lastUpdate field in the SyncState entity.
         This table is local to the device and is not synchronized to the cloud.
      */
     lastUpdate = dbGetField(ioto->db, "SyncState", "lastUpdate", NULL, NULL);
-    if (dbUpdate(ioto->db, "SyncState", DB_PROPS("lastUpdate", lastUpdate), NULL) == 0) {
-        rError("provision", "Cannot update State: %s", dbGetError(ioto->db));
+    rInfo("test", "dbUpdate: lastUpdate=%s", lastUpdate ? lastUpdate : "NULL");
+    if (dbUpdate(ioto->db, "SyncState", DB_PROPS("lastUpdate", lastUpdate), DB_PARAMS(.upsert = 1)) == 0) {
+        rError("test", "Cannot update SyncState: %s", dbGetError(ioto->db));
         return R_ERR_CANT_COMPLETE;
     }
     return R_ERR_OK;

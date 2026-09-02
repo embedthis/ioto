@@ -1,9 +1,10 @@
 /*
- * DB library Library Source
+    db.h -- DB API header
+
+    This file is a catenation of rb.h and db.h headers.
+
+    Prepared by: buildLib.sh
  */
-
-
-
 
 /********* Start of file src/rb.h ************/
 
@@ -216,10 +217,36 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 
 /********************************** Includes **********************************/
 
-#define ME_COM_JSON 1
+#ifndef ME_COM_DB
+    #define ME_COM_DB 1
+#endif
+#ifndef ME_COM_JSON
+    #define ME_COM_JSON 1
+#endif
+#ifndef ME_COM_R
+    #define ME_COM_R 1
+#endif
+#ifndef ME_COM_CRYPT
+    #define ME_COM_CRYPT 1
+#endif
+#ifndef ME_COM_SSL
+    #define ME_COM_SSL 1
+#endif
+#ifndef ME_COM_OPENSSL
+    #define ME_COM_OPENSSL 1
+#endif
+#ifndef ME_COM_MBEDTLS
+    #define ME_COM_MBEDTLS 0
+#endif
+
+#ifndef ME_NAME
+    #define ME_NAME    "db"
+#endif
+#ifndef ME_TITLE
+    #define ME_TITLE   ME_NAME
+#endif
 
 #include "json.h"
-
 
 /*********************************** Defines **********************************/
 #if ME_COM_DB
@@ -1131,4 +1158,3 @@ PUBLIC cchar *dbGetSortKey(Db *db);
     Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
-
