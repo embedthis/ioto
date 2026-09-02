@@ -1,0 +1,283 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		26404BA2112C7194591239E2 /* blink.c in Sources */ = {isa = PBXBuildFile; fileRef = CB0E1EAA6F60BC5C819904EA /* blink.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		CB0E1EAA6F60BC5C819904EA /* blink.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = blink.c; path = ../../src/blink.c; sourceTree = "<group>"; };
+		DEBD476150485FD3FF4985A1 /* ioto-blink */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "ioto-blink"; path = "ioto-blink"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		09D8B451169563C38B7FD291 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B8A25CFDE748B0EF408A0B3D /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DEBD476150485FD3FF4985A1 /* ioto-blink */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B0C394D89CB4A08AEEEC3B18 /* ioto-blink */ = {
+			isa = PBXGroup;
+			children = (
+				CB0E1EAA6F60BC5C819904EA /* blink.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+			);
+			name = "ioto-blink";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F9593727FCCA09597E36AD67 /* ioto-blink */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F813FCB004D0AC2279BB1AF0 /* Build configuration list for PBXNativeTarget "ioto-blink" */;
+			buildPhases = (
+				79C034F1867CE463FB675331 /* Resources */,
+				E36D4E48F029FDBA65146C88 /* Sources */,
+				09D8B451169563C38B7FD291 /* Frameworks */,
+				B8A25CFDE748B0EF408A0B3D /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "ioto-blink";
+			productInstallPath = "$(HOME)/bin";
+			productName = "ioto-blink";
+			productReference = DEBD476150485FD3FF4985A1 /* ioto-blink */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto-blink" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = B0C394D89CB4A08AEEEC3B18 /* ioto-blink */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F9593727FCCA09597E36AD67 /* ioto-blink */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		79C034F1867CE463FB675331 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E36D4E48F029FDBA65146C88 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				26404BA2112C7194591239E2 /* blink.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		07A0188736466C798F87C6C7 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = ../../build/obj/debug_macosx;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+					"-Wsign-conversion",
+				);
+				OTHER_LDFLAGS = (
+					"-lioto",
+					"-lssl",
+					"-lcrypto",
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		2E55619684E2CC085D5BDFD6 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "ioto-blink";
+			};
+			name = debug;
+		};
+		5FF73A108F8909026A964850 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "ioto-blink";
+			};
+			name = release;
+		};
+		64703081D5FB48F384FC6EC1 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = ../../build/obj/release_macosx;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+					"-Wsign-conversion",
+				);
+				OTHER_LDFLAGS = (
+					"-lioto",
+					"-lssl",
+					"-lcrypto",
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto-blink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				07A0188736466C798F87C6C7 /* debug */,
+				64703081D5FB48F384FC6EC1 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		F813FCB004D0AC2279BB1AF0 /* Build configuration list for PBXNativeTarget "ioto-blink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2E55619684E2CC085D5BDFD6 /* debug */,
+				5FF73A108F8909026A964850 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

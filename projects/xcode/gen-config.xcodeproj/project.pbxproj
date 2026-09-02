@@ -1,0 +1,373 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		21BFDF3C1B819BAE55809D7C /* gen-config.c in Sources */ = {isa = PBXBuildFile; fileRef = 25A8F4A46E19D8D6B2B8AAE4 /* gen-config.c */; };
+		E3E368FF3B48DBF1ED56F73F /* libioto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 86CDAA07B8C6F4B932A63047 /* libioto.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7252E95D9879190FFF800F9D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = C19168CAC5023AFC466EDF0A;
+			remoteInfo = libioto.a;
+		};
+		C48D5BF6EAB38BA851BA8236 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 460A4F7074B0A362CDF1FDB0;
+			remoteInfo = libioto.a;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		25A8F4A46E19D8D6B2B8AAE4 /* gen-config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = "gen-config.c"; path = "../../bin/gen-config.c"; sourceTree = "<group>"; };
+		2ED79D46A062B5B84F63DB86 /* gen-config */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "gen-config"; path = "gen-config"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CDEFF476EFBBA1A82C70CAB6 /* libioto.a */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "ioto.xcodeproj"; path = ioto.xcodeproj; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C431DFB6D0EE8F2845D8FDF6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3E368FF3B48DBF1ED56F73F /* libioto.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6DF3F5A29C9A4994F5DBA3E2 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		374C3EFD30B2406F244D9D3D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				86CDAA07B8C6F4B932A63047 /* libioto.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4320F7DD2F12038F81499E1D /* gen-config */ = {
+			isa = PBXGroup;
+			children = (
+				25A8F4A46E19D8D6B2B8AAE4 /* gen-config.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = "gen-config";
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */,
+				CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2ED79D46A062B5B84F63DB86 /* gen-config */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		58DDE46C5C4EB69EDDBB5AAC /* gen-config */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B26D2815BF29D78734144655 /* Build configuration list for PBXNativeTarget "gen-config" */;
+			buildPhases = (
+				3419605640D60FC8B5C07E96 /* Resources */,
+				9DC679ADAA83291F1F6D97ED /* Sources */,
+				C431DFB6D0EE8F2845D8FDF6 /* Frameworks */,
+				6DF3F5A29C9A4994F5DBA3E2 /* Embed Libraries */,
+				9607AE3710C85E8F00CD1376 /* Postbuild */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				25047C061E6A7D781205DA46 /* PBXTargetDependency */,
+				25047C061E6A7D781205DA46 /* PBXTargetDependency */,
+			);
+			name = "gen-config";
+			productInstallPath = "$(HOME)/bin";
+			productName = "gen-config";
+			productReference = 2ED79D46A062B5B84F63DB86 /* gen-config */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "gen-config" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 4320F7DD2F12038F81499E1D /* gen-config */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 374C3EFD30B2406F244D9D3D /* Products */;
+					ProjectRef = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+				},
+				{
+					ProductGroup = 374C3EFD30B2406F244D9D3D /* Products */;
+					ProjectRef = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				58DDE46C5C4EB69EDDBB5AAC /* gen-config */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		86CDAA07B8C6F4B932A63047 /* libioto.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libioto.a;
+			remoteRef = 7252E95D9879190FFF800F9D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3419605640D60FC8B5C07E96 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9607AE3710C85E8F00CD1376 /* Postbuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Postbuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"debug\" ]; then\n\"../../build/bin/gen-config\" > \"../../build/bin/../config.sh\"\nfi\nif [ \"${CONFIGURATION}\" = \"release\" ]; then\n\"../../build/bin/gen-config\" > \"../../build/bin/../config.sh\"\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9DC679ADAA83291F1F6D97ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21BFDF3C1B819BAE55809D7C /* gen-config.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		25047C061E6A7D781205DA46 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libioto.a;
+			targetProxy = C48D5BF6EAB38BA851BA8236 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2CADF2355C3FC127374D0075 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "gen-config";
+			};
+			name = release;
+		};
+		7D45CC7BD3D336EDAC4C4ABB /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "gen-config";
+			};
+			name = debug;
+		};
+		B48A866626159ED8D516C4A6 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = "../../build/obj/gen-config-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lssl",
+					"-lcrypto",
+					"-s",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		BCF1B12CEB98051E44D95F6C /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = "../../build/obj/gen-config-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lssl",
+					"-lcrypto",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "gen-config" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BCF1B12CEB98051E44D95F6C /* debug */,
+				B48A866626159ED8D516C4A6 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		B26D2815BF29D78734144655 /* Build configuration list for PBXNativeTarget "gen-config" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D45CC7BD3D336EDAC4C4ABB /* debug */,
+				2CADF2355C3FC127374D0075 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

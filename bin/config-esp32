@@ -17,17 +17,17 @@ for service in ${SERVICES} ; do
     value=`grep -i CONFIG_IOTO_${service} ${SPEC} | grep -v '^# ' | \
         sed 's/.*=//' | sed 's/"//g'`
     if [ "${value}" = "y" ] ; then
-        ./bin/json --overwrite services.${service}=true ${CONFIG}/ioto.json5
+        ./build/bin/json --overwrite services.${service}=true ${CONFIG}/ioto.json5
     elif [ "${value}" != "" ] ; then
-        ./bin/json --overwrite services.${service}=${value} ${CONFIG}/ioto.json5
+        ./build/bin/json --overwrite services.${service}=${value} ${CONFIG}/ioto.json5
     else
-        ./bin/json --overwrite services.${service}=false ${CONFIG}/ioto.json5
+        ./build/bin/json --overwrite services.${service}=false ${CONFIG}/ioto.json5
     fi
 done
 
 rm -f include/config.h
 echo "  [Generate] config.h"
-./bin/json --header services ${CONFIG}/ioto.json5 >include/config.h
+./build/bin/json --header services ${CONFIG}/ioto.json5 >include/config.h
 
 cp ${CONFIG}/ioto.json5 ../../state/config
 

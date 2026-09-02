@@ -1,0 +1,283 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D17D6792BC698D84044F55D2 /* blank.c in Sources */ = {isa = PBXBuildFile; fileRef = C5F1239A6A43C14C7C7C09DA /* blank.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		6E0C3659DF974ECB8E987499 /* ioto-blank */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = "ioto-blank"; path = "ioto-blank"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C5F1239A6A43C14C7C7C09DA /* blank.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = blank.c; path = ../../src/blank.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2FD6E7493C9396BBB17E0589 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		56F92DF5859F81E7DEE0DC35 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		48F1AED034E2BA82871A5510 /* ioto-blank */ = {
+			isa = PBXGroup;
+			children = (
+				C5F1239A6A43C14C7C7C09DA /* blank.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+			);
+			name = "ioto-blank";
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6E0C3659DF974ECB8E987499 /* ioto-blank */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		628A271F65FAF951E7679D5F /* ioto-blank */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1E122FA82ACEDF1A9FB94DE8 /* Build configuration list for PBXNativeTarget "ioto-blank" */;
+			buildPhases = (
+				9FBE67E9AC7B175B21658629 /* Resources */,
+				096B8140162830B28B129F80 /* Sources */,
+				2FD6E7493C9396BBB17E0589 /* Frameworks */,
+				56F92DF5859F81E7DEE0DC35 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "ioto-blank";
+			productInstallPath = "$(HOME)/bin";
+			productName = "ioto-blank";
+			productReference = 6E0C3659DF974ECB8E987499 /* ioto-blank */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto-blank" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 48F1AED034E2BA82871A5510 /* ioto-blank */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				628A271F65FAF951E7679D5F /* ioto-blank */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9FBE67E9AC7B175B21658629 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		096B8140162830B28B129F80 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D17D6792BC698D84044F55D2 /* blank.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		4B173F087AA90DFA55B64D48 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "ioto-blank";
+			};
+			name = release;
+		};
+		A5F6E97FD49D3D712DDE97BF /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = ../../build/obj/debug_macosx;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+					"-Wsign-conversion",
+				);
+				OTHER_LDFLAGS = (
+					"-lioto",
+					"-lssl",
+					"-lcrypto",
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		B53FC88E0BCD3300E44646CE /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = "ioto-blank";
+			};
+			name = debug;
+		};
+		F3BF1F79654A37EB144B5DB9 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_SSL=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = ../../build/obj/release_macosx;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+					"-Wsign-conversion",
+				);
+				OTHER_LDFLAGS = (
+					"-lioto",
+					"-lssl",
+					"-lcrypto",
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto-blank" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A5F6E97FD49D3D712DDE97BF /* debug */,
+				F3BF1F79654A37EB144B5DB9 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		1E122FA82ACEDF1A9FB94DE8 /* Build configuration list for PBXNativeTarget "ioto-blank" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B53FC88E0BCD3300E44646CE /* debug */,
+				4B173F087AA90DFA55B64D48 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+	version = "1.0">
+	<FileRef
+		location = "group:db.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:gen-config.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:ioto.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:json.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:password.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:url.xcodeproj">
+	</FileRef>
+	<FileRef
+		location = "group:web.xcodeproj">
+	</FileRef>
+</Workspace>

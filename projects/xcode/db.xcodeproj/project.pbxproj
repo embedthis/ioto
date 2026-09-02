@@ -1,0 +1,355 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E3E368FF3B48DBF1ED56F73F /* libioto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 86CDAA07B8C6F4B932A63047 /* libioto.a */; };
+		EB75646E5D007CE00C01A2AE /* db.c in Sources */ = {isa = PBXBuildFile; fileRef = 25D057B6D23317E890BB8DF6 /* db.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7252E95D9879190FFF800F9D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = C19168CAC5023AFC466EDF0A;
+			remoteInfo = libioto.a;
+		};
+		C48D5BF6EAB38BA851BA8236 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 460A4F7074B0A362CDF1FDB0;
+			remoteInfo = libioto.a;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		25D057B6D23317E890BB8DF6 /* db.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = db.c; path = ../../src/cmds/db.c; sourceTree = "<group>"; };
+		CDEFF476EFBBA1A82C70CAB6 /* libioto.a */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "ioto.xcodeproj"; path = ioto.xcodeproj; sourceTree = SOURCE_ROOT; };
+		F441976F2CFC5DE1BC9395AF /* db */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = db; path = db; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E7CB2D5F6B108AD194580B9F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3E368FF3B48DBF1ED56F73F /* libioto.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DD17518B4729D37DE054BFCB /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		374C3EFD30B2406F244D9D3D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				86CDAA07B8C6F4B932A63047 /* libioto.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */,
+				CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F441976F2CFC5DE1BC9395AF /* db */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E2F641A68DF7BB58C6FCA7E6 /* db */ = {
+			isa = PBXGroup;
+			children = (
+				25D057B6D23317E890BB8DF6 /* db.c */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = db;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AC6CBD7558CF7DA71757F3B5 /* db */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D60675BE594BD330829353FE /* Build configuration list for PBXNativeTarget "db" */;
+			buildPhases = (
+				57B2ADFFDAF80B71043F8C3F /* Resources */,
+				C15FC75644A524C86DECA596 /* Sources */,
+				E7CB2D5F6B108AD194580B9F /* Frameworks */,
+				DD17518B4729D37DE054BFCB /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				25047C061E6A7D781205DA46 /* PBXTargetDependency */,
+				25047C061E6A7D781205DA46 /* PBXTargetDependency */,
+			);
+			name = db;
+			productInstallPath = "$(HOME)/bin";
+			productName = db;
+			productReference = F441976F2CFC5DE1BC9395AF /* db */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "db" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = E2F641A68DF7BB58C6FCA7E6 /* db */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 374C3EFD30B2406F244D9D3D /* Products */;
+					ProjectRef = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+				},
+				{
+					ProductGroup = 374C3EFD30B2406F244D9D3D /* Products */;
+					ProjectRef = CDEFF476EFBBA1A82C70CAB6 /* ioto.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				AC6CBD7558CF7DA71757F3B5 /* db */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		86CDAA07B8C6F4B932A63047 /* libioto.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libioto.a;
+			remoteRef = 7252E95D9879190FFF800F9D /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		57B2ADFFDAF80B71043F8C3F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C15FC75644A524C86DECA596 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EB75646E5D007CE00C01A2AE /* db.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		25047C061E6A7D781205DA46 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libioto.a;
+			targetProxy = C48D5BF6EAB38BA851BA8236 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2C150D1596278F072F527B55 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = "../../build/obj/db-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lssl",
+					"-lcrypto",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		6E31739E6EE47090E2C641DE /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = db;
+			};
+			name = release;
+		};
+		79F4808FB2AF470142467ECF /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LIBRARY_SEARCH_PATHS = (
+					../../build/bin,
+					/opt/homebrew/lib,
+				);
+				OBJROOT = "../../build/obj/db-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-lssl",
+					"-lcrypto",
+					"-s",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		C9F7DFA43B82F816EA841DE4 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = db;
+			};
+			name = debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "db" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2C150D1596278F072F527B55 /* debug */,
+				79F4808FB2AF470142467ECF /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		D60675BE594BD330829353FE /* Build configuration list for PBXNativeTarget "db" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C9F7DFA43B82F816EA841DE4 /* debug */,
+				6E31739E6EE47090E2C641DE /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

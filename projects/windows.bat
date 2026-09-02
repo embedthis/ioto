@@ -78,5 +78,5 @@ if NOT DEFINED VSINSTALLDIR (
 @echo Using Visual Studio %VS% (v%VisualStudioVersion%) from %VSINSTALLDIR% for %CC_ARCH%
 @echo.
 
-@echo %2 %3 %4 %5 %6 %7 %8 %9
-%2 %3 %4 %5 %6 %7 %8 %9
+@echo %*
+%*

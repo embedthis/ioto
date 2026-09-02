@@ -1,0 +1,74 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db", "db.vcxproj", "{8B775900-7703-880B-E0B1-880BCC5C880B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gen-config", "gen-config.vcxproj", "{426752C6-2E1F-9413-9726-6D6F83FD2E04}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ioto", "ioto.vcxproj", "{E08A987C-CCC1-990D-75AE-7F1061C4150F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "json", "json.vcxproj", "{9F27997C-8B5E-9A0D-344B-80102061160F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "password", "password.vcxproj", "{38DCF617-24A9-5123-4DC2-3FCB39EE86B1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "url", "url.vcxproj", "{B8B3880B-24BD-887C-AD38-9F7C1941947C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "web", "web.vcxproj", "{83BA880B-EFC3-887C-783F-9F7CE447947C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F} = {E08A987C-CCC1-990D-75AE-7F1061C4150F}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		debug|windows = debug|windows
+		release|windows = release|windows
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8B775900-7703-880B-E0B1-880BCC5C880B}.debug|windows.ActiveCfg = debug windows|x64
+		{8B775900-7703-880B-E0B1-880BCC5C880B}.debug|windows.Build.0 = debug windows|x64
+		{8B775900-7703-880B-E0B1-880BCC5C880B}.release|windows.ActiveCfg = release windows|x64
+		{8B775900-7703-880B-E0B1-880BCC5C880B}.release|windows.Build.0 = release windows|x64
+		{426752C6-2E1F-9413-9726-6D6F83FD2E04}.debug|windows.ActiveCfg = debug windows|x64
+		{426752C6-2E1F-9413-9726-6D6F83FD2E04}.debug|windows.Build.0 = debug windows|x64
+		{426752C6-2E1F-9413-9726-6D6F83FD2E04}.release|windows.ActiveCfg = release windows|x64
+		{426752C6-2E1F-9413-9726-6D6F83FD2E04}.release|windows.Build.0 = release windows|x64
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F}.debug|windows.ActiveCfg = debug windows|x64
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F}.debug|windows.Build.0 = debug windows|x64
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F}.release|windows.ActiveCfg = release windows|x64
+		{E08A987C-CCC1-990D-75AE-7F1061C4150F}.release|windows.Build.0 = release windows|x64
+		{9F27997C-8B5E-9A0D-344B-80102061160F}.debug|windows.ActiveCfg = debug windows|x64
+		{9F27997C-8B5E-9A0D-344B-80102061160F}.debug|windows.Build.0 = debug windows|x64
+		{9F27997C-8B5E-9A0D-344B-80102061160F}.release|windows.ActiveCfg = release windows|x64
+		{9F27997C-8B5E-9A0D-344B-80102061160F}.release|windows.Build.0 = release windows|x64
+		{38DCF617-24A9-5123-4DC2-3FCB39EE86B1}.debug|windows.ActiveCfg = debug windows|x64
+		{38DCF617-24A9-5123-4DC2-3FCB39EE86B1}.debug|windows.Build.0 = debug windows|x64
+		{38DCF617-24A9-5123-4DC2-3FCB39EE86B1}.release|windows.ActiveCfg = release windows|x64
+		{38DCF617-24A9-5123-4DC2-3FCB39EE86B1}.release|windows.Build.0 = release windows|x64
+		{B8B3880B-24BD-887C-AD38-9F7C1941947C}.debug|windows.ActiveCfg = debug windows|x64
+		{B8B3880B-24BD-887C-AD38-9F7C1941947C}.debug|windows.Build.0 = debug windows|x64
+		{B8B3880B-24BD-887C-AD38-9F7C1941947C}.release|windows.ActiveCfg = release windows|x64
+		{B8B3880B-24BD-887C-AD38-9F7C1941947C}.release|windows.Build.0 = release windows|x64
+		{83BA880B-EFC3-887C-783F-9F7CE447947C}.debug|windows.ActiveCfg = debug windows|x64
+		{83BA880B-EFC3-887C-783F-9F7CE447947C}.debug|windows.Build.0 = debug windows|x64
+		{83BA880B-EFC3-887C-783F-9F7CE447947C}.release|windows.ActiveCfg = release windows|x64
+		{83BA880B-EFC3-887C-783F-9F7CE447947C}.release|windows.Build.0 = release windows|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

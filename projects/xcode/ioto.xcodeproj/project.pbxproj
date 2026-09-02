@@ -1,0 +1,374 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0502E645604439B7339E8485 /* config.c in Sources */ = {isa = PBXBuildFile; fileRef = D951E38DF0647EBFE08079CD /* config.c */; };
+		1060A57A0A2261EC442163BA /* cryptLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 85AA3362CE1B179412B9E9A2 /* cryptLib.c */; };
+		23940A4A5478023C6790388A /* jsonLib.c in Sources */ = {isa = PBXBuildFile; fileRef = C61E0632EC4435E4534B2C72 /* jsonLib.c */; };
+		23E348FB537517ED2E82573B /* setup.c in Sources */ = {isa = PBXBuildFile; fileRef = 3E2B86E3E119AD95703F8D23 /* setup.c */; };
+		28AA82DE598E7AD06CA6B11E /* uctxLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 6AD5EB8690FC1B38F80311C6 /* uctxLib.c */; };
+		29D9003097010EA29893FE70 /* uctxAssembly.S in Sources */ = {isa = PBXBuildFile; fileRef = C9073DB8166A33EA8C8933F8 /* uctxAssembly.S */; };
+		31DEEDF76170BCE93C7DFC37 /* agent.c in Sources */ = {isa = PBXBuildFile; fileRef = 09D9561FACC77CD13BED5C5F /* agent.c */; };
+		380C2FB27C5AD524BE820DF2 /* websockLib.c in Sources */ = {isa = PBXBuildFile; fileRef = CFEDB01AF1B95D4C2E6E865A /* websockLib.c */; };
+		5AFDC703CC2067F581E71543 /* webserver.c in Sources */ = {isa = PBXBuildFile; fileRef = 213A4C6B4975051D311092AB /* webserver.c */; };
+		5B3D143DB1CA7EAF8A43927D /* cron.c in Sources */ = {isa = PBXBuildFile; fileRef = 33B1340537220637B88EAA45 /* cron.c */; };
+		5E6FCFF38E019EE5690EDE33 /* esp32.c in Sources */ = {isa = PBXBuildFile; fileRef = 0264125BA552390D3478189B /* esp32.c */; };
+		5F554D235917099593160B63 /* database.c in Sources */ = {isa = PBXBuildFile; fileRef = 5C22C98BA493ADBDE9327FCB /* database.c */; };
+		847658FADB03C36CB37CD73A /* rLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 5197BAE255088D14D6753122 /* rLib.c */; };
+		95FB3B1CF13C8E8EC496D95C /* urlLib.c in Sources */ = {isa = PBXBuildFile; fileRef = D64AF5E4ED5D9116DD798C24 /* urlLib.c */; };
+		A3C6864E14E92740CAAFD48E /* openaiLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 7C92F1F6A4CDAAA88C693836 /* openaiLib.c */; };
+		B0A5B3E574117597B2B51A25 /* ioto.c in Sources */ = {isa = PBXBuildFile; fileRef = 1105CE8D0A6BCFFFFE072CCD /* ioto.c */; };
+		B57B67D210BCBB44E4170612 /* webLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 7AC9A23A91DC3D6C81F8387A /* webLib.c */; };
+		E962902DE2C8919FD663EE6D /* ai.c in Sources */ = {isa = PBXBuildFile; fileRef = 54A8EEF5F7F4782712C54535 /* ai.c */; };
+		F44FB6E22533AED4384BE522 /* mqttLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 27DA1D4A4E004CFCB507438A /* mqttLib.c */; };
+		FDB90DA22D4ADC9408581BE2 /* dbLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 46159E0AE903C4BC7829A44A /* dbLib.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0264125BA552390D3478189B /* esp32.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = esp32.c; path = ../../src/esp32.c; sourceTree = "<group>"; };
+		09D9561FACC77CD13BED5C5F /* agent.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = agent.c; path = ../../src/agent.c; sourceTree = "<group>"; };
+		1105CE8D0A6BCFFFFE072CCD /* ioto.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ioto.c; path = ../../src/cmds/ioto.c; sourceTree = "<group>"; };
+		213A4C6B4975051D311092AB /* webserver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = webserver.c; path = ../../src/webserver.c; sourceTree = "<group>"; };
+		27DA1D4A4E004CFCB507438A /* mqttLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = mqttLib.c; path = ../../lib/mqttLib.c; sourceTree = "<group>"; };
+		33B1340537220637B88EAA45 /* cron.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = cron.c; path = ../../src/cron.c; sourceTree = "<group>"; };
+		3E2B86E3E119AD95703F8D23 /* setup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = setup.c; path = ../../src/setup.c; sourceTree = "<group>"; };
+		46159E0AE903C4BC7829A44A /* dbLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = dbLib.c; path = ../../lib/dbLib.c; sourceTree = "<group>"; };
+		5197BAE255088D14D6753122 /* rLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = rLib.c; path = ../../lib/rLib.c; sourceTree = "<group>"; };
+		54A8EEF5F7F4782712C54535 /* ai.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = ai.c; path = ../../src/ai.c; sourceTree = "<group>"; };
+		5C22C98BA493ADBDE9327FCB /* database.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = database.c; path = ../../src/database.c; sourceTree = "<group>"; };
+		6AD5EB8690FC1B38F80311C6 /* uctxLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = uctxLib.c; path = ../../lib/uctxLib.c; sourceTree = "<group>"; };
+		7AC9A23A91DC3D6C81F8387A /* webLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = webLib.c; path = ../../lib/webLib.c; sourceTree = "<group>"; };
+		7C92F1F6A4CDAAA88C693836 /* openaiLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = openaiLib.c; path = ../../lib/openaiLib.c; sourceTree = "<group>"; };
+		85AA3362CE1B179412B9E9A2 /* cryptLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = cryptLib.c; path = ../../lib/cryptLib.c; sourceTree = "<group>"; };
+		C19168CAC5023AFC466EDF0A /* libioto.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; name = libioto.a; path = libioto.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		C61E0632EC4435E4534B2C72 /* jsonLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = jsonLib.c; path = ../../lib/jsonLib.c; sourceTree = "<group>"; };
+		C9073DB8166A33EA8C8933F8 /* uctxAssembly.S */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm.asm; name = uctxAssembly.S; path = ../../lib/uctxAssembly.S; sourceTree = "<group>"; };
+		CFEDB01AF1B95D4C2E6E865A /* websockLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = websockLib.c; path = ../../lib/websockLib.c; sourceTree = "<group>"; };
+		D64AF5E4ED5D9116DD798C24 /* urlLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = urlLib.c; path = ../../lib/urlLib.c; sourceTree = "<group>"; };
+		D951E38DF0647EBFE08079CD /* config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = config.c; path = ../../src/config.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7F6A893A22B6126C3D86DF7A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D9FD10267E4FADD89087F666 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXGroup section */
+		5775D4184366DFCA959E7A58 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				09D9561FACC77CD13BED5C5F /* agent.c */,
+				54A8EEF5F7F4782712C54535 /* ai.c */,
+				A22EEE8D457A77BF604B44CD /* cmds */,
+				D951E38DF0647EBFE08079CD /* config.c */,
+				33B1340537220637B88EAA45 /* cron.c */,
+				5C22C98BA493ADBDE9327FCB /* database.c */,
+				0264125BA552390D3478189B /* esp32.c */,
+				3E2B86E3E119AD95703F8D23 /* setup.c */,
+				213A4C6B4975051D311092AB /* webserver.c */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		8D815E5679726A08CBAA0496 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				85AA3362CE1B179412B9E9A2 /* cryptLib.c */,
+				46159E0AE903C4BC7829A44A /* dbLib.c */,
+				C61E0632EC4435E4534B2C72 /* jsonLib.c */,
+				27DA1D4A4E004CFCB507438A /* mqttLib.c */,
+				7C92F1F6A4CDAAA88C693836 /* openaiLib.c */,
+				5197BAE255088D14D6753122 /* rLib.c */,
+				C9073DB8166A33EA8C8933F8 /* uctxAssembly.S */,
+				6AD5EB8690FC1B38F80311C6 /* uctxLib.c */,
+				D64AF5E4ED5D9116DD798C24 /* urlLib.c */,
+				7AC9A23A91DC3D6C81F8387A /* webLib.c */,
+				CFEDB01AF1B95D4C2E6E865A /* websockLib.c */,
+			);
+			name = lib;
+			sourceTree = "<group>";
+		};
+		A22EEE8D457A77BF604B44CD /* cmds */ = {
+			isa = PBXGroup;
+			children = (
+				1105CE8D0A6BCFFFFE072CCD /* ioto.c */,
+			);
+			name = cmds;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C19168CAC5023AFC466EDF0A /* libioto.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B109E03B22508E6DB042D67B /* ioto */ = {
+			isa = PBXGroup;
+			children = (
+				8D815E5679726A08CBAA0496 /* lib */,
+				5775D4184366DFCA959E7A58 /* src */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+			);
+			name = ioto;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		460A4F7074B0A362CDF1FDB0 /* ioto */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6DA5D19910F15ACB2BC227D9 /* Build configuration list for PBXNativeTarget "ioto" */;
+			buildPhases = (
+				EF5209DA929D930CAD6E601A /* Resources */,
+				58FF2331FC4AAC63171B7971 /* Sources */,
+				7F6A893A22B6126C3D86DF7A /* Frameworks */,
+				D9FD10267E4FADD89087F666 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ioto;
+			productName = ioto;
+			productReference = C19168CAC5023AFC466EDF0A /* libioto.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = B109E03B22508E6DB042D67B /* ioto */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				460A4F7074B0A362CDF1FDB0 /* libioto.a */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EF5209DA929D930CAD6E601A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		58FF2331FC4AAC63171B7971 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1060A57A0A2261EC442163BA /* cryptLib.c in Sources */,
+				FDB90DA22D4ADC9408581BE2 /* dbLib.c in Sources */,
+				23940A4A5478023C6790388A /* jsonLib.c in Sources */,
+				F44FB6E22533AED4384BE522 /* mqttLib.c in Sources */,
+				A3C6864E14E92740CAAFD48E /* openaiLib.c in Sources */,
+				847658FADB03C36CB37CD73A /* rLib.c in Sources */,
+				29D9003097010EA29893FE70 /* uctxAssembly.S in Sources */,
+				28AA82DE598E7AD06CA6B11E /* uctxLib.c in Sources */,
+				95FB3B1CF13C8E8EC496D95C /* urlLib.c in Sources */,
+				B57B67D210BCBB44E4170612 /* webLib.c in Sources */,
+				380C2FB27C5AD524BE820DF2 /* websockLib.c in Sources */,
+				31DEEDF76170BCE93C7DFC37 /* agent.c in Sources */,
+				E962902DE2C8919FD663EE6D /* ai.c in Sources */,
+				B0A5B3E574117597B2B51A25 /* ioto.c in Sources */,
+				0502E645604439B7339E8485 /* config.c in Sources */,
+				5B3D143DB1CA7EAF8A43927D /* cron.c in Sources */,
+				5F554D235917099593160B63 /* database.c in Sources */,
+				5E6FCFF38E019EE5690EDE33 /* esp32.c in Sources */,
+				23E348FB537517ED2E82573B /* setup.c in Sources */,
+				5AFDC703CC2067F581E71543 /* webserver.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		276EB80479F4E2F64C394644 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				OBJROOT = "../../build/obj/ioto-macosx-release";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-s",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = release;
+		};
+		5F40E34A97FBA9BC2792E18A /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_COM_OPENSSL=1",
+					"ME_COM_MBEDTLS=0",
+					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
+					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				OBJROOT = "../../build/obj/ioto-macosx-debug";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CFLAGS = (
+					"-Wno-sign-conversion",
+					"-Wno-unused-parameter",
+					"-Wno-unused-result",
+					"-Wshorten-64-to-32",
+					"-Wall",
+					"-Wno-unknown-warning-option",
+					"-fstack-protector",
+					"--param=ssp-buffer-size=4",
+					"-Wformat",
+					"-Wformat-security",
+					"-Wsign-compare",
+				);
+				OTHER_LDFLAGS = (
+					"-ldl",
+					"-lpthread",
+					"-lm",
+					"-g",
+					"-Wl,-no_warn_duplicate_libraries",
+					"-Wl,-rpath,@executable_path/",
+					"-Wl,-rpath,@loader_path/",
+				);
+				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
+				SYMROOT = ../../build/bin;
+				USER_HEADER_SEARCH_PATHS = (
+					../../include,
+					/opt/homebrew/include,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = debug;
+		};
+		76C4DBFFBF35C03103D4923F /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = ioto;
+			};
+			name = debug;
+		};
+		822EF2B9AA69AB6B920538F9 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = ../../build/bin;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = ioto;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ioto" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5F40E34A97FBA9BC2792E18A /* debug */,
+				276EB80479F4E2F64C394644 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		6DA5D19910F15ACB2BC227D9 /* Build configuration list for PBXNativeTarget "libioto.a" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				76C4DBFFBF35C03103D4923F /* debug */,
+				822EF2B9AA69AB6B920538F9 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

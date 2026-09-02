@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="lib">
+      <UniqueIdentifier>{3C8C880B-A895-887C-3111-9F7C9D19947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\cmds">
+      <UniqueIdentifier>{83552ECF-6F22-89DA-983B-77828467BE68}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lib\cryptLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\dbLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\jsonLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\mqttLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\openaiLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\rLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\uctxLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\urlLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\webLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\lib\websockLib.c">
+      <Filter>lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\agent.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ai.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cmds\ioto.c">
+      <Filter>src\cmds</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\config.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cron.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\database.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\esp32.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\setup.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\webserver.c">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
