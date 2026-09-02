@@ -1,0 +1,597 @@
+{
+    "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+    "bomFormat": "CycloneDX",
+    "specVersion": "1.5",
+    "serialNumber": "urn:uuid:20f96498-b5b4-4a60-ba34-a4e72730fad7",
+    "version": 1,
+    "metadata": {
+        "timestamp": "2026-09-02T02:49:53Z",
+        "tools": {
+            "components": [
+                {
+                    "type": "application",
+                    "publisher": "EmbedThis Software",
+                    "name": "release-skill",
+                    "version": "1.3.0",
+                    "description": "Components derived from package.json (paks map) and each module's package.json under ~/dev/ioto."
+                }
+            ]
+        },
+        "component": {
+            "bom-ref": "ioto",
+            "type": "application",
+            "name": "ioto",
+            "version": "3.1.0",
+            "description": "Embedthis Ioto device agent",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ],
+                "contact": [
+                    {
+                        "name": "EmbedThis Security",
+                        "email": "security@embedthis.com"
+                    }
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/ioto@3.1.0"
+        }
+    },
+    "components": [
+        {
+            "bom-ref": "pkg:generic/embedthis/osdep@1.2.0",
+            "type": "library",
+            "name": "osdep",
+            "version": "1.2.0",
+            "description": "Operating system abstraction layer",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/osdep@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/osdepLib.c, include/osdep.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/osdep"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/uctx@1.2.0",
+            "type": "library",
+            "name": "uctx",
+            "version": "1.2.0",
+            "description": "Fiber coroutine context switching",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/uctx@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/uctxLib.c, include/uctx.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/uctx"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/r@1.5.0",
+            "type": "library",
+            "name": "r",
+            "version": "1.5.0",
+            "description": "Safe Runtime: memory, string, socket, event and TLS services",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/r@1.5.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/rLib.c, include/r.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/r"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/json@1.2.0",
+            "type": "library",
+            "name": "json",
+            "version": "1.2.0",
+            "description": "JSON5/JSON6 parser and query engine",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/json@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/jsonLib.c, include/json.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/json"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/crypt@1.2.0",
+            "type": "library",
+            "name": "crypt",
+            "version": "1.2.0",
+            "description": "Cryptographic primitives and password hashing",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/crypt@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/cryptLib.c, include/crypt.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/crypt"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/db@1.2.0",
+            "type": "library",
+            "name": "db",
+            "version": "1.2.0",
+            "description": "Embedded NoSQL database",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/db@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/dbLib.c, include/db.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/db"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/mqtt@1.2.0",
+            "type": "library",
+            "name": "mqtt",
+            "version": "1.2.0",
+            "description": "MQTT client protocol",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/mqtt@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/mqttLib.c, include/mqtt.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/mqtt"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/url@1.4.0",
+            "type": "library",
+            "name": "url",
+            "version": "1.4.0",
+            "description": "HTTP client",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/url@1.4.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/urlLib.c, include/url.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/url"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/web@1.4.0",
+            "type": "library",
+            "name": "web",
+            "version": "1.4.0",
+            "description": "Embedded HTTP server",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/web@1.4.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/webLib.c, include/web.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/web"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/websock@1.2.0",
+            "type": "library",
+            "name": "websock",
+            "version": "1.2.0",
+            "description": "WebSocket protocol",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/websock@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/websockLib.c, include/websock.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/websock"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/openai@1.2.0",
+            "type": "library",
+            "name": "openai",
+            "version": "1.2.0",
+            "description": "OpenAI API client",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/openai@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/openaiLib.c, include/openai.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/openai"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/embedthis/certs@1.2.0",
+            "type": "library",
+            "name": "certs",
+            "version": "1.2.0",
+            "description": "Development test certificates - NOT for production use",
+            "supplier": {
+                "name": "EmbedThis Software",
+                "url": [
+                    "https://www.embedthis.com"
+                ]
+            },
+            "author": "EmbedThis Software",
+            "licenses": [
+                {
+                    "license": {
+                        "name": "Commercial"
+                    }
+                }
+            ],
+            "purl": "pkg:generic/embedthis/certs@1.2.0",
+            "scope": "required",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "true"
+                },
+                {
+                    "name": "embedthis:vendoredAs",
+                    "value": "lib/certsLib.c, include/certs.h"
+                },
+                {
+                    "name": "embedthis:upstream",
+                    "value": "~/dev/ioto/certs"
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/openssl",
+            "type": "library",
+            "name": "openssl",
+            "version": "unpinned",
+            "description": "Default TLS backend, selected by ME_COM_OPENSSL=1",
+            "scope": "optional",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "false"
+                },
+                {
+                    "name": "embedthis:versionControlledBy",
+                    "value": "integrator toolchain"
+                },
+                {
+                    "name": "embedthis:note",
+                    "value": "NOT vendored. The deployed version is chosen by the integrator's toolchain and is not controlled by Embedthis. CRA Article 13(4) due diligence on this component is shared with the integrator, who must track OpenSSL advisories for the version they link."
+                }
+            ]
+        },
+        {
+            "bom-ref": "pkg:generic/mbedtls",
+            "type": "library",
+            "name": "mbedtls",
+            "version": "unpinned",
+            "description": "Alternative TLS backend, selected by ME_COM_MBEDTLS=1",
+            "scope": "optional",
+            "properties": [
+                {
+                    "name": "embedthis:vendored",
+                    "value": "false"
+                },
+                {
+                    "name": "embedthis:versionControlledBy",
+                    "value": "integrator toolchain"
+                },
+                {
+                    "name": "embedthis:note",
+                    "value": "NOT vendored. As for OpenSSL, the deployed version is the integrator's choice. Only one TLS backend is linked in a given build."
+                }
+            ]
+        }
+    ],
+    "dependencies": [
+        {
+            "ref": "ioto",
+            "dependsOn": [
+                "pkg:generic/embedthis/osdep@1.2.0",
+                "pkg:generic/embedthis/uctx@1.2.0",
+                "pkg:generic/embedthis/r@1.5.0",
+                "pkg:generic/embedthis/json@1.2.0",
+                "pkg:generic/embedthis/crypt@1.2.0",
+                "pkg:generic/embedthis/db@1.2.0",
+                "pkg:generic/embedthis/mqtt@1.2.0",
+                "pkg:generic/embedthis/url@1.4.0",
+                "pkg:generic/embedthis/web@1.4.0",
+                "pkg:generic/embedthis/websock@1.2.0",
+                "pkg:generic/embedthis/openai@1.2.0",
+                "pkg:generic/embedthis/certs@1.2.0",
+                "pkg:generic/openssl"
+            ]
+        },
+        {
+            "ref": "pkg:generic/embedthis/r@1.5.0",
+            "dependsOn": [
+                "pkg:generic/embedthis/osdep@1.2.0",
+                "pkg:generic/embedthis/uctx@1.2.0",
+                "pkg:generic/openssl"
+            ]
+        },
+        {
+            "ref": "pkg:generic/embedthis/web@1.4.0",
+            "dependsOn": [
+                "pkg:generic/embedthis/r@1.5.0",
+                "pkg:generic/embedthis/json@1.2.0",
+                "pkg:generic/embedthis/crypt@1.2.0",
+                "pkg:generic/embedthis/websock@1.2.0"
+            ]
+        },
+        {
+            "ref": "pkg:generic/embedthis/url@1.4.0",
+            "dependsOn": [
+                "pkg:generic/embedthis/r@1.5.0"
+            ]
+        },
+        {
+            "ref": "pkg:generic/embedthis/db@1.2.0",
+            "dependsOn": [
+                "pkg:generic/embedthis/r@1.5.0",
+                "pkg:generic/embedthis/crypt@1.2.0"
+            ]
+        },
+        {
+            "ref": "pkg:generic/openssl",
+            "dependsOn": []
+        },
+        {
+            "ref": "pkg:generic/mbedtls",
+            "dependsOn": []
+        }
+    ]
+}
