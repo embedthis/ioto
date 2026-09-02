@@ -46,7 +46,7 @@ The Ioto agent supports various command-line options tested here:
 
 ## Prerequisites
 
-- Ioto agent built with: `make APP=unit`
+- Ioto agent built with: `make`
 - TestMe installed: `tm --version`
 - Bash shell (available on all platforms including Windows/WSL)
 

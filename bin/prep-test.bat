@@ -62,3 +62,6 @@ if defined HAS_WARNING (
     echo Some prerequisites are missing. Please install them before running tests.
     exit /b 1
 )
+
+REM Set up OpenSSL environment for TestMe (ME_COM_OPENSSL_PATH, ARCH, LIB, INCLUDE)
+call "%~dp0..\projects\openssl-prep.bat"

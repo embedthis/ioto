@@ -2,7 +2,7 @@
 
 mkdir -p .testme
 
-id=`ioto --gen`
+id=`ioto-unit --gen`
 if [ $? -ne 0 ] ; then
     echo "✗ ioto -v --exit 2 failed" >&2
     exit 1
@@ -16,14 +16,14 @@ if [ ${#id} -ne 10 ] ; then
     exit 1
 fi
 
-ioto --exit 2
+ioto-unit --exit 2
 if [ $? -ne 0 ] ; then
     echo "✗ ioto --exit 2 failed" >&2
     exit 1
 fi
 
 rm -f .testme/trace$$.log
-ioto --trace .testme/$$trace.log --exit 2
+ioto-unit --trace .testme/$$trace.log --exit 2
 if [ $? -ne 0 ] ; then
     echo "✗ ioto --trace .testme/$$trace.log --exit 2 failed" >&2
     exit 1

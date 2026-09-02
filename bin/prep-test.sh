@@ -79,6 +79,13 @@ else
     fi
 fi
 
+# Check that build/config.sh exists (generated during make prep)
+if [ ! -f build/config.sh ]; then
+    echo "WARNING: build/config.sh not found. Run 'make' or 'make prep' first."
+    echo "Some tests may not skip correctly without build configuration."
+    HAS_WARNING=1
+fi
+
 if [ $HAS_WARNING -eq 1 ]; then
     echo ""
     echo "Some prerequisites are missing. Please install them before running tests."

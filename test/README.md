@@ -5,10 +5,8 @@ Comprehensive test suite for the Ioto Device Agent. Tests are organized by categ
 ## Test Categories
 
 - [basic/](basic/) - Core functionality tests (database, web server, state management)
-- [cloud/](cloud/) - Cloud integration tests (AWS, MQTT, device synchronization)
 - [command/](command/) - Command-line interface tests
 - [link/](link/) - Ioto linking and embedding tests
-- [scale/](scale/) - Performance and scalability tests
 
 ## Running Tests
 
@@ -22,15 +20,12 @@ tm                          # Run entire test suite
 ```bash
 cd /Users/mob/c/agent/test
 tm basic                    # Run all basic tests
-tm cloud/mqtt               # Run MQTT tests
-tm scale                    # Run scale tests
 ```
 
 ### Run Specific Tests
 ```bash
 cd /Users/mob/c/agent/test
 tm basic/web/get.tst.c      # Run specific C test
-tm cloud/mqtt/ping.tst.sh   # Run specific shell test
 ```
 
 ## Test Configuration
@@ -59,7 +54,7 @@ All tests include a `.tst` marker in the filename to identify them as TestMe tes
 
 ## Prerequisites
 
-- Built Ioto agent: `make APP=unit`
+- Built Ioto agent: `make`
 - TestMe installed: `~/.local/bin/tm`
 - Libraries available in `../build/bin/`
 - Test preparation script: `./prep.sh`
@@ -72,26 +67,23 @@ test/
 ├── testme.json5           # Test configuration
 ├── prep.sh                # Global test preparation
 ├── basic/                 # Core functionality tests
-├── cloud/                 # Cloud integration tests
 ├── command/               # CLI tests
-├── link/                  # Embedding tests
-└── scale/                 # Performance tests
+└── link/                  # Embedding tests
 ```
 
 ## Development Workflow
 
 After making code changes:
 
-1. Build the unit test app:
+1. Build Ioto (including the unit test app):
    ```bash
-   make APP=unit
+   make
    ```
 
 2. Run affected tests:
    ```bash
    cd test
    tm basic                # For core changes
-   tm cloud                # For cloud changes
    ```
 
 3. Verify all tests pass before committing
