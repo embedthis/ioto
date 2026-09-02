@@ -3,13 +3,12 @@
 #
 
 SAMPLES		:= \
-	aws-s3 \
 	link-agent-main \
 	own-main \
-	mqtt \
 	thread \
 	url-fetch \
 	url-get \
+	web-auth \
 	web-static \
 	web-dynamic \
 	web-upload

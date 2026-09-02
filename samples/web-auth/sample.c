@@ -15,7 +15,7 @@ static void login(Web *web);
 /*
     Entry point
 */
-PUBLIC int ioStart()
+PUBLIC int ioStart(void)
 {
     WebHost *host;
 
@@ -48,6 +48,9 @@ static void logout(Web *web)
     webLogout(web);
     webRedirect(web, 302, "/");
 }
+
+
+PUBLIC void ioStop(void) {}
 
 
 /*

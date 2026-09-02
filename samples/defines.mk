@@ -13,11 +13,11 @@ endif
 #
 #	Change this to point to your Ioto install if building outside of the Ioto repository
 #
-TOP		= $(realpath $(shell pwd)/../../..)
+TOP		= $(realpath $(shell pwd)/../..)
 LIBDIR 	= $(TOP)/build/bin
-INCDIR  = $(TOP)/build/inc
-LIBS	= $(LFLAGS) -lioto -ldl -lpthread -lm -lssl -lcrypto 
-CFLAGS	= -g -I$(INCDIR) $(IFLAGS) -DSERVICES_CLOUD -DSERVICES_WEB -DSERVICES_MQTT
+INCDIR  = $(TOP)/include
+LIBS	= $(LFLAGS) -lioto -ldl -lpthread -lm -lssl -lcrypto
+CFLAGS	= -g -I$(INCDIR) $(IFLAGS) -DSERVICES_WEB -DSERVICES_MQTT
 
 ifeq ($(OS),macosx)
 	LDFLAGS	:= -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/ -Wl,-rpath,$(LIBDIR)/ -L$(LIBDIR) $(LIBS)
