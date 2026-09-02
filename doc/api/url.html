@@ -38,11 +38,9 @@
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1acf5120b588a4d6e244c8141b6c76bbca" class="nameRef">urlSetStatus</a>(<a href="#struct_url" class="ref">Url</a> *up, int status)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the HTTP response status code.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1aa376be90cce3345633f1552a783d1812" class="nameRef">urlSetTimeout</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the request timeout to use for the specific URL object.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a192b95298d355f323c76414785f91545" class="nameRef">urlSetVerify</a>(<a href="#struct_url" class="ref">Url</a> *up, int verifyPeer, int verifyIssuer)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Control verification of TLS connections.</td></tr>
-<tr class="apiDef"><td class="apiType">void</td><td><a href="#url_8h_1a427e10b68acd57c5ecf7dbcfea5f816a" class="nameRef">urlSseAsync</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define an SSE async callback.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1aa1a31a22955af894083eb1786cb59157" class="nameRef">urlSseWait</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Wait for Server-Sent Events.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a86c5eb8039376c979ec710e70a8f0a39" class="nameRef">urlSseRun</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> callback, void *arg, RBuf *buf, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run the SSE event loop until the connection closes.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a54e3a2b4dd3ec60d098d721309fbf6f0" class="nameRef">urlStart</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *method, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a <a class="ref" href="#struct_url">Url</a> request.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a76a77d5ed1ea5889bb390f293042896e" class="nameRef">urlUpload</a>(<a href="#struct_url" class="ref">Url</a> *up, RList *files, <a href="r.html#struct_r_hash" class="ref">RHash</a> *forms, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Upload files in a multipart/form-data request.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1ab53de225f2a8cfb94ffcf2d21435c838" class="nameRef">urlWait</a>(<a href="#struct_url" class="ref">Url</a> *up)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Wait for the connection to be closed.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1a0b87aba8a4710165696a2a33f464ca95" class="nameRef">urlWebSocket</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *url, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Issue a simple WebSocket request.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#url_8h_1aa78b27cc2d979165a087fd11ce4b3cd9" class="nameRef">urlWebSocketAsync</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="websock.html#websock_8h_1ae96aafdfc8720c4fa852f38838ae4796" class="ref">WebSocketProc</a> callback, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define async WebSocket callbacks.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#url_8h_1aa633def28993db5d0f1b5bae676c9de3" class="nameRef">urlWrite</a>(<a href="#struct_url" class="ref">Url</a> *up, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *data, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write body data for a request.</td></tr>
@@ -1062,40 +1060,25 @@ Example: Use &quot;https://example.com/path%20with%20spaces&quot; not &quot;http
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="url_8h_1a427e10b68acd57c5ecf7dbcfea5f816a"></a>
-<div class="api">
-  <div class="prototype">
-    void
-    urlSseAsync
-(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> proc, void *arg)
-  </div>
-  <div class="apiDetail">
-<p>Define an SSE async callback.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Configure asynchronous Server-Sent Event handling. The callback function will be invoked when SSE events are received from the server.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">up</td><td>URL object with SSE connection.</td></tr>
-    <tr><td class="param">proc</td><td>Callback function to invoke for SSE events.</td></tr>
-    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
-    </table></dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="url_8h_1aa1a31a22955af894083eb1786cb59157"></a>
+<a name="url_8h_1a86c5eb8039376c979ec710e70a8f0a39"></a>
 <div class="api">
   <div class="prototype">
     int
-    urlSseWait
-(<a href="#struct_url" class="ref">Url</a> *up)
+    urlSseRun
+(<a href="#struct_url" class="ref">Url</a> *up, <a href="#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> callback, void *arg, RBuf *buf, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)
   </div>
   <div class="apiDetail">
-<p>Wait for Server-Sent Events.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber waiting for SSE events. Other fibers continue to run. Events will be delivered via the SSE callback if configured.</dd></dl>
+<p>Run the SSE event loop until the connection closes.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber waiting for SSE events. Other fibers continue to run. The callback is invoked for each SSE event received. The loop continues until the connection closes, an error occurs, or the deadline is reached.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
-    <tr><td class="param">up</td><td>URL object with active SSE connection.</td></tr>
+    <tr><td class="param">up</td><td>URL object with established SSE connection (after urlFetch/urlFinalize).</td></tr>
+    <tr><td class="param">callback</td><td>Callback function to invoke for SSE events.</td></tr>
+    <tr><td class="param">arg</td><td>User argument to pass to the callback function.</td></tr>
+    <tr><td class="param">buf</td><td>Buffer containing any pre-read data from HTTP response (can be NULL).</td></tr>
+    <tr><td class="param">deadline</td><td>System time in ticks for timeout (0 for no timeout).</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on orderly close, negative error code on failure.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1138,24 +1121,6 @@ Example: Use &quot;https://example.com/path%20with%20spaces&quot; not &quot;http
     <tr><td class="param">...</td><td>Optional header arguments.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Zero if successful, negative error code on failure.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="url_8h_1ab53de225f2a8cfb94ffcf2d21435c838"></a>
-<div class="api">
-  <div class="prototype">
-    int
-    urlWait
-(<a href="#struct_url" class="ref">Url</a> *up)
-  </div>
-  <div class="apiDetail">
-<p>Wait for the connection to be closed.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Block the current fiber until the connection closes. Used for SSE and WebSocket connections to keep the connection alive until the remote end closes it.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">up</td><td>URL object with active connection.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Zero when connection closes normally, negative error code on failure.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>

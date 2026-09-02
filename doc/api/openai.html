@@ -8,7 +8,6 @@
 <tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1a88389738de29e3fb39a959bd85bbb8ab" class="nameRef">openaiChatCompletion</a>(<a href="json.html#struct_json" class="ref">Json</a> *props)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Chat Completion API.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#openai_8h_1aeeb301344760c6fe6e5328089b9f5aae" class="nameRef">openaiInit</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *endpoint, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="json.html#struct_json" class="ref">Json</a> *config, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1ab69ae1bbfebcaeab0eeb8ae39fff4d2e" class="nameRef">openaiListModels</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>List available <a class="ref" href="#struct_open_a_i">OpenAI</a> models.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="url.html#struct_url" class="ref">Url</a> *</td><td><a href="#openai_8h_1a7a6c8718396de00211e7fd2fd1607fec" class="nameRef">openaiRealTimeConnect</a>(<a href="json.html#struct_json" class="ref">Json</a> *props)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Connect to <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API via WebSocket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="json.html#struct_json" class="ref">Json</a> *</td><td><a href="#openai_8h_1a8666a2f68ac63d91e32369a02c342d28" class="nameRef">openaiResponses</a>(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="#openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b" class="ref">OpenAIAgent</a> agent, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API with agent callbacks.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="url.html#struct_url" class="ref">Url</a> *</td><td><a href="#openai_8h_1a40dba971ad7ed454b572d76ce404f555" class="nameRef">openaiStream</a>(<a href="json.html#struct_json" class="ref">Json</a> *props, <a href="url.html#url_8h_1af920211d30093c686003511cb05e312c" class="ref">UrlSseProc</a> callback, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Response API with streaming response handling.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#openai_8h_1ad6d57f39ca9cb53f06dbdbc720c05861" class="nameRef">openaiTerm</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the <a class="ref" href="#struct_open_a_i">OpenAI</a> API client library.</td></tr>
@@ -61,9 +60,6 @@ Configuration flags controlling tracing and behavior.
 </td></tr>
 <tr><td class="param">char *</td><td>headers</td><td>
 HTTP headers including authorization bearer token.
-</td></tr>
-<tr><td class="param">char *</td><td>realTimeEndpoint</td><td>
-Real-time WebSocket endpoint URL for streaming connections.
 </td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
@@ -120,24 +116,6 @@ Real-time WebSocket endpoint URL for streaming connections.
 <p>List available <a class="ref" href="#struct_open_a_i">OpenAI</a> models.</p>
     <dl><dt><b>Description</b>:</dt><dd>Retrieve a list of all available models from the <a class="ref" href="#struct_open_a_i">OpenAI</a> API. This includes both <a class="ref" href="#struct_open_a_i">OpenAI</a>&apos;s base models and any fine-tuned models available to your account.</dd></dl>
     <dl><dt>Returns:</dt><dd>JSON object containing an array of model objects. Each model object includes: &apos;id&apos; (model identifier), &apos;object&apos; (type), &apos;created&apos; (timestamp), &apos;owned_by&apos; (owner). Returns NULL on failure. Caller must free using jsonFree.</dd></dl>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-  </div>
-</div>
-<a name="openai_8h_1a7a6c8718396de00211e7fd2fd1607fec"></a>
-<div class="api">
-  <div class="prototype">
-    <a href="url.html#struct_url" class="ref">Url</a> *
-    openaiRealTimeConnect
-(<a href="json.html#struct_json" class="ref">Json</a> *props)
-  </div>
-  <div class="apiDetail">
-<p>Connect to <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API via WebSocket.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Establish a WebSocket connection to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Real-Time API for bidirectional real-time communication. This enables voice and streaming text interactions with low latency. The connection supports full-duplex communication for interactive applications.</dd></dl>
-    <dl><dt>Parameters:</dt><dd>
-    <table class="parameters" title="Parameters">
-    <tr><td class="param">props</td><td>JSON object containing Real-Time API connection parameters. May include &apos;model&apos;, &apos;voice&apos;, &apos;input_audio_format&apos;, &apos;output_audio_format&apos;.</td></tr>
-    </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Url object representing the active WebSocket connection on success. Returns NULL on connection failure. Use urlClose to terminate the connection.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>

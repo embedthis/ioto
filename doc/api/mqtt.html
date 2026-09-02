@@ -1,4 +1,4 @@
-<h1>MQTT API</h1>
+<h1>Mqtt API</h1>
 <table class="apiIndex" title="Extensions">
 </table>
 <a name="Functions"></a>
@@ -6,13 +6,13 @@
 <h2>Function Index</h2>
   <table class="apiIndex" title="Function Index">
 <tr class="apiDef"><td class="apiType"><a href="#struct_mqtt" class="ref">Mqtt</a> *</td><td><a href="#mqtt_8h_1a771aceb0fa61e5f6fed697f4c7d1c26e" class="nameRef">mqttAlloc</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *clientId, <a href="#mqtt_8h_1a146b43e36b77eebee066929179391014" class="ref">MqttEventProc</a> proc)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate an MQTT client instance.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#mqtt_8h_1ac1ef841d9b7d70d691b17da5aed354ad" class="nameRef">mqttCheckQueue</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if there are messages in the transmission queue.</td></tr>
+<tr class="apiDef"><td class="apiType">bool</td><td><a href="#mqtt_8h_1ac1ef841d9b7d70d691b17da5aed354ad" class="nameRef">mqttCheckQueue</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if there are messages in the transmission queue.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a29a04e57e5e85873c7fa9b46162f64e0" class="nameRef">mqttConnect</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="r.html#struct_r_socket" class="ref">RSocket</a> *sock, int flags, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Establish a session with the MQTT broker.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1abec04e8faaf5d6b8fc52e30ab1c6b25b" class="nameRef">mqttDisconnect</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a disconnection packet to the MQTT broker.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1a33611971f4c2de4c3969186d1c17c5c6" class="nameRef">mqttFree</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free an MQTT client instance.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#mqtt_8h_1ad67f561a4505d4cd2f16dcdaab7afee3" class="nameRef">mqttGetError</a>(struct Mqtt *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the last error message for the MQTT instance.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a></td><td><a href="#mqtt_8h_1a7056699c3f09cd6564936b53430cb9c7" class="nameRef">mqttGetLastActivity</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the time of last I/O activity.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#mqtt_8h_1a57c930f41498273b1c402aa27785d5ed" class="nameRef">mqttIsConnected</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if the MQTT instance is connected to a broker.</td></tr>
+<tr class="apiDef"><td class="apiType">bool</td><td><a href="#mqtt_8h_1a57c930f41498273b1c402aa27785d5ed" class="nameRef">mqttIsConnected</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if the MQTT instance is connected to a broker.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a8a2d03432b642595445655cbcf1f331f" class="nameRef">mqttMsgsToSend</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the number of messages pending transmission.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a562b37074ee9fc3d2af85ae301b4d343" class="nameRef">mqttPing</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a ping request to the broker.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1ade5ce726bb50af75e1dfed7d60a6c5bc" class="nameRef">mqttPublish</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Publish an application message to the MQTT broker.</td></tr>
@@ -138,6 +138,79 @@
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="struct_mqtt_msg"></a>
+<div class="api">
+  <div class="prototype">MqttMsg</div>
+  <div class="apiDetail">
+<p><a class="ref" href="#struct_mqtt">Mqtt</a> message.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">uchar *</td><td>buf</td><td>
+External message text buffer for large messages.
+</td></tr>
+<tr><td class="param">uchar *</td><td>end</td><td>
+End of message.
+</td></tr>
+<tr><td class="param">uchar *</td><td>endbuf</td><td>
+End of message buffer.
+</td></tr>
+<tr><td class="param">RFiber *</td><td>fiber</td><td>
+Message fiber to process the message.
+</td></tr>
+<tr><td class="param">int</td><td>hold</td><td>
+Dont free message.
+</td></tr>
+<tr><td class="param">int</td><td>id</td><td>
+Message sequence ID.
+</td></tr>
+<tr><td class="param">uchar</td><td>inlineBuf[MQTT_INLINE_BUF_SIZE]</td><td>
+Inline message text buffer for small message efficiency.
+</td></tr>
+<tr><td class="param">struct <a class="ref" href="#struct_mqtt_msg">MqttMsg</a> *</td><td>next</td><td>
+Next message in the queue.
+</td></tr>
+<tr><td class="param">struct <a class="ref" href="#struct_mqtt_msg">MqttMsg</a> *</td><td>prev</td><td>
+Previous message in the queue.
+</td></tr>
+<tr><td class="param">int</td><td>qos</td><td>
+Message quality of service.
+</td></tr>
+<tr><td class="param">Ticks</td><td>sent</td><td>
+Time the message was sent.
+</td></tr>
+<tr><td class="param">uchar *</td><td>start</td><td>
+Start of message.
+</td></tr>
+<tr><td class="param">MqttMsgState</td><td>state</td><td>
+Message send status.
+</td></tr>
+<tr><td class="param">MqttPacketType</td><td>type</td><td>
+Message packet type.
+</td></tr>
+<tr><td class="param">MqttWaitFlags</td><td>wait</td><td>
+Message wait flags.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
+<a name="struct_mqtt_hdr"></a>
+<div class="api">
+  <div class="prototype">MqttHdr</div>
+  <div class="apiDetail">
+<p>Fixed header of a packet.</p>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+    <dl><dt>Fields:</dt><dd>
+    <table class="parameters" title="Parameters">
+<tr><td class="param">int</td><td>flags</td><td>
+Packet control flags.
+</td></tr>
+<tr><td class="param">uint</td><td>length</td><td>
+Size in of the variable portion after fixed header and packet length.
+</td></tr>
+    </table></dd></dl>
+  </div>
+</div>
 <a name="struct_mqtt"></a>
 <div class="api">
   <div class="prototype">Mqtt</div>
@@ -239,79 +312,6 @@ Will and testament topic.
     </table></dd></dl>
   </div>
 </div>
-<a name="struct_mqtt_hdr"></a>
-<div class="api">
-  <div class="prototype">MqttHdr</div>
-  <div class="apiDetail">
-<p>Fixed header of a packet.</p>
-    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
-    <dl><dt>Fields:</dt><dd>
-    <table class="parameters" title="Parameters">
-<tr><td class="param">int</td><td>flags</td><td>
-Packet control flags.
-</td></tr>
-<tr><td class="param">uint</td><td>length</td><td>
-Size in of the variable portion after fixed header and packet length.
-</td></tr>
-    </table></dd></dl>
-  </div>
-</div>
-<a name="struct_mqtt_msg"></a>
-<div class="api">
-  <div class="prototype">MqttMsg</div>
-  <div class="apiDetail">
-<p><a class="ref" href="#struct_mqtt">Mqtt</a> message.</p>
-    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
-    <dl><dt>Fields:</dt><dd>
-    <table class="parameters" title="Parameters">
-<tr><td class="param">uchar *</td><td>buf</td><td>
-External message text buffer for large messages.
-</td></tr>
-<tr><td class="param">uchar *</td><td>end</td><td>
-End of message.
-</td></tr>
-<tr><td class="param">uchar *</td><td>endbuf</td><td>
-End of message buffer.
-</td></tr>
-<tr><td class="param">RFiber *</td><td>fiber</td><td>
-Message fiber to process the message.
-</td></tr>
-<tr><td class="param">int</td><td>hold</td><td>
-Dont free message.
-</td></tr>
-<tr><td class="param">int</td><td>id</td><td>
-Message sequence ID.
-</td></tr>
-<tr><td class="param">uchar</td><td>inlineBuf[MQTT_INLINE_BUF_SIZE]</td><td>
-Inline message text buffer for small message efficiency.
-</td></tr>
-<tr><td class="param">struct <a class="ref" href="#struct_mqtt_msg">MqttMsg</a> *</td><td>next</td><td>
-Next message in the queue.
-</td></tr>
-<tr><td class="param">struct <a class="ref" href="#struct_mqtt_msg">MqttMsg</a> *</td><td>prev</td><td>
-Previous message in the queue.
-</td></tr>
-<tr><td class="param">int</td><td>qos</td><td>
-Message quality of service.
-</td></tr>
-<tr><td class="param">Ticks</td><td>sent</td><td>
-Time the message was sent.
-</td></tr>
-<tr><td class="param">uchar *</td><td>start</td><td>
-Start of message.
-</td></tr>
-<tr><td class="param">MqttMsgState</td><td>state</td><td>
-Message send status.
-</td></tr>
-<tr><td class="param">MqttPacketType</td><td>type</td><td>
-Message packet type.
-</td></tr>
-<tr><td class="param">MqttWaitFlags</td><td>wait</td><td>
-Message wait flags.
-</td></tr>
-    </table></dd></dl>
-  </div>
-</div>
 <a name="struct_mqtt_recv"></a>
 <div class="api">
   <div class="prototype">MqttRecv</div>
@@ -394,7 +394,7 @@ Size of topic.
 <a name="mqtt_8h_1ac1ef841d9b7d70d691b17da5aed354ad"></a>
 <div class="api">
   <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    bool
     mqttCheckQueue
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)
   </div>
@@ -504,7 +504,7 @@ Size of topic.
 <a name="mqtt_8h_1a57c930f41498273b1c402aa27785d5ed"></a>
 <div class="api">
   <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    bool
     mqttIsConnected
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)
   </div>
