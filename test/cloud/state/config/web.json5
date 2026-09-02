@@ -1,8 +1,0 @@
-{
-    listen: ['http://localhost:9030'],
-    documents: '@site',
-    routes: [
-        {match: '/api/test', handler: 'action'},
-        {match: '', handler: 'file', methods: ['GET']},
-    ],
-}
