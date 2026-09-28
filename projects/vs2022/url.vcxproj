@@ -58,8 +58,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <DisableSpecificWarnings>4100;4127;4133;4152;4244;4389;4456;4459;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ME_VERSION="3.1.0";ME_COM_OPENSSL=1;ME_COM_MBEDTLS=0;ME_COM_MBEDTLS_PATH="/usr";ME_DEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ME_VERSION="3.1.0";ME_COM_OPENSSL=1;ME_COM_MBEDTLS=0;ME_COM_MBEDTLS_PATH="/usr";ME_COM_OPENSSL_PATH="C:/Program Files/OpenSSL";ME_DEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\include;C:\Program Files\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -69,8 +69,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ws2_32.lib;advapi32.lib;user32.lib;kernel32.lib;oldnames.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;advapi32.lib;user32.lib;kernel32.lib;oldnames.lib;shell32.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\bin;C:\Program Files\OpenSSL\lib;C:\Program Files\OpenSSL\lib\VC\x64\MTd;C:\Program Files\OpenSSL\lib\VC\x64\MT;C:\Program Files\OpenSSL\lib\VC\x64\MDd;C:\Program Files\OpenSSL\lib\VC\x64\MD;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference>
     </ProjectReference>
@@ -80,8 +80,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <DisableSpecificWarnings>4100;4127;4133;4152;4244;4389;4456;4459;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <PreprocessorDefinitions>ME_VERSION="3.1.0";ME_COM_OPENSSL=1;ME_COM_MBEDTLS=0;ME_COM_MBEDTLS_PATH="/usr";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ME_VERSION="3.1.0";ME_COM_OPENSSL=1;ME_COM_MBEDTLS=0;ME_COM_MBEDTLS_PATH="/usr";ME_COM_OPENSSL_PATH="C:/Program Files/OpenSSL";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\include;C:\Program Files\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -97,8 +97,8 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>ws2_32.lib;advapi32.lib;user32.lib;kernel32.lib;oldnames.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;advapi32.lib;user32.lib;kernel32.lib;oldnames.lib;shell32.lib;libssl.lib;libcrypto.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\bin;C:\Program Files\OpenSSL\lib;C:\Program Files\OpenSSL\lib\VC\x64\MTd;C:\Program Files\OpenSSL\lib\VC\x64\MT;C:\Program Files\OpenSSL\lib\VC\x64\MDd;C:\Program Files\OpenSSL\lib\VC\x64\MD;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference>
     </ProjectReference>

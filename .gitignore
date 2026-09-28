@@ -39,7 +39,6 @@ configure
 doc/api/ioto.tags
 doc/package-lock.json
 doc/package.json
-include/config.h
 local.json5
 log.txt
 node_modules

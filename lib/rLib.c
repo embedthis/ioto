@@ -3072,7 +3072,7 @@ PUBLIC ssize rGetFdPath(int fd, char *buf, size_t bufsize)
     }
     return (ssize) slen(buf);
 
-#elif ME_LINUX_LIKE
+#elif LINUX
     {
         char  link[64];
         ssize len;

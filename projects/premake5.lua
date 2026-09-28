@@ -20,8 +20,8 @@ local ROOT = ".."
 -- Read version from package.json (single source of truth)
 local pakContent = io.readfile(ROOT .. "/package.json")
 local VERSION = pakContent:match('"version"%s*:%s*"([^"]+)"') or "0.0.0"
-local isVS = (_ACTION == "vs2022")
-local isXcode = (_ACTION == "xcode4")
+isVS = (_ACTION == "vs2022")
+isXcode = (_ACTION == "xcode4")
 
 ---------------------------------------------------------------------
 --  Options
