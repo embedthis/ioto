@@ -3098,17 +3098,40 @@ PUBLIC ssize rGetFdPath(int fd, char *buf, size_t bufsize)
     {
         HANDLE handle;
         DWORD  len;
+        DWORD  prefix;
 
         handle = (HANDLE) _get_osfhandle(fd);
         if (handle == INVALID_HANDLE_VALUE) {
             return R_ERR_CANT_FIND;
         }
         len = GetFinalPathNameByHandleA(handle, buf, (DWORD) bufsize, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
-        if (len == 0 || len >= bufsize) {
+        if (len == 0) {
             buf[0] = '\0';
             return R_ERR_CANT_FIND;
         }
+        if (len >= bufsize) {
+            //  len is the required size including the null, so the name was not written
+            buf[0] = '\0';
+            return R_ERR_WONT_FIT;
+        }
         buf[len] = '\0';
+        /*
+            The call returns the extended-length form: "\\?\C:\dir\file" for a local volume and
+            "\\?\UNC\server\share" for a network one. Callers compare the result against a path
+            from rGetRealPath, which returns the plain DOS form, so reduce it to that form.
+         */
+        prefix = 0;
+        if (sncmp(buf, "\\\\?\\UNC\\", 8) == 0) {
+            //  buf[7] is already a separator, so one more gives the "\\server\share" form
+            buf[6] = '\\';
+            prefix = 6;
+        } else if (sncmp(buf, "\\\\?\\", 4) == 0) {
+            prefix = 4;
+        }
+        if (prefix) {
+            len -= prefix;
+            memmove(buf, &buf[prefix], len + 1);
+        }
         return (ssize) len;
     }
 

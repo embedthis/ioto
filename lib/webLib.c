@@ -1326,9 +1326,12 @@ PUBLIC int webFileHandler(Web *web)
 static bool validateResolvedPath(Web *web, int fd, cchar *path)
 {
     WebHost *host;
-    char     actual[ME_MAX_FNAME];
-    cchar    *expected;
-    size_t   docsLen;
+    char    actual[ME_MAX_FNAME];
+    cchar   *expected;
+    size_t  docsLen;
+#if ME_WIN_LIKE
+    char    *cp;
+#endif
 
     host = web->host;
 
@@ -1341,7 +1344,22 @@ static bool validateResolvedPath(Web *web, int fd, cchar *path)
         return 0;
     }
     docsLen = slen(host->canonicalDocs);
-    if (!sstarts(actual, host->canonicalDocs) || (actual[docsLen] != '/' && actual[docsLen] != '\0')) {
+    if (!sstarts(actual, host->canonicalDocs)) {
+        return 0;
+    }
+#if ME_WIN_LIKE
+    /*
+        Both names above are native, so the containment test compares like with like. The name
+        below is compared against the requested path, which came from a URL, so reduce the
+        resolved name to the URL form first.
+     */
+    for (cp = &actual[docsLen]; *cp; cp++) {
+        if (*cp == '\\') {
+            *cp = '/';
+        }
+    }
+#endif
+    if (actual[docsLen] != '/' && actual[docsLen] != '\0') {
         return 0;
     }
     /*
