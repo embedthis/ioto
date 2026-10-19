@@ -73,7 +73,7 @@ static void testMqttConnectWithWill(void)
     rc = mqttSetWill(mq, "device/status", willMsg, slen(willMsg));
     teq(rc, 0);
     tmatch(mq->willTopic, "device/status");
-    teq(mq->willMsgSize, slen(willMsg));
+    teqz(mq->willMsgSize, slen(willMsg));
 
     mqttFree(mq);
 }
@@ -172,6 +172,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -1,0 +1,1 @@
+{ models: { Ok: { f: { type: "string", map: "cloudName" } } } }

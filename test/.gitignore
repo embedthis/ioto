@@ -2,3 +2,7 @@
 /**/state/db
 /**/state/site
 .testme
+/**/.certs
+/**/web.log
+/**/web.out
+/**/ioto.log

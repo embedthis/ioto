@@ -14,6 +14,8 @@
 static int callbackCount = 0;
 static cchar *lastCmd = NULL;
 static cchar *lastModel = NULL;
+static int selfRemoveCalls = 0;
+static int pairedCalls = 0;
 
 /************************************ Code ************************************/
 
@@ -128,6 +130,63 @@ static void testModelSpecificCallbacks()
     dbClose(db);
 }
 
+static void selfRemovingCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams *params,
+                                 cchar *cmd, int events)
+{
+    selfRemoveCalls++;
+    dbRemoveCallback(db, selfRemovingCallback, NULL, arg);
+}
+
+static void pairedCallback(void *arg, Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd,
+                           int events)
+{
+    pairedCalls++;
+}
+
+/*
+    Self-removal must not skip the next callback.
+ */
+static void testSelfRemovingCallback()
+{
+    Db      *db;
+    CDbItem *item;
+    char    *id;
+    cchar   *selfArg = "self-remove";
+    cchar   *pairArg = "paired";
+
+    db = dbOpen("./db/callbacks-self-remove.db", "./schema.json", DB_OPEN_RESET);
+    tnotnull(db);
+
+    dbAddCallback(db, selfRemovingCallback, NULL, (void*) selfArg, DB_ON_CHANGE);
+    dbAddCallback(db, pairedCallback, NULL, (void*) pairArg, DB_ON_CHANGE);
+
+    selfRemoveCalls = 0;
+    pairedCalls = 0;
+
+    item = dbCreate(db, "User", DB_PROPS(
+        "username", "onlyonce",
+        "email", "onlyonce@test.com",
+        "role", "user"
+    ), NULL);
+    tnotnull(item);
+    teqi(selfRemoveCalls, 1);
+    teqi(pairedCalls, 1);
+
+    id = sclone(dbField(item, "id"));
+    tnotnull(id);
+
+    selfRemoveCalls = 0;
+    pairedCalls = 0;
+    item = dbUpdate(db, "User", DB_PROPS("id", id, "role", "admin"), NULL);
+    tnotnull(item);
+    teqi(selfRemoveCalls, 0);
+    teqi(pairedCalls, 1);
+
+    dbRemoveCallback(db, pairedCallback, NULL, (void*) pairArg);
+    rFree(id);
+    dbClose(db);
+}
+
 int main(void)
 {
     rInit(0, 0);
@@ -135,11 +194,12 @@ int main(void)
 
     testCallbacks();
     testModelSpecificCallbacks();
+    testSelfRemovingCallback();
 
     rTerm();
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

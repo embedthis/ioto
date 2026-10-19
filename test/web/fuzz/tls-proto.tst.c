@@ -37,14 +37,12 @@ static int        fuzzResult = 0;
 static bool       serverWasReachable = 0;
 static cchar      *currentFuzzInput = NULL;
 static size_t     currentFuzzLen = 0;
-static bool       serverCrashed = 0;
 
 /*********************************** Forwards *********************************/
 
 static void fuzzFiber(void *arg);
 static bool testTLSRequest(cchar *request, size_t len);
 static char *mutateTLSRequest(cchar *input, size_t *len);
-static bool shouldStopFuzzing(void);
 
 /************************************* Code ***********************************/
 
@@ -131,6 +129,15 @@ static void fuzzFiber(void *arg)
     }
     rFree(buf);
 
+    if (!replayFile) {
+        if (!fuzzRequireServer(tlsHost, tlsPort)) {
+            tfail("Cannot verify fuzz server is alive and listening on %s:%d", tlsHost, tlsPort);
+            fuzzResult = -1;
+            rStop();
+            return;
+        }
+    }
+
     if (replayFile) {
         rPrintf("Replaying crash file: %s\n", replayFile);
         rPrintf("Target: %s\n", HTTPS);
@@ -164,7 +171,6 @@ static void fuzzFiber(void *arg)
         runner = fuzzInit(config);
         fuzzSetOracle(runner, testTLSRequest);
         fuzzSetMutator(runner, mutateTLSRequest);
-        fuzzSetShouldStopCallback(shouldStopFuzzing);
         fuzzLoadCorpus(runner, CORPUS_FILE);
     }
     int crashes = fuzzRun(runner);
@@ -173,28 +179,6 @@ static void fuzzFiber(void *arg)
     fuzzFree(runner);
     fuzzResult = crashes;
     rStop();
-}
-
-static bool shouldStopFuzzing(void)
-{
-    if (serverCrashed) {
-        return true;
-    }
-    if (runner->config.stop && runner->stats.crashes > 0) {
-        return true;
-    }
-    return false;
-}
-
-static bool checkServerAlive(cchar *context)
-{
-    if (!fuzzIsServerAlive(fuzzGetServerPid())) {
-        tinfo("Server crashed %s", context);
-        fuzzReportServerCrash(currentFuzzInput, currentFuzzLen);
-        serverCrashed = 1;
-        return 0;
-    }
-    return 1;
 }
 
 /*
@@ -357,7 +341,7 @@ static bool testTLSRequest(cchar *fuzzInput, size_t len)
 {
     int result;
 
-    if (serverCrashed) {
+    if (runner->serverCrashed) {
         return 1;
     }
     currentFuzzInput = fuzzInput;
@@ -366,11 +350,11 @@ static bool testTLSRequest(cchar *fuzzInput, size_t len)
     result = testTLSRequestInner(fuzzInput, len);
 
     if (result == -1) {
-        return checkServerAlive("during TLS fuzzing");
+        return fuzzCheckServerAlive(runner, "during TLS fuzzing", currentFuzzInput, currentFuzzLen);
     } else if (result == 0) {
         return 0;
     }
-    return checkServerAlive("after processing TLS request");
+    return fuzzCheckServerAlive(runner, "after processing TLS request", currentFuzzInput, currentFuzzLen);
 }
 
 /*
@@ -498,6 +482,6 @@ static char *mutateTLSRequest(cchar *input, size_t *len)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

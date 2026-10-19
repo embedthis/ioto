@@ -28,9 +28,9 @@ static void testMqttAlloc(void)
     teq(mq->error, 0);
     ttrue(mq->buf);
     ttrue(mq->topics);
-    teq(mq->keepAlive, MQTT_KEEP_ALIVE);
-    teq(mq->timeout, MQTT_TIMEOUT);
-    teq(mq->maxMessage, MQTT_MAX_MESSAGE_SIZE);
+    teqll(mq->keepAlive, MQTT_KEEP_ALIVE);
+    teqll(mq->timeout, MQTT_TIMEOUT);
+    teqz(mq->maxMessage, MQTT_MAX_MESSAGE_SIZE);
     mqttFree(mq);
 }
 
@@ -132,7 +132,7 @@ static void testMqttSetWill(void)
     rc = mqttSetWill(mq, "device/status", willMsg, slen(willMsg));
     teq(rc, 0);
     tmatch(mq->willTopic, "device/status");
-    teq(mq->willMsgSize, slen(willMsg));
+    teqz(mq->willMsgSize, slen(willMsg));
 
     mqttFree(mq);
 }
@@ -164,13 +164,13 @@ static void testMqttSetKeepAlive(void)
     ttrue(mq);
 
     mqttSetKeepAlive(mq, 60 * TPS);
-    teq(mq->keepAlive, 60 * TPS);
+    teqll(mq->keepAlive, 60 * TPS);
 
     mqttSetKeepAlive(mq, 0);
-    teq(mq->keepAlive, MQTT_KEEP_ALIVE);
+    teqll(mq->keepAlive, MQTT_KEEP_ALIVE);
 
     mqttSetKeepAlive(mq, -1);
-    teq(mq->keepAlive, MQTT_KEEP_ALIVE);
+    teqll(mq->keepAlive, MQTT_KEEP_ALIVE);
 
     mqttFree(mq);
 }
@@ -183,13 +183,13 @@ static void testMqttSetTimeout(void)
     ttrue(mq);
 
     mqttSetTimeout(mq, 120 * TPS);
-    teq(mq->timeout, 120 * TPS);
+    teqll(mq->timeout, 120 * TPS);
 
     mqttSetTimeout(mq, 0);
     ttrue(mq->timeout >= MAXINT64 / 10);
 
     mqttSetTimeout(mq, -1);
-    teq(mq->timeout, MQTT_TIMEOUT);
+    teqll(mq->timeout, MQTT_TIMEOUT);
 
     mqttFree(mq);
 }
@@ -202,7 +202,7 @@ static void testMqttSetMessageSize(void)
     ttrue(mq);
 
     mqttSetMessageSize(mq, 128 * 1024);
-    teq(mq->maxMessage, 128 * 1024);
+    teqz(mq->maxMessage, 128 * 1024);
 
     mqttFree(mq);
 }
@@ -248,6 +248,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

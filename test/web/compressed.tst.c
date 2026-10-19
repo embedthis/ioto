@@ -67,6 +67,22 @@ static void testPrecompressedGzip(void)
     urlFree(up);
 }
 
+/*
+    Serve pre-compressed multi-range requests whole so Content-Encoding describes the body.
+ */
+static void testMultiRangeEncoded(void)
+{
+    Url  *up;
+    char url[128];
+
+    up = urlAlloc(0);
+    teqi(urlFetch(up, "GET", SFMT(url, "%s/compressed/data.json", HTTP), NULL, 0,
+                  "Accept-Encoding: gzip\r\nRange: bytes=0-1,4-5\r\n"), 200);
+    tmatch(urlGetHeader(up, "Content-Encoding"), "gzip");
+    tfalse(sstarts(urlGetHeader(up, "Content-Type"), "multipart/"), "The encoded variant is not sent as multipart");
+    urlFree(up);
+}
+
 static void testNoCompression(void)
 {
     Url  *up;
@@ -241,6 +257,7 @@ static void fiberMain(void *data)
     if (setup(&HTTP, &HTTPS)) {
         testPrecompressedBrotli();
         testPrecompressedGzip();
+        testMultiRangeEncoded();
         testNoCompression();
         testPrecompressedFallback();
         testPrecompressedConditional();

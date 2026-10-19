@@ -1,0 +1,25 @@
+/*
+    replay.json5 - Schema with a model commit delay for journal replay tests
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: {
+        isoDate: true,
+        nulls: false,
+        timestamps: 'update',
+        typeField: '_type',
+    },
+    indexes: {
+        primary: { sort: 'sk' },
+    },
+    models: {
+        Reading: {
+            sk:    { type: 'string', value: 'reading#' },
+            value: { type: 'number', required: true },
+        },
+    },
+    process: {
+        Reading: { delay: 1 },
+    },
+}

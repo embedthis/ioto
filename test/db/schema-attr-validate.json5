@@ -1,0 +1,16 @@
+/*
+    schema-attr-validate.json5 - Schema declaring the unsupported "validate" field attribute
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: { typeField: '_type', timestamps: false },
+    indexes: { primary: { sort: 'sk' } },
+    models: {
+        Item: {
+            sk: { type: 'string', value: 'item#${id}' },
+            id: { type: 'string' },
+            name: { type: 'string', validate: '^[a-z]+$' },
+        },
+    },
+}

@@ -68,9 +68,11 @@ static void testUpdateUpsert()
     tnotnull(item);
     id = dbField(item, "id");
 
-    //  Update existing item with upsert
+    // Upsert replaces the item, so supply all required fields.
     item = dbUpdate(db, "User", DB_PROPS(
         "id", id,
+        "username", "upsert2",
+        "email", "upsert2@test.com",
         "role", "admin"
     ), DB_PARAMS(.upsert = true));
     tnotnull(item);
@@ -149,6 +151,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

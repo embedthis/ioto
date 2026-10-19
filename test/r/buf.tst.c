@@ -69,10 +69,11 @@ static void putAndGetToBuf()
 
 static void flushBuf()
 {
-    RBuf  *bp;
-    ssize rc;
-    char  buf[512];
-    int   size, i;
+    RBuf   *bp;
+    ssize  rc;
+    char   buf[512];
+    size_t size;
+    int    i;
 
     size = 512;
     bp = rAllocBuf(size);
@@ -97,8 +98,8 @@ static void flushBuf()
 static void growBuf()
 {
     RBuf   *bp;
-    size_t i, size, rc, bytes;
-    int    c;
+    size_t i, size, bytes;
+    int    c, rc;
 
     /*
         Put more data than the initial size to force the buffer to grow
@@ -110,8 +111,6 @@ static void growBuf()
         rc = rPutCharToBuf(bp, 'c');
         teqi(rc, 0);
     }
-    rc = rGetBufSize(bp);
-    rc = rGetBufLength(bp);
     ttrue(rGetBufSize(bp) > size);
     ttrue(rGetBufSize(bp) >= bytes);
     teqz(rGetBufLength(bp), bytes);
@@ -129,9 +128,10 @@ static void growBuf()
 
 static void miscBuf()
 {
-    RBuf  *bp;
-    ssize size, rc;
-    int   c;
+    RBuf   *bp;
+    size_t size;
+    ssize  rc;
+    int    c;
 
     size = 512;
     bp = rAllocBuf(size);
@@ -151,10 +151,10 @@ static void miscBuf()
     teqz(rGetBufLength(bp), 0);
 
     rc = rPutCharToBuf(bp, 'A');
-    teqi(rc, 0);
+    teqll(rc, 0);
 
     rc = rPutCharToBuf(bp, 'B');
-    teqi(rc, 0);
+    teqll(rc, 0);
     teqz(rGetBufLength(bp), 2);
 
     rAddNullToBuf(bp);
@@ -194,7 +194,7 @@ static void bufLoad()
             size = 0xFFFF & (int) rGetTime();
             bytes = ((size % sizeof(obuf)) / 9) + 1;
             bytes = min(bytes, (sizeof(obuf) - count));
-            rc = rGetBlockFromBuf(bp, &obuf[count], (ssize) bytes);
+            rc = rGetBlockFromBuf(bp, &obuf[count], bytes);
             ttrue(rc > 0);
             count += (size_t) rc;
         }
@@ -382,8 +382,8 @@ static void testUncoveredFunctions()
 
 static void testCompactAndReset()
 {
-    RBuf  *bp;
-    ssize initialLen, afterLen;
+    RBuf   *bp;
+    size_t initialLen, afterLen;
 
     bp = rAllocBuf(100);
 
@@ -491,9 +491,449 @@ static void testEdgeCases()
     rFreeBuf(bp);
 }
 
+static void testGrowBufSize()
+{
+    RBuf   *bp;
+    int    rc;
+    size_t originalSize;
+
+    bp = rAllocBuf(64);
+    originalSize = rGetBufSize(bp);
+
+    /*
+        Test growing to a larger size
+     */
+    rc = rGrowBufSize(bp, 256);
+    teqi(rc, 0);
+    ttrue(rGetBufSize(bp) >= 256);
+
+    /*
+        Test growing to a size smaller than current (should be a no-op)
+     */
+    originalSize = rGetBufSize(bp);
+    rc = rGrowBufSize(bp, 100);
+    teqi(rc, 0);
+    teqz(rGetBufSize(bp), originalSize);
+
+    /*
+        Test that data is preserved after growth
+     */
+    rFlushBuf(bp);
+    rPutStringToBuf(bp, "hello world");
+    originalSize = rGetBufSize(bp);
+
+    rc = rGrowBufSize(bp, originalSize * 2);
+    teqi(rc, 0);
+    ttrue(rGetBufSize(bp) >= originalSize * 2);
+    rAddNullToBuf(bp);
+    tmatch(rGetBufStart(bp), "hello world");
+
+    /*
+        Test error conditions
+     */
+    rc = rGrowBufSize(bp, 0);
+    teqi(rc, R_ERR_BAD_ARGS);
+
+    rc = rGrowBufSize(bp, (size_t) -1);
+    teqi(rc, R_ERR_BAD_ARGS);
+
+    rFreeBuf(bp);
+}
+
+/*
+    The remaining accessor paths: consuming from the front, reading blocks that wrap the buffer,
+    and the allocation limits.
+
+    The TestMe comparison macros expand their arguments twice, so every call with a side effect
+    is bound to a local before it is asserted.
+ */
+static void testAdjustAndBlocks()
+{
+    RBuf  *bp;
+    char  out[32];
+    char  *base;
+    ssize len;
+    size_t remaining;
+
+    bp = rAllocBuf(64);
+    tnotnull(bp);
+    rPutStringToBuf(bp, "0123456789");
+
+    /*
+        rGetBuf returns the allocation itself, which is where start points in a buffer nothing
+        has been consumed from yet.
+     */
+    base = rGetBuf(bp);
+    tnotnull(base);
+    ttrue(base == rGetBufStart(bp));
+
+    /*
+        Consuming from the front advances start without moving the data.
+     */
+    rAdjustBufStart(bp, 3);
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 7);
+    rAddNullToBuf(bp);
+    tmatch(rGetBufStart(bp), "3456789");
+
+    /*
+        A negative adjustment, and one past the end, are both ignored rather than moving start
+        outside the buffer.
+     */
+    rAdjustBufStart(bp, -100);
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 7);
+    rAdjustBufStart(bp, 1000);
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 7);
+
+    /*
+        Consuming everything empties the buffer.
+     */
+    rAdjustBufStart(bp, 7);
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 0);
+
+    /*
+        rGetBlockFromBuf copies out and consumes what it copied.
+     */
+    rFlushBuf(bp);
+    rPutStringToBuf(bp, "abcdefghij");
+    len = rGetBlockFromBuf(bp, out, 4);
+    teqz(len, 4);
+    out[4] = '\0';
+    tmatch(out, "abcd");
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 6);
+
+    /*
+        Asking for more than the buffer holds returns only what is there.
+     */
+    len = rGetBlockFromBuf(bp, out, sizeof(out));
+    teqz(len, 6);
+    out[6] = '\0';
+    tmatch(out, "efghij");
+    remaining = rGetBufLength(bp);
+    teqz(remaining, 0);
+
+    /*
+        Reading an empty buffer yields nothing rather than an error.
+     */
+    len = rGetBlockFromBuf(bp, out, sizeof(out));
+    teqz(len, 0);
+
+    len = rGetBlockFromBuf(bp, NULL, 4);
+    teqz(len, R_ERR_BAD_ARGS);
+
+    rFreeBuf(bp);
+
+    /*
+        rAllocBuf refuses a size above INT_MAX, but it reports the refusal through
+        rAllocException, and the default memory handler treats R_MEM_FAIL as fatal. That path
+        ends the process, so it is not exercised here.
+     */
+}
+
+
+/*
+    Growth with consumed data in front of it compacts before it copies, and the small guards
+    on the accessors. None of these had been reached.
+ */
+static void bufCorners()
+{
+    RBuf  *bp;
+    char  out[8];
+    ssize rc;
+
+    //  Fill a small buffer, consume some, then grow: the live bytes slide to the front first
+    bp = rAllocBuf(16);
+    tnotnull(bp);
+    rc = rPutStringToBuf(bp, "0123456789abcdef");
+    ttrue(rc > 0);
+    rAdjustBufStart(bp, 6);
+    ttrue(bp->start > bp->buf);
+    teqi(rGrowBuf(bp, 1), 0);
+    ttrue(bp->start == bp->buf);
+    tmatch(rBufToString(bp), "6789abcdef");
+
+    //  A grow that fits in the existing allocation is a no-op success
+    teqi(rGrowBuf(bp, 1), 0);
+    //  ... and one beyond the ceiling is refused
+    //  ME_R_MAX_BUF is 8MB and private to buf.c
+    ttrue(rGrowBuf(bp, (size_t) 8 * 1024 * 1024 + 1) < 0);
+
+    //  Adjusting the start by zero from the front leaves it at the front
+    rResetBufIfEmpty(bp);
+    rFlushBuf(bp);
+    rAdjustBufStart(bp, 0);
+    ttrue(bp->start == bp->buf);
+
+    //  Sub-string puts with nothing to put
+    teqz(rPutSubToBuf(bp, NULL, 3), 0);
+    teqz(rPutSubToBuf(bp, "", 3), 0);
+    teqz(rPutSubToBuf(bp, "abc", 0), 0);
+    teqz(rPutSubToBuf(bp, "abc", 2), 2);
+    tmatch(rBufToString(bp), "ab");
+
+    //  Null buffer guards
+    teqi(rPutCharToBuf(NULL, 'x'), R_ERR_BAD_ARGS);
+    rAddNullToBuf(NULL);
+    rAdjustBufStart(NULL, 1);
+
+    /*
+        rGetBlockFromBuf checks the buffer's own bookkeeping before trusting it. A buflen that
+        disagrees with the pointers is corruption, and it is reported rather than read through.
+     */
+    bp->buflen++;
+    teqz(rGetBlockFromBuf(bp, out, sizeof(out)), R_ERR_BAD_STATE);
+    bp->buflen--;
+    teqz(rGetBlockFromBuf(bp, out, sizeof(out)), 2);
+    rFreeBuf(bp);
+}
+
+
+/*
+    A budgeted allocator: unlimited while the budget is negative, otherwise it fails once the
+    budget reaches zero.
+ */
+static int allocBudget = -1;
+static int failCalls;
+
+static void *budgetAlloc(size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return malloc(size);
+}
+
+static void *budgetRealloc(void *ptr, size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return realloc(ptr, size);
+}
+
+static void budgetFree(void *ptr)
+{
+    free(ptr);
+}
+
+static void failHandler(int cause, size_t size)
+{
+    failCalls++;
+}
+
+/*
+    Allocation failures are reported as null returns and R_ERR_MEMORY, and a buffer that fails
+    to grow keeps its contents
+ */
+static void bufAllocFailures(void)
+{
+    RBuf   *bp, sb;
+    size_t space;
+    int    rc;
+
+    rSetAllocator(budgetAlloc, budgetRealloc, budgetFree);
+    rSetMemHandler(failHandler);
+
+    //  The header and the storage are separate allocations and either can fail
+    allocBudget = 0;
+    failCalls = 0;
+    bp = rAllocBuf(64);
+    tnull(bp);
+    teqi(failCalls, 1);
+    allocBudget = 1;
+    bp = rAllocBuf(64);
+    tnull(bp);
+
+    allocBudget = 0;
+    rc = rInitBuf(&sb, 16);
+    teqi(rc, R_ERR_MEMORY);
+
+    allocBudget = -1;
+    bp = rAllocBuf(16);
+    tnotnull(bp);
+    rPutStringToBuf(bp, "abc");
+
+    allocBudget = 0;
+    rc = rGrowBufSize(bp, 1024);
+    teqi(rc, R_ERR_MEMORY);
+    rc = rReserveBufSpace(bp, 1024);
+    teqi(rc, R_ERR_MEMORY);
+    tmatch(rGetBufStart(bp), "abc");
+
+    //  Fill the remaining space so the next character has to grow the buffer
+    allocBudget = -1;
+    for (space = rGetBufSpace(bp); space > 1; space--) {
+        rPutCharToBuf(bp, 'x');
+    }
+    allocBudget = 0;
+    rc = rPutCharToBuf(bp, 'y');
+    teqi(rc, R_ERR_MEMORY);
+    ttrue(sstarts(rGetBufStart(bp), "abcx"));
+    rFreeBuf(bp);
+
+    allocBudget = -1;
+    rSetMemHandler(NULL);
+    rSetAllocator(NULL, NULL, NULL);
+}
+
+
+static size_t fillToCeiling(RBuf *bp)
+{
+    size_t i, size;
+    char   *data;
+
+    for (i = 0; i < 64; i++) {
+        size = rGetBufSize(bp);
+        data = rAlloc(size);
+        memset(data, 'a', size);
+        rPutBlockToBuf(bp, data, rGetBufSpace(bp));
+        rFree(data);
+        if (rGetBufSpace(bp) == 0 && rGrowBuf(bp, 1) < 0) {
+            break;
+        }
+    }
+    return rGetBufLength(bp);
+}
+
+
+static void addNullDoesNotTruncate()
+{
+    RBuf   *bp;
+    size_t len;
+
+    bp = rAllocBuf(1024);
+    len = fillToCeiling(bp);
+    teqz(rGetBufSpace(bp), 0);
+    ttrue(len > 0);
+    teqz(rGetBufSize(bp), len);
+
+    rAddNullToBuf(bp);
+    teqz(rGetBufLength(bp), len);
+    teqi(rGetBufStart(bp)[len - 1], 'a');
+    ttrue(rGetBufSize(bp) > len);
+    if (rGetBufSize(bp) > len) {
+        teqi(rGetBufStart(bp)[len], '\0');
+    }
+    rFreeBuf(bp);
+
+    //  With room to spare the terminator is added and the length is still unchanged
+    bp = rAllocBuf(64);
+    rPutStringToBuf(bp, "hello");
+    len = rGetBufLength(bp);
+    rAddNullToBuf(bp);
+    teqz(rGetBufLength(bp), len);
+    teqi(rGetBufStart(bp)[len], '\0');
+    tmatch(rGetBufStart(bp), "hello");
+    rFreeBuf(bp);
+}
+
+
+static void bufToStringAtCeiling()
+{
+    RBuf       *bp;
+    const char *s;
+    size_t     len;
+
+    bp = rAllocBuf(1024);
+    len = fillToCeiling(bp);
+    teqz(rGetBufSpace(bp), 0);
+
+    s = rBufToString(bp);
+    tnotnull(s);
+    ttrue(rGetBufSize(bp) > len);
+    if (rGetBufSize(bp) > len) {
+        teqz(slen(s), len);
+        teqz(slen(rBufToString(bp)), len);
+    }
+    teqz(rGetBufLength(bp), len);
+    rFreeBuf(bp);
+}
+
+
+static void addNullReclaimsConsumedSpace()
+{
+    RBuf   *bp;
+    size_t len, size;
+
+    bp = rAllocBuf(1024);
+    len = fillToCeiling(bp);
+    size = rGetBufSize(bp);
+    rAdjustBufStart(bp, 16);
+
+    rAddNullToBuf(bp);
+    teqz(rGetBufLength(bp), len - 16);
+    teqz(rGetBufSize(bp), size);
+    teqi(rGetBufStart(bp)[len - 16], '\0');
+    teqi(rGetBufStart(bp)[0], 'a');
+    rFreeBuf(bp);
+}
+
+/*
+    rBufToStringAndFree on a buffer at the ceiling must return a terminated allocation.
+ */
+static void bufToStringAndFreeAtCeiling()
+{
+    RBuf   *bp;
+    char   *s;
+    size_t len;
+
+    bp = rAllocBuf(1024);
+    len = fillToCeiling(bp);
+    s = rBufToStringAndFree(bp);
+    tnotnull(s);
+    teqz(slen(s), len);
+    rFree(s);
+}
+
+/*
+    rBufToStringAndFree used to write the terminator before compacting, so the memmove left the
+    terminator behind and the returned string ran on by exactly the number of bytes the start had
+    been advanced. The web module's Cache-Control builder strips a leading ", " that way and put
+    "no-storere" on the wire (r issue 35).
+ */
+static void bufToStringAfterAdjustStart()
+{
+    RBuf   *bp;
+    char   *s;
+    size_t n;
+
+    for (n = 1; n <= 5; n++) {
+        bp = rAllocBuf(0);
+        rPutStringToBuf(bp, ", no-store");
+        rAdjustBufStart(bp, (ssize) n);
+        s = rBufToStringAndFree(bp);
+        teqz(slen(s), slen(", no-store") - n);
+        tmatch(s, &", no-store"[n]);
+        rFree(s);
+    }
+    //  A buffer whose start was advanced to the end converts to an empty string
+    bp = rAllocBuf(0);
+    rPutStringToBuf(bp, "abc");
+    rAdjustBufStart(bp, 3);
+    s = rBufToStringAndFree(bp);
+    tmatch(s, "");
+    rFree(s);
+}
+
 int main(void)
 {
     rInit(0, 0);
+    testAdjustAndBlocks();
+    addNullDoesNotTruncate();
+    bufToStringAtCeiling();
+    addNullReclaimsConsumedSpace();
+    bufToStringAndFreeAtCeiling();
+    bufToStringAfterAdjustStart();
 
     createBuf();
     isBufEmpty();
@@ -506,15 +946,18 @@ int main(void)
     testUncoveredFunctions();
     testCompactAndReset();
     testEdgeCases();
+    testGrowBufSize();
 
     if (tdepth() > 1) {
         bufLoad();
+    bufCorners();
+    bufAllocFailures();
     }
     rTerm();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

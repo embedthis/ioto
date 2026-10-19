@@ -1,0 +1,31 @@
+/*
+    db.json5 - The accounts the scenario groups (test/soak, test/stress, test/auth) log in with
+
+    Test material, alongside this group's ioto.json5 and web.json5. It used to live in
+    apps/unit, where it was a working credential inside a shipped application template - which is
+    a credential in every device built from that template. It is a fixture, so it belongs with the
+    fixtures. The password is FIXTURE_PASSWORD in test/utils/scenario.h and it authenticates nothing
+    outside this test run. The hashes are made by the password utility, as the documentation tells
+    integrators to make theirs:
+
+        password --cipher blowfish --realm web --password 'scenario-fixture-pw' USERNAME
+ */
+{
+    User: [
+        {
+            username: 'admin',
+            password: 'BF1:00128:eH5P6Bb0Bm9spqQk:Zqe74MNWosLKDrJq3O1jySHG3B7QQkb6',
+            role: 'admin',
+        },
+        {
+            username: 'guest',
+            password: 'BF1:00128:XiRgUzojO1Cb1XHr:9ZmipgzutKH25UsnEWoITyvKqB6v3iTg',
+            role: 'user',
+        },
+        {
+            username: 'super',
+            password: 'BF1:00128:Ht4tR0njU3cOst1b:ajydvvTJ34V0epabxDRljWcYW6PR+FwQ',
+            role: 'super',
+        },
+    ],
+}

@@ -39,12 +39,14 @@ static void closeDb(Db *db)
 static void update(Db *db)
 {
     CDbItem     *item;
-    cchar       *id, *role;
+    cchar       *role;
+    char        *id;
     int         count;
 
     item = dbFindOne(db, "User", DB_PROPS("username", "admin"), NULL);
     tnotnull(item);
-    id = dbField(item, "id");
+    //  dbField returns a reference into the item, so clone it before the item is removed
+    id = sclone(dbField(item, "id"));
     tnotnull(id);
     role = dbField(item, "role");
     tmatch(role, "admin");
@@ -53,6 +55,7 @@ static void update(Db *db)
     teqi(count, 1);
     item = dbGet(db, "User", DB_PROPS("id", id), NULL);
     tnull(item);
+    rFree(id);
 
     //  Recreate
     db = createDb();
@@ -80,6 +83,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

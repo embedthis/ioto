@@ -1,0 +1,33 @@
+/*
+    sec-regress.json5 - Schema for the security regression tests
+
+    One model covers the defects in db#10019 to db#10028: deep props, expiry removal lifetime,
+    journal replay, enum escapes and the numeric getters.
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: {
+        isoDate: true,
+        nulls: false,
+        timestamps: true,
+        typeField: '_type',
+    },
+    indexes: {
+        primary: { hash: 'pk', sort: 'sk' },
+    },
+    models: {
+        Thing: {
+            pk:      { type: 'string', value: 'thing#' },
+            sk:      { type: 'string', value: 'thing#${id}' },
+            id:      { type: 'string' },
+            name:    { type: 'string' },
+            kind:    { type: 'string', enum: ['a', "it's", 'b c', 'x,y'] },
+            quota:   { type: 'number' },
+            deep:    { },
+            expires: { type: 'date', ttl: true },
+            created: { type: 'date' },
+            updated: { type: 'date' },
+        },
+    },
+}

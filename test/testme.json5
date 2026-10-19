@@ -6,12 +6,16 @@
                     '-Wformat', '-Wformat-security', '-Wsign-compare', '-Wsign-conversion',
                     '-I../include', '-L../build/bin',
                     '-Wl,-rpath,${CONFIGDIR}/../build/bin',
+                    //  The TLS defines and libraries of the provider projects/gmake2 builds libioto with
+                    '@${CONFIGDIR}/../projects/gmake2/tls-${OS}.rsp',
+                    //  Matches the debug library: web's test.h registers the /test actions only when set
+                    '-DME_WEB_TEST_ACTIONS=1',
                 ],
-                libraries: ['ioto', 'm', 'crypto', 'ssl'],
+                libraries: ['ioto', 'm'],
             },
             msvc: {
                 flags: [
-                    '-GR-', '-MDd', '-wd4100',
+                    '-GR-', '-MDd', '-wd4100', '/DME_WEB_TEST_ACTIONS=1',
                     '/I../include',
                     '/LIBPATH:../build/bin',
                     '/I${ME_COM_OPENSSL_PATH}/include',
@@ -29,7 +33,10 @@
             PATH: '../build/bin:../bin:${PATH}',
         },
         windows: {
-            PATH: '../build/bin;../bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/${ARCH}-windows/bin;${PATH}',
+            //  The OpenSSL install root and its bin/. r/test/prep.sh drives the openssl command to
+            //  build the TLS certificate matrix, and the Windows installer puts openssl.exe under
+            //  bin/ while the DLLs sit in the root, so both are needed.
+            PATH: '../build/bin;../bin;C:/Program Files/OpenSSL/bin;C:/Program Files/OpenSSL;${USERPROFILE}/vcpkg/installed/${ARCH}-windows/bin;${PATH}',
         },
     },
     execution: {

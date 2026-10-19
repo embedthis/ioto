@@ -7,22 +7,11 @@
 /********************************** Includes **********************************/
 
 #include    "testme.h"
-#include    "mqtt.h"
+#include    "mqtt-test.h"
 
 /*********************************** Code *************************************/
 
 static RSocket *testSock = NULL;
-
-static RSocket *createConnectedSocket(void)
-{
-    RSocket *sock = rAllocSocket();
-
-    if (rConnectSocket(sock, "localhost", 1883, 0) < 0) {
-        rFreeSocket(sock);
-        return NULL;
-    }
-    return sock;
-}
 
 static void closeTestSocket(void)
 {
@@ -52,7 +41,7 @@ static void testMqttPublishNullTopic(void)
     mq = mqttAlloc("test-client", NULL);
     ttrue(mq);
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     rc = mqttConnect(mq, testSock, 0, MQTT_WAIT_ACK);
@@ -75,7 +64,7 @@ static void testMqttPublishLongTopic(void)
     mq = mqttAlloc("test-client", NULL);
     ttrue(mq);
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     rc = mqttConnect(mq, testSock, 0, MQTT_WAIT_ACK);
@@ -100,7 +89,7 @@ static void testMqttPublishBadQos(void)
     mq = mqttAlloc("test-client", NULL);
     ttrue(mq);
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     rc = mqttConnect(mq, testSock, 0, MQTT_WAIT_ACK);
@@ -125,7 +114,7 @@ static void testMqttPublishLargeMessage(void)
     mq = mqttAlloc("test-client", NULL);
     ttrue(mq);
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mqttSetMessageSize(mq, 1024);
@@ -152,7 +141,7 @@ static void testMqttPublishNegativeSize(void)
     char *msg = "test message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -174,7 +163,7 @@ static void testMqttPublishRetained(void)
     char *msg = "retained message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -220,7 +209,7 @@ static void testMqttPublishFormattedTopic(void)
     char *msg = "test message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     if (!testSock) {
         return;
     }
@@ -243,7 +232,7 @@ static void testMqttPublishQos0(void)
     char *msg = "qos0 message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     if (!testSock) {
         return;
     }
@@ -266,7 +255,7 @@ static void testMqttPublishQos1(void)
     char *msg = "qos1 message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     if (!testSock) {
         return;
     }
@@ -289,7 +278,7 @@ static void testMqttPublishQos2(void)
     char *msg = "qos2 message";
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     if (!testSock) {
         return;
     }
@@ -333,6 +322,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

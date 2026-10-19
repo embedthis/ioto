@@ -1,0 +1,26 @@
+{
+    /*
+        The stress group. Its own agent on its own ports, started the same way as test/soak,
+        so a stress run that exhausts something cannot take another group's server with it.
+     */
+    inherit: ['compiler', 'environment'],
+    environment: {
+        default: {
+            PATH: '../../build/bin:../../bin:${PATH}',
+            TM_HTTP: 'http://localhost:4480',
+            TM_HTTPS: 'https://localhost:4481',
+        },
+    },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 1800,
+    },
+    services: {
+        skip: '../utils/skip-windows.sh',
+        prep: '../utils/agent-prep.sh',
+        setup: '../utils/agent-setup.sh',
+        cleanup: '../utils/agent-cleanup.sh',
+        healthcheck: { url: 'http://localhost:4480/index.html' },
+    },
+}

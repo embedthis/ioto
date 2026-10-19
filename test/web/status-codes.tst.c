@@ -247,15 +247,21 @@ static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
         test200OK();
+#if ME_WEB_MUTATIONS
         test201Created();
         test204NoContent();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
         test304NotModified();
         test400BadRequest();
         test401Unauthorized();
         test403Forbidden();
         test404NotFound();
         test405MethodNotAllowed();
+#if ME_WEB_MUTATIONS
         test412PreconditionFailed();
+#endif
         test416RangeNotSatisfiable();
     }
     rFree(HTTP);
@@ -272,6 +278,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

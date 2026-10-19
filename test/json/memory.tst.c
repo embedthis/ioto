@@ -44,6 +44,28 @@ static void jsonMemoryTest()
     jsonFree(clone);
 }
 
+static void jsonGrowthFailureTest()
+{
+    Json    *obj;
+    char    key[32];
+    int     i, originalSize, rc;
+
+    obj = parse("{}");
+    originalSize = obj->size;
+
+    rc = jsonSet(obj, 0, "a[99990]", "1", 0);
+    ttrue(rc < 0);
+    teq(obj->size, originalSize);
+
+    for (i = 0; i < 128; i++) {
+        SFMT(key, "safe%d", i);
+        rc = jsonSet(obj, 0, key, "ok", 0);
+        ttrue(rc > 0);
+    }
+    tmatch(jsonGet(obj, 0, "safe127", 0), "ok");
+    jsonFree(obj);
+}
+
 static void jsonLockTest()
 {
     Json    *obj;
@@ -110,6 +132,7 @@ int main(void)
 {
     rInit(0, 0);
     jsonMemoryTest();
+    jsonGrowthFailureTest();
     jsonLockTest();
     jsonUserFlagsTest();
     rTerm();
@@ -117,6 +140,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
 */

@@ -89,13 +89,7 @@ static void testParseInvalidUrls()
     ttrue(up->hash == 0);
 
     rc = urlParse(up, "http://");
-    ttrue(rc == 0);  // localhost and port 80
-    tmatch(up-> scheme, "http");
-    tmatch(up->host, "localhost");
-    ttrue(up->port == 80);
-    tmatch(up->path, "");
-    ttrue(up->query == 0);
-    ttrue(up->hash == 0);
+    ttrue(rc < 0);  // A scheme requires a host
 
     urlFree(up);
 }
@@ -179,6 +173,28 @@ static void testSimplePost()
     urlFree(up);
 }
 
+/*
+    Reusing Url for HTTP/1.0 requests must open a new connection each time.
+ */
+static void testHttp10Reuse()
+{
+    Url     *up;
+    char    url[128];
+    cchar   *response;
+    int     i, status;
+
+    up = urlAlloc(0);
+    urlSetProtocol(up, 0);
+    for (i = 0; i < 3; i++) {
+        status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), 0, 0, 0);
+        ttrue(status == 200);
+        response = urlGetResponse(up);
+        ttrue(response != 0);
+        ttrue(slen(response) > 0);
+    }
+    urlFree(up);
+}
+
 static void testNullSafety()
 {
     // Test NULL parameter handling
@@ -208,6 +224,7 @@ static void fiberMain(void *data)
         testConfiguration();
         testSimpleGet();
         testSimplePost();
+        testHttp10Reuse();
         testNullSafety();
     }
     rFree(HTTP);
@@ -223,6 +240,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

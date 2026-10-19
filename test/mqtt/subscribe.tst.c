@@ -7,7 +7,7 @@
 /********************************** Includes **********************************/
 
 #include    "testme.h"
-#include    "mqtt.h"
+#include    "mqtt-test.h"
 #include    <stdbool.h>
 
 /*********************************** Locals ***********************************/
@@ -20,17 +20,6 @@ static void messageCallback(const MqttRecv *resp)
 {
     callbackCount++;
     testComplete = true;
-}
-
-static RSocket *createConnectedSocket(void)
-{
-    RSocket *sock = rAllocSocket();
-
-    if (rConnectSocket(sock, "localhost", 1883, 0) < 0) {
-        rFreeSocket(sock);
-        return NULL;
-    }
-    return sock;
 }
 
 static void closeTestSocket(void)
@@ -51,7 +40,7 @@ static void publisherFiber(void)
     char    *testMsg;
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("test-publisher", NULL);
@@ -84,7 +73,7 @@ static void testMqttSubscribeValidTopic(void)
     int  rc;
     int  previousCount = callbackCount;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-sub-client", NULL);
@@ -115,7 +104,7 @@ static void testMqttSubscribeLongTopic(void)
     char longTopic[MQTT_MAX_TOPIC_SIZE + 10];
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -139,7 +128,7 @@ static void testMqttSubscribeWildcards(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -166,7 +155,7 @@ static void testMqttSubscribeFormattedTopic(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -187,7 +176,7 @@ static void testMqttSubscribeQos0(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -208,7 +197,7 @@ static void testMqttSubscribeQos1(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -229,7 +218,7 @@ static void testMqttSubscribeQos2(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -250,7 +239,7 @@ static void testMqttSubscribeMaster(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -275,7 +264,7 @@ static void testMqttSubscribeMasterLongTopic(void)
     char longTopic[MQTT_MAX_TOPIC_SIZE + 10];
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -299,7 +288,7 @@ static void testMqttUnsubscribe(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -323,7 +312,7 @@ static void testMqttUnsubscribeMaster(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -347,7 +336,7 @@ static void testMqttSubscribeNullCallback(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -368,7 +357,7 @@ static void testMqttSubscribeMultipleTopics(void)
     Mqtt *mq;
     int  rc;
 
-    testSock = createConnectedSocket();
+    testSock = connectBroker();
     ttrue(testSock);
 
     mq = mqttAlloc("test-client", NULL);
@@ -416,6 +405,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

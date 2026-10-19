@@ -141,8 +141,8 @@ static void test_3(Url *up)
     Json *response;
 
     //  Test nested array of objects
-    response = INVOKE(up, "test_3", 200, "{ users: [ 'user1@test.com', 'user2@test.com' ] }");
-    JTEST(response, __LINE__, "users", "['user1@test.com','user2@test.com']");
+    response = INVOKE(up, "test_3", 200, "{ users: [ { name: 'user1@test.com' }, { name: 'user2@test.com' } ] }");
+    JTEST(response, __LINE__, "users[1].name", "user2@test.com");
     jsonFree(response);
 }
 
@@ -206,6 +206,9 @@ static void test_7(Url *up)
         name: "Test User",
     }));
     jsonFree(response);
+    //  The error replaces the partially buffered body rather than being appended to it
+    tfalse(sstarts(urlGetResponse(up), "{"), "The error body must not carry the partial response");
+    teqz(slen(urlGetResponse(up)), stoi(urlGetHeader(up, "Content-Length")));
 }
 
 static void test_8(Url *up)
@@ -246,6 +249,29 @@ static void test_9(Url *up)
     ttrue(status == 400);
 }
 
+
+static void test_10(Url *up)
+{
+    RBuf *buf;
+    char url[128];
+    int  i, status;
+
+    buf = rAllocBuf(0);
+    for (i = 0; i < 40; i++) {
+        rPutStringToBuf(buf, "{\"a\":");
+    }
+    rPutStringToBuf(buf, "1");
+    for (i = 0; i < 40; i++) {
+        rPutCharToBuf(buf, '}');
+    }
+    urlClose(up);
+    status = urlFetch(up, "POST", SFMT(url, "%s/test/sig/controller/test_8", HTTP), rGetBufStart(buf),
+                      rGetBufLength(buf), "Content-Type: application/json\r\n");
+    teqi(status, 400, "%s", "Deep echo must be rejected");
+    urlClose(up);
+    rFreeBuf(buf);
+}
+
 static void fiberMain(void *data)
 {
     Url *up;
@@ -264,6 +290,7 @@ static void fiberMain(void *data)
         test_7(up);
         test_8(up);
         test_9(up);
+        test_10(up);
         urlFree(up);
     }
     rFree(HTTP);
@@ -279,6 +306,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

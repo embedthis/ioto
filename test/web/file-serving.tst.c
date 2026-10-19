@@ -50,7 +50,7 @@ static void testBasicFileServing(void)
 
     contentLength = urlGetHeader(up, "Content-Length");
     tnotnull(contentLength);
-    tgti(stoi(contentLength), 0);
+    tgtll(stoi(contentLength), 0);
 
     // Test 2: Serve CSS file
     urlClose(up);
@@ -90,7 +90,7 @@ static void testZeroByteFile(void)
 
     contentLength = urlGetHeader(up, "Content-Length");
     tnotnull(contentLength);
-    teqi(stoi(contentLength), 0);
+    teqll(stoi(contentLength), 0);
 
     response = urlGetResponse(up);
     ttrue(response == NULL || slen(response) == 0);
@@ -254,17 +254,17 @@ static void testFileMetadata(void)
     // Should have Last-Modified header
     lastModified = urlGetHeader(up, "Last-Modified");
     tnotnull(lastModified);
-    tgti(slen(lastModified), 0);
+    tgtz(slen(lastModified), 0);
 
     // Should have ETag header
     etag = urlGetHeader(up, "ETag");
     tnotnull(etag);
-    tgti(slen(etag), 0);
+    tgtz(slen(etag), 0);
 
     // Should have Content-Length header
     contentLength = urlGetHeader(up, "Content-Length");
     tnotnull(contentLength);
-    tgti(stoi(contentLength), 0);
+    tgtll(stoi(contentLength), 0);
 
     urlFree(up);
 }
@@ -349,15 +349,49 @@ static void testMultipleSimultaneousRequests(void)
     urlFree(up2);
 }
 
+
+static void testEtagDoesNotDiscloseInode(void)
+{
+    Url         *up;
+    struct stat info;
+    char        url[128], old[32], *first;
+    int         i;
+
+    up = urlAlloc(0);
+    teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
+    first = sclone(urlGetHeader(up, "ETag"));
+    urlFree(up);
+    teqz(slen(first), 18, "The ETag is 16 hex digits in quotes");
+    for (i = 1; i < 17 && first[i]; i++) {
+        ttrue(isxdigit((uchar) first[i]), "The ETag is hex");
+    }
+    if (stat("site/index.html", &info) == 0) {
+        SFMT(old, "\"%lld\"", (long long) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime));
+        tfalse(smatch(first, old), "The ETag must not be the invertible inode formula");
+    }
+    up = urlAlloc(0);
+    teqi(urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL), 200);
+    tmatch(urlGetHeader(up, "ETag"), first);
+    urlFree(up);
+    rFree(first);
+}
+
 static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
         testBasicFileServing();
+        testEtagDoesNotDiscloseInode();
+#if ME_WEB_MUTATIONS
         testZeroByteFile();
         testLargeFile();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
         testContentTypeDetection();
+#if ME_WEB_MUTATIONS
         testSpecialCharactersInFilenames();
         testDotFiles();
+#endif
         testFileMetadata();
         testNonExistentFile();
         testFileCaseSensitivity();
@@ -377,6 +411,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

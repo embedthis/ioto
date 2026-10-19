@@ -15,7 +15,7 @@ Tests for linking and embedding the Ioto agent library into custom applications.
 
 Run all link tests:
 ```bash
-cd /Users/mob/c/agent/test
+cd test
 tm link
 ```
 
@@ -49,9 +49,9 @@ These tests validate embedding scenarios:
 ## Compilation
 
 Tests are compiled with standard TestMe C compiler settings:
-- Include paths: `../../build/inc/`
+- Include paths: `../../include/`
 - Library paths: `../../build/bin/`
-- Linked libraries: r, uctx, json, crypt, db, web, url, websock, mqtt, openai
+- Linked libraries: ioto (`libioto.a`), ssl, crypto, m
 
 See `../testme.json5` for complete compiler configuration.
 

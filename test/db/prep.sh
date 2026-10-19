@@ -4,4 +4,4 @@
 #
 
 mkdir -p db
-rm -f db/*.db db/*.jnl
+rm -f db/*.db db/*.jnl db/*.corrupt

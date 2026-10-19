@@ -1,0 +1,32 @@
+{
+    /*
+        The agent group. Tests of the agent's own web helpers (src/webserver.c) against the
+        assembled agent, on their own ports and started the same way as test/soak.
+
+        MallocScribble (macOS) and MALLOC_PERTURB_ (glibc) fill freed memory, so a response that
+        sends from a freed buffer carries visibly wrong bytes rather than a stale copy that
+        happens to match.
+     */
+    inherit: ['compiler', 'environment'],
+    environment: {
+        default: {
+            PATH: '../../build/bin:../../bin:${PATH}',
+            TM_HTTP: 'http://localhost:4460',
+            TM_HTTPS: 'https://localhost:4461',
+            MallocScribble: '1',
+            MALLOC_PERTURB_: '85',
+        },
+    },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 300,
+    },
+    services: {
+        skip: '../utils/skip-windows.sh',
+        prep: '../utils/agent-prep.sh',
+        setup: '../utils/agent-setup.sh',
+        cleanup: '../utils/agent-cleanup.sh',
+        healthcheck: { url: 'http://localhost:4460/index.html' },
+    },
+}

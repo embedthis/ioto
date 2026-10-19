@@ -218,7 +218,7 @@ static void testRequestTimeout(void)
     RSocket *sock;
     Url     *up;
     char    url[128], response[4096], *buf;
-    cchar   *scheme, *host, *path, *query, *hash;
+    cchar   *scheme, *host, *path, *query, *hash, *partial;
     int     port, status;
     ssize   rc;
 
@@ -246,20 +246,23 @@ static void testRequestTimeout(void)
         urlFree(up);
         return;
     }
-    // Send incomplete request (just the request line, no headers terminator)
-    rc = rWriteSocket(sock, "GET /index.html HTTP/1.1\r\nHost: localhost\r\n", 44, rGetTicks() + 1000);
+    /*
+        Send an incomplete request: the request line and one header, no header terminator. The
+        length was hard-coded at 44 for a 43-byte string, which sent the NUL terminator as a
+        request byte.
+     */
+    partial = "GET /index.html HTTP/1.1\r\nHost: localhost\r\n";
+    rc = rWriteSocket(sock, partial, slen(partial), rGetTicks() + 1000);
     if (rc > 0) {
         /*
-            Don't send final \r\n to complete headers - server should timeout
-            Wait briefly and try to read - should get connection closed or timeout
-            Using short timeout to avoid hanging the test
+            What the server owes this client is a 408, and that is asserted in timeout-408.tst.c
+            against an in-process host with a one second parse budget. It cannot be asserted here:
+            this suite's web.json5 sets web.timeouts.parse to 60 seconds, longer than a test may
+            wait, so the read below always returns before the server could have acted. What this
+            case still covers is that an abandoned partial request neither hangs the suite nor
+            disturbs the connection that follows.
          */
         (void) rReadSocket(sock, response, sizeof(response) - 1, rGetTicks() + 2000);
-        /*
-            Connection may be closed by server or we may get 408 Request Timeout
-            Note: Server may not timeout in 2s, so we accept any result here
-            The main test is that the connection doesn't hang the test
-         */
     }
     rCloseSocket(sock);
     rFreeSocket(sock);
@@ -489,6 +492,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

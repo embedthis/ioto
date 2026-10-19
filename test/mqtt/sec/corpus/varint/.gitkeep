@@ -1,0 +1,2 @@
+# Empty by design - the varint oracle's seed corpus is embedded directly in mqtt-harness.c (see README.md).
+# This directory exists so fuzzLoadDir() and a libFuzzer-grown corpus have somewhere to land.

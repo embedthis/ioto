@@ -497,10 +497,14 @@ static void fiberMain(void *data)
         testFontMimeTypes();
         testMediaMimeTypes();
         testBinaryMimeTypes();
+#if ME_WEB_MUTATIONS
         testUnknownExtension();
         testMultipleDots();
         testCaseInsensitiveExtension();
         testNoExtension();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
         testContentTypeHeaderFormat();
         testCharsetHandling();
     }
@@ -518,6 +522,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -1,7 +1,8 @@
 {
-    inherit: ['env'],
+    inherit: ['environment'],
 
     services: {
         cleanup: './cleanup.sh',
+        prep: './prep.sh',
     }
 }

@@ -108,15 +108,51 @@ static void jsonSetTest()
     rFree(s);
 }
 
+/*
+    Pass borrowed values back into setters to test aliases into replaced subtrees.
+ */
+static void jsonSetAliasTest()
+{
+    Json     *obj;
+    JsonNode *node;
+    cchar    *value;
+
+    //  Replace an object with the value of one of its children
+    obj = parse("{}");
+    jsonSet(obj, 0, "a.b", "inner-value", JSON_STRING);
+    value = jsonGet(obj, 0, "a.b", 0);
+    jsonSet(obj, 0, "a", value, JSON_STRING);
+    checkValue(obj, "a", "inner-value");
+    ttrue(jsonGetType(obj, 0, "a") == JSON_STRING);
+    jsonFree(obj);
+
+    //  Replace a value with its own tail
+    obj = parse("{}");
+    jsonSet(obj, 0, "name", "prefix-value", JSON_STRING);
+    value = jsonGet(obj, 0, "name", 0);
+    jsonSet(obj, 0, "name", &value[7], JSON_STRING);
+    checkValue(obj, "name", "value");
+    jsonFree(obj);
+
+    //  jsonSetNodeValue with a pointer into the node's own value
+    obj = parse("{}");
+    jsonSet(obj, 0, "name", "prefix-value", JSON_STRING);
+    node = jsonGetNode(obj, 0, "name");
+    jsonSetNodeValue(node, &node->value[7], JSON_STRING, 0);
+    checkValue(obj, "name", "value");
+    jsonFree(obj);
+}
+
 int main(void)
 {
     rInit(0, 0);
     jsonSetTest();
+    jsonSetAliasTest();
     rTerm();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

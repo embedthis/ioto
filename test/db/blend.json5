@@ -1,0 +1,26 @@
+/*
+    blend.json5 - Schema that blends in additional models from another file
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: {
+        isoDate: true,
+        nulls: false,
+        timestamps: 'update',
+        typeField: '_type',
+    },
+    indexes: {
+        primary: { hash: 'pk', sort: 'sk' },
+    },
+    blend: [
+        'blend-models.json5',
+    ],
+    models: {
+        Local: {
+            sk:   { type: 'string', value: 'local#${id}' },
+            id:   { type: 'string', generate: 'ulid' },
+            name: { type: 'string', required: true },
+        },
+    },
+}

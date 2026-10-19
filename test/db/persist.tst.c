@@ -157,6 +157,55 @@ static void testDelayedCommits()
     rFree(id);
 }
 
+/* Preserve partially unread stores for recovery before saving the readable records. */
+static void testPartialLoad()
+{
+    Db     *db;
+    RList  *items;
+    char   id[16], *damaged, *preserved;
+    size_t damagedLen, preservedLen, len;
+    int    i;
+
+    db = dbOpen("./db/persist-partial.db", "./schema.json", DB_OPEN_RESET);
+    tnotnull(db);
+    for (i = 0; i < 6; i++) {
+        tnotnull(dbCreate(db, "Item", DB_PROPS("id", SFMT(id, "%d", i)), NULL));
+    }
+    teqi(dbSave(db, NULL), 0);
+    dbClose(db);
+
+    //  Tear the last record, as a power cut part way through writing it would
+    damaged = rReadFile("./db/persist-partial.db", &damagedLen);
+    tnotnull(damaged);
+    ttrue(damagedLen > 20);
+    damagedLen -= 10;
+    len = (size_t) rWriteFile("./db/persist-partial.db", damaged, damagedLen, 0600);
+    teqz(len, damagedLen);
+
+    //  The readable records load and an ordinary change still persists
+    db = dbOpen("./db/persist-partial.db", "./schema.json", 0);
+    tnotnull(db);
+    items = dbFind(db, "Item", NULL, NULL);
+    teqi(rGetListLength(items), 5);
+    rFreeList(items);
+    tnotnull(dbCreate(db, "Item", DB_PROPS("id", "later"), NULL));
+    dbClose(db);
+
+    //  The damaged file, with its unread tail, survives the rewrite
+    preserved = rReadFile("./db/persist-partial.db.corrupt", &preservedLen);
+    tnotnull(preserved);
+    teqz(preservedLen, damagedLen);
+    ttrue(preserved && memcmp(preserved, damaged, damagedLen) == 0);
+
+    db = dbOpen("./db/persist-partial.db", "./schema.json", 0);
+    tnotnull(db);
+    tnotnull(dbGet(db, "Item", DB_PROPS("id", "later"), NULL));
+    dbClose(db);
+
+    rFree(damaged);
+    rFree(preserved);
+}
+
 int main(void)
 {
     rInit(0, 0);
@@ -166,11 +215,12 @@ int main(void)
     testPersistence();
     testPersistRecovery();
     testDelayedCommits();
+    testPartialLoad();
 
     rTerm();
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

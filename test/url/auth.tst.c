@@ -137,16 +137,23 @@ static void testAuthAutoDetect()
     int     status;
     cchar   *response;
 
-    // Test auto-detection with Basic auth endpoint
+    //  Without a configured type, a Basic challenge over plain http is refused: the password stays home
     up = urlAlloc(0);
     urlSetAuth(up, "bob", "password", NULL);  // Auto-detect
     status = urlFetch(up, "GET", SFMT(url, "%s/basic/secret.html", HTTP), NULL, 0, NULL);
+    ttrue(status < 0);
+    tcontains(urlGetError(up), "insecure");
+    urlFree(up);
 
+    //  A Digest challenge is answered on any connection
+    up = urlAlloc(0);
+    urlSetAuth(up, "alice", "password", NULL);  // Auto-detect
+    status = urlFetch(up, "GET", SFMT(url, "%s/digest/secret.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
     response = urlGetResponse(up);
     ttrue(response != NULL);
-    ttrue(scontains(response, "Basic Authentication Success"));
-
+    ttrue(scontains(response, "Digest Authentication Success"));
+    ttrue(up->authType == NULL);
     urlFree(up);
 }
 
@@ -266,6 +273,6 @@ int main(void)
 #endif /* URL_AUTH */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

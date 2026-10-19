@@ -1,0 +1,5 @@
+/*
+    broken.json5 - Deliberately unparsable json used by the blend error tests
+ */
+{
+    models: { Bad: { sk:

@@ -249,34 +249,60 @@ static void testExtensionNegotiation(void)
     urlFree(up);
 }
 
+/*
+    A WebSocket upgrade is exempt from the same-origin policy, so the server must check Origin
+    itself (RFC 6455 4.2.2). Without it, any page the victim visits can open an authenticated
+    socket to the device. The default policy is same-origin: Origin must match the request Host.
+ */
 static void testOriginValidation(void)
 {
     Url  *up;
-    char url[128];
+    char url[128], hdrs[256];
     int  status;
 
     up = urlAlloc(0);
 
-    // Test 1: Valid origin
+    // A matching origin is accepted
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
-                      "Upgrade: websocket\r\n"
-                      "Connection: Upgrade\r\n"
-                      "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-                      "Sec-WebSocket-Version: 13\r\n"
-                      "Origin: http://localhost:4100\r\n");
-    // May succeed or fail depending on origin validation policy
-    ttrue(status == 101 || status == 400 || status == 403 || status == 404 || status < 0);
+                      SFMT(hdrs,
+                           "Upgrade: websocket\r\n"
+                           "Connection: Upgrade\r\n"
+                           "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                           "Sec-WebSocket-Version: 13\r\n"
+                           "Origin: %s\r\n", HTTP));
+    teq(status, 101);
 
-    // Test 2: Different origin (potential CORS issue)
+    // A cross origin is refused. This is the CSWSH case: the browser would have attached the
+    // victim's cookies to this handshake.
     urlClose(up);
     status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
                       "Upgrade: websocket\r\n"
                       "Connection: Upgrade\r\n"
                       "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
                       "Sec-WebSocket-Version: 13\r\n"
-                      "Origin: http://evil.com\r\n");
-    // Server may reject based on origin
-    ttrue(status == 101 || status == 400 || status == 403 || status == 404 || status < 0);
+                      "Origin: https://evil.example\r\n");
+    teq(status, 403);
+
+    // Same host, wrong scheme is still a different origin
+    urlClose(up);
+    status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
+                      SFMT(hdrs,
+                           "Upgrade: websocket\r\n"
+                           "Connection: Upgrade\r\n"
+                           "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                           "Sec-WebSocket-Version: 13\r\n"
+                           "Origin: %s\r\n", HTTPS));
+    teq(status, 403);
+
+    // An absent Origin is not a browser request, so it is allowed - a non-browser client can
+    // send any Origin it likes, so refusing this would cost compatibility and buy nothing.
+    urlClose(up);
+    status = urlFetch(up, "GET", SFMT(url, "%s/ws/", HTTP), NULL, 0,
+                      "Upgrade: websocket\r\n"
+                      "Connection: Upgrade\r\n"
+                      "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                      "Sec-WebSocket-Version: 13\r\n");
+    teq(status, 101);
 
     urlFree(up);
 }
@@ -389,6 +415,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

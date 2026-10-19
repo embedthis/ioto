@@ -1,0 +1,29 @@
+{
+    /*
+        The soak group. Its own agent, started by agent-setup.sh from the state directory that
+        agent-prep.sh builds here, so the process being measured has served nothing before the
+        baseline is taken.
+
+        The timeout admits a depth 9 soak (an hour) plus warm-up and sampling.
+     */
+    inherit: ['compiler', 'environment'],
+    environment: {
+        default: {
+            PATH: '../../build/bin:../../bin:${PATH}',
+            TM_HTTP: 'http://localhost:4470',
+            TM_HTTPS: 'https://localhost:4471',
+        },
+    },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 3800,
+    },
+    services: {
+        skip: '../utils/skip-windows.sh',
+        prep: '../utils/agent-prep.sh',
+        setup: '../utils/agent-setup.sh',
+        cleanup: '../utils/agent-cleanup.sh',
+        healthcheck: { url: 'http://localhost:4470/index.html' },
+    },
+}

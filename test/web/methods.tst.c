@@ -37,8 +37,8 @@ static void checkMethods()
     status = urlFetch(up, "Get", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
 
-    // Head
-    status = urlFetch(up, "HEAD", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0, NULL);
+    // HEAD is implied by GET on the default route
+    status = urlFetch(up, "HEAD", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
     ttrue(stoi(urlGetHeader(up, "Content-Length")) > 0);
     ttrue(up->rxLen > 0);
@@ -49,6 +49,7 @@ static void checkMethods()
     status = urlFetch(up, "POST", SFMT(url, "%s/test/success", HTTP), NULL, 0, NULL);
     ttrue(status == 200);
 
+#if ME_WEB_MUTATIONS
     // PUT
     status = urlFetch(up, "PUT", SFMT(url, "%s/upload/temp.dat", HTTP), NULL, 0, NULL);
     ttrue(status == 201 || status == 204);
@@ -60,6 +61,9 @@ static void checkMethods()
     // Delete unknown file
     status = urlFetch(up, "DELETE", SFMT(url, "%s/upload/UNKNOWN.FILE", HTTP), NULL, 0, NULL);
     ttrue(status == 404);
+#else
+    tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
 
     //  Options
     status = urlFetch(up, "OPTIONS", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0, NULL);
@@ -91,6 +95,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -234,6 +234,40 @@ static void globDirs()
 }
 
 
+/*
+    Abort a nested walk in both traversal orders to check cleanup of each recursion frame.
+ */
+static int abortOnLeaf(void *arg, cchar *path, int flags)
+{
+    int *count;
+
+    count = (int*) arg;
+    (*count)++;
+    if (sends(path, "leaf1.dat")) {
+        return -1;
+    }
+    return 0;
+}
+
+
+static void walkAbortTest()
+{
+    int count, rc, i;
+
+    for (i = 0; i < 100; i++) {
+        count = 0;
+        rc = rWalkDir("data", "**", abortOnLeaf, &count, R_WALK_FILES | R_WALK_DIRS);
+        ttrue(rc < 0);
+        ttrue(count > 0);
+
+        count = 0;
+        rc = rWalkDir("data", "**", abortOnLeaf, &count, R_WALK_FILES | R_WALK_DIRS | R_WALK_DEPTH_FIRST);
+        ttrue(rc < 0);
+        ttrue(count > 0);
+    }
+}
+
+
 static void joinFile()
 {
     char *joined;
@@ -384,7 +418,8 @@ static void miscFile(void)
 {
     cchar  *spath;
     char   *data, *path;
-    size_t len, size;
+    size_t len;
+    ssize  size;
     int    status;
 
     path = rGetCwd();
@@ -417,8 +452,8 @@ static void miscFile(void)
 
     data = rReadFile("data/file.dat", &len);
     tnotnull(data);
-    tgtei(len, 29);
-    tcontains(data, "Tue Feb 21 11:27:27 PST 2012");
+    teqz(len, 29);
+    tmatch(data, "Tue Feb 21 11:27:27 PST 2012\n");
 
     // Use unique filenames to avoid conflicts during concurrent testing
     char  tempFile[256], backupFile[256];
@@ -428,15 +463,277 @@ static void miscFile(void)
 
     size = rWriteFile(tempFile, data, slen(data), 0);
     unlink(tempFile);
-    teqz(size, len);
+    teqz((size_t) size, len);
 
     size = rCopyFile("data/file.dat", tempFile, 0);
-    teqz(size, len);
+    teqz((size_t) size, len);
 
     status = rBackupFile(tempFile, 0);
     teqi(status, 0);
     unlink(backupFile);
     unlink(tempFile);
+}
+
+
+static void tempFileOpen(void)
+{
+    char  *cp, *path, *path2;
+    ssize rc;
+    int   fd, fd2;
+
+#if ME_UNIX_LIKE
+    struct stat sbuf;
+#endif
+
+    fd = rOpenTempFile(".test", "OPEN", &path);
+    ttrue(fd >= 0);
+    tnotnull(path);
+    ttrue(rFileExists(path));
+#if ME_UNIX_LIKE
+    teqi(fstat(fd, &sbuf), 0);
+    teqz((sbuf.st_mode & 0777), 0600);
+#endif
+
+    rc = write(fd, "hello temp", 10);
+    teqz(rc, 10);
+    close(fd);
+    cp = rReadFile(path, NULL);
+    tnotnull(cp);
+    tmatch(cp, "hello temp");
+    rFree(cp);
+    unlink(path);
+    rFree(path);
+
+    fd = rOpenTempFile(".test", "DUP", &path);
+    fd2 = rOpenTempFile(".test", "DUP", &path2);
+    ttrue(fd >= 0);
+    ttrue(fd2 >= 0);
+    tnotnull(path);
+    tnotnull(path2);
+    ttrue(!smatch(path, path2));
+    close(fd);
+    close(fd2);
+    unlink(path);
+    unlink(path2);
+    rFree(path);
+    rFree(path2);
+
+    path = (char*) 1;
+    fd = rOpenTempFile(".test/no-such-dir", "pre", &path);
+    ttrue(fd < 0);
+    tnull(path);
+}
+
+
+/*
+    Error paths through the file primitives. Every one of these was at zero coverage: the suite
+    exercised each function on a path that worked and never on one that did not, so the trace,
+    the close and the error return were all untested.
+ */
+static void fileErrors(void)
+{
+    char  buf[ME_MAX_PATH], tiny[8];
+    char  *cp;
+    ssize rc;
+    int   fd;
+
+    //  Self-contained: the agent vendors this file into a tree where nothing has made .test
+#if ME_WIN_LIKE
+    _mkdir(".test");
+#else
+    mkdir(".test", 0755);
+#endif
+
+    //  rReadFile: cannot open, and a path that opens but will not read
+    tnull(rReadFile(".test/no-such-file-at-all", NULL));
+    tnull(rReadFile(".test", NULL));
+
+    //  rWriteFile: a length at the ceiling, and a directory that does not exist
+    rc = rWriteFile(".test/written.dat", "x", SIZE_MAX, 0);
+    teqz(rc, R_ERR_CANT_OPEN);
+    rc = rWriteFile(".test/no-such-dir/written.dat", "x", 1, 0);
+    teqz(rc, R_ERR_CANT_OPEN);
+
+    //  A zero mode defaults to 0644 rather than creating an unreadable file
+    rc = rWriteFile(".test/mode.dat", "abc", 3, 0);
+    teqz(rc, 3);
+    cp = rReadFile(".test/mode.dat", NULL);
+    tmatch(cp, "abc");
+    rFree(cp);
+
+    //  rCopyFile: an absent source, then a destination that cannot be created
+    rc = rCopyFile(".test/no-such-source", ".test/copy.dat", 0644);
+    teqz(rc, R_ERR_CANT_OPEN);
+    rc = rCopyFile(".test/mode.dat", ".test/no-such-dir/copy.dat", 0644);
+    teqz(rc, R_ERR_CANT_CREATE);
+    rc = rCopyFile(".test/mode.dat", ".test/copy.dat", 0644);
+    teqz(rc, 3);
+    unlink(".test/copy.dat");
+
+    //  rBackupFile: an absent path is refused; a name with no extension still rotates
+    teqi(rBackupFile(".test/no-such-file-at-all", 3), R_ERR_BAD_ARGS);
+    teqi(rBackupFile(NULL, 3), R_ERR_BAD_ARGS);
+
+    rWriteFile(".test/noext", "one", 3, 0);
+    teqi(rBackupFile(".test/noext", 3), 0);
+    ttrue(rFileExists(".test/noext-0"));
+    tfalse(rFileExists(".test/noext"));
+
+    //  A second backup rotates -0 to -1 rather than overwriting it
+    rWriteFile(".test/noext", "two", 3, 0);
+    teqi(rBackupFile(".test/noext", 3), 0);
+    ttrue(rFileExists(".test/noext-1"));
+    cp = rReadFile(".test/noext-0", NULL);
+    tmatch(cp, "two");
+    rFree(cp);
+    cp = rReadFile(".test/noext-1", NULL);
+    tmatch(cp, "one");
+    rFree(cp);
+    unlink(".test/noext-0");
+    unlink(".test/noext-1");
+
+    //  rGetTempFile: a directory that does not exist has no temporary file in it
+    tnull(rGetTempFile(".test/no-such-dir", "pre"));
+
+    cp = rGetTempFile(".test", NULL);
+    tnotnull(cp);
+    ttrue(rFileExists(cp));
+    tcontains(cp, "tmp-");
+    unlink(cp);
+    rFree(cp);
+
+    //  A null directory means the platform temporary directory, not the current one
+    cp = rGetTempFile(NULL, "rtest");
+    tnotnull(cp);
+    ttrue(rFileExists(cp));
+    unlink(cp);
+    rFree(cp);
+
+    tempFileOpen();
+
+    //  rGetFdPath: bad arguments, a closed descriptor, and a buffer too tiny to hold the name
+    teqz(rGetFdPath(0, NULL, sizeof(buf)), R_ERR_BAD_ARGS);
+    teqz(rGetFdPath(0, buf, 0), R_ERR_BAD_ARGS);
+    teqz(rGetFdPath(-1, buf, sizeof(buf)), R_ERR_BAD_ARGS);
+
+    fd = open(".test/mode.dat", O_RDONLY);
+    ttrue(fd >= 0);
+    rc = rGetFdPath(fd, buf, sizeof(buf));
+    ttrue(rc > 0);
+    tcontains(buf, "mode.dat");
+    teqz(rGetFdPath(fd, tiny, sizeof(tiny)), R_ERR_WONT_FIT);
+    close(fd);
+    teqz(rGetFdPath(fd, buf, sizeof(buf)), R_ERR_CANT_FIND);
+
+    unlink(".test/mode.dat");
+
+    //  rWalkDir rejects an empty path or pattern before it allocates anything
+    teqi(rWalkDir(NULL, "*", NULL, NULL, 0), R_ERR_BAD_ARGS);
+    teqi(rWalkDir(".", NULL, NULL, NULL, 0), R_ERR_BAD_ARGS);
+    teqi(rWalkDir("", "*", NULL, NULL, 0), R_ERR_BAD_ARGS);
+    teqi(rWalkDir(".", "", NULL, NULL, 0), R_ERR_BAD_ARGS);
+
+    //  rGetAppDir is a real directory whatever the platform resolves it to
+    cp = rGetAppDir();
+    tnotnull(cp);
+    ttrue(*cp != '\0');
+}
+
+/* rAccessFile must honor mode. ESP32/VxWorks check owner bits; other platforms ask the OS. */
+static void accessFile(void)
+{
+    char *path;
+    int  fd;
+
+    fd = rOpenTempFile(".test", "ACCESS", &path);
+    ttrue(fd >= 0);
+    if (fd < 0) {
+        return;
+    }
+    close(fd);
+
+    teqi(rAccessFile(path, F_OK), 0);
+    teqi(rAccessFile(path, R_OK), 0);
+    teqi(rAccessFile(path, W_OK), 0);
+    teqi(rAccessFile(path, R_OK | W_OK), 0);
+    ttrue(rAccessFile(".test/no-such-file", F_OK) < 0);
+    ttrue(rAccessFile(".test/no-such-file", R_OK) < 0);
+    ttrue(rAccessFile(".test/no-such-file", W_OK) < 0);
+
+#if ME_UNIX_LIKE
+    if (geteuid() == 0) {
+        tinfo("Skipped: The super user can access any file");
+    } else {
+        //  Read only
+        chmod(path, 0400);
+        teqi(rAccessFile(path, R_OK), 0);
+        ttrue(rAccessFile(path, W_OK) < 0, "A read only file must not be writable");
+        ttrue(rAccessFile(path, R_OK | W_OK) < 0);
+        teqi(rAccessFile(path, F_OK), 0);
+
+        //  Write only
+        chmod(path, 0200);
+        teqi(rAccessFile(path, W_OK), 0);
+        ttrue(rAccessFile(path, R_OK) < 0, "A write only file must not be readable");
+
+        //  Execute
+        chmod(path, 0700);
+        teqi(rAccessFile(path, X_OK), 0);
+        chmod(path, 0600);
+        ttrue(rAccessFile(path, X_OK) < 0, "A file without execute permission must not be executable");
+    }
+#else
+    tinfo("Skipped: Permission bits are not modelled on this platform");
+#endif
+    unlink(path);
+    rFree(path);
+}
+
+
+static void largeFile(void)
+{
+    char  *path;
+    ssize size;
+    int   fd;
+    bool  created;
+
+    fd = rOpenTempFile(".test", "LARGE", &path);
+    ttrue(fd >= 0);
+    if (fd < 0) {
+        return;
+    }
+    created = 0;
+#if ME_UNIX_LIKE
+    created = ftruncate(fd, (off_t) 3 * 1024 * 1024 * 1024) == 0;
+    close(fd);
+#elif ME_WIN_LIKE
+    {
+        HANDLE         handle;
+        LARGE_INTEGER  size3GB;
+        DWORD          returned;
+
+        close(fd);
+        size3GB.QuadPart = 3LL * 1024 * 1024 * 1024;
+        handle = CreateFileA(path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (handle != INVALID_HANDLE_VALUE) {
+            //  A sparse file takes no disk space. Not every file system can make one.
+            created = DeviceIoControl(handle, FSCTL_SET_SPARSE, NULL, 0, NULL, 0, &returned, NULL) &&
+                      SetFilePointerEx(handle, size3GB, NULL, FILE_BEGIN) && SetEndOfFile(handle);
+            CloseHandle(handle);
+        }
+    }
+#else
+    close(fd);
+#endif
+    if (!created) {
+        tinfo("Skipped: Cannot make a sparse file of this size here");
+    } else {
+        size = rGetFileSize(path);
+        ttrue(size == 3LL * 1024 * 1024 * 1024, "The size of a file over 2GB must not be truncated");
+        ttrue(rFileExists(path), "A file over 2GB must exist");
+    }
+    unlink(path);
+    rFree(path);
 }
 
 
@@ -447,9 +744,13 @@ int main(void)
     joinFile();
     globFile();
     globDirs();
+    walkAbortTest();
     regressFile();
     matchFile();
     miscFile();
+    fileErrors();
+    accessFile();
+    largeFile();
     rTerm();
 
     return 0;
@@ -457,6 +758,6 @@ int main(void)
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

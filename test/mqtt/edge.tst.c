@@ -7,23 +7,12 @@
 /********************************** Includes **********************************/
 
 #include    "testme.h"
-#include    "mqtt.h"
+#include    "mqtt-test.h"
 
 /*********************************** Locals ***********************************/
 
 static void messageCallback(const MqttRecv *resp)
 {
-}
-
-static RSocket *createConnectedSocket(void)
-{
-    RSocket *sock = rAllocSocket();
-
-    if (rConnectSocket(sock, "localhost", 1883, 0) < 0) {
-        rFreeSocket(sock);
-        return NULL;
-    }
-    return sock;
 }
 
 /************************************ Code ************************************/
@@ -35,7 +24,7 @@ static void testMqttThrottle(void)
     mq = mqttAlloc("test-throttle", NULL);
     ttrue(mq);
 
-    teq(mq->throttle, 0);
+    teqll(mq->throttle, 0);
 
     mqttThrottle(mq);
     ttrue(mq->throttle > 0);
@@ -69,7 +58,7 @@ static void testMqttNullPointers(void)
     tfalse(error);
 
     activity = mqttGetLastActivity(NULL);
-    teq(activity, 0);
+    teqll(activity, 0);
 
     rc = mqttMsgsToSend(NULL);
     teq(rc, 0);
@@ -93,7 +82,7 @@ static void testMqttZeroLengthData(void)
     Mqtt    *mq;
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("test-zero", NULL);
@@ -121,7 +110,7 @@ static void testMqttEmptyTopic(void)
     mq = mqttAlloc("test-empty", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -144,7 +133,7 @@ static void testMqttSpecialTopics(void)
     char    *msg = "test message";
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("test-special", NULL);
@@ -176,7 +165,7 @@ static void testMqttWaitFlags(void)
     char    *msg = "test message";
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("test-wait", NULL);
@@ -205,6 +194,7 @@ static void testMqttWaitFlags(void)
     teq(rc, 0);
 
     mqttFree(mq);
+    // MOB - restore this -- must somehow eat pending I/O events
     rFreeSocket(sock);
 }
 
@@ -219,7 +209,7 @@ static void testMqttBoundaryValues(void)
     ttrue(mq);
     mqttCheckQueue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
     mqttCheckQueue(mq);
 
@@ -234,13 +224,13 @@ static void testMqttBoundaryValues(void)
     mqttSetMessageSize(mq, MQTT_MAX_MESSAGE_SIZE);
 
     mqttSetKeepAlive(mq, 1);
-    teq(mq->keepAlive, 1);
+    teqll(mq->keepAlive, 1);
 
     mqttSetKeepAlive(mq, MAXINT64);
     ttrue(mq->keepAlive < MAXINT64);
 
     mqttSetTimeout(mq, 1);
-    teq(mq->timeout, 1);
+    teqll(mq->timeout, 1);
 
     mqttSetTimeout(mq, MAXINT64);
     ttrue(mq->timeout < MAXINT64);
@@ -256,7 +246,7 @@ static void testMqttRepeatedOperations(void)
     char    *msg = "test message";
     int     rc, i;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("test-repeated", NULL);
@@ -373,6 +363,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

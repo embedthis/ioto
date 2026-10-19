@@ -1,0 +1,77 @@
+/*
+    web.json5 - Web server configuration template for the scenario groups (test/soak, test/stress)
+
+    agent-prep.sh writes this to <group>/state/config/web.json5 with @HTTP@ and @HTTPS@ replaced
+    by the group's TM_HTTP and TM_HTTPS endpoints, so the ports live in one place: the group's
+    testme.json5.
+
+    The routes mirror apps/unit/web.json5 with what the fixtures need on top: the built-in login
+    and logout actions, a role-protected /api/user/ prefix, and a PUT-able /upload/ directory.
+    limits.sessions is deliberately small so the stress group can reach it.
+ */
+{
+    auth: {
+        roles: {
+            public: [],
+            user: [],
+            admin: ['user'],
+            owner: ['admin'],
+            super: ['owner']
+        },
+        login: '/api/public/login',
+        logout: '/api/user/logout',
+        //  TM_MAX_FAILURES from the group's testme.json5, else 0 (off). test/auth sets 5 to reach the
+        //  limit; the short period keeps one test's failures out of the next.
+        maxFailures: '@MAX_FAILURES@',
+        failurePeriod: '2secs',
+        /*
+            A credentialed web.json5 user. test/auth checks that a database user of the same name cannot
+            log in. Nothing logs in as it: the hash is of a password nobody holds.
+         */
+        users: {
+            ops: {
+                password: 'SHA256:0000000000000000000000000000000000000000000000000000000000000000',
+                role: 'user',
+            },
+        },
+    },
+    documents: 'state/site',
+    index: 'index.html',
+    limits: {
+        body: '100K',
+        connections: '100',
+        header: '10K',
+        sessions: '20',
+        upload: '20MB',
+        maxFrame: '100K',
+        maxMessage: '100K',
+    },
+    listen: ['@HTTP@', '@HTTPS@'],
+    redirect: [{status: 302, from: '/old', to: '/index.html'}],
+    routes: [
+        {match: '/api/public/', handler: 'action'},
+        {match: '/api/', handler: 'action', role: 'user'},
+        {match: '/upload/', methods: ['DELETE', 'GET', 'PUT']},
+        {match: '', handler: 'file', methods: ['GET', 'OPTIONS']},
+    ],
+    signatures: {
+        enable: false,
+    },
+    timeouts: {
+        inactivity: '300 secs',
+        parse: '10 secs',
+        request: '10 mins',
+        session: '30 mins',
+        tls: '1 day',
+    },
+    upload: {
+        dir: 'state/tmp',
+        remove: true,
+    },
+    webSockets: {
+        enable: true,
+        ping: 'never',
+        protocol: 'chat',
+        validateUTF: false,
+    },
+}

@@ -1,0 +1,24 @@
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: { typeField: '_type', timestamps: false },
+    indexes: { primary: { sort: 'sk' } },
+    models: {
+        User: {
+            sk: { type: 'string', value: 'user#${id}' },
+            id: { type: 'string' },
+        },
+        Port: {
+            sk: { type: 'string', value: 'port#${id}' },
+            id: { type: 'string' },
+        },
+        Vlan: {
+            sk: { type: 'string', value: 'vlan#${id}' },
+            id: { type: 'string' },
+        },
+        Unprefixed: {
+            sk: { type: 'string', value: '${id}' },
+            id: { type: 'string' },
+        },
+    },
+}

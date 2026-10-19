@@ -4,13 +4,13 @@
     execution: {
         workers: 1,
     },
-    __environment: {
+    environment: {
         // Enable sanitizer builds
         SANITIZE: '1',
-        // AddressSanitizer configuration
-        ASAN_OPTIONS: 'halt_on_error=0:log_path=crashes/asan:symbolize=1',
+        // AddressSanitizer configuration. Reports land in crashes/ and fail the run in cleanup.sh.
+        ASAN_OPTIONS: 'halt_on_error=1:log_path=crashes/asan:symbolize=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1',
         // UndefinedBehaviorSanitizer configuration
-        UBSAN_OPTIONS: 'print_stacktrace=1:halt_on_error=0:log_path=crashes/ubsan',
+        UBSAN_OPTIONS: 'print_stacktrace=1:halt_on_error=1:log_path=crashes/ubsan',
         // Symbolizer path for macOS (Homebrew LLVM)
         ASAN_SYMBOLIZER_PATH: '/opt/homebrew/opt/llvm/bin/llvm-symbolizer',
     },

@@ -1,0 +1,8 @@
+/*
+    seed-bad.json5 - Seed data with an item that violates the schema
+ */
+{
+    Event: [
+        { id: 'bad0', subject: 'Missing source, severity and message' },
+    ],
+}

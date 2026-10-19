@@ -13,8 +13,8 @@
 
 static void basicAlloc()
 {
-    char *cp;
-    int  size;
+    char   *cp;
+    size_t size;
 
     size = 16;
     cp = rAlloc(size);
@@ -45,8 +45,8 @@ static void basicAlloc()
 
 static void bigAlloc()
 {
-    void  *mp;
-    ssize len;
+    void   *mp;
+    size_t len;
 
     len = 8 * 1024 * 1024;
     mp = rAlloc(len);
@@ -57,12 +57,13 @@ static void bigAlloc()
 
 static void lotsOfAlloc()
 {
-    void *mp;
-    void **links;
-    int  depth, i, maxblock, count;
+    void   *mp;
+    void   **links;
+    int    depth;
+    size_t maxblock, count, i;
 
     depth = tdepth();
-    count = (depth * 5 * 1024) + 1024;
+    count = (size_t) ((depth * 5 * 1024) + 1024);
     links = rAlloc(count * sizeof(void*));
     tnotnull(links);
 
@@ -76,7 +77,7 @@ static void lotsOfAlloc()
     }
     rFree(links);
 
-    maxblock = (depth * 512 * 1024) + 1024;
+    maxblock = (size_t) ((depth * 512 * 1024) + 1024);
     links = rAlloc(maxblock * sizeof(void*));
     for (i = 2; i < maxblock; i *= 2) {
         mp = rAlloc(i);
@@ -91,9 +92,10 @@ static void lotsOfAlloc()
 
 static void allocIntegrityChecks()
 {
-    void  *blocks[256];
-    uchar *cp;
-    int   i, j, size, count;
+    void   *blocks[256];
+    uchar  *cp;
+    int    i, count;
+    size_t j, size;
 
     /*
         Basic integrity test. Allocate blocks of 64 bytes and fill and test each block
@@ -117,7 +119,7 @@ static void allocIntegrityChecks()
      */
     count = sizeof(blocks) / sizeof(void*);
     for (i = 1; i < count; i++) {
-        size = 1 << ((i + 6) / 100);
+        size = (size_t) 1 << ((i + 6) / 100);
         blocks[i] = rAlloc(size);
         tnotnull(blocks[i]);
         memset(blocks[i], i % 0xff, size);
@@ -130,7 +132,7 @@ static void allocIntegrityChecks()
             continue;
         }
         cp = (uchar*) blocks[i];
-        size = 1 << ((i + 6) / 100);
+        size = (size_t) 1 << ((i + 6) / 100);
         for (j = 0; j < size; j++) {
             teqi(cp[j], (i % 0xff));
         }
@@ -140,8 +142,8 @@ static void allocIntegrityChecks()
 
 static void testMemdup()
 {
-    char  *src, *dup;
-    ssize size;
+    char   *src, *dup;
+    size_t size;
 
     // Test basic memdup
     src = "Hello World";
@@ -164,7 +166,7 @@ static void testMemdup()
     // Test binary data
     uchar binData[256];
     for (int i = 0; i < 256; i++) {
-        binData[i] = i;
+        binData[i] = (uchar) i;
     }
     dup = rMemdup(binData, 256);
     tnotnull(dup);
@@ -227,9 +229,9 @@ static void testMemcmp()
 
 static void testMemcpy()
 {
-    char  src[100], dest[100];
-    ssize result;
-    ssize len;
+    char   src[100], dest[100];
+    size_t result;
+    size_t len;
 
     // Test basic copy
     scopy(src, sizeof(src), "Hello World");
@@ -260,7 +262,7 @@ static void testMemcpy()
     // Test binary data
     uchar binSrc[50], binDest[50];
     for (int i = 0; i < 50; i++) {
-        binSrc[i] = i;
+        binSrc[i] = (uchar) i;
     }
     result = rMemcpy(binDest, sizeof(binDest), binSrc, 50);
     teqz(result, 50);
@@ -323,7 +325,7 @@ static void testEdgeCases()
     teqz(rMemcpy(dest, 10, NULL, 4), 0);
 
     // Test very small allocations
-    for (int i = 1; i <= 16; i++) {
+    for (size_t i = 1; i <= 16; i++) {
         ptr = rAllocMem(i);
         tnotnull(ptr);
         rFreeMem(ptr);
@@ -345,9 +347,249 @@ static void testEdgeCases()
     }
 }
 
+/*
+    rAllocVirt maps pages directly rather than going through the heap. It is what backs fiber
+    stacks, so the block must be readable and writable across its whole length.
+
+    The TestMe comparison macros expand their arguments twice, so every call with a side effect
+    is bound to a local before it is asserted.
+ */
+static void virtualAlloc()
+{
+    char   *ptr;
+    size_t size;
+
+    size = 64 * 1024;
+    ptr = rAllocVirt(size);
+    tnotnull(ptr);
+
+    /*
+        Write both ends and the middle, then read them back: a partial mapping would fault.
+     */
+    ptr[0] = 'a';
+    ptr[size / 2] = 'b';
+    ptr[size - 1] = 'c';
+    teqi(ptr[0], 'a');
+    teqi(ptr[size / 2], 'b');
+    teqi(ptr[size - 1], 'c');
+
+    memset(ptr, 0, size);
+    teqi(ptr[size - 1], 0);
+
+    rFreeVirt(ptr, size);
+
+    /*
+        Freeing nothing is safe, which is what lets a failed allocation share the cleanup path.
+     */
+    rFreeVirt(NULL, size);
+}
+
+
+/*
+    The arithmetic guards in the allocator. With a handler installed, rAllocException returns
+    to the caller instead of aborting, so a request that cannot be represented is observed as a
+    null return and a handler call rather than a dead process.
+ */
+static int    guardCause;
+static size_t guardSize;
+
+static void guardHandler(int cause, size_t size)
+{
+    guardCause = cause;
+    guardSize = size;
+}
+
+static void memGuards(void)
+{
+    char  dst[4];
+    void  *p;
+
+    rSetMemHandler(guardHandler);
+
+    //  A size that cannot be aligned without wrapping
+    guardCause = 0;
+    p = rAllocMem(SIZE_MAX - 4);
+    tnull(p);
+    teqi(guardCause, R_MEM_FAIL);
+    teqz((ssize) guardSize, (ssize) (SIZE_MAX - 4));
+
+    guardCause = 0;
+    p = rReallocMem(NULL, SIZE_MAX - 4);
+    tnull(p);
+    teqi(guardCause, R_MEM_FAIL);
+
+    //  A copy larger than its destination is refused through the same handler
+    guardCause = 0;
+    teqz((ssize) rMemcpy(dst, sizeof(dst), "0123456789", 10), 0);
+    teqi(guardCause, R_ERR_WONT_FIT);
+    teqz((ssize) rMemcpy(NULL, sizeof(dst), "01", 2), 0);
+    teqz((ssize) rMemcpy(dst, sizeof(dst), NULL, 2), 0);
+    teqz((ssize) rMemcpy(dst, sizeof(dst), "01", 0), 0);
+
+    //  A null operand orders below a non-null one, and two nulls are equal
+    teqi(rMemcmp(NULL, 0, "a", 1), -1);
+    teqi(rMemcmp("a", 1, NULL, 0), 1);
+    teqi(rMemcmp(NULL, 0, NULL, 0), 0);
+
+    rSetMemHandler(NULL);
+}
+
+
+/*
+    A budgeted allocator: unlimited while the budget is negative, otherwise it fails once the
+    budget reaches zero. This is what lets the allocation-failure branches run.
+ */
+static int    allocBudget = -1;
+static int    freeCalls;
+static int    failCause;
+static size_t failSize;
+static int    failCalls;
+
+static void *budgetAlloc(size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return malloc(size);
+}
+
+static void *budgetRealloc(void *ptr, size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return realloc(ptr, size);
+}
+
+static void budgetFree(void *ptr)
+{
+    freeCalls++;
+    free(ptr);
+}
+
+static void failHandler(int cause, size_t size)
+{
+    failCause = cause;
+    failSize = size;
+    failCalls++;
+}
+
+static int ownedCalls;
+
+static char *owned(void)
+{
+    ownedCalls++;
+    return sclone("owned");
+}
+
+/*
+    rFree evaluates its argument once, so freeing the result of a call frees exactly what the
+    call allocated. A macro that names its argument twice calls owned() twice and leaks one.
+ */
+static void freeEvaluatesOnce(void)
+{
+    char *p;
+    int  i;
+
+    rSetAllocator(budgetAlloc, budgetRealloc, budgetFree);
+    allocBudget = -1;
+    freeCalls = 0;
+    ownedCalls = 0;
+    for (i = 0; i < 100; i++) {
+        rFree(owned());
+    }
+    teqi(ownedCalls, 100);
+    teqi(freeCalls, 100);
+
+    //  Null is still tolerated and rFree is still a single statement
+    rFree(NULL);
+    p = NULL;
+    if (p) rFree(p); else p = sclone("else");
+    tmatch(p, "else");
+    rFree(p);
+    rSetAllocator(NULL, NULL, NULL);
+}
+
+static void allocatorInjection(void)
+{
+    char *p, *q, *r;
+    int  i;
+
+    rSetAllocator(budgetAlloc, budgetRealloc, budgetFree);
+    rSetMemHandler(failHandler);
+
+    //  Every path is routed: the custom free sees the block the custom alloc handed out
+    allocBudget = -1;
+    freeCalls = 0;
+    p = rAlloc(10);
+    tnotnull(p);
+    rFree(p);
+    teqi(freeCalls, 1);
+
+    //  A failing allocation returns null and reports the aligned size through the handler
+    allocBudget = 0;
+    failCalls = 0;
+    p = rAllocMem(10);
+    tnull(p);
+    teqi(failCalls, 1);
+    teqi(failCause, R_MEM_FAIL);
+    teqz((ssize) failSize, 16);
+
+    p = rReallocMem(NULL, 10);
+    tnull(p);
+    teqi(failCalls, 2);
+
+    p = rAllocZero(32);
+    tnull(p);
+    teqi(failCalls, 3);
+
+    p = rMemdup("abc", 4);
+    tnull(p);
+    p = sclone("abc");
+    tnull(p);
+
+    //  A failed realloc leaves the original block valid
+    allocBudget = 1;
+    q = rAlloc(8);
+    tnotnull(q);
+    allocBudget = 0;
+    r = rReallocMem(q, 64);
+    tnull(r);
+    scopy(q, 8, "still");
+    tmatch(q, "still");
+    rFree(q);
+
+    //  A zeroed block really is zeroed
+    allocBudget = -1;
+    p = rAllocZero(32);
+    tnotnull(p);
+    for (i = 0; i < 32; i++) {
+        ttrue(p[i] == 0);
+    }
+    rFree(p);
+
+    //  A partial allocator is not installed at all
+    rSetAllocator(budgetAlloc, NULL, NULL);
+    allocBudget = 0;
+    p = rAlloc(4);
+    tnotnull(p);
+    rFree(p);
+
+    allocBudget = -1;
+    rSetMemHandler(NULL);
+    rSetAllocator(NULL, NULL, NULL);
+}
+
 int main(void)
 {
     rInit(0, 0);
+    virtualAlloc();
     basicAlloc();
     bigAlloc();
     lotsOfAlloc();
@@ -357,11 +599,14 @@ int main(void)
     testMemcpy();
     testMemHandlerAndExceptions();
     testEdgeCases();
+    memGuards();
+    allocatorInjection();
+    freeEvaluatesOnce();
     rTerm();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

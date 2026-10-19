@@ -1,0 +1,23 @@
+# libFuzzer dictionary for the url client response-side harness - status lines, chunk framing, SSE
+# fields and header syntax. Tokens are shared across all four oracles; each build only reaches the
+# ones its own grammar can use, and libFuzzer ignores the rest.
+#
+# Control bytes are hex-escaped (\x0d\x0a, not \r\n) - libFuzzer's dictionary reader does not accept
+# a bare backslash-r/backslash-n escape (see r.dict's "\x0a" for the same convention).
+"HTTP/1.0 "
+"HTTP/1.1 "
+"\x0d\x0a"
+"\x0d\x0a\x0d\x0a"
+"Content-Length: "
+"Transfer-Encoding: chunked"
+"Connection: close"
+"Location: "
+"Set-Cookie: "
+"Last-Event-ID: "
+";"
+"data: "
+"event: "
+"id: "
+": "
+"\x0a\x0a"
+"0\x0d\x0a\x0d\x0a"

@@ -49,7 +49,7 @@ static void testSessionCreation(void)
         setCookie = urlGetHeader(up, "Set-Cookie");
         if (setCookie) {
             // Should have a session cookie
-            tgti(slen(setCookie), 0);
+            tgtz(slen(setCookie), 0);
 
             // Common session cookie names: JSESSIONID, PHPSESSID, session_id, etc.
             // Or may use custom name - just verify it exists
@@ -320,7 +320,7 @@ static void testSessionWithXSRFProtection(void)
         // May have X-XSRF-TOKEN header or similar
         cchar *xsrfToken = urlGetHeader(up, "X-XSRF-TOKEN");
         if (xsrfToken) {
-            tgti(slen(xsrfToken), 0);
+            tgtz(slen(xsrfToken), 0);
         } else {
             // XSRF may not be implemented
             ttrue(1);
@@ -391,6 +391,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

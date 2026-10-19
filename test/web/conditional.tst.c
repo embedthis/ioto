@@ -12,8 +12,47 @@
 
 static char *HTTP;
 static char *HTTPS;
+static char *WRITE_PATH;
 
 /************************************ Code ************************************/
+
+/*
+    Give this test its own writable document. A suite-global fixture can be absent or carry content
+    from another run, especially when two suites share a document tree. The upload directory is
+    disposable, and the process id keeps concurrent test processes from naming the same file.
+ */
+static bool createWriteFixture(void)
+{
+    Url  *up;
+    char url[160];
+    int  status;
+
+    WRITE_PATH = sfmt("/upload/conditional-%d.txt", getpid());
+    up = urlAlloc(0);
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
+                      "01234567890123456789012345678901234567890123456789"
+                      "01234567890123456789012345678901234567890123456789", 100, NULL);
+    urlFree(up);
+    ttrue(status == 201 || status == 204);
+    return status == 201 || status == 204;
+}
+
+static void removeWriteFixture(void)
+{
+    Url  *up;
+    char url[160];
+    int  status;
+
+    if (!WRITE_PATH) {
+        return;
+    }
+    up = urlAlloc(0);
+    status = urlFetch(up, "DELETE", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0, NULL);
+    teqi(status, 204);
+    urlFree(up);
+    rFree(WRITE_PATH);
+    WRITE_PATH = NULL;
+}
 
 static void testIfNoneMatchWithMatching()
 {
@@ -92,7 +131,7 @@ static void testIfMatchSuccess()
     up = urlAlloc(0);
 
     //  First, get the file and its ETag
-    status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0, NULL);
     teqi(status, 200);
     etag = sclone(urlGetHeader(up, "ETag"));
     tnotnull(etag);
@@ -100,7 +139,7 @@ static void testIfMatchSuccess()
     //  Now PUT with If-Match using the correct ETag - should succeed
     urlClose(up);
     headers = sfmt("If-Match: %s\r\n", etag);
-    status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
                       "Updated content", 15, headers);
     if (status != 204 && status != 201) {
         tinfo("PUT with If-Match failed: status=%d, etag=%s", status, etag);
@@ -121,7 +160,7 @@ static void testIfMatchFailure()
     up = urlAlloc(0);
 
     //  PUT with If-Match using wrong ETag - should get 412
-    status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
                       "Updated content", 15,
                       "If-Match: \"wrong-etag\"\r\n");
     teqi(status, 412);  // 412 Precondition Failed
@@ -138,7 +177,7 @@ static void testIfMatchWildcard()
     up = urlAlloc(0);
 
     //  PUT with If-Match: * - should succeed if resource exists
-    status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
                       "Updated content", 15,
                       "If-Match: *\r\n");
     ttrue(status == 204 || status == 201);  // Success
@@ -203,14 +242,14 @@ static void testIfUnmodifiedSinceSuccess()
     up = urlAlloc(0);
 
     //  First, get the file and its Last-Modified date
-    status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0, NULL);
     teqi(status, 200);
     lastModified = sclone(urlGetHeader(up, "Last-Modified"));
     tnotnull(lastModified);
 
     //  Now PUT with If-Unmodified-Since using same or future date - should succeed
     urlClose(up);
-    status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
                       "Updated content", 15, SFMT(headers, "If-Unmodified-Since: %s\r\n", lastModified));
     ttrue(status == 204 || status == 201);  // Success
 
@@ -227,7 +266,7 @@ static void testIfUnmodifiedSinceFailure()
     up = urlAlloc(0);
 
     //  PUT with If-Unmodified-Since using old date - should get 412
-    status = urlFetch(up, "PUT", SFMT(url, "%s/range-test-write.txt", HTTP),
+    status = urlFetch(up, "PUT", SFMT(url, "%s%s", HTTP, WRITE_PATH),
                       "Updated content", 15,
                       "If-Unmodified-Since: Mon, 01 Jan 2000 00:00:00 GMT\r\n");
     teqi(status, 412);  // 412 Precondition Failed
@@ -375,20 +414,20 @@ static void testDeleteWithPrecondition()
     up = urlAlloc(0);
 
     //  First, get the file and its ETag
-    status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0, NULL);
     teqi(status, 200);
     etag = urlGetHeader(up, "ETag");
     tnotnull(etag);
 
     //  DELETE with If-Match using wrong ETag - should get 412
     urlClose(up);
-    status = urlFetch(up, "DELETE", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0,
+    status = urlFetch(up, "DELETE", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0,
                       "If-Match: \"wrong-etag\"\r\n");
     teqi(status, 412);  // 412 Precondition Failed
 
     //  File should still exist
     urlClose(up);
-    status = urlFetch(up, "GET", SFMT(url, "%s/range-test-write.txt", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(url, "%s%s", HTTP, WRITE_PATH), NULL, 0, NULL);
     teqi(status, 200);  // File still exists
 
     urlFree(up);
@@ -412,7 +451,11 @@ static void testMalformedEtag()
 
 static void fiberMain(void *arg)
 {
-    if (setup(&HTTP, &HTTPS)) {
+#if !ME_WEB_MUTATIONS
+    //  Every case here is a precondition on PUT or DELETE, and the fixture is itself a PUT
+    tskip("PUT and DELETE are unavailable on this platform\n");
+#else
+    if (setup(&HTTP, &HTTPS) && createWriteFixture()) {
         testIfNoneMatchWithMatching();
         testIfNoneMatchWithDifferent();
         testIfNoneMatchWildcard();
@@ -430,7 +473,9 @@ static void fiberMain(void *arg)
         testMultipleETags();
         testDeleteWithPrecondition();
         testMalformedEtag();
+        removeWriteFixture();
     }
+#endif
     rFree(HTTP);
     rFree(HTTPS);
     rStop();
@@ -444,6 +489,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

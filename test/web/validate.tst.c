@@ -83,12 +83,23 @@ static void testControllerActionValidation()
     ttrue(webValidatePath("/controller/action"));
 }
 
+/*
+    A request whose signature declares no "response" block is passed through unvalidated, even
+    under strict signatures. web->signature is 0 here, which addresses the root of the signatures
+    file - it has no "response" member, so the lookup misses and the data is allowed.
+
+    Only the accepting paths are exercised here: a validation failure writes an error response to
+    the connection, and these run without a socket. The rejecting paths are covered over HTTP by
+    sig.tst.c and sig-types.tst.c.
+ */
 static void testDataValidation()
 {
-    WebHost *host;
-    Web     *web;
-    Json    *config;
-    RBuf    *buf;
+    WebHost  *host;
+    Web      *web;
+    Json     *config;
+    RBuf     *buf;
+    WebRoute route;
+    bool     result;
 
     webInit();
     config = jsonParseFile("web.json5", NULL, 0);
@@ -97,19 +108,33 @@ static void testDataValidation()
     host = webAllocHost(config, 0);
     ttrue(host);
 
+    memset(&route, 0, sizeof(route));
     web = rAllocType(Web);
     web->host = host;
+    web->route = &route;
     buf = rAllocBuf(1024);
 
-    // Test valid JSON data validation
-    bool result = webValidateData(web, buf, "{\"name\": \"test\"}", NULL, "request");
-    // Should return true or false depending on signature configuration
-    ttrue(result == true || result == false);
+    //  No response signature at the addressed node, so the data is accepted untouched
+    result = webValidateData(web, buf, "{\"name\": \"test\"}", NULL, "request");
+    ttrue(result);
 
-    // Test invalid JSON data validation
-    result = webValidateData(web, buf, "{invalid json", NULL, "request");
-    // Should return true or false depending on signature configuration
-    ttrue(result == true || result == false);
+    //  An explicit signature key selects a primitive string signature
+    rFlushBuf(buf);
+    result = webValidateData(web, buf, "hello", "controller.test_1.response", "response");
+    ttrue(result);
+    tmatch(rBufToString(buf), "\"hello\"");
+
+    //  A number signature accepts a numeric string
+    rFlushBuf(buf);
+    result = webValidateData(web, buf, "42", "controller.test_9.request.fields.count", "response");
+    ttrue(result);
+    //  The value is written back as a quoted string - webValidateData carries no type information
+    tmatch(rBufToString(buf), "\"42\"");
+
+    //  A null signature accepts empty data
+    rFlushBuf(buf);
+    result = webValidateData(web, buf, "", "controller.test_0.response", "response");
+    ttrue(result);
 
     rFreeBuf(buf);
     rFree(web);
@@ -119,10 +144,12 @@ static void testDataValidation()
 
 static void testJSONValidation()
 {
-    WebHost *host;
-    Web     *web;
-    Json    *config, *testJson;
-    RBuf    *buf;
+    WebHost  *host;
+    Web      *web;
+    Json     *config, *testJson;
+    RBuf     *buf;
+    WebRoute route;
+    bool     result;
 
     webInit();
     config = jsonParseFile("web.json5", NULL, 0);
@@ -131,8 +158,10 @@ static void testJSONValidation()
     host = webAllocHost(config, 0);
     ttrue(host);
 
+    memset(&route, 0, sizeof(route));
     web = rAllocType(Web);
     web->host = host;
+    web->route = &route;
     buf = rAllocBuf(1024);
 
     // Create test JSON object
@@ -140,9 +169,20 @@ static void testJSONValidation()
     jsonSet(testJson, 0, "name", "test", JSON_STRING);
     jsonSet(testJson, 0, "value", "123", JSON_STRING);
 
-    // Test JSON validation
-    bool result = webValidateJson(web, buf, testJson, 0, NULL, "request");
-    ttrue(result == true || result == false);
+    /*
+        With no response signature the object is written to the buffer verbatim and accepted.
+     */
+    result = webValidateJson(web, buf, testJson, 0, NULL, "request");
+    ttrue(result);
+    tcontains(rBufToString(buf), "\"name\"");
+    tcontains(rBufToString(buf), "\"test\"");
+
+    /*
+        An unknown signature key is refused. No response is written for this path, so it is safe
+        to exercise without a socket.
+     */
+    rFlushBuf(buf);
+    tfalse(webValidateJson(web, buf, testJson, 0, "no.such.signature", "request"));
 
     jsonFree(testJson);
     rFreeBuf(buf);
@@ -287,6 +327,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

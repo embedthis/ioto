@@ -81,6 +81,8 @@ typedef struct FuzzRunner {
     jmp_buf crashJmp;           // Jump buffer for crash handling
     bool crashed;               // Crash flag
     int signal;                 // Last signal received
+    bool serverCrashed;         // Server process confirmed dead - stops fuzzing
+    int serverCrashReports;     // Number of server-crash reports written (bounded)
 } FuzzRunner;
 
 /**
@@ -313,11 +315,34 @@ PUBLIC pid_t fuzzGetServerPid(void);
 PUBLIC bool fuzzIsServerAlive(pid_t pid);
 
 /**
-    Report server crash with input that caused it
-    @param input Input data that may have caused crash
+    Verify a known, live server is actually listening before fuzzing starts. Refuses to run rather
+    than fuzz against an unknown or dead target.
+    @param host Target host to probe
+    @param port Target port to probe
+    @return True if a server pid is known, that process is alive, and it accepts a connection on
+        host:port. False otherwise (caller should fail the test rather than run the fuzzer).
+ */
+PUBLIC bool fuzzRequireServer(cchar *host, int port);
+
+/**
+    Check if the server behind this fuzzing run is still alive. If not, marks the runner so
+    fuzzRun() stops on the next iteration, and reports the crash (bounded, deduplicated).
+    @param runner Fuzzer runner
+    @param context Short description of when the check happened, for logging
+    @param input Fuzz input in flight when the check was made (for the crash report)
+    @param len Length of input
+    @return True if the server is still alive
+ */
+PUBLIC bool fuzzCheckServerAlive(FuzzRunner *runner, cchar *context, cchar *input, size_t len);
+
+/**
+    Report a real, confirmed server crash with the input that caused it. Bounded to a small number
+    of reports per run to avoid flooding the crash directory once the server is known to be down.
+    @param runner Fuzzer runner (tracks the report count and the real exit status)
+    @param input Input data that caused the crash
     @param len Length of input
  */
-PUBLIC void fuzzReportServerCrash(cchar *input, size_t len);
+PUBLIC void fuzzReportServerCrash(FuzzRunner *runner, cchar *input, size_t len);
 
 /********************************* Constants **********************************/
 
@@ -338,6 +363,6 @@ PUBLIC void fuzzReportServerCrash(cchar *input, size_t len);
 #endif /* _h_FUZZ_HARNESS */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
 */

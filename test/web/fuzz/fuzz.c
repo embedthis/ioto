@@ -13,6 +13,9 @@
 static FuzzRunner *currentRunner = NULL;
 static bool       (*shouldStopCallback)(void) = NULL;
 
+// Limit duplicate reports after server death.
+#define FUZZ_MAX_SERVER_CRASH_REPORTS 5
+
 /********************************** Forwards **********************************/
 
 static uint hex2int(char c);
@@ -35,6 +38,8 @@ PUBLIC FuzzRunner *fuzzInit(FuzzConfig *config)
     runner->stats.startTime = rGetTicks();
     runner->crashed = false;
     runner->signal = 0;
+    runner->serverCrashed = false;
+    runner->serverCrashReports = 0;
 
     // Create crash directory
     if (runner->config.crashDir) {
@@ -162,7 +167,10 @@ PUBLIC int fuzzRun(FuzzRunner *runner)
         }
         if (!input) continue;
 
-        // Check if fuzzing should stop (e.g., server crashed)
+        if (runner->serverCrashed) {
+            rInfo("fuzz", "Stopping fuzzing - server crashed at iteration %d", i);
+            break;
+        }
         if (shouldStopCallback && shouldStopCallback()) {
             rInfo("fuzz", "Stopping fuzzing early at iteration %d", i);
             break;
@@ -685,23 +693,104 @@ PUBLIC bool fuzzIsServerAlive(pid_t pid)
 #endif
 }
 
-PUBLIC void fuzzReportServerCrash(cchar *input, size_t len)
+/*
+    Read the server exit status, retrying briefly while setup.sh records it.
+    Return a static description, or unknown if no status is available.
+ */
+static cchar *fuzzGetServerStatus(void)
+{
+    static char status[64];
+    char        *content;
+    size_t      len;
+    int         i;
+
+    for (i = 0; i < 10; i++) {
+        content = rReadFile(".testme/server.status", &len);
+        if (content && len > 0) {
+            scopy(status, sizeof(status), strim(content, " \t\r\n", 0));
+            rFree(content);
+            if (status[0]) {
+                return status;
+            }
+        } else if (content) {
+            rFree(content);
+        }
+        rSleep(100);
+    }
+    return "unknown (status not recorded)";
+}
+
+PUBLIC bool fuzzRequireServer(cchar *host, int port)
+{
+    pid_t   pid;
+    RSocket *sock;
+    bool    reachable;
+
+    pid = fuzzGetServerPid();
+    if (pid <= 0) {
+        rError("fuzz", "Cannot determine the fuzz server pid (missing or unreadable "
+               ".testme/server.pid) - refusing to start fuzzing");
+        return false;
+    }
+    if (!fuzzIsServerAlive(pid)) {
+        rError("fuzz", "Fuzz server pid %d is not running - refusing to start fuzzing", (int) pid);
+        return false;
+    }
+    sock = rAllocSocket();
+    if (!sock) {
+        rError("fuzz", "Cannot allocate socket to verify the fuzz server - refusing to start fuzzing");
+        return false;
+    }
+    reachable = rConnectSocket(sock, host, port, rGetTicks() + 2 * TPS) == 0;
+    rFreeSocket(sock);
+    if (!reachable) {
+        rError("fuzz", "Server pid %d is running but not accepting connections on %s:%d - "
+               "pid does not match the listening server, refusing to start fuzzing", (int) pid, host, port);
+        return false;
+    }
+    return true;
+}
+
+PUBLIC bool fuzzCheckServerAlive(FuzzRunner *runner, cchar *context, cchar *input, size_t len)
+{
+    if (runner->serverCrashed) {
+        return false;
+    }
+    if (fuzzIsServerAlive(fuzzGetServerPid())) {
+        return true;
+    }
+    rInfo("fuzz", "Server crashed %s", context);
+    runner->serverCrashed = true;
+    fuzzReportServerCrash(runner, input, len);
+    return false;
+}
+
+PUBLIC void fuzzReportServerCrash(FuzzRunner *runner, cchar *input, size_t len)
 {
     char   *hash, *filename, *metafile, *content;
+    cchar  *status;
     FILE   *fp;
     size_t i;
+
+    if (runner->serverCrashReports >= FUZZ_MAX_SERVER_CRASH_REPORTS) {
+        return;
+    }
+    if (runner->serverCrashReports == 0) {
+        mkdir("crashes", 0755);
+        mkdir("crashes/server", 0755);
+    }
+    runner->serverCrashReports++;
 
     hash = fuzzHash(input, len);
     filename = sfmt("crashes/server/crash-%s.txt", hash);
     metafile = sfmt("crashes/server/crash-%s.meta", hash);
-
-    mkdir("crashes", 0755);
-    mkdir("crashes/server", 0755);
+    status = fuzzGetServerStatus();
 
     fp = fopen(filename, "w");
     if (fp) {
         fprintf(fp, "=== SERVER CRASH ===\n");
         fprintf(fp, "Timestamp: %lld\n", (long long) rGetTicks());
+        fprintf(fp, "Server status: %s\n", status);
         fprintf(fp, "Input length: %zu\n", len);
         fprintf(fp, "Input hash: %s\n", hash);
         fprintf(fp, "\n--- Input Data (hex) ---\n");
@@ -722,10 +811,14 @@ PUBLIC void fuzzReportServerCrash(cchar *input, size_t len)
         fprintf(fp, "\n");
         fclose(fp);
     }
-    content = sfmt("Signal: 0 (server crash)\nLength: %lld\nHash: %s\nTime: %lld\n",
-                   (long long) len, hash, (long long) rGetTicks());
+    content = sfmt("Status: %s\nLength: %lld\nHash: %s\nTime: %lld\n",
+                   status, (long long) len, hash, (long long) rGetTicks());
     rWriteFile(metafile, content, slen(content), 0644);
-    rInfo("fuzz", "Server crash input saved to: %s", filename);
+    rInfo("fuzz", "Server crash input saved to: %s (status: %s)", filename, status);
+    if (runner->serverCrashReports == FUZZ_MAX_SERVER_CRASH_REPORTS) {
+        rInfo("fuzz", "Reached %d server-crash reports - suppressing further reports for this run",
+              FUZZ_MAX_SERVER_CRASH_REPORTS);
+    }
 
     rFree(hash);
     rFree(filename);
@@ -734,6 +827,6 @@ PUBLIC void fuzzReportServerCrash(cchar *input, size_t len)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

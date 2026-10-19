@@ -1,0 +1,28 @@
+# libFuzzer dictionary for the mqtt client's broker-facing parse harness - fixed-header type/flags
+# nibbles and remaining-length varint bytes. Tokens are shared across both oracles; each build only
+# reaches the ones its own grammar can use, and libFuzzer ignores the rest.
+#
+# Control bytes are hex-escaped, matching url.dict's and r.dict's convention (libFuzzer's dictionary
+# reader does not accept a bare backslash escape).
+"\x20\x00"
+"\x20\x02"
+"\x30\x00"
+"\x40\x00"
+"\x50\x00"
+"\x62\x00"
+"\x70\x00"
+"\x90\x00"
+"\xb0\x00"
+"\xd0\x00"
+"\xe0\x00"
+"\x00\x00"
+"\xf0\x00"
+"\x7f"
+"\x80\x01"
+"\xff\x7f"
+"\x80\x80\x01"
+"\xff\xff\x7f"
+"\x80\x80\x80\x01"
+"\xff\xff\xff\x7f"
+"\xff\xff\xff\xff\x7f"
+"\x80\x80\x80\x80\x01"

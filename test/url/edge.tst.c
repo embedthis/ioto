@@ -33,13 +33,7 @@ static void testMalformedUrls()
     ttrue(up->hash == 0);
 
     rc = urlParse(up, "http://");
-    ttrue(rc == 0);
-    tmatch(up->scheme, "http");
-    tmatch(up->host, "localhost");
-    ttrue(up->port == 80);
-    tmatch(up->path, "");
-    ttrue(up->query == 0);
-    ttrue(up->hash == 0);
+    ttrue(rc < 0);
 
     rc = urlParse(up, "://hostname/");
     ttrue(rc == 0);
@@ -283,6 +277,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

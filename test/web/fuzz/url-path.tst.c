@@ -20,8 +20,9 @@
 
 /*********************************** Locals ***********************************/
 
-static char *HTTP;
-static int  fuzzResult = 0;
+static char       *HTTP;
+static int        fuzzResult = 0;
+static FuzzRunner *runner;
 
 /*********************************** Forwards *********************************/
 
@@ -71,7 +72,6 @@ int main(int argc, char **argv)
  */
 static void fuzzFiber(void *arg)
 {
-    FuzzRunner *runner;
     FuzzConfig *config = (FuzzConfig*) arg;
     cchar      *replayFile = getenv("FUZZ_REPLAY");
 
@@ -80,6 +80,20 @@ static void fuzzFiber(void *arg)
         fuzzResult = -1;
         rStop();
         return;
+    }
+
+    if (!replayFile) {
+        cchar *scheme = NULL, *host = NULL, *path = NULL;
+        int   port = 0;
+        char  *buf = webParseUrl(HTTP, &scheme, &host, &port, &path, NULL, NULL);
+        bool  ok = fuzzRequireServer(host ? host : "localhost", port);
+        rFree(buf);
+        if (!ok) {
+            tfail("Cannot verify fuzz server is alive and listening on %s", HTTP);
+            fuzzResult = -1;
+            rStop();
+            return;
+        }
     }
 
     // Check if we're replaying a crash file
@@ -140,6 +154,10 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
     char url[2048];
     int  status;
 
+    if (runner->serverCrashed) {
+        return 1;
+    }
+
     /*
         Use URL_NO_LINGER to prevent TIME_WAIT accumulation during fuzzing
         This sends RST instead of FIN on close (works on Linux, macOS, Windows)
@@ -163,9 +181,7 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
         urlFetch returns error code if connection failed
      */
     if (status < 0) {
-        if (!fuzzIsServerAlive(fuzzGetServerPid())) {
-            tinfo("Server crashed during path validation: %.*s", (int) len, fuzzPath);
-            fuzzReportServerCrash(fuzzPath, len);
+        if (!fuzzCheckServerAlive(runner, "during path validation", fuzzPath, len)) {
             urlFree(up);
             return 0;  // Server crash detected
         }
@@ -209,9 +225,7 @@ static bool testPathValidation(cchar *fuzzPath, size_t len)
         Check if server is still alive after processing request
         This catches delayed crashes
      */
-    if (!fuzzIsServerAlive(fuzzGetServerPid())) {
-        tinfo("Server crashed after processing path: %.*s", (int) len, fuzzPath);
-        fuzzReportServerCrash(fuzzPath, len);
+    if (!fuzzCheckServerAlive(runner, "after processing path", fuzzPath, len)) {
         return 0; // Server crash detected
     }
 
@@ -339,6 +353,6 @@ static char *mutatePathInput(cchar *input, size_t *len)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

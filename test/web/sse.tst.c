@@ -208,9 +208,26 @@ static void testResponseHeaders(void)
     urlFree(up);
 }
 
+
+static void testEventNewlines(void)
+{
+    char *response, url[256];
+
+    response = urlGet(SFMT(url, "%s/test/event?data=a%%0Aid:%%2099%%0D%%0Ab%%0Dc", HTTP), NULL);
+    tnotnull(response);
+    tcontains(response, "data: a\ndata: id: 99\ndata: b\ndata: c\n\n");
+    tfalse(scontains(response, "\nid: 99") != NULL, "Data must not inject an id field");
+    rFree(response);
+
+    response = urlGet(SFMT(url, "%s/test/event?data=x&name=a%%0Adata:%%20evil", HTTP), NULL);
+    tfalse(response && scontains(response, "evil") != NULL, "A newline in the event name must be refused");
+    rFree(response);
+}
+
 static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
+        testEventNewlines();
         testBasicEvents();
         testLowLevelApi();
         testHttpsEvents();
@@ -230,6 +247,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

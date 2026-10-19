@@ -76,7 +76,7 @@ static void testAuthAutoDetect()
 
     tmatch(up->username, "user");
     tmatch(up->password, "password");
-    ttrue(up->authType == NULL);  // Will be set after server challenge
+    ttrue(up->authType == NULL);  // Stays NULL; the challenge never rewrites the configured type
 
     urlFree(up);
 }
@@ -137,6 +137,6 @@ int main(void)
 #endif /* URL_AUTH */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

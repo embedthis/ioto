@@ -28,6 +28,7 @@
 
 /*********************************** Locals ***********************************/
 
+//  Exercise the SSE action; /test/stream emits untyped bytes, not events.
 static char *HTTP;
 static char *HTTPS;
 
@@ -43,7 +44,7 @@ static void testSSEConnection(void)
     up = urlAlloc(0);
 
     // Test: Basic SSE connection
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     if (status == 200) {
@@ -86,7 +87,7 @@ static void testSSEContentType(void)
     up = urlAlloc(0);
 
     // Test: SSE must return text/event-stream
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     if (status == 200) {
@@ -120,7 +121,7 @@ static void testSSEWithAcceptHeader(void)
     up = urlAlloc(0);
 
     // Test: Request with explicit Accept header for SSE
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     // Should accept SSE request
@@ -138,7 +139,7 @@ static void testSSEWithoutAcceptHeader(void)
     up = urlAlloc(0);
 
     // Test: SSE request without Accept header
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0, NULL);
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0, NULL);
 
     // May still work or require Accept header
     ttrue(status == 200 || status == 404 || status == 405 || status == 406);
@@ -156,7 +157,7 @@ static void testSSEKeepAlive(void)
     up = urlAlloc(0);
 
     // Test: SSE should use keep-alive connection
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     if (status == 200) {
@@ -184,7 +185,7 @@ static void testSSECacheHeaders(void)
     up = urlAlloc(0);
 
     // Test: SSE responses should not be cached
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     if (status == 200) {
@@ -219,7 +220,7 @@ static void testSSECORS(void)
     up = urlAlloc(0);
 
     // Test: SSE with CORS headers (if cross-origin)
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n"
                       "Origin: http://localhost:4100\r\n");
 
@@ -250,20 +251,20 @@ static void testSSEMethodRestriction(void)
     up = urlAlloc(0);
 
     // Test 1: GET should work for SSE
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
     ttrue(status == 200 || status == 404 || status == 405);
 
     // Test 2: POST should not work for SSE
     urlClose(up);
-    status = urlFetch(up, "POST", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "POST", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
     // Should reject POST (but may accept if endpoint doesn't validate method)
     ttrue(status == 200 || status == 405 || status == 404);
 
     // Test 3: PUT should not work for SSE
     urlClose(up);
-    status = urlFetch(up, "PUT", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "PUT", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
     // Should reject PUT (but may accept if endpoint doesn't validate method)
     ttrue(status == 200 || status == 405 || status == 404);
@@ -280,7 +281,7 @@ static void testSSEWithQueryParameters(void)
     up = urlAlloc(0);
 
     // Test: SSE with query parameters (common pattern for filtering)
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream?filter=important&limit=10", HTTP),
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event?filter=important&limit=10", HTTP),
                       NULL, 0, "Accept: text/event-stream\r\n");
 
     // Should accept query parameters
@@ -299,7 +300,7 @@ static void testSSEConnectionHeaders(void)
     up = urlAlloc(0);
 
     // Test: SSE should NOT use chunked encoding (or it may, depends on impl)
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n");
 
     if (status == 200) {
@@ -327,7 +328,7 @@ static void testSSEWithCustomHeaders(void)
     up = urlAlloc(0);
 
     // Test: SSE with custom request headers
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n"
                       "X-Custom-Header: value\r\n");
 
@@ -346,7 +347,7 @@ static void testSSEWithAuthentication(void)
     up = urlAlloc(0);
 
     // Test: SSE with authentication header
-    status = urlFetch(up, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                       "Accept: text/event-stream\r\n"
                       "Authorization: Bearer fake-token\r\n");
 
@@ -367,11 +368,11 @@ static void testSSEMultipleClients(void)
     up3 = urlAlloc(0);
 
     // Test: Multiple clients connecting to SSE endpoint
-    status1 = urlFetch(up1, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status1 = urlFetch(up1, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                        "Accept: text/event-stream\r\n");
-    status2 = urlFetch(up2, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status2 = urlFetch(up2, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                        "Accept: text/event-stream\r\n");
-    status3 = urlFetch(up3, "GET", SFMT(url, "%s/test/stream", HTTP), NULL, 0,
+    status3 = urlFetch(up3, "GET", SFMT(url, "%s/test/event", HTTP), NULL, 0,
                        "Accept: text/event-stream\r\n");
 
     // All should be able to connect
@@ -415,6 +416,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

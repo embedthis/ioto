@@ -62,10 +62,61 @@ static void testRequiredFields()
     dbClose(db);
 }
 
+static void testRequiredOnUpdate()
+{
+    Db          *db;
+    CDbItem     *item;
+    cchar       *error, *id;
+
+    db = dbOpen("./db/schema-required-update.db", "./schema.json", DB_OPEN_RESET);
+    tnotnull(db);
+
+    item = dbCreate(db, "User", DB_PROPS(
+        "username", "reqtest",
+        "email", "reqtest@test.com",
+        "role", "user"
+    ), NULL);
+    tnotnull(item);
+    id = sclone(dbField(item, "id"));
+
+    item = dbUpdate(db, "User", DB_JSON("{id:'%s', username: undefined}", id), NULL);
+    tnull(item);
+    error = dbGetError(db);
+    tnotnull(error);
+
+    item = dbGet(db, "User", DB_PROPS("id", id), NULL);
+    tnotnull(item);
+    tmatch(dbField(item, "username"), "reqtest");
+
+    item = dbSetField(db, "User", "email", NULL, DB_PROPS("id", id), NULL);
+    tnull(item);
+    error = dbGetError(db);
+    tnotnull(error);
+
+    item = dbGet(db, "User", DB_PROPS("id", id), NULL);
+    tnotnull(item);
+    tmatch(dbField(item, "email"), "reqtest@test.com");
+
+    item = dbUpdate(db, "User", DB_PROPS(
+        "id", id, "email", "reqtest@test.com", "role", "user"
+    ), DB_PARAMS(.upsert = 1));
+    tnull(item);
+    error = dbGetError(db);
+    tnotnull(error);
+
+    item = dbUpdate(db, "User", DB_PROPS("id", id, "role", "admin"), NULL);
+    tnotnull(item);
+    tmatch(dbField(item, "role"), "admin");
+
+    rFree((char*) id);
+    dbClose(db);
+}
+
 static void testUniqueFields()
 {
     Db          *db;
     CDbItem     *item;
+    cchar       *error, *otherId, *uniqueId;
 
     db = dbOpen("./db/schema-unique.db", "./schema.json", DB_OPEN_RESET);
     tnotnull(db);
@@ -77,9 +128,8 @@ static void testUniqueFields()
         "role", "user"
     ), NULL);
     tnotnull(item);
+    uniqueId = sclone(dbField(item, "id"));
 
-#if FUTURE
-    // The unique constraint is not implemented yet
     //  Try to create second user with same username (should fail due to unique constraint)
     item = dbCreate(db, "User", DB_PROPS(
         "username", "unique",
@@ -89,7 +139,6 @@ static void testUniqueFields()
     tnull(item);
     error = dbGetError(db);
     tnotnull(error);
-#endif
 
     //  Create VLAN with unique name
     item = dbCreate(db, "Vlan", DB_PROPS(
@@ -98,7 +147,6 @@ static void testUniqueFields()
     ), NULL);
     tnotnull(item);
 
-#if FUTURE
     //  Try to create second VLAN with same name (should fail)
     item = dbCreate(db, "Vlan", DB_PROPS(
         "name", "unique-vlan",
@@ -107,8 +155,55 @@ static void testUniqueFields()
     tnull(item);
     error = dbGetError(db);
     tnotnull(error);
-#endif
 
+    item = dbCreate(db, "User", DB_PROPS(
+        "username", "other",
+        "email", "other@test.com",
+        "role", "user"
+    ), NULL);
+    tnotnull(item);
+    otherId = sclone(dbField(item, "id"));
+
+    item = dbUpdate(db, "User", DB_PROPS(
+        "id", otherId,
+        "username", "unique"
+    ), NULL);
+    tnull(item);
+    error = dbGetError(db);
+    tnotnull(error);
+
+    item = dbGet(db, "User", DB_PROPS("id", otherId), NULL);
+    tnotnull(item);
+    tmatch(dbField(item, "username"), "other");
+
+    item = dbUpdate(db, "User", DB_PROPS(
+        "id", otherId,
+        "username", "other",
+        "role", "admin"
+    ), NULL);
+    tnotnull(item);
+    tmatch(dbField(item, "role"), "admin");
+
+    item = dbUpdate(db, "User", DB_PROPS(
+        "id", otherId,
+        "username", "other",
+        "email", "other@test.com",
+        "role", "admin"
+    ), DB_PARAMS(.upsert = 1));
+    tnotnull(item);
+
+    item = dbUpdate(db, "User", DB_PROPS(
+        "id", otherId,
+        "username", "unique",
+        "email", "other@test.com",
+        "role", "admin"
+    ), DB_PARAMS(.upsert = 1));
+    tnull(item);
+    error = dbGetError(db);
+    tnotnull(error);
+
+    rFree((char*) otherId);
+    rFree((char*) uniqueId);
     dbClose(db);
 }
 
@@ -221,21 +316,55 @@ static void testModelValidation()
     dbClose(db);
 }
 
+/*
+    Reject unsupported validate and crypt attributes; accept map with a warning.
+ */
+static void testUnsupportedAttributes()
+{
+    Db      *db;
+    CDbItem *item;
+
+    db = dbOpen("./db/schema-attr-validate.db", "./schema-attr-validate.json5", DB_OPEN_RESET);
+    tnull(db);
+
+    db = dbOpen("./db/schema-attr-crypt.db", "./schema-attr-crypt.json5", DB_OPEN_RESET);
+    tnull(db);
+
+    db = dbOpen("./db/schema-attr-map.db", "./schema-attr-map.json5", DB_OPEN_RESET);
+    tnotnull(db);
+    if (db) {
+        item = dbCreate(db, "Item", DB_PROPS("id", "1", "alias", "first"), NULL);
+        tnotnull(item);
+        tmatch(dbField(item, "alias"), "first");
+        dbClose(db);
+    }
+}
+
+
+static void testUidGenerateSize()
+{
+    tnull(dbOpen("./db/schema-uid-negative.db", "./schema-uid-negative.json5", DB_OPEN_RESET));
+    tnull(dbOpen("./db/schema-uid-zero.db", "./schema-uid-zero.json5", DB_OPEN_RESET));
+}
+
 int main(void)
 {
     rInit(0, 0);
     rSetLog("stdout:all,!debug,!trace:all,!mbedtls", 0, 1);
 
     testRequiredFields();
+    testRequiredOnUpdate();
     testUniqueFields();
     testFieldTypes();
     testGeneratedFields();
     testModelValidation();
+    testUnsupportedAttributes();
+    testUidGenerateSize();
 
     rTerm();
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -69,8 +69,8 @@ static void insertAndRemove()
 
 static void lotsOfInserts()
 {
-    RList  *lp;
-    size_t i, index;
+    RList *lp;
+    int   i, index;
 
     lp = rAllocList(LIST_MAX_ITEMS, 0);
     tnotnull(lp);
@@ -79,7 +79,7 @@ static void lotsOfInserts()
         Do lots insertions
      */
     for (i = 0; i < LIST_MAX_ITEMS; i++) {
-        rAddItem(lp, (cvoid*) i);
+        rAddItem(lp, (cvoid*) (ssize) i);
         if (rGetListLength(lp) != (i + 1)) {
             tfail("rGetListLength(lp) != i + 1");
         }
@@ -90,9 +90,12 @@ static void lotsOfInserts()
      */
     index = rGetListLength(lp) - 1;
     for (i = 0; i < LIST_MAX_ITEMS; i++) {
-        rRemoveItem(lp, (cvoid*) index);
+        rRemoveItem(lp, (cvoid*) (ssize) index);
         if (rGetListLength(lp) != index) {
             tfail("rGetListLength(lp) != index");
+        }
+        if (index <= 0) {
+            break;
         }
         index--;
     }
@@ -165,7 +168,7 @@ static char *toString(char *items[], int nelt)
     RBuf *buf;
     int  i;
 
-    buf = rAllocBuf(0);
+    buf = rAllocBuf(1024);
     for (i = 0; i < nelt; i++) {
         rPutToBuf(buf, "%s ", items[i]);
     }
@@ -536,7 +539,7 @@ static void testListToString()
 static void testFlagBehavior()
 {
     RList *lp;
-    char  *retrieved;
+    char  *retrieved, *original;
 
     // Test basic flag functionality without complex memory management
     lp = rAllocList(0, R_DYNAMIC_VALUE);
@@ -544,16 +547,52 @@ static void testFlagBehavior()
     ttrue(rGetListLength(lp) == 0);
     rFreeList(lp);
 
-    // Test R_TEMPORAL_VALUE flag - basic functionality
+    // Test R_TEMPORAL_VALUE flag with rAddItem - verify cloning
     lp = rAllocList(0, R_TEMPORAL_VALUE);
     ttrue(lp != 0);
 
-    // Add string literals
-    rAddItem(lp, "Temporal String 1");
+    original = sclone("Temporal String 1");
+    rAddItem(lp, original);
     ttrue(rGetListLength(lp) == 1);
 
     retrieved = (char*) rGetItem(lp, 0);
-    ttrue(scmp(retrieved, "Temporal String 1") == 0);
+    tmatch(retrieved, "Temporal String 1");
+    // Verify the value was cloned (different pointer)
+    ttrue(retrieved != original);
+    rFree(original);
+    // List still holds valid cloned copy
+    retrieved = (char*) rGetItem(lp, 0);
+    tmatch(retrieved, "Temporal String 1");
+    rFreeList(lp);
+
+    // Test R_TEMPORAL_VALUE with rSetItem - verify cloning
+    lp = rAllocList(0, R_TEMPORAL_VALUE);
+    original = sclone("SetItem Test");
+    rSetItem(lp, 0, original);
+    retrieved = (char*) rGetItem(lp, 0);
+    tmatch(retrieved, "SetItem Test");
+    ttrue(retrieved != original);
+    rFree(original);
+    rFreeList(lp);
+
+    // Test R_TEMPORAL_VALUE with rInsertItemAt - verify cloning
+    lp = rAllocList(0, R_TEMPORAL_VALUE);
+    original = sclone("InsertAt Test");
+    rInsertItemAt(lp, 0, original);
+    retrieved = (char*) rGetItem(lp, 0);
+    tmatch(retrieved, "InsertAt Test");
+    ttrue(retrieved != original);
+    rFree(original);
+    rFreeList(lp);
+
+    // Test R_TEMPORAL_VALUE with rPushItem - verify cloning
+    lp = rAllocList(0, R_TEMPORAL_VALUE);
+    original = sclone("Push Test");
+    rPushItem(lp, original);
+    retrieved = (char*) rGetItem(lp, 0);
+    tmatch(retrieved, "Push Test");
+    ttrue(retrieved != original);
+    rFree(original);
     rFreeList(lp);
 
     // Test combined flags: R_DYNAMIC_VALUE | R_TEMPORAL_VALUE
@@ -811,6 +850,180 @@ static void testEdgeCases()
     rFreeList(lp);
 }
 
+/*
+    The growth ceiling, the null-slot reuse in rAddNullItem, and the owned-value paths in
+    rSetItem and rRemoveItemAt. The growth guard matters most: a request past INT_MAX / 8
+    pointers must be refused arithmetically, before any allocation is attempted.
+ */
+static int guardCalls;
+
+static void guardHandler(int cause, size_t size)
+{
+    guardCalls++;
+}
+
+static void listCorners()
+{
+    RList *lp;
+    char  *first;
+    int   a, b, rc;
+
+    lp = rAllocList(0, 0);
+    tnotnull(lp);
+
+    //  A size that would overflow the byte count is refused, and the list is unharmed
+    rc = rGrowList(lp, INT_MAX / (int) sizeof(void*) + 1);
+    teqi(rc, R_ERR_MEMORY);
+    rc = rInsertItemAt(lp, INT_MAX / (int) sizeof(void*) + 8, "far");
+    teqi(rc, R_ERR_MEMORY);
+    teqi(rGetListLength(lp), 0);
+
+    /*
+        rAddNullItem writes an argv-style terminator at items[length] without counting it, so
+        two in a row land on the same slot and the length stays put. If the last counted item is
+        itself null, the terminator reuses that slot rather than the one after it.
+     */
+    a = rAddNullItem(lp);
+    b = rAddNullItem(lp);
+    teqi(a, b);
+    teqi(rGetListLength(lp), 0);
+    tnull(rGetItem(lp, 0));
+
+    rAddItem(lp, NULL);
+    teqi(rGetListLength(lp), 1);
+    a = rAddNullItem(lp);
+    teqi(a, 0);
+    teqi(rGetListLength(lp), 1);
+
+    //  Removing something that is not there reports the lookup failure
+    ttrue(rRemoveItem(lp, "absent") < 0);
+    rFreeList(lp);
+
+    //  A list that owns its values frees the old one on replace and on remove
+    lp = rAllocList(0, R_DYNAMIC_VALUE);
+    first = sclone("first");
+    rAddItem(lp, first);
+    rSetItem(lp, 0, sclone("second"));
+    tmatch(rGetItem(lp, 0), "second");
+    rAddItem(lp, sclone("third"));
+    //  Bound to a local: teqi expands its argument twice
+    rc = rRemoveItemAt(lp, 0);
+    teqi(rc, 0);
+    teqi(rGetListLength(lp), 1);
+    tmatch(rGetItem(lp, 0), "third");
+    rFreeList(lp);
+
+    //  A negative initial size is an empty list, not an error
+    lp = rAllocList(-1, 0);
+    tnotnull(lp);
+    teqi((int) lp->capacity, 0);
+    teqi(rAddItem(lp, "x"), 0);
+    rFreeList(lp);
+
+    /*
+        An initial size whose byte count would overflow is refused. With a handler installed
+        the refusal is observable as a null return rather than a dead process.
+     */
+    rSetMemHandler(guardHandler);
+    guardCalls = 0;
+    lp = rAllocList(INT_MAX, 0);
+    tnull(lp);
+    teqi(guardCalls, 1);
+    rSetMemHandler(NULL);
+}
+
+
+/*
+    A budgeted allocator: unlimited while the budget is negative, otherwise it fails once the
+    budget reaches zero.
+ */
+static int allocBudget = -1;
+
+static void *budgetAlloc(size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return malloc(size);
+}
+
+static void *budgetRealloc(void *ptr, size_t size)
+{
+    if (allocBudget == 0) {
+        return NULL;
+    }
+    if (allocBudget > 0) {
+        allocBudget--;
+    }
+    return realloc(ptr, size);
+}
+
+static void budgetFree(void *ptr)
+{
+    free(ptr);
+}
+
+/*
+    Allocation failures are reported, and a list that fails to grow keeps every item it had
+ */
+static void listAllocFailures(void)
+{
+    RList *lp;
+    int   capacity, rc;
+
+    rSetAllocator(budgetAlloc, budgetRealloc, budgetFree);
+    rSetMemHandler(guardHandler);
+
+    //  The header and the items are separate allocations and either can fail
+    allocBudget = 0;
+    guardCalls = 0;
+    lp = rAllocList(0, 0);
+    tnull(lp);
+    teqi(guardCalls, 1);
+    allocBudget = 1;
+    lp = rAllocList(8, 0);
+    tnull(lp);
+
+    allocBudget = -1;
+    lp = rAllocList(0, 0);
+    tnotnull(lp);
+    rAddItem(lp, "first");
+    while (lp->length < lp->capacity) {
+        rAddItem(lp, "filler");
+    }
+    capacity = (int) lp->capacity;
+
+    //  Every way of adding reports the allocation failure as R_ERR_MEMORY
+    allocBudget = 0;
+    rc = rAddItem(lp, "overflow");
+    teqi(rc, R_ERR_MEMORY);
+    rc = rAddNullItem(lp);
+    teqi(rc, R_ERR_MEMORY);
+    rc = rInsertItemAt(lp, capacity, "overflow");
+    teqi(rc, R_ERR_MEMORY);
+    rc = rInsertItemAt(lp, capacity * 4, "overflow");
+    teqi(rc, R_ERR_MEMORY);
+    rc = rGrowList(lp, capacity * 4);
+    teqi(rc, R_ERR_MEMORY);
+    teqi(rGetListLength(lp), capacity);
+    teqi((int) lp->capacity, capacity);
+    tmatch(rGetItem(lp, 0), "first");
+    tmatch(rGetItem(lp, capacity - 1), "filler");
+
+    //  Once memory is available again the same list grows normally
+    allocBudget = -1;
+    rc = rAddItem(lp, "last");
+    teqi(rc, capacity);
+    tmatch(rGetItem(lp, capacity), "last");
+    rFreeList(lp);
+
+    rSetMemHandler(NULL);
+    rSetAllocator(NULL, NULL, NULL);
+}
+
 int main(void)
 {
     rInit(0, 0);
@@ -838,12 +1051,14 @@ int main(void)
     testEdgeCases();
     testAddNullItem();
     testFlagBehavior();
+    listCorners();
+    listAllocFailures();
 
     rTerm();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -1,0 +1,58 @@
+/*
+    ioto.json5 - Agent configuration for the scenario groups (test/soak, test/stress)
+
+    agent-prep.sh copies this into <group>/state/config. The agent runs with the group directory
+    as its home, so every relative path below is relative to test/soak or test/stress.
+
+    Only the local services run. Nothing here reaches a cloud, a broker or a builder: the groups
+    measure the process that database, web server and url client assemble, and a network
+    dependency would make the figures depend on the network.
+ */
+{
+    version: '1.0.0',
+    profile: 'dev',
+    app: 'unit',
+    directories: {
+        certs: '../certs',
+        log: '.',
+        state: 'state',
+    },
+    log: {
+        path: 'ioto.log',
+        format: '%D %S: %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+        show: '',
+    },
+    database: {
+        path: '@db/device.db',
+        schema: '@config/schema.json5',
+        maxJournalSize: '50k',
+        maxJournalAge: '15secs',
+        maxSyncSize: '10k',
+        service: '1hr',
+    },
+    limits: {
+        fiberStack: '64k',
+    },
+    services: {
+        ai: false,
+        database: true,
+        keys: false,
+        logs: false,
+        mqtt: false,
+        provision: false,
+        register: false,
+        serialize: 'none',
+        shadow: false,
+        sync: false,
+        update: false,
+        url: true,
+        web: true,
+    },
+    tls: {
+        authority: '@certs/ca.crt',
+        certificate: '@certs/test.crt',
+        key: '@certs/test.key',
+    },
+}

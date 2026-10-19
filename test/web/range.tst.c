@@ -15,6 +15,22 @@ static char *HTTPS;
 
 /************************************ Code ************************************/
 
+/*
+    Multipart range MIME text is owned by rmime and borrowed through mime. Range cleanup must
+    clear both fields before releasing the shared allocation.
+ */
+static void testRangeMimeCleanup(void)
+{
+    Web web = { 0 };
+
+    web.rmime = sclone("multipart/byteranges; boundary=test");
+    web.mime = web.rmime;
+    webFreeRanges(&web);
+
+    tnull(web.rmime);
+    tnull(web.mime, "Range cleanup must not leave the public MIME pointer dangling");
+}
+
 static void testSingleRange()
 {
     Url   *up;
@@ -58,7 +74,7 @@ static void testSingleRange()
     urlFree(up);
 }
 
-static void testMultiRange()
+static void testMultiRange(cchar *endpoint)
 {
     Url   *up;
     char  url[128];
@@ -68,7 +84,7 @@ static void testMultiRange()
     up = urlAlloc(0);
 
     // Test multi-range request: bytes=0-9,20-29,40-49
-    status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0,
+    status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", endpoint), NULL, 0,
                       "Range: bytes=0-9,20-29,40-49\r\n");
     ttrue(status == 206);  // 206 Partial Content
 
@@ -87,6 +103,10 @@ static void testMultiRange()
     ttrue(scontains(response, "Content-Range: bytes 0-9/100"));
     ttrue(scontains(response, "Content-Range: bytes 20-29/100"));
     ttrue(scontains(response, "Content-Range: bytes 40-49/100"));
+
+    //  Each part carries the document's type, not the multipart envelope's
+    tcontains(response, "Content-Type: text/plain");
+    tfalse(scontains(response, "\r\nContent-Type: multipart/") != NULL, "A part must not be labelled multipart");
 
     urlFree(up);
 }
@@ -308,11 +328,54 @@ static void testEdgeCases()
     urlFree(up);
 }
 
+
+static int rangeStatus(cchar *range, char *contentRange, size_t size)
+{
+    Url   *up;
+    char  url[128], headers[256];
+    cchar *value;
+    int   status;
+
+    up = urlAlloc(0);
+    status = urlFetch(up, "GET", SFMT(url, "%s/range-test.txt", HTTP), NULL, 0, SFMT(headers, "Range: %s\r\n", range));
+    value = urlGetHeader(up, "Content-Range");
+    sncopy(contentRange, size, value ? value : "", slen(value));
+    urlFree(up);
+    return status;
+}
+
+static void testRangeStrictParse(void)
+{
+    char contentRange[128];
+
+    teqi(rangeStatus("bytes=0-4zz", contentRange, sizeof(contentRange)), 400, "Junk after last-pos is refused");
+    teqi(rangeStatus("bytes=1-2-3", contentRange, sizeof(contentRange)), 400, "A second dash is refused");
+    teqi(rangeStatus("bytes=4zz-9", contentRange, sizeof(contentRange)), 400, "Junk after first-pos is refused");
+    teqi(rangeStatus("bytes=-5x", contentRange, sizeof(contentRange)), 400, "Junk after a suffix length is refused");
+
+    teqi(rangeStatus("bytes=0-9223372036854775807", contentRange, sizeof(contentRange)), 206,
+         "The largest last-pos is a valid range");
+    tmatch(contentRange, "bytes 0-99/100");
+    teqi(rangeStatus("bytes=90-99999999999999999999999", contentRange, sizeof(contentRange)), 206,
+         "A last-pos past int64 is clamped, not refused");
+    tmatch(contentRange, "bytes 90-99/100");
+}
+
 static void fiberMain(void *arg)
 {
+    WebHost *host;
+
+    // Exercise this binary's library, even if the shared endpoint belongs to another build.
+    host = startTestHost("{web:{documents:'./site',routes:[{}],listen:['http://localhost:4898']}}");
+    if (host) {
+        testMultiRange("http://localhost:4898");
+        stopTestHost(host);
+    }
     if (setup(&HTTP, &HTTPS)) {
+        testRangeMimeCleanup();
         testSingleRange();
-        testMultiRange();
+        testRangeStrictParse();
+        testMultiRange(HTTP);
         testSuffixRange();
         testOpenEndedRange();
         testMalformedRange();
@@ -335,6 +398,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

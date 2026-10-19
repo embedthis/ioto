@@ -13,14 +13,6 @@
 
 static void jsonFuzz()
 {
-    Json *obj;
-    char *error;
-    if ((obj = jsonParseString(",", &error, 0)) == 0) {
-        fprintf(stderr, "Failed to parse: %s\n", error);
-        rFree(error);
-        return;
-    }
-    jsonFree(obj);
     /* All should fail */
     ttrue(parseFail("unquoted string"));
     ttrue(parseFail(":"));
@@ -65,6 +57,6 @@ int main(void)
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

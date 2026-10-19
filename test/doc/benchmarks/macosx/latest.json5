@@ -1,0 +1,692 @@
+{
+    version: '1.0.0-dev',
+    timestamp: 'Sep 23, 2026 02:01 AM UTC',
+    platform: 'macosx 25.5.0 (arm64)',
+    profile: 'release',
+    tls: 'openssl',
+    config: {
+        soakDuration: 30000,
+        benchDuration: 270000,
+        perGroupDuration: 22500,
+        totalDuration: 300000,
+        timingPrecision: 'milliseconds',
+        initialMemoryBytes: 7962624,
+        finalMemoryBytes: 8765440
+    },
+    results: {
+        throughput: {
+            multithread: {
+                requestsPerSec: 23568.070000,
+                avgLatency: 1.730000,
+                p95Latency: 0.000000,
+                p99Latency: 0.000000,
+                minLatency: 0,
+                maxLatency: 0,
+                bytesTransferred: 530940928,
+                iterations: 518497,
+                errors: 0
+            },
+            singlethread: {
+                requestsPerSec: 13173.410000,
+                avgLatency: 0.251840,
+                p95Latency: 0.000000,
+                p99Latency: 0.000000,
+                minLatency: 0,
+                maxLatency: 0,
+                bytesTransferred: 296770560,
+                iterations: 289815,
+                errors: 0
+            }
+        },
+        static_files: {
+            1KB_warm: {
+                requestsPerSec: 12011.125946,
+                avgLatency: 0.083256,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 19,
+                bytesTransferred: 55273472,
+                iterations: 53978,
+                errors: 0
+            },
+            10KB_warm: {
+                requestsPerSec: 11203.872691,
+                avgLatency: 0.089255,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 52,
+                bytesTransferred: 515471360,
+                iterations: 50339,
+                errors: 0
+            },
+            100KB_warm: {
+                requestsPerSec: 9622.222222,
+                avgLatency: 0.103926,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 15,
+                bytesTransferred: 1108480000,
+                iterations: 10825,
+                errors: 0
+            },
+            1MB_warm: {
+                requestsPerSec: 4637.900356,
+                avgLatency: 0.215615,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 17,
+                bytesTransferred: 5466226688,
+                iterations: 5213,
+                errors: 0
+            },
+            1KB_cold: {
+                requestsPerSec: 1797.752809,
+                avgLatency: 0.556250,
+                p95Latency: 2.000000,
+                p99Latency: 9.000000,
+                minLatency: 0,
+                maxLatency: 20,
+                bytesTransferred: 819200,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_cold: {
+                requestsPerSec: 2030.456853,
+                avgLatency: 0.492500,
+                p95Latency: 1.000000,
+                p99Latency: 7.000000,
+                minLatency: 0,
+                maxLatency: 16,
+                bytesTransferred: 8192000,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_cold: {
+                requestsPerSec: 1369.863014,
+                avgLatency: 0.730000,
+                p95Latency: 3.000000,
+                p99Latency: 17.000000,
+                minLatency: 0,
+                maxLatency: 19,
+                bytesTransferred: 20480000,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_cold: {
+                requestsPerSec: 909.090909,
+                avgLatency: 1.100000,
+                p95Latency: 4.000000,
+                p99Latency: 13.000000,
+                minLatency: 0,
+                maxLatency: 21,
+                bytesTransferred: 209715200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        https: {
+            1KB_warm: {
+                requestsPerSec: 10162.216288,
+                avgLatency: 0.098404,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 11,
+                bytesTransferred: 46765056,
+                iterations: 45669,
+                errors: 0
+            },
+            10KB_warm: {
+                requestsPerSec: 9821.826281,
+                avgLatency: 0.101814,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 35,
+                bytesTransferred: 451584000,
+                iterations: 44100,
+                errors: 0
+            },
+            100KB_warm: {
+                requestsPerSec: 5227.758007,
+                avgLatency: 0.191287,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 11,
+                bytesTransferred: 601702400,
+                iterations: 5876,
+                errors: 0
+            },
+            1MB_warm: {
+                requestsPerSec: 1268.444444,
+                avgLatency: 0.788367,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 6,
+                bytesTransferred: 1496317952,
+                iterations: 1427,
+                errors: 0
+            },
+            1KB_cold: {
+                requestsPerSec: 295.311923,
+                avgLatency: 3.386250,
+                p95Latency: 9.000000,
+                p99Latency: 20.000000,
+                minLatency: 1,
+                maxLatency: 39,
+                bytesTransferred: 819200,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_cold: {
+                requestsPerSec: 297.397770,
+                avgLatency: 3.362500,
+                p95Latency: 9.000000,
+                p99Latency: 19.000000,
+                minLatency: 1,
+                maxLatency: 48,
+                bytesTransferred: 8192000,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_cold: {
+                requestsPerSec: 255.754476,
+                avgLatency: 3.910000,
+                p95Latency: 9.000000,
+                p99Latency: 18.000000,
+                minLatency: 2,
+                maxLatency: 54,
+                bytesTransferred: 20480000,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_cold: {
+                requestsPerSec: 193.423598,
+                avgLatency: 5.170000,
+                p95Latency: 14.000000,
+                p99Latency: 29.000000,
+                minLatency: 2,
+                maxLatency: 32,
+                bytesTransferred: 209715200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        static_files_raw_http: {
+            1KB_raw_warm: {
+                requestsPerSec: 14720.257950,
+                avgLatency: 0.067934,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 40,
+                bytesTransferred: 67785728,
+                iterations: 66197,
+                errors: 0
+            },
+            10KB_raw_warm: {
+                requestsPerSec: 10576.106195,
+                avgLatency: 0.094553,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 50,
+                bytesTransferred: 489512960,
+                iterations: 47804,
+                errors: 0
+            },
+            100KB_raw_warm: {
+                requestsPerSec: 11110.320285,
+                avgLatency: 0.090006,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 9,
+                bytesTransferred: 1278771200,
+                iterations: 12488,
+                errors: 0
+            },
+            1MB_raw_warm: {
+                requestsPerSec: 3431.878896,
+                avgLatency: 0.291386,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 42,
+                bytesTransferred: 4041211904,
+                iterations: 3854,
+                errors: 0
+            },
+            1KB_raw_cold: {
+                requestsPerSec: 2168.021680,
+                avgLatency: 0.461250,
+                p95Latency: 1.000000,
+                p99Latency: 6.000000,
+                minLatency: 0,
+                maxLatency: 15,
+                bytesTransferred: 819200,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_raw_cold: {
+                requestsPerSec: 2168.021680,
+                avgLatency: 0.461250,
+                p95Latency: 1.000000,
+                p99Latency: 6.000000,
+                minLatency: 0,
+                maxLatency: 27,
+                bytesTransferred: 8192000,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_raw_cold: {
+                requestsPerSec: 1307.189542,
+                avgLatency: 0.765000,
+                p95Latency: 1.000000,
+                p99Latency: 19.000000,
+                minLatency: 0,
+                maxLatency: 73,
+                bytesTransferred: 20480000,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_raw_cold: {
+                requestsPerSec: 1081.081081,
+                avgLatency: 0.925000,
+                p95Latency: 2.000000,
+                p99Latency: 16.000000,
+                minLatency: 0,
+                maxLatency: 16,
+                bytesTransferred: 209715200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        static_files_raw_https: {
+            1KB_raw_warm: {
+                requestsPerSec: 11785.857238,
+                avgLatency: 0.084847,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 32,
+                bytesTransferred: 54273024,
+                iterations: 53001,
+                errors: 0
+            },
+            10KB_raw_warm: {
+                requestsPerSec: 11723.754448,
+                avgLatency: 0.085297,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 35,
+                bytesTransferred: 539750400,
+                iterations: 52710,
+                errors: 0
+            },
+            100KB_raw_warm: {
+                requestsPerSec: 7347.864769,
+                avgLatency: 0.136094,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 8,
+                bytesTransferred: 845721600,
+                iterations: 8259,
+                errors: 0
+            },
+            1MB_raw_warm: {
+                requestsPerSec: 1528.000000,
+                avgLatency: 0.654450,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 20,
+                bytesTransferred: 1802502144,
+                iterations: 1719,
+                errors: 0
+            },
+            1KB_raw_cold: {
+                requestsPerSec: 305.576776,
+                avgLatency: 3.272500,
+                p95Latency: 8.000000,
+                p99Latency: 17.000000,
+                minLatency: 1,
+                maxLatency: 42,
+                bytesTransferred: 819200,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_raw_cold: {
+                requestsPerSec: 282.985497,
+                avgLatency: 3.533750,
+                p95Latency: 9.000000,
+                p99Latency: 20.000000,
+                minLatency: 1,
+                maxLatency: 46,
+                bytesTransferred: 8192000,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_raw_cold: {
+                requestsPerSec: 278.164117,
+                avgLatency: 3.595000,
+                p95Latency: 9.000000,
+                p99Latency: 17.000000,
+                minLatency: 2,
+                maxLatency: 23,
+                bytesTransferred: 20480000,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_raw_cold: {
+                requestsPerSec: 236.127509,
+                avgLatency: 4.235000,
+                p95Latency: 10.000000,
+                p99Latency: 22.000000,
+                minLatency: 2,
+                maxLatency: 24,
+                bytesTransferred: 209715200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        websockets: {
+            websocket_echo: {
+                requestsPerSec: 12153.547710,
+                avgLatency: 0.082281,
+                p95Latency: 0.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 96,
+                bytesTransferred: 11115076,
+                iterations: 532532,
+                errors: 0
+            }
+        },
+        put: {
+            1KB_warm: {
+                requestsPerSec: 4568.353068,
+                avgLatency: 0.218897,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 37,
+                bytesTransferred: 17247616,
+                iterations: 16976,
+                errors: 0
+            },
+            10KB_warm: {
+                requestsPerSec: 4291.338583,
+                avgLatency: 0.233028,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 30,
+                bytesTransferred: 167849100,
+                iterations: 16350,
+                errors: 0
+            },
+            100KB_warm: {
+                requestsPerSec: 3445.574771,
+                avgLatency: 0.290227,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 12,
+                bytesTransferred: 347221692,
+                iterations: 3387,
+                errors: 0
+            },
+            1MB_warm: {
+                requestsPerSec: 1253.465347,
+                avgLatency: 0.797788,
+                p95Latency: 2.000000,
+                p99Latency: 4.000000,
+                minLatency: 0,
+                maxLatency: 35,
+                bytesTransferred: 1297670256,
+                iterations: 1266,
+                errors: 0
+            },
+            1KB_cold: {
+                requestsPerSec: 595.681310,
+                avgLatency: 1.678750,
+                p95Latency: 6.000000,
+                p99Latency: 17.000000,
+                minLatency: 0,
+                maxLatency: 63,
+                bytesTransferred: 812800,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_cold: {
+                requestsPerSec: 644.122383,
+                avgLatency: 1.552500,
+                p95Latency: 5.000000,
+                p99Latency: 26.000000,
+                minLatency: 0,
+                maxLatency: 55,
+                bytesTransferred: 8212800,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_cold: {
+                requestsPerSec: 1176.470588,
+                avgLatency: 0.850000,
+                p95Latency: 2.000000,
+                p99Latency: 9.000000,
+                minLatency: 0,
+                maxLatency: 9,
+                bytesTransferred: 20503200,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_cold: {
+                requestsPerSec: 727.272727,
+                avgLatency: 1.375000,
+                p95Latency: 3.000000,
+                p99Latency: 5.000000,
+                minLatency: 0,
+                maxLatency: 8,
+                bytesTransferred: 205003200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        upload: {
+            1KB_warm: {
+                requestsPerSec: 6838.228096,
+                avgLatency: 0.146237,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 32,
+                bytesTransferred: 28388056,
+                iterations: 27941,
+                errors: 0
+            },
+            10KB_warm: {
+                requestsPerSec: 6107.476636,
+                avgLatency: 0.163734,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 54,
+                bytesTransferred: 254935578,
+                iterations: 24833,
+                errors: 0
+            },
+            100KB_warm: {
+                requestsPerSec: 4165.517241,
+                avgLatency: 0.240066,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 68,
+                bytesTransferred: 433437648,
+                iterations: 4228,
+                errors: 0
+            },
+            1MB_warm: {
+                requestsPerSec: 1633.200795,
+                avgLatency: 0.612295,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 17,
+                bytesTransferred: 1684101288,
+                iterations: 1643,
+                errors: 0
+            },
+            1KB_cold: {
+                requestsPerSec: 1713.062099,
+                avgLatency: 0.583750,
+                p95Latency: 1.000000,
+                p99Latency: 6.000000,
+                minLatency: 0,
+                maxLatency: 17,
+                bytesTransferred: 812800,
+                iterations: 800,
+                errors: 0
+            },
+            10KB_cold: {
+                requestsPerSec: 3433.476395,
+                avgLatency: 0.291250,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 4,
+                bytesTransferred: 8212800,
+                iterations: 800,
+                errors: 0
+            },
+            100KB_cold: {
+                requestsPerSec: 2352.941176,
+                avgLatency: 0.425000,
+                p95Latency: 1.000000,
+                p99Latency: 2.000000,
+                minLatency: 0,
+                maxLatency: 2,
+                bytesTransferred: 20503200,
+                iterations: 200,
+                errors: 0
+            },
+            1MB_cold: {
+                requestsPerSec: 947.867299,
+                avgLatency: 1.055000,
+                p95Latency: 2.000000,
+                p99Latency: 5.000000,
+                minLatency: 0,
+                maxLatency: 8,
+                bytesTransferred: 205003200,
+                iterations: 200,
+                errors: 0
+            }
+        },
+        auth: {
+            digest_with_session: {
+                requestsPerSec: 9107.468124,
+                avgLatency: 0.109800,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 13,
+                bytesTransferred: 550000,
+                iterations: 5000,
+                errors: 0
+            },
+            digest_cold: {
+                requestsPerSec: 631.512472,
+                avgLatency: 1.583500,
+                p95Latency: 6.000000,
+                p99Latency: 18.000000,
+                minLatency: 0,
+                maxLatency: 38,
+                bytesTransferred: 220000,
+                iterations: 2000,
+                errors: 0
+            }
+        },
+        actions: {
+            simple_warm: {
+                requestsPerSec: 22944.924695,
+                avgLatency: 0.043583,
+                p95Latency: 0.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 48,
+                bytesTransferred: 2059720,
+                iterations: 257465,
+                errors: 0
+            },
+            simple_cold: {
+                requestsPerSec: 2403.846154,
+                avgLatency: 0.416000,
+                p95Latency: 1.000000,
+                p99Latency: 4.000000,
+                minLatency: 0,
+                maxLatency: 46,
+                bytesTransferred: 16000,
+                iterations: 2000,
+                errors: 0
+            }
+        },
+        mixed: {
+            mixed_workload: {
+                requestsPerSec: 11759.209824,
+                avgLatency: 0.085040,
+                p95Latency: 1.000000,
+                p99Latency: 1.000000,
+                minLatency: 0,
+                maxLatency: 54,
+                bytesTransferred: 498430155,
+                iterations: 264300,
+                errors: 0
+            }
+        },
+        connections: {
+            plain: {
+                requestsPerSec: 1369.863014,
+                avgLatency: 0.730000,
+                p95Latency: 2.000000,
+                p99Latency: 13.000000,
+                minLatency: 0,
+                maxLatency: 85,
+                bytesTransferred: 0,
+                iterations: 2000,
+                errors: 0
+            },
+            tls_cold: {
+                requestsPerSec: 298.998356,
+                avgLatency: 3.344500,
+                p95Latency: 10.000000,
+                p99Latency: 21.000000,
+                minLatency: 1,
+                maxLatency: 58,
+                bytesTransferred: 0,
+                iterations: 2000,
+                errors: 0
+            },
+            tls_session: {
+                requestsPerSec: 290.951411,
+                avgLatency: 3.437000,
+                p95Latency: 8.000000,
+                p99Latency: 23.000000,
+                minLatency: 1,
+                maxLatency: 77,
+                bytesTransferred: 0,
+                iterations: 2000,
+                errors: 0
+            }
+        }
+    }
+}
+

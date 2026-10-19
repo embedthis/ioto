@@ -1,0 +1,16 @@
+/*
+    schema-attr-map.json5 - Schema declaring the "map" field attribute, which is ignored with a warning
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: { typeField: '_type', timestamps: false },
+    indexes: { primary: { sort: 'sk' } },
+    models: {
+        Item: {
+            sk: { type: 'string', value: 'item#${id}' },
+            id: { type: 'string' },
+            alias: { type: 'string', map: 'name' },
+        },
+    },
+}

@@ -1,0 +1,66 @@
+/*
+    blend-models.json5 - Models blended into blend.json5
+ */
+{
+    models: {
+        Device: {
+            sk:      { type: 'string', value: 'device#${id}' },
+            id:      { type: 'string', generate: 'uid' },
+            name:    { type: 'string', required: true },
+            kind:    { type: 'string', enum: ['sensor', 'relay'], default: 'sensor' },
+            created: { type: 'date' },
+            updated: { type: 'date' },
+        },
+        Token: {
+            sk:    { type: 'string', value: 'token#${id}' },
+            id:    { type: 'string', generate: 'uid(16)' },
+            label: { type: 'string', required: true },
+        },
+        Reading: {
+            sk:    { type: 'string', value: 'reading#${id}' },
+            id:    { type: 'string', generate: 'ulid' },
+            value: { type: 'number', default: 0 },
+        },
+        Config: {
+            sk:      { type: 'string', value: 'config#${id}' },
+            pk:      { type: 'string' },
+            id:      { type: 'string', required: true },
+            label:   { type: 'string' },
+            net:     { type: 'object' },
+            tags:    { type: 'array' },
+        },
+        Defaults: {
+            sk:    { type: 'string', value: 'defaults#${id}' },
+            id:    { type: 'string', generate: 'ulid' },
+            tags:  { type: 'array', default: '[]' },
+            net:   { type: 'object', default: '{}' },
+            label: { type: 'string', default: 'none' },
+        },
+        Loose: {
+            sk:   { type: 'string' },
+            id:   { type: 'string' },
+            name: { type: 'string' },
+        },
+        Cached: {
+            sk:   { type: 'string', value: 'cached#${id}' },
+            id:   { type: 'string', generate: 'ulid' },
+            name: { type: 'string' },
+        },
+    },
+    process: {
+        Device: {
+            sync: 'up',
+            delay: 1,
+        },
+        Token: {
+            mem: true,
+        },
+        Reading: {
+            sync: 'up',
+            period: 0,
+        },
+        Cached: {
+            enable: 'cloud',
+        },
+    },
+}

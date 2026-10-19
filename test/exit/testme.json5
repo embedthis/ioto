@@ -1,0 +1,25 @@
+{
+    /*
+        Use a separate agent because this test stops it.
+     */
+    inherit: ['compiler', 'environment'],
+    environment: {
+        default: {
+            PATH: '../../build/bin:../../bin:${PATH}',
+            TM_HTTP: 'http://localhost:4490',
+            TM_HTTPS: 'https://localhost:4491',
+        },
+    },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 60,
+    },
+    services: {
+        skip: '../utils/skip-windows.sh',
+        prep: '../utils/agent-prep.sh',
+        setup: '../utils/agent-setup.sh',
+        cleanup: '../utils/agent-cleanup.sh',
+        healthcheck: { url: 'http://localhost:4490/index.html' },
+    },
+}

@@ -1,0 +1,34 @@
+/*
+    seed.json5 - Seed data for the dbLoadData unit tests
+ */
+{
+    Port: [
+        { id: 'p0', name: 'tty00' },
+        { id: 'p1', name: 'tty01' },
+        { id: 'p2', name: 'tty02', speed: 100 },
+    ],
+    User: [
+        { username: 'seed-admin', role: 'admin', email: 'admin@example.com' },
+        { username: 'seed-guest', role: 'guest', email: 'guest@example.com' },
+    ],
+    Vlan: [
+        { id: 'v0', name: 'vlan00', description: 'General VLAN-0' },
+    ],
+    Event: [
+        {
+            id: 'e0',
+            source: 'network',
+            severity: 'warn',
+            subject: 'Port limit exceeded',
+            message: 'Port 14 has exceeded maximum sustained transfer limit',
+        },
+    ],
+    Settings: [
+        {
+            numeric: 42,
+            literal: 'hello',
+            truthy: true,
+            timestamp: 1581636633399,
+        },
+    ],
+}

@@ -7,24 +7,13 @@
 /********************************** Includes **********************************/
 
 #include    "testme.h"
-#include    "mqtt.h"
+#include    "mqtt-test.h"
 
 /*********************************** Locals ***********************************/
 
 static int  messageCount = 0;
 static char *lastTopic = NULL;
 static char *lastMessage = NULL;
-
-static RSocket *createConnectedSocket(void)
-{
-    RSocket *sock = rAllocSocket();
-
-    if (rConnectSocket(sock, "localhost", 1883, 0) < 0) {
-        rFreeSocket(sock);
-        return NULL;
-    }
-    return sock;
-}
 
 static void messageCallback(const MqttRecv *resp)
 {
@@ -53,7 +42,7 @@ static void testTopicExactMatch(void)
     Mqtt    *mq;
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("exact-match-client", NULL);
@@ -74,7 +63,7 @@ static void testTopicSingleLevelWildcard(void)
     Mqtt    *mq;
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("single-wildcard-client", NULL);
@@ -101,7 +90,7 @@ static void testTopicMultiLevelWildcard(void)
     Mqtt    *mq;
     int     rc;
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     mq = mqttAlloc("multi-wildcard-client", NULL);
@@ -128,7 +117,7 @@ static void testTopicComplexWildcards(void)
     mq = mqttAlloc("complex-wildcard-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -153,7 +142,7 @@ static void testTopicEmptyLevels(void)
     mq = mqttAlloc("empty-levels-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -181,7 +170,7 @@ static void testTopicDollarTopics(void)
     mq = mqttAlloc("dollar-topics-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -204,7 +193,7 @@ static void testTopicCaseSensitive(void)
     mq = mqttAlloc("case-sensitive-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -229,7 +218,7 @@ static void testTopicUtf8(void)
     mq = mqttAlloc("utf8-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -254,7 +243,7 @@ static void testTopicSpecialCharacters(void)
     mq = mqttAlloc("special-chars-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -284,7 +273,7 @@ static void testTopicMaxLength(void)
     mq = mqttAlloc("max-length-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -315,7 +304,7 @@ static void testTopicValidation(void)
     mq = mqttAlloc("validation-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -340,7 +329,7 @@ static void testTopicHierarchy(void)
     mq = mqttAlloc("hierarchy-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
@@ -368,24 +357,19 @@ static void testTopicMasterSubscription(void)
     mq = mqttAlloc("master-sub-client", NULL);
     ttrue(mq);
 
-    sock = createConnectedSocket();
+    sock = connectBroker();
     ttrue(sock);
 
     rc = mqttConnect(mq, sock, 0, MQTT_WAIT_ACK);
     teq(rc, 0);
 
-    mq = mqttAlloc("master-sub-client2", NULL);
-    ttrue(mq);
+    rc = mqttSubscribeMaster(mq, 1, MQTT_WAIT_NONE, "device/+");
+    teq(rc, 0);
 
-    if (mqttConnect(mq, sock, 0, MQTT_WAIT_ACK) == 0) {
-        rc = mqttSubscribeMaster(mq, 1, MQTT_WAIT_NONE, "device/+");
-        teq(rc, 0);
-
-        rc = mqttSubscribe(mq, messageCallback, 1, MQTT_WAIT_NONE, "device/123/status");
-        teq(rc, 0);
-        rc = mqttSubscribe(mq, messageCallback, 1, MQTT_WAIT_NONE, "device/456/data");
-        teq(rc, 0);
-    }
+    rc = mqttSubscribe(mq, messageCallback, 1, MQTT_WAIT_NONE, "device/123/status");
+    teq(rc, 0);
+    rc = mqttSubscribe(mq, messageCallback, 1, MQTT_WAIT_NONE, "device/456/data");
+    teq(rc, 0);
 
     mqttFree(mq);
     rFreeSocket(sock);
@@ -418,6 +402,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

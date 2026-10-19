@@ -1,0 +1,29 @@
+{
+    /*
+        The auth group. The agent's built-in login (webLoginUser in src/webserver.c) and its watch on
+        the User table, against the assembled agent on its own ports, started the same way as
+        test/soak. The fixture configuration is test/utils/agent; TM_MAX_FAILURES below sets its
+        failure limit to 5 in 2 seconds so the limit can be reached and recovered from within a run.
+     */
+    inherit: ['compiler', 'environment'],
+    environment: {
+        default: {
+            PATH: '../../build/bin:../../bin:${PATH}',
+            TM_HTTP: 'http://localhost:4476',
+            TM_HTTPS: 'https://localhost:4477',
+            TM_MAX_FAILURES: '5',
+        },
+    },
+    execution: {
+        workers: 1,
+        parallel: false,
+        timeout: 300,
+    },
+    services: {
+        skip: '../utils/skip-windows.sh',
+        prep: '../utils/agent-prep.sh',
+        setup: '../utils/agent-setup.sh',
+        cleanup: '../utils/agent-cleanup.sh',
+        healthcheck: { url: 'http://localhost:4476/index.html' },
+    },
+}

@@ -122,7 +122,7 @@ rm -f "$TMPFILE"
 echo "Testing --keys..."
 TMPFILE="/tmp/json-test-$PID.json"
 echo "{name: 'Henry', age: 40, role: 'manager'}" > "$TMPFILE"
-OUTPUT=$(json --keys . "$TMPFILE" 2>&1)
+OUTPUT=$(json --keys "$TMPFILE" 2>&1)
 if [ $? -eq 0 ] && contains "$OUTPUT" "name" && contains "$OUTPUT" "age" && contains "$OUTPUT" "role"; then
     pass "json --keys lists property names"
 else
@@ -134,7 +134,7 @@ rm -f "$TMPFILE"
 echo "Testing --env..."
 TMPFILE="/tmp/json-test-$PID.json"
 echo "{dbHost: 'localhost', dbPort: 5432}" > "$TMPFILE"
-OUTPUT=$(json --env . "$TMPFILE" 2>&1)
+OUTPUT=$(json --env "$TMPFILE" 2>&1)
 if [ $? -eq 0 ] && contains "$OUTPUT" "DB_HOST" && contains "$OUTPUT" "localhost"; then
     pass "json --env outputs environment variable format"
 else
@@ -146,7 +146,7 @@ rm -f "$TMPFILE"
 echo "Testing --header..."
 TMPFILE="/tmp/json-test-$PID.json"
 echo "{maxSize: 1024, enabled: true}" > "$TMPFILE"
-OUTPUT=$(json --header . "$TMPFILE" 2>&1)
+OUTPUT=$(json --header "$TMPFILE" 2>&1)
 if [ $? -eq 0 ] && contains "$OUTPUT" "#define" && contains "$OUTPUT" "MAX_SIZE"; then
     pass "json --header outputs C header format"
 else

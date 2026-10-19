@@ -1,0 +1,14 @@
+{
+    version: '1', format: 'onetable:1.1.0',
+    params: {typeField: 'kind'},
+    indexes: {primary: {sort: 'key', hash: 'partition'}},
+    models: {
+        RawA: {key: {type: 'string'}, value: {type: 'string'}},
+        RawB: {key: {type: 'string'}, value: {type: 'string'}},
+        Scoped: {
+            key: {type: 'string', value: 'item#${id}'},
+            partition: {type: 'string', value: 'account#${account}'},
+            id: {type: 'string'}, account: {type: 'string'}
+        }
+    }
+}

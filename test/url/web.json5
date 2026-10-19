@@ -16,6 +16,7 @@
         renegotiate: true,
         ticket: true,
         verify: {
+            authority: '../certs/ca.crt',
             client: true,
             issuer: true,
         },

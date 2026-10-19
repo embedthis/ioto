@@ -97,7 +97,7 @@ static void jsonTypedGettersTest()
     ttrue(numVal == 999);
 
     // Test jsonGetValue with units
-    uintVal = jsonGetValue(obj, 0, "size", "0");
+    uintVal = (uint64) jsonGetValue(obj, 0, "size", "0");
     ttrue(uintVal == 1048576); // 1024 * 1024
 
     jsonFree(obj);
@@ -114,8 +114,10 @@ static void jsonDateTest()
     // Test jsonSetDate and jsonGetDate
     rc = jsonSetDate(obj, 0, "created", 1640995200000LL); // 2022-01-01 00:00:00 UTC
     ttrue(rc > 0);
+    jsonPrint(obj);
 
     dateVal = jsonGetDate(obj, 0, "created", 0);
+    printf("dateVal: %lld\n", dateVal);
     ttrue(dateVal == 1640995200000LL);
 
     // Test with default value
@@ -141,27 +143,27 @@ static void jsonValueUnitsTest()
     }");
 
     // Test time units
-    val = jsonGetValue(obj, 0, "time1", "0");
+    val = (uint64) jsonGetValue(obj, 0, "time1", "0");
     ttrue(val == 300); // 5 * 60 seconds
 
-    val = jsonGetValue(obj, 0, "time2", "0");
+    val = (uint64) jsonGetValue(obj, 0, "time2", "0");
     ttrue(val == 7200); // 2 * 60 * 60 seconds
 
-    val = jsonGetValue(obj, 0, "time3", "0");
+    val = (uint64) jsonGetValue(obj, 0, "time3", "0");
     ttrue(val == 86400); // 24 * 60 * 60 seconds
 
     // Test byte units
-    val = jsonGetValue(obj, 0, "size1", "0");
+    val = (uint64) jsonGetValue(obj, 0, "size1", "0");
     ttrue(val == 512);
 
-    val = jsonGetValue(obj, 0, "size2", "0");
+    val = (uint64) jsonGetValue(obj, 0, "size2", "0");
     ttrue(val == 2097152); // 2 * 1024 * 1024
 
-    val = jsonGetValue(obj, 0, "size3", "0");
+    val = (uint64) jsonGetValue(obj, 0, "size3", "0");
     ttrue(val == 1073741824); // 1024 * 1024 * 1024
 
     // Test unlimited
-    val = jsonGetValue(obj, 0, "unlimited", "0");
+    val = (uint64) jsonGetValue(obj, 0, "unlimited", "0");
     ttrue(val == INT64_MAX);
 
     jsonFree(obj);
@@ -179,6 +181,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
 */

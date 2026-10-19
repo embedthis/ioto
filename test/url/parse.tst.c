@@ -59,12 +59,9 @@ static void parseBasic()
     tmatch(up->host, "example.com");
     tmatch(up->path, "");
 
-    // Minimal scheme
+    // A scheme without a host
     rc = urlParse(up, "http://");
-    ttrue(rc == 0);
-    tmatch(up->scheme, "http");
-    tmatch(up->host, "localhost");
-    teqi(up->port, 80);
+    ttrue(rc < 0);
 
     urlFree(up);
 }
@@ -142,6 +139,37 @@ static void parseIPv6()
     urlFree(up);
 }
 
+/* Consume exactly one authority/path separator so the writer cannot produce a network-path reference. */
+static void parsePathSeparator()
+{
+    Url *up;
+
+    up = urlAlloc(0);
+
+    ttrue(urlParse(up, "http://[::1]/p") == 0);
+    tmatch(up->path, "p");
+
+    ttrue(urlParse(up, "http://[::1]:8080/p/x") == 0);
+    tmatch(up->path, "p/x");
+
+    //  A bare path has no authority
+    ttrue(urlParse(up, "/p/x") == 0);
+    tmatch(up->host, "localhost");
+    tmatch(up->path, "p/x");
+
+    ttrue(urlParse(up, "/") == 0);
+    tmatch(up->path, "");
+
+    //  A second separator belongs to the path and is kept
+    ttrue(urlParse(up, "http://h//p") == 0);
+    tmatch(up->path, "/p");
+
+    ttrue(urlParse(up, "http://[::1]//p") == 0);
+    tmatch(up->path, "/p");
+
+    urlFree(up);
+}
+
 static void parsePorts()
 {
     Url *up;
@@ -174,9 +202,25 @@ static void parsePorts()
     rc = urlParse(up, "http://example.com:65536/path");
     ttrue(rc < 0);
 
-    // Invalid port: negative (strtol interprets as negative)
+    // Invalid port: negative
     rc = urlParse(up, "http://example.com:-1/path");
     ttrue(rc < 0);
+
+    // Invalid port: a port is digits only, with no sign or leading white space
+    rc = urlParse(up, "http://example.com:+80/path");
+    ttrue(rc < 0);
+    rc = urlParse(up, "http://example.com:-0/path");
+    ttrue(rc < 0);
+    rc = urlParse(up, "http://example.com: 80/path");
+    ttrue(rc < 0);
+    rc = urlParse(up, "http://example.com:/path");
+    ttrue(rc < 0);
+    rc = urlParse(up, "http://example.com:99999999999999999999/path");
+    ttrue(rc < 0);
+
+    rc = urlParse(up, "http://example.com:80/path");
+    ttrue(rc == 0);
+    teqi(up->port, 80);
 
     // Invalid port: non-numeric
     rc = urlParse(up, "http://example.com:abc/path");
@@ -185,6 +229,73 @@ static void parsePorts()
     // Invalid port: mixed
     rc = urlParse(up, "http://example.com:80abc/path");
     ttrue(rc < 0);
+
+    urlFree(up);
+}
+
+
+static void parsePathColon()
+{
+    Url *up;
+
+    up = urlAlloc(0);
+
+    ttrue(urlParse(up, "http://h/:22/x") == 0);
+    tmatch(up->host, "h");
+    teqi(up->port, 80);
+    tmatch(up->path, ":22/x");
+
+    ttrue(urlParse(up, "http://h/:040") == 0);
+    teqi(up->port, 80);
+    tmatch(up->path, ":040");
+
+    ttrue(urlParse(up, "http://h/:t") == 0);
+    tmatch(up->path, ":t");
+
+    ttrue(urlParse(up, "http://[::1]/:22") == 0);
+    tmatch(up->host, "::1");
+    teqi(up->port, 80);
+    tmatch(up->path, ":22");
+
+    ttrue(urlParse(up, "/:22/x") == 0);
+    teqi(up->port, 80);
+    tmatch(up->path, ":22/x");
+
+    ttrue(urlParse(up, "h/:22") == 0);
+    tmatch(up->host, "h");
+    teqi(up->port, 80);
+    tmatch(up->path, ":22");
+
+    ttrue(urlParse(up, "http://h:22/x") == 0);
+    tmatch(up->host, "h");
+    teqi(up->port, 22);
+    tmatch(up->path, "x");
+
+    ttrue(urlParse(up, "http://[::1]:22/:x") == 0);
+    teqi(up->port, 22);
+    tmatch(up->path, ":x");
+
+    urlFree(up);
+}
+
+/*
+    An absolute URL must name its host. Only a relative reference defaults to localhost.
+ */
+static void parseEmptyAuthority()
+{
+    Url *up;
+
+    up = urlAlloc(0);
+
+    ttrue(urlParse(up, "http:///p") < 0);
+    ttrue(urlParse(up, "https:///") < 0);
+    ttrue(urlParse(up, "http://") < 0);
+    ttrue(urlParse(up, "http://:8080/p") < 0);
+    ttrue(urlParse(up, "ws:///p") < 0);
+
+    ttrue(urlParse(up, "/p") == 0);
+    tmatch(up->host, "localhost");
+    tmatch(up->path, "p");
 
     urlFree(up);
 }
@@ -265,7 +376,10 @@ static void fiberMain(void *data)
         parseBasic();
         parseSchemes();
         parseIPv6();
+        parsePathSeparator();
         parsePorts();
+        parsePathColon();
+        parseEmptyAuthority();
         parseQueryHash();
         parseInvalid();
     }
@@ -283,6 +397,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -20,17 +20,14 @@
 static cchar      *HTTP;
 static FuzzRunner *runner;
 static int        fuzzResult = 0;
-static bool       serverWasReachable = 0;   // Track if we ever connected successfully
 static cchar      *currentFuzzInput = NULL; // Current fuzz input for crash reporting
 static size_t     currentFuzzLen = 0;       // Current fuzz input length
-static bool       serverCrashed = 0;        // Flag to stop fuzzing when server crashes
 
 /*********************************** Forwards *********************************/
 
 static void fuzzFiber(void *arg);
 static bool testHTTPRequest(cchar *request, size_t len);
 static char *mutateHTTPRequest(cchar *input, size_t *len);
-static bool shouldStopFuzzing(void);
 
 /************************************* Code ***********************************/
 
@@ -80,6 +77,20 @@ static void fuzzFiber(void *arg)
         return;
     }
 
+    if (!replayFile) {
+        cchar *scheme = NULL, *host = NULL, *path = NULL;
+        int   port = 0;
+        char  *buf = webParseUrl(HTTP, &scheme, &host, &port, &path, NULL, NULL);
+        bool  ok = fuzzRequireServer(host ? host : "localhost", port);
+        rFree(buf);
+        if (!ok) {
+            tfail("Cannot verify fuzz server is alive and listening on %s", HTTP);
+            fuzzResult = -1;
+            rStop();
+            return;
+        }
+    }
+
     // Check if we're replaying a crash file
     if (replayFile) {
         rPrintf("Replaying crash file: %s\n", replayFile);
@@ -111,7 +122,6 @@ static void fuzzFiber(void *arg)
         runner = fuzzInit(config);
         fuzzSetOracle(runner, testHTTPRequest);
         fuzzSetMutator(runner, mutateHTTPRequest);
-        fuzzSetShouldStopCallback(shouldStopFuzzing);
 
         // Load corpus from external file
         fuzzLoadCorpus(runner, CORPUS_FILE);
@@ -124,39 +134,6 @@ static void fuzzFiber(void *arg)
 
     fuzzResult = crashes;
     rStop();
-}
-
-/*
-    Callback to check if fuzzing should stop
-    Returns true if server crashed or if stop-on-error is enabled and any crash was found
- */
-static bool shouldStopFuzzing(void)
-{
-    // Always stop if server crashed (can't continue)
-    if (serverCrashed) {
-        return true;
-    }
-    // If stop-on-error is enabled, stop if we found any crashes
-    if (runner->config.stop && runner->stats.crashes > 0) {
-        return true;
-    }
-
-    return false;
-}
-
-/*
-    Check if server is alive and report crash if dead
-    Returns 1 if server is alive, 0 if server crashed
- */
-static bool checkServerAlive(cchar *context)
-{
-    if (!fuzzIsServerAlive(fuzzGetServerPid())) {
-        tinfo("Server crashed %s", context);
-        fuzzReportServerCrash(currentFuzzInput, currentFuzzLen);
-        serverCrashed = 1; // Set flag to stop fuzzing
-        return 0;          // Server crash detected
-    }
-    return 1;              // Server is alive
 }
 
 /*
@@ -186,12 +163,9 @@ static int testHTTPRequestInner(cchar *fuzzInput, size_t len)
         rError("http.tst", "Failed to connect to socket: %s", rGetSocketError(sock));
         rFreeSocket(sock);
         rFree(buf);
-        if (serverWasReachable) {
-            return 0; // Server stopped responding (potential hang)
-        }
-        return -1;    // Connection failed - need to check if server is alive
+        // Stop on server death instead of reporting each later connection failure.
+        return -1;
     }
-    serverWasReachable = 1;
 
     rc = rWriteSocket(sock, fuzzInput, len, rGetTicks() + 500);
     if (rc < 0) {
@@ -236,7 +210,7 @@ static bool testHTTPRequest(cchar *fuzzInput, size_t len)
     int result;
 
     // If server already crashed, stop fuzzing immediately
-    if (serverCrashed) {
+    if (runner->serverCrashed) {
         return 1;  // Return success to stop recording additional crashes
     }
 
@@ -248,14 +222,14 @@ static bool testHTTPRequest(cchar *fuzzInput, size_t len)
 
     if (result == -1) {
         // Inner function returned error - check if server is alive
-        return checkServerAlive("during fuzzing");
+        return fuzzCheckServerAlive(runner, "during fuzzing", currentFuzzInput, currentFuzzLen);
 
     } else if (result == 0) {
         // Inner function detected potential issue - return failure
         return 0;
     }
     // Success - do final check if server is still alive after processing
-    return checkServerAlive("after processing request");
+    return fuzzCheckServerAlive(runner, "after processing request", currentFuzzInput, currentFuzzLen);
 }
 
 static char *mutateHTTPRequest(cchar *input, size_t *len)
@@ -333,6 +307,6 @@ static char *mutateHTTPRequest(cchar *input, size_t *len)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -64,14 +64,14 @@ RESULTS_FILE="leak-results.txt"
 
 #   Get server PID
 if [ ! -f "web.pid" ]; then
-    echo "FAIL: Cannot find web.pid - server not running?"
+    echo "✗ Cannot find web.pid - server not running?"
     exit 1
 fi
 
 WEB_PID=$(cat web.pid)
 
 if ! kill -0 $WEB_PID 2>/dev/null; then
-    echo "FAIL: Web server process $WEB_PID is not running"
+    echo "✗ Web server process $WEB_PID is not running"
     exit 1
 fi
 
@@ -678,7 +678,7 @@ echo ""
 GROWTH_EXCEEDS=$(awk "BEGIN {print ($GROWTH_PERCENT > $MAX_GROWTH_PERCENT)}")
 
 if [ "$GROWTH_EXCEEDS" = "1" ]; then
-    echo "FAIL: Memory grew by ${GROWTH_PERCENT}% (exceeds ${MAX_GROWTH_PERCENT}% threshold)"
+    echo "✗ Memory grew by ${GROWTH_PERCENT}% (exceeds ${MAX_GROWTH_PERCENT}% threshold)"
     echo "This indicates a potential memory leak."
     echo ""
     echo "Results saved to: $RESULTS_FILE"
@@ -707,12 +707,12 @@ if [ "$SLOPE_SIGNIFICANT" = "1" ]; then
     echo ""
 fi
 
-echo "PASS: Memory usage is stable"
+echo "✓ Memory usage is stable"
 echo "Growth: ${GROWTH_PERCENT}% (within ${MAX_GROWTH_PERCENT}% threshold)"
 echo ""
 echo "Results saved to: $RESULTS_FILE"
 
 #
-#   Copyright (c) Embedthis Software. All Rights Reserved.
+#   Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
 #   This is proprietary software and requires a commercial license from the author.
 #

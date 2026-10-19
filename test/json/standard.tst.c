@@ -189,17 +189,65 @@ static void jsonStrictOutputTest()
     jsonFree(obj);
 }
 
+/*
+    Every document valid per RFC 7159 must parse under JSON_STRICT_PARSE, and every
+    malformed one must not. Empty containers and arrays of non-primitive elements were
+    both rejected before issue 13.
+ */
+static void jsonStrictShapeTest()
+{
+    Json  *obj;
+    char  *error;
+    cchar *accept[] = {
+        "{}", "[]", "{\"a\":{}}", "{\"a\":[]}", "[[]]", "[{}]",
+        "[\"x\"]", "[\"x\",\"y\"]", "[1,\"x\"]", "[\"x\",1]",
+        "[{\"a\":\"b\"}]", "[[1],[2]]", "{\"a\":[{\"b\":[]}]}",
+        "{\"a\":1}", "{\"a\":\"x\"}", "{\"a\":true}", "{\"a\":null}",
+        "\"x\"", "1", "[1,2,3]", 0
+    };
+    cchar *reject[] = {
+        "[1,]", "{\"a\":}", "{\"a\":1,}", "[,]", "{,}", "[1,,2]",
+        "[\"x\" \"y\"]", "[1 2]", "[\"a\":1]", "{\"a\" \"b\"}",
+        "[/ab/]", "{a:1}", "{'a':1}", "{\"a\":undefined}", 0
+    };
+    int   i;
+
+    for (i = 0; accept[i]; i++) {
+        error = 0;
+        obj = jsonParseString(accept[i], &error, JSON_STRICT_PARSE);
+        if (obj == 0) {
+            tfail("Strict parse rejected valid JSON: %s (%s)", accept[i], error ? error : "");
+        } else {
+            ttrue(obj != 0);
+            jsonFree(obj);
+        }
+        rFree(error);
+    }
+    for (i = 0; reject[i]; i++) {
+        error = 0;
+        obj = jsonParseString(reject[i], &error, JSON_STRICT_PARSE);
+        if (obj != 0) {
+            tfail("Strict parse accepted invalid JSON: %s", reject[i]);
+            jsonFree(obj);
+        } else {
+            ttrue(obj == 0);
+        }
+        rFree(error);
+    }
+}
+
 int main(void)
 {
     rInit(0, 0);
     jsonStrictBoundaryTest();
     jsonStrictValidTest();
     jsonStrictOutputTest();
+    jsonStrictShapeTest();
     rTerm();
     return 0;
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

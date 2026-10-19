@@ -80,6 +80,11 @@
                 to network sniffing attacks if sent over plain HTTP
              */
             requireTlsForBasic: true,
+            /*
+                The whole suite shares this server and one client address, and the negative tests fail
+                on purpose. auth-failure-limit.tst.c tests the limit on a host of its own.
+             */
+            maxFailures: 0,
             roles: {
                 public: [],
                 user: ['view', 'read'],
@@ -103,23 +108,28 @@
                     // password: 'password' (Bcrypt with BF1 prefix)
                     password: 'BF1:00128:ErbpOzVtv19JV20U:+i8PT5V/4GiR9Ti6NhoEkVG99dG78GuP',
                     role: 'user'
+                },
+                wendy: {
+                    // password: 'password' (SHA-256 hash with prefix), role user, SHA-256 password: for the digest 403 case (carol is taken by auth-users.tst.c)
+                    password: 'SHA256:266613436ac90192ef2125c9fdb87d200799d7edecb08ba945edbc6654029f1f',
+                    role: 'user'
                 }
             },
             login: '/api/public/login',
             logout: '/api/public/logout',
         },
         documents: './site',
-        _headers: {
-            'Access-Control-Allow-Origin': 'https://www.example.com',
-            'Access-Control-Allow-Methods': 'GET, POST',
-            'Access-Control-Allow-Headers': 'content-type, authorization',
-            'Access-Control-Allow-Credentials': 'true',
-            'Access-Control-Allow-Max-Age': '86400',
-            'Access-Control-Expose-Headers': 'X-XSRF-TOKEN',
-            'X-Content-Type-Options': 'nosniff',
-            'X-Frame-Options': 'SAMEORIGIN',
-            'X-XSS-Protection': '1; mode=block',
+        /*
+            Configured response headers. X-Frame-Options overrides the code baseline (SAMEORIGIN),
+            X-Content-Type-Options is left to the baseline, X-Test-Config exists only here.
+            configured-headers.tst.c asserts each on every response.
+         */
+        headers: {
+            'X-Frame-Options': 'DENY',
             'Referrer-Policy': 'same-origin',
+            'X-XSS-Protection': '1; mode=block',
+            'Access-Control-Expose-Headers': 'X-XSRF-TOKEN',
+            'X-Test-Config': 'from-web-json5; q=1',
         },
         index: 'index.html',
         limits: {
@@ -134,11 +144,11 @@
             maxMessage: '100K',
             requests: '1000',
         },
-        listen: ['http://localhost:4240', 'https://localhost:4241'],
+        listen: ['http://localhost:4950', 'https://localhost:4951'],
         _redirect: [
-            { status: 302, to: 'https://:4241' },
+            { status: 302, to: 'https://:4951' },
             { status: 302, from: 'http', to: '?redirected' },
-            { status: 302, to: 'https://hostname:4241' },
+            { status: 302, to: 'https://hostname:4951' },
             { status: 302, to: 'https://hostname' },
         ],
         routes: [
@@ -151,8 +161,26 @@
             { match: '/digest-md5/', authType: 'digest', algorithm: 'MD5', role: 'user', handler: 'file' },
             { match: '/admin/', authType: 'digest', role: 'admin', handler: 'file' },
 
+            //  Guards site/Restricted: the route spelling and the on-disk spelling differ on purpose
+            { match: '/restricted/', authType: 'digest', role: 'admin', handler: 'file' },
+
+            /*
+                A role-bearing route that also configures caching, as the reference documentation
+                suggests for static assets. This is the combination that made a 401 challenge and
+                an authenticated body publicly cacheable for a day.
+             */
+            {
+                match: '/cached-admin/',
+                authType: 'digest',
+                role: 'admin',
+                handler: 'file',
+                cache: { maxAge: '1 day', directives: 'public' }
+            },
+
             //  Trailing "/" matches prefix and allows extra path
             { match: '/test/sig/', handler: 'action', validate: true, role: 'public' },
+            //  Role enforced from the session alone: no authType, so no HTTP challenge
+            { match: '/test/admin/', handler: 'action', role: 'admin' },
             { match: '/test/session/', handler: 'action' },
             { match: '/test/xsrf/', handler: 'action', xsrf: true },
             { match: '/test/', handler: 'action' },
@@ -160,10 +188,14 @@
             // Upload data goes to site/upload
             { match: '/upload/', methods: ['DELETE', 'GET', 'PUT'] },
 
+            //  Public trim routes: a rewrite must not reach a protected namespace unauthenticated
+            { match: '/pub/', trim: '/pub', handler: 'action' },
+            { match: '/pubf/', trim: '/pubf', handler: 'file' },
+
             { match: '/stream/', trim: '/stream', stream: true, handler: 'action' },
             { match: '/ws/', methods: ['GET'], handler: 'action' },
 
-            { match: '/trace/', methods: ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
+            { match: '/trace/', methods: ['DELETE', 'GET', 'OPTIONS', 'POST', 'PUT', 'TRACE'], trim: '/trace' },
 
             //  Allow PUT/DELETE for conditional request tests
             { match: '/range-test.txt', methods: ['DELETE', 'GET', 'PUT'] },

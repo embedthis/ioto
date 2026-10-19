@@ -300,7 +300,11 @@ static void fiberMain(void *data)
         testHeaderSizeLimit();
         testMultipleHeaders();
         testBodySizeLimit();
+#if ME_WEB_MUTATIONS
         testUploadSizeLimit();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
         testURILength();
         testQueryStringLimit();
         testBoundaryConditions();
@@ -319,6 +323,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

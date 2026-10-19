@@ -176,7 +176,7 @@ static void testSecurityHeadersPresent(void)
     header = urlGetHeader(up, "Server");
     if (header) {
         // Should be present but not reveal version details
-        tgti(slen(header), 0);
+        tgtz(slen(header), 0);
         // Should not contain version numbers (optional check)
     }
 
@@ -199,7 +199,7 @@ static void testContentSecurityPolicyHeader(void)
     csp = urlGetHeader(up, "Content-Security-Policy");
     if (csp) {
         // If present, should have some directives
-        tgti(slen(csp), 0);
+        tgtz(slen(csp), 0);
 
         // Common directives: default-src, script-src, etc.
         ttrue(scontains(csp, "default-src") != NULL ||
@@ -210,7 +210,7 @@ static void testContentSecurityPolicyHeader(void)
     // Also check for CSP-Report-Only variant
     csp = urlGetHeader(up, "Content-Security-Policy-Report-Only");
     if (csp) {
-        tgti(slen(csp), 0);
+        tgtz(slen(csp), 0);
     }
 
     urlFree(up);
@@ -335,9 +335,32 @@ static void testVeryLongHeaderValue(void)
     urlFree(up);
 }
 
+
+static void testEarlyErrorHeaders(void)
+{
+    cchar *segments[1];
+    char  *big, *request, response[8192];
+
+    segments[0] = "GET /a%01b HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    teqi(rawRequest(HTTP, segments, 1, 0, 1, response, sizeof(response)), 400);
+    ttrue(scontains(response, "X-Content-Type-Options: nosniff") != NULL, "A 400 parse error carries nosniff");
+    ttrue(scontains(response, "X-Frame-Options:") != NULL, "A 400 parse error carries X-Frame-Options");
+
+    big = rAlloc(20 * 1024 + 1);
+    memset(big, 'a', 20 * 1024);
+    big[20 * 1024] = '\0';
+    request = sfmt("GET /index.html HTTP/1.1\r\nHost: localhost\r\nX-Big: %s\r\n\r\n", big);
+    segments[0] = request;
+    teqi(rawRequest(HTTP, segments, 1, 0, 1, response, sizeof(response)), 413);
+    ttrue(scontains(response, "X-Content-Type-Options: nosniff") != NULL, "A 413 for oversize headers carries nosniff");
+    rFree(request);
+    rFree(big);
+}
+
 static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
+        testEarlyErrorHeaders();
         testCRLFInjectionInCustomHeader();
         testResponseSplittingAttempt();
         testHeaderNameValidation();
@@ -364,6 +387,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

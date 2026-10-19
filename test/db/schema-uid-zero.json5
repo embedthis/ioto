@@ -1,0 +1,15 @@
+/*
+    schema-uid-zero.json5 - Schema with an invalid generate length, which must be rejected
+ */
+{
+    version: 'latest',
+    format: 'onetable:1.1.0',
+    params: { typeField: '_type', timestamps: false },
+    indexes: { primary: { sort: 'sk' } },
+    models: {
+        Item: {
+            sk: { type: 'string', value: 'item#${id}' },
+            id: { type: 'string', generate: 'uid(0)' },
+        },
+    },
+}

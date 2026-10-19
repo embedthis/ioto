@@ -1,5 +1,5 @@
 /*
-    update.c.tst - Unit tests for item update
+    up.c.tst - Unit tests for item update
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
@@ -74,6 +74,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

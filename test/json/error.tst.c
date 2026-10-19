@@ -39,7 +39,7 @@ static void jsonBoundaryErrorTest()
     ttrue(parseFail("{:}"));
     ttrue(parseFail("{\"key\"}"));
     ttrue(parseFail("{\"key\":}"));
-    ttrue(parseSuccess("{\"key\": ,}")); // Trailing comma tolerated
+    ttrue(parseFail("{\"key\": ,}")); // A colon with no value is an error before a comma as before a brace
     ttrue(parseSuccess("{key: value, ,}")); // Multiple commas tolerated
     ttrue(parseFail("{\"a\": 1 \"b\": 2}"));
     ttrue(parseFail("{\"a\": 1, \"b\":}"));
@@ -58,19 +58,8 @@ static void jsonBoundaryErrorTest()
     ttrue(parseSuccess("'single quotes'")); // Single quotes are valid in JSON5
     ttrue(parseSuccess("\"line\nbreak\"")); // Multiline strings are valid in JSON5
 
-#if FUTURE
-    // The parser does not validate numbers
-    ttrue(parseFail("01"));
-    ttrue(parseFail("1."));
-    ttrue(parseFail(".5"));
-    ttrue(parseFail("1.2.3"));
-    ttrue(parseFail("1e"));
-    ttrue(parseFail("1e+"));
-    ttrue(parseFail("1e1.2"));
-    ttrue(parseFail("++1"));
-    ttrue(parseFail("--1"));
-    ttrue(parseFail("1-"));
-#endif
+    // Number grammar: relaxed mode types a malformed number as an unquoted string; the strict
+    // rejections are asserted in types.tst.c
 
     // Invalid keywords at the top level are interpreted as unquoted strings
     ttrue(parseSuccess("True"));
@@ -143,6 +132,6 @@ int main(void)
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

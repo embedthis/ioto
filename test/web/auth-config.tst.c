@@ -104,9 +104,41 @@ static void testAuthConfig()
     tinfo("Configuration loading tests passed");
 }
 
+/* Refuse unknown authType values at startup; do not fall back to Basic. */
+static void testUnknownAuthTypeRefused(void)
+{
+    WebHost *host;
+    Json    *config;
+    int     i;
+    cchar   *configs[] = {
+        "{ web: { auth: { authType: 'digset', roles: { admin: [] } }, routes: [{}] } }",
+        "{ web: { auth: { roles: { admin: [] } }, routes: [{ match: '/admin/', role: 'admin', authType: 'Digset' }, {}] } }",
+    };
+
+    for (i = 0; i < (int) (sizeof(configs) / sizeof(configs[0])); i++) {
+        config = jsonParse(configs[i], 0);
+        host = webAllocHost(config, 0);
+        tnull(host, "Config %d with an unknown authType must be refused", i);
+        if (host) {
+            webFreeHost(host);
+        }
+        jsonFree(config);
+    }
+    //  Both supported types are accepted, case-insensitively
+    config = jsonParse("{ web: { auth: { authType: 'Basic', roles: { admin: [] } }, "
+                       "routes: [{ match: '/admin/', role: 'admin', authType: 'DIGEST' }, {}] } }", 0);
+    host = webAllocHost(config, 0);
+    tnotnull(host);
+    if (host) {
+        webFreeHost(host);
+    }
+    jsonFree(config);
+}
+
 static void fiberMain(void *arg)
 {
     testAuthConfig();
+    testUnknownAuthTypeRefused();
     rStop();
 }
 
@@ -119,6 +151,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

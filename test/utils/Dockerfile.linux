@@ -1,0 +1,55 @@
+#
+#   Dockerfile.linux -- Linux test image for "make test-linux".
+#
+#   Built and run by bin/test-linux.sh with Apple's "container" tool. Ubuntu 24.04 is what CI's
+#   ubuntu-latest runner is, and the package list below is the one .github/workflows/ci.yml
+#   installs, so a failure here is a failure CI would also see -- with the single exception of
+#   architecture: Apple's container runs arm64 Linux only, and the CI runner is x86_64.
+#
+#   Nothing from the repository is copied in. The working tree is mounted at run time, so the image
+#   only has to carry the toolchain and stays valid across source changes.
+#
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+#   The first line is the CI list verbatim. Beyond it: rsync stages the working tree into the build
+#   volume, curl and unzip install bun, git is needed because several test fixtures resolve paths
+#   through it, and psmisc supplies killall for the cleanup scripts. Ubuntu's base image has none
+#   of them. The third line serves the module suites the image also runs: osdep's CI installs clang
+#   for its cross-target header probes, mqtt's CI installs the mosquitto broker, and web's fixture
+#   check needs python3, which the CI runner has preinstalled.
+#
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc build-essential libc6-dev openssl libssl-dev \
+        ca-certificates curl unzip rsync git psmisc procps iproute2 \
+        clang mosquitto python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+#   TestMe runs under bun. It goes in /usr/local rather than root's home because the suite runs as
+#   the unprivileged "ubuntu" user -- linux-test.sh explains why -- and that user cannot read
+#   /root. The chmod makes the tree readable and traversable by everyone.
+#
+ENV BUN_INSTALL=/usr/local/bun
+ENV PATH=/usr/local/bun/bin:$PATH
+
+RUN curl -fsSL https://bun.sh/install | bash
+
+RUN bun install -g --trust @embedthis/testme
+
+#
+#   TestMe's install step puts two things in root's home rather than in the BUN_INSTALL tree: the
+#   compiled "tm" in $HOME/.bun/bin, and testme.h in $HOME/.local/include. Both have to move
+#   somewhere the unprivileged user can reach. /usr/local/include is on gcc's default search path,
+#   so the header needs no -I. Without it every test still runs from its cached binary and only a
+#   test whose source has changed fails to compile, which is a confusing way to find out.
+#
+RUN cp /root/.bun/bin/tm /usr/local/bin/tm \
+    && cp /root/.local/include/testme.h /usr/local/include/testme.h \
+    && chmod a+rx /usr/local/bin/tm \
+    && chmod a+r /usr/local/include/testme.h \
+    && chmod -R a+rX /usr/local/bun
+
+WORKDIR /work

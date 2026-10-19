@@ -55,16 +55,70 @@ static void jsonComments()
 }
 
 
+/*
+    A comment abutting a value must terminate it, as white space does. Issue 16.
+ */
+static void jsonAbuttingComments()
+{
+    Json *obj;
+    char *s;
+
+    obj = parse("{a: 1//c\n}");
+    checkValue(obj, "a", "1");
+    checkType(obj, "a", JSON_PRIMITIVE);
+    jsonFree(obj);
+
+    obj = parse("{a: 1/*c*/}");
+    checkValue(obj, "a", "1");
+    jsonFree(obj);
+
+    obj = parse("{a: 1 //c\n}");
+    checkValue(obj, "a", "1");
+    jsonFree(obj);
+
+    obj = parse("{timeout: 30//seconds\n, retries: 3}");
+    checkValue(obj, "timeout", "30");
+    checkValue(obj, "retries", "3");
+    jsonFree(obj);
+
+    //  An unquoted string token is terminated the same way
+    obj = parse("{a: hello//c\n}");
+    checkValue(obj, "a", "hello");
+    checkType(obj, "a", JSON_STRING);
+    jsonFree(obj);
+
+    //  A top level primitive followed by a comment
+    obj = parse("false//c");
+    s = jsonToString(obj, 0, 0, JSON_JSON);
+    tmatch(s, "false");
+    rFree(s);
+    jsonFree(obj);
+
+    //  A regular expression still parses; the '/' is not a comment there
+    obj = parse("{re: /ab+c/}");
+    checkValue(obj, "re", "ab+c");
+    checkType(obj, "re", JSON_REGEXP);
+    jsonFree(obj);
+
+    //  The rendered JSON must survive a strict reparse
+    obj = parse("{a: 1/*c*/, b: 2//d\n}");
+    s = jsonToString(obj, 0, 0, JSON_JSON);
+    tmatch(s, "{\"a\":1,\"b\":2}");
+    rFree(s);
+    jsonFree(obj);
+}
+
 int main(void)
 {
     rInit(0, 0);
     jsonComments();
+    jsonAbuttingComments();
     rTerm();
     return 0;
 }
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

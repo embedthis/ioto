@@ -5,7 +5,7 @@
 {
     controller: {
         _meta: {
-            role: 'user',
+            role: 'public',
         },
         test_0: {
             // No request, no response
@@ -137,8 +137,121 @@
         test_8: {
             //  Test strict signatures without "fields" property collection
             request: {
-                type: 'object', 
+                type: 'object',
             },
+            response: {
+                type: 'object',
+            }
+        },
+
+        test_9: {
+            //  Test the boolean and date primitive types as object fields
+            request: {
+                type: 'object',
+                fields: {
+                    flag: {type: 'boolean'},
+                    when: {type: 'date'},
+                    count: {type: 'number'},
+                    label: {type: 'string'},
+                }
+            },
+            response: {
+                type: 'object',
+                fields: {
+                    flag: {type: 'boolean'},
+                    when: {type: 'date'},
+                    count: {type: 'number'},
+                    label: {type: 'string'},
+                }
+            }
+        },
+
+        test_10: {
+            //  Test an unrecognised type name in a signature
+            request: {
+                type: 'object',
+                fields: {
+                    thing: {type: 'unicorn'},
+                }
+            }
+        },
+
+        test_11: {
+            //  Test "drop" given as a role name string -- dropped unless the user has the role
+            request: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    secret: {type: 'string'},
+                }
+            },
+            response: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    secret: {type: 'string', drop: 'admin'},
+                }
+            }
+        },
+
+        test_12: {
+            //  Test "drop" given as an object keyed by tag
+            request: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    secret: {type: 'string'},
+                }
+            },
+            response: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    secret: {type: 'string', drop: {response: 'admin'}},
+                }
+            }
+        },
+
+        test_13: {
+            //  Test a default supplied on the response side
+            request: {
+                type: 'object',
+                fields: {
+                    name: {type: 'string'},
+                    //  Optional on the request so an explicit value can override the default
+                    color: {type: 'string'},
+                }
+            },
+            response: {
+                type: 'object',
+                hasRequired: true,
+                fields: {
+                    name: {type: 'string'},
+                    color: {type: 'string', default: 'blue', required: true},
+                }
+            }
+        },
+
+        test_14: {
+            //  Test hasWild -- unknown fields are passed through rather than rejected
+            request: {
+                type: 'object',
+                hasWild: true,
+                fields: {
+                    name: {type: 'string'},
+                }
+            },
+            response: {
+                type: 'object',
+                hasWild: true,
+                fields: {
+                    name: {type: 'string'},
+                }
+            }
+        },
+
+        test_15: {
+            //  No request block at all -- strict mode must reject the request
             response: {
                 type: 'object',
             }

@@ -1,0 +1,13 @@
+/*
+    blend-missing.json5 - Schema blending an include that does not exist
+ */
+{
+    version: 'latest',
+    indexes: {
+        primary: { sort: 'sk' },
+    },
+    blend: [
+        'no-such-include.json5',
+    ],
+    models: {},
+}

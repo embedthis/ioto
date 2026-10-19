@@ -5,6 +5,9 @@
 
 echo "Cleaning up fuzz test environment..."
 
+#   Set when any sanitizer report, crash log or core dump is found: the gate fails on it
+FAILED=0
+
 # Kill server if still running and not existing
 if [ -f ".testme/server.pid" -a ! -f ".testme/existing" ]; then
     SERVER_PID=$(cat .testme/server.pid)
@@ -30,28 +33,23 @@ if [ -f "web.log" ]; then
         mkdir -p crashes/server
         cp web.log crashes/server/crash-$(date +%s).log
         echo "Crash log saved to crashes/server/"
+        FAILED=1
     fi
 fi
 
-# Check for ASAN reports
-if [ $(ls -1 asan.* 2>/dev/null | wc -l) -gt 0 ]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "⚠️  ASAN REPORTS FOUND"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    mkdir -p crashes/server
-    mv asan.* crashes/server/ 2>/dev/null || true
-    echo "ASAN reports saved to crashes/server/"
-fi
-
-# Check for UBSAN reports
-if [ $(ls -1 ubsan.* 2>/dev/null | wc -l) -gt 0 ]; then
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "⚠️  UBSAN REPORTS FOUND"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    mkdir -p crashes/server
-    mv ubsan.* crashes/server/ 2>/dev/null || true
-    echo "UBSAN reports saved to crashes/server/"
-fi
+# Check crashes/ and the working directory for ASan/UBSan reports.
+for kind in asan ubsan ; do
+    REPORTS=$(ls -1 crashes/${kind}.* ${kind}.* 2>/dev/null)
+    if [ -n "$REPORTS" ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  $(echo $kind | tr a-z A-Z) REPORTS FOUND"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        mkdir -p crashes/server
+        mv $REPORTS crashes/server/ 2>/dev/null || true
+        echo "$(echo $kind | tr a-z A-Z) reports saved to crashes/server/"
+        FAILED=1
+    fi
+done
 
 # Check for core dumps
 if [ $(ls -1 core.* core 2>/dev/null | wc -l) -gt 0 ]; then
@@ -61,6 +59,7 @@ if [ $(ls -1 core.* core 2>/dev/null | wc -l) -gt 0 ]; then
     mkdir -p crashes/server
     mv core.* core crashes/server/ 2>/dev/null || true
     echo "Core dump saved to crashes/server/"
+    FAILED=1
 fi
 
 # Display server crash summary if any server crashes found
@@ -135,3 +134,9 @@ else
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
 fi
+
+if [ "$FAILED" != "0" ]; then
+    echo "Fuzz gate FAILED: sanitizer reports, crash logs or core dumps were found" >&2
+    exit 1
+fi
+exit 0

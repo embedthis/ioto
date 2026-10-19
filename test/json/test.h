@@ -50,7 +50,6 @@ PUBLIC bool parseFail(cchar *text)
     char    *error;
 
     if ((obj = jsonParseString(text, &error, 0)) == 0) {
-        fprintf(stderr, "Failed to parse: %s\n%s", text, error);
         rFree(error);
         return 1;
     }
@@ -114,6 +113,6 @@ PUBLIC void checkType(Json *json, cchar *key, int type)
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Michael O'Brien. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

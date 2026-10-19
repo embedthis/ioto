@@ -49,7 +49,7 @@ static void testLastModifiedHeader(void)
         Last-Modified should be valid HTTP date format (RFC 7231)
         Example: "Mon, 12 Nov 2025 10:30:45 GMT"
      */
-    tgti(slen(lastModified), 0);
+    tgtz(slen(lastModified), 0);
     tcontains(lastModified, "GMT");
 
     urlFree(up);
@@ -96,7 +96,7 @@ static void testCacheControlHeader(void)
         If present, verify it's valid
      */
     if (cacheControl) {
-        tgti(slen(cacheControl), 0);
+        tgtz(slen(cacheControl), 0);
 
         /*
             Common directives: max-age, public, private, no-cache, no-store
@@ -134,10 +134,10 @@ static void testNoCacheDirective(void)
         If present, just verify they're valid
      */
     if (cacheControl) {
-        tgti(slen(cacheControl), 0);
+        tgtz(slen(cacheControl), 0);
     }
     if (pragma) {
-        tgti(slen(pragma), 0);
+        tgtz(slen(pragma), 0);
     }
 
     urlFree(up);
@@ -145,10 +145,10 @@ static void testNoCacheDirective(void)
 
 static void testConditionalGetWithCache(void)
 {
-    Url   *up;
-    char  url[128], headers[256];
-    int   status;
-    cchar *etag, *lastModified;
+    Url  *up;
+    char url[128], headers[256];
+    int  status;
+    char *etag, *lastModified;
 
     up = urlAlloc(0);
 
@@ -156,8 +156,9 @@ static void testConditionalGetWithCache(void)
     status = urlFetch(up, "GET", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
     teqi(status, 200);
 
-    etag = urlGetHeader(up, "ETag");
-    lastModified = urlGetHeader(up, "Last-Modified");
+    //  The header values live in the response, which urlClose frees, so keep copies
+    etag = sclone(urlGetHeader(up, "ETag"));
+    lastModified = sclone(urlGetHeader(up, "Last-Modified"));
 
     // Second request - use If-None-Match with ETag
     if (etag) {
@@ -176,6 +177,8 @@ static void testConditionalGetWithCache(void)
         // Should get 304 Not Modified if file unchanged
         ttrue(status == 304 || status == 200);
     }
+    rFree(etag);
+    rFree(lastModified);
     urlFree(up);
 }
 
@@ -225,7 +228,7 @@ static void testExpiresHeader(void)
         If Expires is present, verify format
      */
     if (expires) {
-        tgti(slen(expires), 0);
+        tgtz(slen(expires), 0);
         // Should be HTTP date format
         ttrue(scontains(expires, "GMT") != NULL ||
               scontains(expires, "0") != NULL);  // "0" means already expired
@@ -259,7 +262,7 @@ static void testVaryHeader(void)
             Vary header lists headers that affect response
             Common: Vary: Accept-Encoding
          */
-        tgti(slen(vary), 0);
+        tgtz(slen(vary), 0);
     }
     urlFree(up);
 }
@@ -285,7 +288,7 @@ static void testCacheControlOnDynamicContent(void)
      */
     if (cacheControl) {
         // Just verify it exists - actual policy depends on application
-        tgti(slen(cacheControl), 0);
+        tgtz(slen(cacheControl), 0);
     }
     urlFree(up);
 }
@@ -317,7 +320,7 @@ static void testStaticAssetCaching(void)
     expires = urlGetHeader(up, "Expires");
     if (expires) {
         //  If Expires is present (HTTP/1.0), verify it's a valid date
-        tgti(slen(expires), 0);
+        tgtz(slen(expires), 0);
     }
 
     //  Test JS file (also in extensions list)
@@ -410,7 +413,7 @@ static void testPrivateNoCaching(void)
         expires = urlGetHeader(up, "Expires");
         if (expires) {
             //  Should be "0" for no-cache
-            tgti(slen(expires), 0);
+            tgtz(slen(expires), 0);
         }
     }
     urlFree(up);
@@ -470,6 +473,61 @@ static void testRouteWithoutCacheConfig(void)
     urlFree(up);
 }
 
+/*
+    A route's cache policy must not be applied to an authentication challenge or to a credentialed
+    response (web #28). /cached-admin/ is configured "public, max-age=1 day" and requires the admin
+    role - the combination that let an intermediary store the 401, locking the legitimate
+    administrator out for a day, and store the authenticated body for the next anonymous client.
+ */
+static void testChallengeAndCredentialedAreNotCacheable(void)
+{
+    Url   *up;
+    char  url[128];
+    int   status;
+    cchar *cacheControl;
+
+    SFMT(url, "%s/cached-admin/secret.html", HTTP);
+
+    //  The 401 challenge
+    up = urlAlloc(0);
+    status = urlFetch(up, "GET", url, NULL, 0, NULL);
+    teqi(status, 401);
+    cacheControl = urlGetHeader(up, "Cache-Control");
+    tnotnull(cacheControl);
+    tmatch(cacheControl, "no-store");
+    urlFree(up);
+
+    //  The authenticated 200 for the same URL
+    up = urlAlloc(0);
+    urlSetAuth(up, "alice", "password", "digest");
+    status = urlFetch(up, "GET", url, NULL, 0, NULL);
+    teqi(status, 200);
+    cacheControl = urlGetHeader(up, "Cache-Control");
+    tnotnull(cacheControl);
+    tmatch(cacheControl, "no-store");
+    urlFree(up);
+}
+
+/*
+    A response a shared cache may store has to name the request headers its body can depend on,
+    or a session-dependent body stored under a "public" route is served to the next client.
+ */
+static void testSharedCacheCarriesVary(void)
+{
+    Url   *up;
+    char  url[128];
+    int   status;
+    cchar *vary;
+
+    up = urlAlloc(0);
+    status = urlFetch(up, "GET", SFMT(url, "%s/static/style.css", HTTP), NULL, 0, NULL);
+    teqi(status, 200);
+    vary = urlGetHeader(up, "Vary");
+    tnotnull(vary);
+    tcontains(vary, "Cookie");
+    urlFree(up);
+}
+
 static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
@@ -489,6 +547,8 @@ static void fiberMain(void *data)
         testPrivateNoCaching();
         testUserPrivateCache();
         testRouteWithoutCacheConfig();
+        testChallengeAndCredentialedAreNotCacheable();
+        testSharedCacheCarriesVary();
     }
     rFree(HTTP);
     rFree(HTTPS);
@@ -504,6 +564,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

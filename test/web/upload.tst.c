@@ -109,8 +109,8 @@ static int upload(cchar *srcPath)
     destSize = rGetFileSize(destPath);
     teqz(srcSize, destSize);
 
-    fp1 = fopen(srcPath, "r");
-    fp2 = fopen(destPath, "r");
+    fp1 = fopen(srcPath, "rb");
+    fp2 = fopen(destPath, "rb");
     tnotnull(fp1);
     tnotnull(fp2);
 
@@ -199,6 +199,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

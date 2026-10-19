@@ -11,6 +11,16 @@ Tests for Ioto agent command-line interface including argument parsing, configur
 - Version information
 - Error handling for invalid arguments
 
+### App Startup ([app-start.tst.sh](app-start.tst.sh))
+- Each shipped app (blank, http, unit) starts from a fresh copy with no `tmp` directory
+- The default upload directory `state/uploads` is created private (0700)
+- The http app's login action answers valid JSON without the password hash
+
+### Background Operation ([background.tst.sh](background.tst.sh))
+- The http app started with `--background` daemonizes and answers 200
+- It keeps answering after a SIGUSR1 restart and logs no event notifier errors
+- Skipped on Windows, which has no daemon mode
+
 ### State Management ([state/](state/))
 - Runtime state directory creation and management
 - Configuration file loading from command-line paths
@@ -19,7 +29,7 @@ Tests for Ioto agent command-line interface including argument parsing, configur
 
 Run all command tests:
 ```bash
-cd /Users/mob/c/agent/test
+cd test
 tm command
 ```
 

@@ -56,8 +56,8 @@ static void testHEADMethod(void)
 
     up = urlAlloc(0);
 
-    // HEAD should return headers but no body (use trace route which allows HEAD)
-    status = urlFetch(up, "HEAD", SFMT(url, "%s/trace/index.html", HTTP), NULL, 0, NULL);
+    // HEAD should return headers but no body when the route allows GET
+    status = urlFetch(up, "HEAD", SFMT(url, "%s/index.html", HTTP), NULL, 0, NULL);
     teqi(status, 200);
 
     // Should have Content-Length header
@@ -239,9 +239,13 @@ static void fiberMain(void *data)
         testCaselessMethods();
         testHEADMethod();
         testOPTIONSMethod();
+#if ME_WEB_MUTATIONS
         testPUTMethodCreate();
         testPUTMethodUpdate();
         testDELETEMethod();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
         testPOSTMethod();
         testTRACEDisabled();
     }
@@ -259,6 +263,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

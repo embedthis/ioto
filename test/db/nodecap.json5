@@ -1,0 +1,22 @@
+/*
+    nodecap.json5 - Schema for the node cap update test (db#10029)
+ */
+{
+    version: '1',
+    format: 'onetable:1.1.0',
+    params: {
+        typeField: '_type',
+        timestamps: false,
+    },
+    indexes: {
+        primary: { sort: 'sk' },
+    },
+    models: {
+        Doc: {
+            sk: { type: 'string', value: 'doc#${id}' },
+            id: { type: 'string', required: true },
+            a:  { type: 'array' },
+            b:  { type: 'array' },
+        },
+    },
+}

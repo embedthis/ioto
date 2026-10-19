@@ -1,0 +1,13 @@
+/*
+    blend-broken.json5 - Schema blending an include that cannot be parsed
+ */
+{
+    version: 'latest',
+    indexes: {
+        primary: { sort: 'sk' },
+    },
+    blend: [
+        'broken.json5',
+    ],
+    models: {},
+}

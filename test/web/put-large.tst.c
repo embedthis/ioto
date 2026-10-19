@@ -291,9 +291,12 @@ static void testFilenameSanitization(void)
             Server should either:
             1. Sanitize and accept (201/204)
             2. Reject as invalid (400/403)
-            3. Client may reject malformed URL (status < 0)
+            3. Refuse the name outright (404) - the deny-by-default filename policy answers 404
+               rather than 403 so it does not confirm what is there, and the traversal cases
+               normalize to a ".." segment, which that policy matches
+            4. Client may reject malformed URL (status < 0)
          */
-        ttrue(status == 201 || status == 204 || status == 400 || status == 403 || status < 0);
+        ttrue(status == 201 || status == 204 || status == 400 || status == 403 || status == 404 || status < 0);
     }
 
     urlFree(up);
@@ -454,6 +457,7 @@ static void testPutContentLength(void)
 static void fiberMain(void *data)
 {
     if (setup(&HTTP, &HTTPS)) {
+#if ME_WEB_MUTATIONS
         testPutLargeUnderLimit();
         testPutAtLimit();
         testPutLargeFileHandling();
@@ -464,6 +468,9 @@ static void fiberMain(void *data)
         testPutConcurrent();
         testPutEmpty();
         testPutContentLength();
+#else
+        tinfo("Skipped: PUT and DELETE are unavailable on this platform");
+#endif
     }
     rFree(HTTP);
     rFree(HTTPS);
@@ -479,6 +486,6 @@ int main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
