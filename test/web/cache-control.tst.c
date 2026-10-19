@@ -475,7 +475,7 @@ static void testRouteWithoutCacheConfig(void)
 
 /*
     A route's cache policy must not be applied to an authentication challenge or to a credentialed
-    response (web #28). /cached-admin/ is configured "public, max-age=1 day" and requires the admin
+    response. /cached-admin/ is configured "public, max-age=1 day" and requires the admin
     role - the combination that let an intermediary store the 401, locking the legitimate
     administrator out for a day, and store the authenticated body for the next anonymous client.
  */

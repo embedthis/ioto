@@ -68,7 +68,7 @@ expectRefused() {
     fi
     wait $PID
     rc=$?
-    #   A refused start must exit non-zero so a supervisor sees the failure (web #173)
+    #   A refused start must exit non-zero so a supervisor sees the failure
     if [ $rc -eq 0 ] ; then
         echo "✗ $name: the server refused to start but exited with status 0"
         cat "$DIR/$name.log"
@@ -92,7 +92,7 @@ fi
 writeConfig "$DIR/nodigest.json5" "http://127.0.0.1:$PORT" digest
 expectRefused web-nodigest nodigest.json5 "http://127.0.0.1:$PORT/admin/index.html" || status=1
 
-#   Every feature flag builds in its OFF state, and a configuration needing the feature refuses (web #162)
+#   Every feature flag builds in its OFF state, and a configuration needing the feature refuses
 SSL="-DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0"
 
 if ! buildWeb "$DIR/web-noauth" -DME_WEB_HTTP_AUTH=0 $SSL ; then

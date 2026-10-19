@@ -5,7 +5,7 @@
     route matches on the path prefix, so a filename policy could not be expressed at all. Anything
     that landed in the document tree - by a build step, a deployment script, an editor or a git
     clone - was reachable: ".env", "*.bak", editor backups, source maps, and a ".git" directory
-    whose object store yields every secret ever committed (web #29).
+    whose object store yields every secret ever committed.
 
     The fixtures come from prep.sh. The dot-directory case is ".hidden" rather than ".git": a real
     ".git" under the document root would make git treat site/ as a nested repository. The pattern

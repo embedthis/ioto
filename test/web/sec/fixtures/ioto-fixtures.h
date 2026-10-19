@@ -11,9 +11,8 @@
     libc) without any server dependency, which is the correct trade-off for a
     deterministic, portable harness.
 
-    The harness oracle is verified against the real function signatures as
-    documented in targets/ioto/sec-scan.json5 anchors 'sec-url-canon' and
-    'sec-transfer-encoding'.
+    The harness oracle is verified against the real signatures of webDecode and
+    stoix, the URL decoder and the chunk-size parser.
 
     DO NOT modify these copies independently of the originals — they must stay
     in sync. To update: copy the body verbatim from the source file and note

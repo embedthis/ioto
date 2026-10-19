@@ -3,7 +3,7 @@
 
     408 was in the status table and emitted nowhere: every timeout path closed the connection
     without writing a response, so a client could not tell "you were too slow" from a crash or a
-    dropped link (web #34).
+    dropped link.
 
     The shared server cannot test this - its web.json5 sets a 60 second parse budget, longer than
     a test may wait - so these run against an in-process host with a one second budget, on a port

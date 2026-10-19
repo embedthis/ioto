@@ -301,7 +301,7 @@ static void checkDigest(DigestSession *ds, cchar *nc, cchar *cnonce, cchar *resp
 }
 
 /*
-    Replay after eviction (web #6). A captured request must stay unreplayable even after an
+    Replay after eviction. A captured request must stay unreplayable even after an
     attacker, who does not know the password, sends a failing request under the same nonce with
     a higher nc. Before the fix, that failing request deleted the nonce's tracking entry, which
     reset the nonce to first-use and let the captured nc=1 request through again.
@@ -639,7 +639,7 @@ static void testDigestWithQuery(void)
 /*
     A repeated Digest auth-param is malformed: RFC 7616 section 3.4 defines the credentials as a
     set. The credential below is otherwise valid and the repeat carries the same value, so under
-    the old last-wins parse it authenticated - the refusal must come from the repeat alone (web #36).
+    the old last-wins parse it authenticated - the refusal must come from the repeat alone.
  */
 static void testDigestDuplicateParameter(void)
 {
@@ -677,7 +677,7 @@ static void testDigestDuplicateParameter(void)
     508 bytes was hashed truncated while the client hashed the whole thing - the two disagreed and
     a correct credential was refused. Worse, two targets sharing a 508-byte prefix produced the
     same HA2, so a credential minted for one was valid for the other. parseDigestAuth permits a uri
-    of 2048, so this length is legal input, not an abuse (web #23).
+    of 2048, so this length is legal input, not an abuse.
 
     The length is carried in a query string rather than a deep path: the request target has to
     exceed 512 bytes, and a 600-byte filesystem path is beyond MAX_PATH on Windows.

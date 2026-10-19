@@ -5,7 +5,7 @@
     SFMT truncates rather than overflowing, so there was no memory-safety bug, but the truncation
     was silent and was applied to inputs the client controls. Two inputs differing only past the
     cut produce an identical preimage and therefore an identical hash, which in a credential
-    comparator is a collision the attacker chooses (web #23).
+    comparator is a collision the attacker chooses.
 
     webHashPassword is the function an application calls to hash a password for storage, so a long
     username silently produced a weak stored credential. It is exercised here directly rather than

@@ -3,7 +3,7 @@
 
     web.limits.uploads bounds the number of files one multipart request may create. It used to
     default to 0, and the check was written as "> 0 && ...", so at the shipped default the limit
-    did not exist (web #64). These tests run against the shared server, whose web.json5 does not
+    did not exist. These tests run against the shared server, whose web.json5 does not
     set the key, so they exercise the default itself.
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
