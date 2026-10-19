@@ -85,8 +85,17 @@
 #define SET_CODE(v)     ((v) & 0xf)
 #define SET_LEN(len, n) ((uchar) (((len) >> ((n) * 8)) & 0xff))
 
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
+#define UTF8_ACCEPT     0
+#define UTF8_REJECT     1
+
+/*
+    The largest frame the receive buffer can hold. A whole frame is buffered before it is delivered,
+    and parseMessage adds a null after it so the callback gets a terminated payload, so the frame
+    must leave room for that byte. Accepting a maxFrame above this used to desynchronise the stream:
+    the buffer could not grow for the null, the payload was never fully consumed, and the parser read
+    it as the next frame header.
+ */
+#define WS_MAX_BUFFERED (ME_R_MAX_BUF - 1)
 
 static const uchar utfTable[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 00..1f
@@ -107,13 +116,15 @@ static const uchar utfTable[] = {
 
 /********************************** Forwards **********************************/
 
+static void abandonConnection(WebSocket *ws);
 static void invokeCallback(WebSocket *ws, int event, cchar *buf, size_t len);
 static int parseMessage(WebSocket *ws);
 static int parseFrame(WebSocket *ws);
-static uint validUTF8(WebSocket *ws, cchar *str, size_t len);
+static uint validUTF8(uint state, cchar *str, size_t len);
 static bool validateText(WebSocket *ws);
 static int writeFrame(WebSocket *ws, int type, int fin, cuchar *buf, size_t len);
 static int wsError(WebSocket *ws, int code, cchar *fmt, ...);
+static int wsResult(WebSocket *ws);
 
 /*********************************** Code *************************************/
 
@@ -132,8 +143,7 @@ PUBLIC WebSocket *webSocketAlloc(RSocket *sock, bool client)
     ws->client = client;
     ws->state = WS_STATE_CONNECTING;
     ws->closeStatus = WS_STATUS_NO_STATUS;
-    ws->maxFrame = WS_MAX_FRAME;
-    ws->maxMessage = WS_MAX_MESSAGE;
+    webSocketSetLimits(ws, WS_MAX_FRAME, WS_MAX_MESSAGE);
     ws->validate = 1;
     ws->buf = rAllocBuf(ME_BUFSIZE);
     return ws;
@@ -152,10 +162,10 @@ PUBLIC void webSocketFree(WebSocket *ws)
 }
 
 /*
-    Read data from the socket into the WebSocket buffer
-    Return the number of bytes read, 0 if no data available, < 0 on error
+    Read data from the socket into the WebSocket buffer, waiting until the deadline for some.
+    Return the number of bytes read, R_ERR_TIMEOUT if the deadline passed with none, < 0 on error.
  */
-static ssize readSocket(WebSocket *ws)
+static ssize readSocket(WebSocket *ws, Ticks deadline)
 {
     RBuf   *bp;
     size_t toRead;
@@ -169,8 +179,8 @@ static ssize readSocket(WebSocket *ws)
     rReserveBufSpace(bp, ME_BUFSIZE);
     toRead = rGetBufSpace(bp);
 
-    if ((nbytes = rReadSocket(ws->sock, bp->end, toRead, ws->deadline)) < 0) {
-        return wsError(ws, 0, "Cannot read from socket");
+    if ((nbytes = rReadSocket(ws->sock, bp->end, toRead, deadline)) < 0) {
+        return nbytes;
     }
     rAdjustBufEnd(bp, nbytes);
     return nbytes;
@@ -190,9 +200,12 @@ static void invokeCallback(WebSocket *ws, int event, cchar *buf, size_t len)
  */
 PUBLIC int webSocketRun(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *buf, Ticks timeout)
 {
-    Ticks pingDue;
+    Ticks pingDue, readUntil, now;
     ssize nbytes;
 
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     ws->callback = callback;
     ws->callbackArg = arg;
 
@@ -201,45 +214,52 @@ PUBLIC int webSocketRun(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *
         ws->state = WS_STATE_OPEN;
         invokeCallback(ws, WS_EVENT_OPEN, NULL, 0);
     }
-    // Process any buffered data from HTTP upgrade
+    // Process any data the caller read ahead of the WebSocket stream, such as after the HTTP upgrade
     if (buf && rGetBufLength(buf) > 0) {
         rPutBlockToBuf(ws->buf, rGetBufStart(buf), rGetBufLength(buf));
-        rAdjustBufStart(ws->buf, (ssize) rGetBufLength(buf));
+        rAdjustBufStart(buf, (ssize) rGetBufLength(buf));
         webSocketProcess(ws);
     }
     pingDue = ws->pingPeriod ? rGetTicks() + ws->pingPeriod : 0;
 
     while (ws->state != WS_STATE_CLOSED && rState < R_STOPPING) {
-        // Send ping if due
-        if (pingDue && rGetTicks() >= pingDue) {
+        now = rGetTicks();
+        if (pingDue && now >= pingDue) {
             webSocketSendBlock(ws, WS_MSG_PING, NULL, 0);
-            pingDue = rGetTicks() + ws->pingPeriod;
+            pingDue = now + ws->pingPeriod;
         }
-        ws->deadline = rGetTicks() + timeout;
-        ws->deadline = pingDue ? min(ws->deadline, pingDue) : ws->deadline;
+        /*
+            Inactivity bounds reads and writes; the ping deadline only wakes idle reads to send a ping. Zero
+            disables inactivity expiry.
+         */
+        ws->deadline = timeout > 0 ? now + timeout : MAXINT64;
+        readUntil = pingDue ? min(ws->deadline, pingDue) : ws->deadline;
 
-        // Read all available data
-        while ((nbytes = readSocket(ws)) > 0) {
+        if ((nbytes = readSocket(ws, readUntil)) > 0) {
             webSocketProcess(ws);
-            if (ws->state == WS_STATE_CLOSED) {
-                break;
-            }
-        }
-        if (nbytes < 0) {
-            webSocketSendClose(ws, WS_STATUS_COMMS_ERROR, NULL);
-            break;
-        }
-        if (ws->state == WS_STATE_CLOSED) {
-            break;
-        }
-        if (rWaitForIO(ws->sock->wait, R_READABLE, ws->deadline) < 0) {
+        } else if (nbytes == R_ERR_TIMEOUT) {
             if (rGetTicks() >= ws->deadline) {
                 wsError(ws, 0, "Timeout waiting for WebSocket data");
+                abandonConnection(ws);
                 break;
             }
+        } else {
+            wsError(ws, 0, "Cannot read from socket");
+            abandonConnection(ws);
+            break;
         }
     }
-    return ws->error ? -ws->error : 0;
+    return wsResult(ws);
+}
+
+/*
+    Give up on the peer. The abnormal close is recorded locally as 1006, which is what that code is
+    for, and the peer is told we are going away, which is what may be sent on the wire.
+ */
+static void abandonConnection(WebSocket *ws)
+{
+    ws->closeStatus = WS_STATUS_COMMS_ERROR;
+    webSocketSendClose(ws, WS_STATUS_GOING_AWAY, NULL);
 }
 
 /*
@@ -248,6 +268,9 @@ PUBLIC int webSocketRun(WebSocket *ws, WebSocketProc callback, void *arg, RBuf *
  */
 PUBLIC int webSocketProcess(WebSocket *ws)
 {
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     /*
         Process buffered data while we have complete frames
      */
@@ -269,10 +292,11 @@ PUBLIC int webSocketProcess(WebSocket *ws)
         }
         if (ws->error) {
             if (ws->state != WS_STATE_CLOSED) {
-                webSocketSendClose(ws, ws->error, NULL);
+                //  A runtime error has no WebSocket status of its own
+                webSocketSendClose(ws, ws->error > 0 ? ws->error : WS_STATUS_INTERNAL_ERROR, NULL);
             }
             ws->state = WS_STATE_CLOSED;
-            return -ws->error;
+            return wsResult(ws);
         }
     }
     return 1;
@@ -301,26 +325,28 @@ static int parseFrame(WebSocket *ws)
     }
     fin = GET_FIN(*fp);
     opcode = GET_CODE(*fp);
+    /*
+        Only continuation, text, binary, close, ping and pong are assigned. The reserved data
+        opcodes 3-7 are refused here with every other header check, so the frame is refused before
+        its payload is buffered rather than after.
+     */
+    if (opcode > WS_MSG_PONG || (WS_MSG_BINARY < opcode && opcode < WS_MSG_CONTROL)) {
+        return wsError(ws, 0, "Protocol error, bad frame opcode");
+    }
     if (opcode == WS_MSG_CONT) {
         if (!ws->type) {
             return wsError(ws, 0, "Protocol error, continuation frame but not prior message");
         }
     } else if (opcode < WS_MSG_CONTROL && ws->type) {
         return wsError(ws, 0, "Protocol error, data frame received but expected a continuation frame");
-    } else {
-        ws->type = opcode;
     }
-    if (opcode > WS_MSG_PONG) {
-        return wsError(ws, 0, "Protocol error, bad frame opcode");
-    }
-    ws->opcode = opcode;
-    ws->fin = fin;
-
     if (opcode >= WS_MSG_CONTROL && !fin) {
         return wsError(ws, 0, "Protocol error, fragmented control frame");
     }
     /*
-        Extract the length and mask from the frame
+        Extract the length and mask from the frame. Nothing is committed to the WebSocket until the
+        whole header is present: a header split across two reads is parsed again from the start,
+        and a type committed on the first pass made the second pass refuse it as a stray data frame.
      */
     fp++;
     len = GET_LEN(*fp);
@@ -337,23 +363,47 @@ static int parseFrame(WebSocket *ws)
         // Return if we don't have the required packet control fields yet
         return 0;
     }
+    /*
+        A client masks every frame and a server masks none (RFC 6455 section 5.1). The mask defeats
+        cache poisoning through intermediaries, so the wrong choice fails the connection.
+     */
+    if (mask == ws->client) {
+        return wsError(ws, 0, ws->client ? "Protocol error, masked server frame" :
+                       "Protocol error, unmasked client frame");
+    }
     fp++;
     while (--lenBytes > 0) {
-        if (len > SSIZE_MAX / 8) {
-            return wsError(ws, 0, "Protocol error, frame length too big");
-        }
         len <<= 8;
         len += (uchar) * fp++;
-    }
-    if (len < 0) {
-        return wsError(ws, 0, "Protocol error, bad frame length");
     }
     if (opcode >= WS_MSG_CONTROL && len > WS_MAX_CONTROL) {
         return wsError(ws, 0, "Protocol error, control frame too big");
     }
-    if (len > ws->maxMessage) {
-        return wsError(ws, 0, "Protocol error, message too big");
+    /*
+        Bound the frame and the assembled message separately.
+
+        A message may be fragmented across any number of continuation frames, so checking only the
+        frame length bounds nothing: an attacker sends frames each just under the limit and never
+        sets FIN, and the assembled message grows without limit. maxFrame was previously applied
+        only to outgoing writes.
+
+        The check is made here, from the declared length in the frame header, so the data is
+        refused before it is buffered rather than after.
+     */
+    if (opcode < WS_MSG_CONTROL) {
+        if ((size_t) len > ws->maxFrame) {
+            return wsError(ws, WS_STATUS_MESSAGE_TOO_LARGE, "Protocol error, frame too big");
+        }
+        if (ws->messageLength + (size_t) len > ws->maxMessage) {
+            return wsError(ws, WS_STATUS_MESSAGE_TOO_LARGE, "Protocol error, message too big");
+        }
     }
+    //  The message type belongs to the message. A control frame interleaved in it must not touch it.
+    if (opcode == WS_MSG_TEXT || opcode == WS_MSG_BINARY) {
+        ws->type = opcode;
+    }
+    ws->opcode = opcode;
+    ws->fin = fin;
     ws->frameLength = len;
     ws->frame = WS_MSG;
     ws->maskOffset = mask ? 0 : -1;
@@ -376,8 +426,8 @@ static int parseMessage(WebSocket *ws)
     RBuf   *buf;
     uchar  *cp, *end;
     char   *msg;
-    size_t nbytes, len;
-    int    event, validated;
+    size_t nbytes, len, reasonLen;
+    int    event;
 
     buf = ws->buf;
 
@@ -387,10 +437,7 @@ static int parseMessage(WebSocket *ws)
         return 0;
     }
     if (ws->maskOffset >= 0) {
-        if (ws->frameLength > rGetBufLength(buf)) {
-            return wsError(ws, 0, "Frame length exceeds buffer size");
-        }
-        //  Unmask the message
+        //  Unmask the message. The whole frame is buffered, guaranteed by the length check above.
         end = (uchar*) &buf->start[ws->frameLength];
         for (cp = (uchar*) buf->start; cp < end; cp++) {
             *cp = *cp ^ ws->dataMask[ws->maskOffset++ & 0x3];
@@ -403,41 +450,42 @@ static int parseMessage(WebSocket *ws)
     case WS_MSG_TEXT:
     case WS_MSG_BINARY:
         ws->messageLength = 0;
+        ws->utfState = UTF8_ACCEPT;
 
     // Fall through
     case WS_MSG_CONT:
         if (ws->closing) {
+            //  Discard data received after our close was sent. Leaving it buffered spun forever.
+            rAdjustBufStart(buf, (ssize) ws->frameLength);
+            ws->frame = WS_BEGIN;
             break;
         }
-        if (ws->validate) {
-            // Validate this frame if we don't have a partial codepoint from a prior frame
-            validated = 0;
-            if (ws->type == WS_MSG_TEXT && !ws->partialUTF) {
-                if (!validateText(ws)) {
-                    return wsError(ws, WS_STATUS_INVALID_UTF8, "Text packet has invalid UTF8");
-                }
-                validated++;
-            }
-            if (ws->type == WS_MSG_TEXT && !validated) {
-                if (!validateText(ws)) {
-                    return wsError(ws, WS_STATUS_INVALID_UTF8, "Text packet has invalid UTF8");
-                }
-            }
+        if (ws->validate && ws->type == WS_MSG_TEXT && !validateText(ws)) {
+            return wsError(ws, WS_STATUS_INVALID_UTF8, "Text packet has invalid UTF8");
         }
-        //  Update total message length over all frames
-        if (ws->messageLength > SSIZE_MAX - rGetBufLength(buf)) {
+        /*
+            Update total message length over all frames. Count this frame, not the buffer - the
+            buffer may hold following pipelined frames, which would over-count the message and
+            refuse a message that is within the limit.
+         */
+        if (ws->messageLength > SSIZE_MAX - ws->frameLength) {
             return wsError(ws, 0, "Protocol error, message length too big");
         }
-        ws->messageLength += rGetBufLength(buf);
+        ws->messageLength += ws->frameLength;
+        if (ws->messageLength > ws->maxMessage) {
+            //  Backstop - the header check above should have caught this
+            return wsError(ws, WS_STATUS_MESSAGE_TOO_LARGE, "Protocol error, message too big");
+        }
 
         if (ws->callback) {
             event = ws->fin ? WS_EVENT_MESSAGE : WS_EVENT_PARTIAL_MESSAGE;
             if (rGetBufLength(buf) > ws->frameLength) {
                 /*
-                    Multiple messages in the buffer, but very valuable to guarantee that the
-                    message is null terminated (at a performance cost)
+                    Copy the full payload, including embedded NULs, and terminate it for callbacks.
                  */
-                msg = snclone(rGetBufStart(buf), ws->frameLength);
+                msg = rAlloc(ws->frameLength + 1);
+                memcpy(msg, buf->start, ws->frameLength);
+                msg[ws->frameLength] = '\0';
                 invokeCallback(ws, event, msg, ws->frameLength);
                 rFree(msg);
             } else {
@@ -447,35 +495,48 @@ static int parseMessage(WebSocket *ws)
         }
         //  Consume the data from the buffer
         rAdjustBufStart(buf, (ssize) ws->frameLength);
-        if (ws->fin) {
-            ws->frame = WS_BEGIN;
-        }
+        /*
+            The next bytes on the wire are always a new frame header, final frame or not. Staying
+            in WS_MSG consumed the following frame's header as if it were more payload, so a
+            fragmented message was mis-parsed and the connection then stalled waiting for payload
+            that never arrived.
+         */
+        ws->frame = WS_BEGIN;
         break;
 
     case WS_MSG_CLOSE:
         cp = (uchar*) buf->start;
-        if (rGetBufLength(buf) == 0) {
+        // Use this frame's length; the buffer may contain another frame.
+        if (ws->frameLength == 0) {
             ws->closeStatus = WS_STATUS_OK;
-        } else if (rGetBufLength(buf) < 2) {
+        } else if (ws->frameLength < 2) {
             return wsError(ws, 0, "Missing close status");
         } else {
             /*
-                WebSockets is a hideous spec, as if UTF validation wasn't bad enough, we must invalidate these codes:
-                    1004, 1005, 1006, 1012-1016, 2000-2999
+                RFC 6455 section 7.4 assigns 1000-1003 and 1007-1011 for the protocol, 3000-3999 to
+                libraries and 4000-4999 to applications. Everything else is unassigned or reserved
+                for local reporting (1004-1006, 1015) and must not appear on the wire. Listing the
+                codes that are allowed rather than the ranges that are not is what closes the hole:
+                the previous set of exclusions left 1017-1199 accepted.
              */
             ws->closeStatus = (cp[0] << 8) | cp[1];
-            if (ws->closeStatus < 1000 || ws->closeStatus >= 5000 ||
-                (1004 <= ws->closeStatus && ws->closeStatus <= 1006) ||
-                (1012 <= ws->closeStatus && ws->closeStatus <= 1016) ||
-                (1200 <= ws->closeStatus && ws->closeStatus <= 2999)) {
+            if (!((1000 <= ws->closeStatus && ws->closeStatus <= 1003) ||
+                  (1007 <= ws->closeStatus && ws->closeStatus <= 1011) ||
+                  (3000 <= ws->closeStatus && ws->closeStatus <= 4999))) {
                 return wsError(ws, 0, "Bad close status %d", ws->closeStatus);
             }
             rAdjustBufStart(buf, 2);
-            if (rGetBufLength(buf) > 0) {
+            if (ws->frameLength > 2) {
                 rFree(ws->closeReason);
-                ws->closeReason = sclone(buf->start);
+                /*
+                    Copy only this frame's reason bytes, excluding the status.
+                 */
+                reasonLen = ws->frameLength - 2;
+                ws->closeReason = rAlloc(reasonLen + 1);
+                memcpy(ws->closeReason, buf->start, reasonLen);
+                ws->closeReason[reasonLen] = '\0';
                 if (ws->validate) {
-                    if (validUTF8(ws, ws->closeReason, slen(ws->closeReason)) != UTF8_ACCEPT) {
+                    if (validUTF8(UTF8_ACCEPT, ws->closeReason, slen(ws->closeReason)) != UTF8_ACCEPT) {
                         return wsError(ws, WS_STATUS_INVALID_UTF8, "Text packet has invalid UTF8");
                     }
                 }
@@ -489,11 +550,10 @@ static int parseMessage(WebSocket *ws)
         break;
 
     case WS_MSG_PING:
-        //  Respond with the same content as specified in the ping message
-        len = min(rGetBufLength(buf), WS_MAX_CONTROL);
-        if (webSocketSendBlock(ws, WS_MSG_PONG, rGetBufStart(buf), len) < 0) {
-            // Error set
-        }
+        //  Respond with the ping payload only. The buffer may hold following frames.
+        //  A write failure records the error itself and is reported when this call returns.
+        len = ws->frameLength;
+        webSocketSendBlock(ws, WS_MSG_PONG, rGetBufStart(buf), len);
         //  Consume message from the buffer
         rAdjustBufStart(buf, (ssize) ws->frameLength);
         rCompactBuf(buf);
@@ -501,16 +561,26 @@ static int parseMessage(WebSocket *ws)
         break;
 
     case WS_MSG_PONG:
+        //  Consume the payload, which is otherwise parsed as the next frame header
+        rAdjustBufStart(buf, (ssize) ws->frameLength);
         ws->frame = WS_BEGIN;
         break;
 
     default:
-        return wsError(ws, 0, "Bad message type %d", ws->type);
+        //  Backstop - parseFrame refuses every unassigned opcode
+        return wsError(ws, 0, "Bad message type %d", ws->opcode);
     }
     if (ws->frame == WS_BEGIN) {
         ws->frameLength = 0;
-        ws->messageLength = 0;
-        ws->type = 0;
+        /*
+            messageLength and type belong to the message, not the frame, so they survive a
+            continuation frame and an interleaved control frame. Resetting them per frame is what
+            let a fragmented message grow past maxMessage.
+         */
+        if (ws->opcode < WS_MSG_CONTROL && ws->fin) {
+            ws->messageLength = 0;
+            ws->type = 0;
+        }
     }
     return 1;
 }
@@ -525,6 +595,9 @@ PUBLIC ssize webSocketSend(WebSocket *ws, cchar *fmt, ...)
     char    *buf;
     ssize   bytes;
 
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     va_start(args, fmt);
     buf = sfmtv(fmt, args);
     va_end(args);
@@ -541,6 +614,9 @@ PUBLIC ssize webSocketSendJson(WebSocket *ws, Json *json, int nid, cchar *key)
     char  *str;
     ssize rc;
 
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     str = jsonToString(json, nid, key, JSON_JSON);
     rc = webSocketSendString(ws, str);
     rFree(str);
@@ -560,8 +636,9 @@ PUBLIC ssize webSocketSendBlock(WebSocket *ws, int type, cchar *buf, size_t len)
     size_t thisWrite, totalWritten;
     int    fin, more;
 
-    assert(ws);
-
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     more = (type & WS_MSG_MORE) ? 1 : 0;
     type &= ~WS_MSG_MORE;
 
@@ -572,9 +649,18 @@ PUBLIC ssize webSocketSendBlock(WebSocket *ws, int type, cchar *buf, size_t len)
     if (len > ws->maxMessage) {
         return wsError(ws, R_ERR_WONT_FIT, "Outgoing message is too large, length %zd max %zd", len, ws->maxMessage);
     }
+    /*
+        A control frame is never fragmented, so an oversize payload cannot be split and would go on
+        the wire as a control frame with an extended length, which the peer must reject.
+     */
+    if (type >= WS_MSG_CONTROL && len > WS_MAX_CONTROL) {
+        return wsError(ws, R_ERR_WONT_FIT, "Outgoing control frame is too large, length %zd max %d", len,
+                       WS_MAX_CONTROL);
+    }
     totalWritten = 0;
     do {
-        thisWrite = min(len, (size_t) ws->maxFrame);
+        //  Control frames are never fragmented. They are bounded by WS_MAX_CONTROL.
+        thisWrite = (type >= WS_MSG_CONTROL) ? len : min(len, (size_t) ws->maxFrame);
 
         fin = ((len - thisWrite) > 0) ? 0 : !more;
         if (writeFrame(ws, type, fin, (cuchar*) buf, thisWrite) < 0) {
@@ -584,10 +670,8 @@ PUBLIC ssize webSocketSendBlock(WebSocket *ws, int type, cchar *buf, size_t len)
         len -= thisWrite;
         buf += thisWrite;
         totalWritten += thisWrite;
-        if (more) {
-            //  Spec requires type to be set only on the first frame
-            type = 0;
-        }
+        //  Every frame after the first is a continuation, whether the caller or maxFrame split it
+        type = WS_MSG_CONT;
     } while (len > 0);
 
     return (ssize) totalWritten;
@@ -623,14 +707,14 @@ static int writeFrame(WebSocket *ws, int type, int fin, cuchar *buf, size_t len)
     }
     tbuf = 0;
     if (ws->client) {
-        cryptGetRandomBytes((uchar*) dataMask, sizeof(dataMask), 1);
+        if (cryptGetRandomBytes(dataMask, sizeof(dataMask), 1) < 0) {
+            wsError(ws, WS_STATUS_INTERNAL_ERROR, "Cannot get random bytes for the frame mask");
+            return R_ERR_CANT_COMPLETE;
+        }
         for (i = 0; i < 4; i++) {
             *pp++ = dataMask[i];
         }
-        if ((tbuf = rAlloc(len)) == 0) {
-            wsError(ws, 0, "Cannot allocate memory");
-            return R_ERR_MEMORY;
-        }
+        tbuf = rAlloc(len);
         for (i = 0, op = (uchar*) tbuf; op < (uchar*) &tbuf[len]; op++, i++) {
             *op = buf[i] ^ dataMask[i & 0x3];
         }
@@ -663,6 +747,9 @@ PUBLIC ssize webSocketSendClose(WebSocket *ws, int status, cchar *reason)
     char   msg[128];
     size_t len;
 
+    if (!ws) {
+        return R_ERR_BAD_ARGS;
+    }
     assert(0 <= status && status <= WS_STATUS_MAX);
     if (ws->closing || ws->state == WS_STATE_CLOSED) {
         return 0;
@@ -670,18 +757,28 @@ PUBLIC ssize webSocketSendClose(WebSocket *ws, int status, cchar *reason)
     ws->closing = 1;
     ws->state = WS_STATE_CLOSING;
 
+    /*
+        RFC 6455 reserves these codes for local reporting. A peer must refuse them on the wire, and
+        this parser does, so they are sent as an internal error.
+     */
+    if (status == WS_STATUS_FRAME_TOO_LARGE || status == WS_STATUS_NO_STATUS || status == WS_STATUS_COMMS_ERROR ||
+        status == WS_STATUS_TLS_ERROR) {
+        status = WS_STATUS_INTERNAL_ERROR;
+    }
+
     len = 2;
     if (reason) {
         if (slen(reason) >= 124) {
             reason = "WebSockets close message was too big";
             wsError(ws, R_ERR_WONT_FIT, reason);
         }
-        len += slen(reason) + 1;
+        len += slen(reason);
     }
     msg[0] = (status >> 8) & 0xff;
     msg[1] = status & 0xff;
     if (reason) {
-        scopy(&msg[2], len - 2, reason);
+        //  The payload is the reason text. A terminator on the wire is a stray byte to the peer.
+        memcpy(&msg[2], reason, len - 2);
     }
     invokeCallback(ws, WS_EVENT_CLOSE, msg, len);
     return webSocketSendBlock(ws, WS_MSG_CLOSE, msg, len);
@@ -697,11 +794,17 @@ PUBLIC cchar *webSocketGetCloseReason(WebSocket *ws)
 
 PUBLIC cchar *webSocketGetClientKey(WebSocket *ws)
 {
+    if (!ws) {
+        return 0;
+    }
     return ws->clientKey;
 }
 
 PUBLIC void *webSocketGetData(WebSocket *ws)
 {
+    if (!ws) {
+        return 0;
+    }
     return ws->data;
 }
 
@@ -739,28 +842,59 @@ PUBLIC ssize webSocketGetState(WebSocket *ws)
 
 PUBLIC bool webSocketGetOrderlyClosed(WebSocket *ws)
 {
+    if (!ws) {
+        return 0;
+    }
     return ws->closeStatus != WS_STATUS_COMMS_ERROR;
 }
 
 PUBLIC void webSocketSetClientKey(WebSocket *ws, cchar *clientKey)
 {
+    if (!ws) {
+        return;
+    }
     rFree(ws->clientKey);
     ws->clientKey = sclone(clientKey);
 }
 
 PUBLIC void webSocketSetData(WebSocket *ws, void *data)
 {
+    if (!ws) {
+        return;
+    }
     ws->data = data;
 }
 
 PUBLIC void webSocketSetLimits(WebSocket *ws, size_t maxFrame, size_t maxMessage)
 {
+    if (!ws) {
+        return;
+    }
+    /*
+        Zero means no limit, which is what the header has always documented. A zero maxFrame was
+        taken literally by the send loop, where thisWrite became zero, no progress was made and
+        empty continuation frames went out without end. A frame is bounded in any case by what a
+        buffer can hold. A message is delivered a frame at a time and never buffered whole, so
+        no limit there is genuinely no limit.
+     */
+    if (maxFrame == 0) {
+        maxFrame = WS_MAX_BUFFERED;
+    } else if (maxFrame > WS_MAX_BUFFERED) {
+        rTrace("sockets", "maxFrame %zd exceeds the largest buffered frame, using %d", maxFrame, WS_MAX_BUFFERED);
+        maxFrame = WS_MAX_BUFFERED;
+    }
+    if (maxMessage == 0) {
+        maxMessage = SSIZE_MAX;
+    }
     ws->maxFrame = maxFrame;
     ws->maxMessage = maxMessage;
 }
 
 PUBLIC void webSocketSetPingPeriod(WebSocket *ws, Time pingPeriod)
 {
+    if (!ws) {
+        return;
+    }
     ws->pingPeriod = pingPeriod;
 }
 
@@ -769,7 +903,7 @@ PUBLIC void webSocketSetPingPeriod(WebSocket *ws, Time pingPeriod)
  */
 PUBLIC void webSocketSelectProtocol(WebSocket *ws, cchar *protocol)
 {
-    if (!protocol || !*protocol) {
+    if (!ws || !protocol || !*protocol) {
         return;
     }
     rFree(ws->protocol);
@@ -778,20 +912,23 @@ PUBLIC void webSocketSelectProtocol(WebSocket *ws, cchar *protocol)
 
 PUBLIC void webSocketSetValidateUTF(WebSocket *ws, bool validateUTF)
 {
+    if (!ws) {
+        return;
+    }
     ws->validate = validateUTF;
 }
 
 /*
-    Test if a string is a valid unicode string. The return state may be UTF8_ACCEPT if
-    all codepoints validate and are complete. Return UTF8_REJECT if an invalid codepoint was found.
+    Test if a string is a valid unicode string, resuming from the given decoder state.
+    The return state may be UTF8_ACCEPT if all codepoints validate and are complete.
+    Return UTF8_REJECT if an invalid codepoint was found.
     Otherwise, return the state for a partial codepoint.
  */
-static uint validUTF8(WebSocket *ws, cchar *str, size_t len)
+static uint validUTF8(uint state, cchar *str, size_t len)
 {
     uchar *cp, c;
-    uint  state, type;
+    uint  type;
 
-    state = UTF8_ACCEPT;
     for (cp = (uchar*) str; cp < (uchar*) &str[len]; cp++) {
         /*
             codepoint = (*state != UTF8_ACCEPT) ? (byte & 0x3fu) | (*codep << 6) : (0xff >> type) & (byte);
@@ -800,7 +937,6 @@ static uint validUTF8(WebSocket *ws, cchar *str, size_t len)
         type = utfTable[c];
         state = utfTable[256 + (state * 16) + type];
         if (state == UTF8_REJECT) {
-            wsError(ws, WS_STATUS_INVALID_UTF8, "Invalid UTF8 at offset %d", cp - (uchar*) str);
             break;
         }
     }
@@ -808,30 +944,22 @@ static uint validUTF8(WebSocket *ws, cchar *str, size_t len)
 }
 
 /*
-    Validate the UTF8 in a packet. Return false if an invalid codepoint is found.
-    If the packet is not the last packet, we alloc incomplete codepoints.
-    Set ws->partialUTF if the last codepoint was incomplete.
+    Validate the UTF8 in this frame. Return false if an invalid codepoint is found or if the message
+    ends on an incomplete one.
  */
 static bool validateText(WebSocket *ws)
 {
-    uint state;
-    bool valid;
-
     /*
-        Skip validation if ignoring errors or some frames have already been sent to the callback
+        The decoder state carries across the frames of a message, so a codepoint split over a frame
+        boundary validates and an invalid byte is caught in any frame. Validating only the first
+        frame of a message accepted whatever every continuation frame that followed happened to hold.
      */
-    if (!ws->validate || ws->messageLength > 0) {
-        return 1;
+    ws->utfState = validUTF8(ws->utfState, ws->buf->start, ws->frameLength);
+    if (ws->utfState == UTF8_REJECT) {
+        return 0;
     }
-    state = validUTF8(ws, ws->buf->start, (size_t) ws->frameLength);
-    ws->partialUTF = state != UTF8_ACCEPT;
-
-    if (ws->fin) {
-        valid = state == UTF8_ACCEPT;
-    } else {
-        valid = state != UTF8_REJECT;
-    }
-    return valid;
+    //  A message may only end on a complete codepoint
+    return ws->fin ? ws->utfState == UTF8_ACCEPT : 1;
 }
 
 /*
@@ -849,18 +977,28 @@ static int wsError(WebSocket *ws, int code, cchar *fmt, ...)
     ws->error = code;
 
     va_start(args, fmt);
+    rFree(ws->errorMessage);
     ws->errorMessage = sfmtv(fmt, args);
     va_end(args);
 
     rTrace("sockets", "%s", ws->errorMessage);
     invokeCallback(ws, WS_EVENT_ERROR, ws->errorMessage, slen(ws->errorMessage));
-    return -code;
+    return wsResult(ws);
+}
+
+/*
+    The negative result for the current error. Runtime codes are already negative, WebSocket status
+    codes are positive and are negated. Zero if there is no error.
+ */
+static int wsResult(WebSocket *ws)
+{
+    return ws->error < 0 ? ws->error : -ws->error;
 }
 
 #endif /* ME_COM_WEBSOCK */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

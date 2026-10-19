@@ -18,7 +18,7 @@
 /*
     auth.c -- Authorization Management
 
-    This module supports a general user authentication scheme. 
+    This module supports a general user authentication scheme.
     It support web-form based login and HTTP Basic and Digest authentication.
     Users with role/ability based authorization is supported.
 
@@ -44,6 +44,7 @@ static int expandRole(WebHost *host, cchar *roleName, RHash *abilities);
 
 #if ME_WEB_HTTP_AUTH
 static void sendAuthChallenge(Web *web, WebRoute *route);
+static WebUser *lookupHttpUser(Web *web);
 #if ME_WEB_AUTH_BASIC
 static bool parseBasicAuth(Web *web);
 static bool verifyPassword(Web *web, WebUser *user);
@@ -53,10 +54,16 @@ static void sendBasicChallenge(Web *web);
 static bool parseDigestAuth(Web *web);
 static char *computeDigest(Web *web, cchar *password);
 static char *createNonce(Web *web, cchar *algorithm);
+static bool matchDigestUri(Web *web, cchar *uri);
 static bool validateNonce(Web *web);
 static void sendDigestChallenge(Web *web, WebRoute *route);
 static void cleanupNonces(void *arg);
-static void removeNonceEntry(Web *web);
+static void pruneNonces(WebHost *host);
+static ssize nonceUserCount(WebHost *host, cchar *username);
+static void addNonceUser(WebHost *host, cchar *username, ssize delta);
+static Ticks getNonceCleanupPeriod(WebHost *host);
+static bool commitNonce(Web *web);
+static bool parseNc(cchar *nc, uint64 *value);
 #endif
 #endif /* ME_WEB_HTTP_AUTH */
 
@@ -70,7 +77,7 @@ static void removeNonceEntry(Web *web);
 PUBLIC bool webAuthenticate(Web *web)
 {
     WebUser *user;
-    cchar   *username;
+    cchar   *username, *role;
 
     if (web->authChecked) {
         return web->authenticated;
@@ -82,24 +89,25 @@ PUBLIC bool webAuthenticate(Web *web)
             SECURITY Acceptable:: Retrieve authentication state from the session storage.
             Faster than re-authenticating.
          */
-        if ((username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0)) != 0) {
-            rFree(web->username);
-            web->username = sclone(username);
-            web->role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
-            if (web->role) {
-                //  Look up user from session username
-                if ((user = webLookupUser(web->host, web->username)) != 0) {
-                    //  Verify user still has the cached role
-                    if (smatch(user->role, web->role)) {
-                        web->user = user;
-                        web->authenticated = 1;
-                        return 1;
-                    } else {
-                        rError("web", "User %s role changed from %s to %s", web->username, web->role, user->role);
-                    }
+        username = webGetSessionVar(web, WEB_SESSION_USERNAME, 0);
+        role = webGetSessionVar(web, WEB_SESSION_ROLE, 0);
+        if (username && role) {
+            //  Look up user from session username
+            if ((user = webLookupUser(web->host, username)) != 0) {
+                //  Verify user still has the cached role. Only a verified identity is published.
+                if (smatch(user->role, role)) {
+                    rFree(web->username);
+                    web->username = sclone(username);
+                    rFree(web->role);
+                    web->role = sclone(role);
+                    web->user = user;
+                    web->authenticated = 1;
+                    return 1;
                 } else {
-                    rError("web", "Unknown user in session: %s", web->username);
+                    rError("web", "User %s role changed from %s to %s", username, role, user->role);
                 }
+            } else {
+                rError("web", "Unknown user in session: %s", username);
             }
         }
     }
@@ -163,10 +171,8 @@ PUBLIC cchar *webGetRole(Web *web)
 }
 
 /*
-    Login and authorize a user with a given role/ability.
-    This creates the login session and defines a session cookie for responses.
-    This assumes the caller has already validated the user password.
-    The role parameter can be a role name or an ability - checks if user has it.
+    Create a login session for a caller-verified user. Role is a role/ability to check, or the current role for
+    application-managed credentials.
  */
 PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
 {
@@ -178,8 +184,10 @@ PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
 
     rFree(web->username);
     web->username = 0;
+    rFree(web->role);
     web->role = 0;
     web->user = 0;
+    web->authenticated = 0;
 
     webRemoveSessionVar(web, WEB_SESSION_USERNAME);
 
@@ -190,16 +198,25 @@ PUBLIC bool webLogin(Web *web, cchar *username, cchar *role)
             rError("web", "Failed to add user %s", username);
             return 0;
         }
+    } else if (!webUserHasCredential(user) && !smatch(user->role, role)) {
+        /* Refresh application-managed roles so existing sessions with outdated roles fail authentication. */
+        if (!webUpdateUser(web->host, username, NULL, role)) {
+            rError("web", "Cannot bind user %s to role %s", username, role);
+            return 0;
+        }
     }
     //  Verify user has the required ability/role
     if (!webUserCan(user, role)) {
         rError("web", "User %s does not have ability %s", username, role);
         return 0;
     }
-    webCreateSession(web);
+    if (!webCreateSession(web)) {
+        return 0;
+    }
     webSetSessionVar(web, WEB_SESSION_USERNAME, "%s", username);
     web->username = sclone(username);
-    web->role = webSetSessionVar(web, WEB_SESSION_ROLE, "%s", user->role);   // Store user's actual role
+    rFree(web->role);
+    web->role = sclone(webSetSessionVar(web, WEB_SESSION_ROLE, "%s", user->role));
     web->user = user;
     web->authenticated = 1;
     return 1;
@@ -214,6 +231,7 @@ PUBLIC void webLogout(Web *web)
 
     rFree(web->username);
     web->username = 0;
+    rFree(web->role);
     web->role = 0;
     web->user = 0;
     web->authenticated = 0;
@@ -232,9 +250,8 @@ PUBLIC WebUser *webLookupUser(WebHost *host, cchar *username)
 }
 
 /*
-    Add a user to the authentication database
-    Password should be pre-hashed: H(username:realm:password). For users that manage their own authentication, 
-    the password can be null.  Role is a single role name.
+    Add a user with a pre-hashed H(username:realm:password) credential and one role. Null/empty passwords select
+    application-managed authentication.
  */
 PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, cchar *role)
 {
@@ -257,7 +274,7 @@ PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, ccha
     }
     user = rAllocType(WebUser);
     user->username = sclone(username);
-    user->password = sclone(password);
+    user->password = password && *password ? sclone(password) : 0;
     user->role = sclone(role);
     user->abilities = rAllocHash(0, 0);
 
@@ -273,6 +290,31 @@ PUBLIC WebUser *webAddUser(WebHost *host, cchar *username, cchar *password, ccha
 /*
     Remove user from authentication database
  */
+/*
+    Invalidate any in-flight request that borrows this user.
+
+    web->user is a borrowed pointer into host->users with no ownership and no invalidation. Ioto is
+    cooperatively scheduled, so a request fiber blocked on I/O resumes to find whatever the user
+    table now holds - and webRemoveUser, webUpdateUser and webAddUser can free the entry while it
+    is blocked. Clearing the borrowed pointer turns a use-after-free into a failed authorization,
+    which is the safe direction.
+ */
+static void invalidateUserRefs(WebHost *host, WebUser *user)
+{
+    Web *web;
+    int next;
+
+    if (!host || !host->webs) {
+        return;
+    }
+    for (ITERATE_ITEMS(host->webs, web, next)) {
+        if (web->user == user) {
+            web->user = 0;
+            web->authenticated = 0;
+        }
+    }
+}
+
 PUBLIC bool webRemoveUser(WebHost *host, cchar *username)
 {
     WebUser *user;
@@ -281,8 +323,18 @@ PUBLIC bool webRemoveUser(WebHost *host, cchar *username)
         return 0;
     }
     if ((user = webLookupUser(host, username)) != 0) {
+        /*
+            Unhook before freeing. The natural call is webRemoveUser(host, user->username), and
+            webFreeUser releases that string - so removing first, on a key that outlives the free,
+            is the only ordering safe for every caller.
+         */
+        char *key = sclone(username);
+        invalidateUserRefs(host, user);
+        webDestroyUserSessions(host, key);
+        rRemoveName(host->users, key);
         webFreeUser(user);
-        return rRemoveName(host->users, username) == 0;
+        rFree(key);
+        return 1;
     }
     return 0;
 }
@@ -294,6 +346,7 @@ PUBLIC bool webRemoveUser(WebHost *host, cchar *username)
 PUBLIC bool webUpdateUser(WebHost *host, cchar *username, cchar *password, cchar *role)
 {
     WebUser *user;
+    char    *value;
 
     if (!host || !username) {
         return 0;
@@ -308,13 +361,19 @@ PUBLIC bool webUpdateUser(WebHost *host, cchar *username, cchar *password, cchar
         return 0;
     }
     if (password) {
+        //  Clone before freeing: the caller may pass the stored value back
+        value = sclone(password);
+        if (!smatch(value, user->password)) {
+            webDestroyUserSessions(host, username);
+        }
         rFree(user->password);
-        user->password = sclone(password);
+        user->password = value;
     }
     if (role) {
+        value = sclone(role);
         rFree(user->role);
-        user->role = sclone(role);
-        rFree(user->abilities);
+        user->role = value;
+        rFreeHash(user->abilities);   //  An RHash - rFree would leak the table
         user->abilities = rAllocHash(0, 0);
         if (computeUserAbilities(host, user) < 0) {
             // User downgraded with no abilities and new role
@@ -333,9 +392,17 @@ PUBLIC void webFreeUser(WebUser *user)
         rFree(user->username);
         rFree(user->password);
         rFree(user->role);
-        rFree(user->abilities);
+        rFreeHash(user->abilities);   //  An RHash - rFree would leak the table
         rFree(user);
     }
+}
+
+/*
+    Application-managed credentials have no stored password.
+ */
+PUBLIC bool webUserHasCredential(WebUser *user)
+{
+    return user && user->password && *user->password;
 }
 
 /*
@@ -425,15 +492,21 @@ static int expandRole(WebHost *host, cchar *roleName, RHash *abilities)
         //  Already visited
         return 0;
     }
-    rAddName(abilities, roleName, (void*) 1, 0);
-
     config = host->config;
 
-    //  Look up role definition - get the roleId first
+    /*
+        Validate the role exists BEFORE granting it. Adding roleName to the abilities set first meant
+        that when the name did not resolve, expandRole still returned failure but left the unverified
+        name behind as a granted ability; webUpdateUser does not roll back on failure, so a role update
+        reported as failed could silently leave the user holding an attacker/caller-chosen ability.
+        Adding only after the lookup succeeds still marks the role visited before the recursion below,
+        so cyclic role graphs remain safe.
+     */
     if ((roleId = jsonGetId(config, host->roles, roleName)) < 0) {
         rError("web", "Cannot find role %s", roleName);
         return R_ERR_CANT_FIND;
     }
+    rAddName(abilities, roleName, (void*) 1, 0);
     //  Iterate over items in role (can be abilities or other roles)
     for (ITERATE_JSON_ID(config, roleId, child, childId)) {
         item = child->value;
@@ -454,8 +527,111 @@ static int expandRole(WebHost *host, cchar *roleName, RHash *abilities)
     return 0;
 }
 
+/************************* Authentication Failure Limit ***********************/
+/*
+    Failures are counted per client address over host->failurePeriod from the first failure. Nothing
+    sleeps: a refused attempt is answered at once and holds no fiber.
+ */
+typedef struct WebAuthFailures {
+    Ticks start;                /* When the first failure in the period was recorded */
+    int count;                  /* Failures in the period */
+} WebAuthFailures;
+
+static bool getClientAddress(Web *web, char *ip, size_t ipLen)
+{
+    int port;
+
+    return rGetSocketPeer(web->sock, ip, ipLen, &port) == 0 && *ip;
+}
+
+/*
+    Return the live failure record for an address. An expired record is removed.
+ */
+static WebAuthFailures *lookupFailures(WebHost *host, cchar *ip)
+{
+    WebAuthFailures *fp;
+
+    if ((fp = rLookupName(host->authFailures, ip)) != 0 && rGetTicks() - fp->start >= host->failurePeriod) {
+        rRemoveName(host->authFailures, ip);
+        fp = 0;
+    }
+    return fp;
+}
+
+static void pruneFailures(WebHost *host)
+{
+    WebAuthFailures *fp;
+    RName           *np;
+    RList           *expired;
+    Ticks           now;
+    cchar           *ip;
+    int             next;
+
+    expired = rAllocList(0, 0);
+    now = rGetTicks();
+    for (ITERATE_NAMES(host->authFailures, np)) {
+        fp = np->value;
+        if (now - fp->start >= host->failurePeriod) {
+            rAddItem(expired, sclone(np->name));
+        }
+    }
+    for (ITERATE_ITEMS(expired, ip, next)) {
+        rRemoveName(host->authFailures, ip);
+        rFree((char*) ip);
+    }
+    rFreeList(expired);
+}
+
+PUBLIC bool webAuthBlocked(Web *web)
+{
+    WebAuthFailures *fp;
+    char            ip[64];
+
+    if (!web || web->host->maxFailures <= 0 || !getClientAddress(web, ip, sizeof(ip))) {
+        return 0;
+    }
+    fp = lookupFailures(web->host, ip);
+    return fp && fp->count >= web->host->maxFailures;
+}
+
+PUBLIC void webAuthFailed(Web *web)
+{
+    WebHost         *host;
+    WebAuthFailures *fp;
+    char            ip[64];
+
+    if (!web || web->host->maxFailures <= 0 || !getClientAddress(web, ip, sizeof(ip))) {
+        return;
+    }
+    host = web->host;
+    if ((fp = lookupFailures(host, ip)) == 0) {
+        if (rGetHashLength(host->authFailures) >= ME_WEB_MAX_AUTH_CLIENTS) {
+            pruneFailures(host);
+            if (rGetHashLength(host->authFailures) >= ME_WEB_MAX_AUTH_CLIENTS) {
+                rTrace("auth", "Too many clients with authentication failures to track");
+                return;
+            }
+        }
+        fp = rAllocType(WebAuthFailures);
+        fp->start = rGetTicks();
+        rAddName(host->authFailures, ip, fp, 0);
+    }
+    fp->count++;
+}
+
 /******************* HTTP Authentication (Basic & Digest) ********************/
 #if ME_WEB_HTTP_AUTH
+/*
+    Treat users without stored passwords as unknown; an empty Digest HA1 is publicly computable.
+ */
+static WebUser *lookupHttpUser(Web *web)
+{
+    WebUser *user;
+
+    user = webLookupUser(web->host, web->username);
+    return webUserHasCredential(user) ? user : 0;
+}
+
 /*
     HTTP authentication coordinator
     Handles Basic and Digest authentication from Authorization header
@@ -475,6 +651,10 @@ PUBLIC bool webHttpAuthenticate(Web *web)
     //  No Authorization header - send challenge
     if (!web->authType || !web->authDetails) {
         sendAuthChallenge(web, route);
+        return 0;
+    }
+    if (webAuthBlocked(web)) {
+        webError(web, 429, "Too many authentication failures");
         return 0;
     }
     //  Determine required auth type (route overrides host default)
@@ -500,17 +680,19 @@ PUBLIC bool webHttpAuthenticate(Web *web)
             sendAuthChallenge(web, route);
             return 0;
         }
-        if ((user = webLookupUser(web->host, web->username)) == 0) {
-            sendAuthChallenge(web, route);
-            return 0;
-        }
-        if (!verifyPassword(web, user)) {
+        /*
+            Use dummy credentials for unknown users to reduce timing differences.
+         */
+        user = lookupHttpUser(web);
+        if (!verifyPassword(web, user ? user : &web->host->dummyUser) || !user) {
+            webAuthFailed(web);
             sendAuthChallenge(web, route);
             return 0;
         }
         //  Success - set authentication state
         web->user = user;
-        web->role = user->role;
+        rFree(web->role);
+        web->role = sclone(user->role);
         web->authenticated = 1;
         return 1;
     }
@@ -518,6 +700,11 @@ PUBLIC bool webHttpAuthenticate(Web *web)
 
 #if ME_WEB_AUTH_DIGEST
     if (scaselessmatch(web->authType, "Digest")) {
+
+        if (requiredAuthType && scaselessmatch(requiredAuthType, "basic")) {
+            sendAuthChallenge(web, route);
+            return 0;
+        }
         if (!parseDigestAuth(web)) {
             sendAuthChallenge(web, route);
             return 0;
@@ -539,43 +726,41 @@ PUBLIC bool webHttpAuthenticate(Web *web)
             sendAuthChallenge(web, route);
             return 0;
         }
-        //  Validate nonce
+        /*
+            Validate the nonce and check the nonce count, without recording anything yet. The
+            replay state is committed only once the digest has verified, below. Every failure from
+            here to that point leaves the tracking entry exactly as it was: an unauthenticated
+            request must not be able to advance, create or delete replay state, or a captured
+            request could be replayed by first sending a bad one to reset the nonce.
+         */
         if (!validateNonce(web)) {
             sendAuthChallenge(web, route);
             return 0;
         }
         /*
-            Enforce URI binding to the actual request-target (normalized server path)
-            Note: URI in digest header may be relative (no leading /) or absolute
-            If client sent relative URI (no leading /), skip the / in path for comparison
+            Enforce URI binding to the actual request-target
          */
         uri = web->uri;
         if (!uri || !web->path) {
-            removeNonceEntry(web);
             sendAuthChallenge(web, route);
             return 0;
         }
-        if (*uri != '/' && *web->path == '/') {
-            if (!smatch(uri, web->path + 1)) {
-                removeNonceEntry(web);
-                sendAuthChallenge(web, route);
-                return 0;
-            }
-        } else if (!smatch(uri, web->path)) {
-            removeNonceEntry(web);
+        if (!matchDigestUri(web, uri)) {
             sendAuthChallenge(web, route);
             return 0;
         }
-        //  Look up user
-        if ((user = webLookupUser(web->host, web->username)) == 0) {
-            removeNonceEntry(web);
+        /*
+            Use a dummy password for unknown users to reduce timing differences.
+         */
+        user = lookupHttpUser(web);
+        web->digest = computeDigest(web, user ? user->password : web->host->dummyDigestPassword);
+        if (!web->digest || !cryptMatch(web->digest, web->digestResponse) || !user) {
+            webAuthFailed(web);
             sendAuthChallenge(web, route);
             return 0;
         }
-        //  Compute and verify digest
-        web->digest = computeDigest(web, user->password);
-        if (!web->digest || !cryptMatch(web->digest, web->digestResponse)) {
-            removeNonceEntry(web);
+        //  The request is authentic - record its nonce count so it cannot be replayed
+        if (!commitNonce(web)) {
             sendAuthChallenge(web, route);
             return 0;
         }
@@ -586,7 +771,8 @@ PUBLIC bool webHttpAuthenticate(Web *web)
         }
         //  Success - set authentication state
         web->user = user;
-        web->role = user->role;
+        rFree(web->role);
+        web->role = sclone(user->role);
         web->authenticated = 1;
         return 1;
     }
@@ -612,14 +798,21 @@ static void sendAuthChallenge(Web *web, WebRoute *route)
         // Do not alter response; caller should handle as anonymous
         return;
     }
-#if ME_WEB_AUTH_DIGEST
     if (authType && scaselessmatch(authType, "digest")) {
+#if ME_WEB_AUTH_DIGEST
         sendDigestChallenge(web, route);
+#else
+        // Never downgrade Digest to Basic, which sends reusable credentials.
+        webError(web, 500, "Digest authentication is not supported in this build");
+#endif
         return;
     }
-#endif
 #if ME_WEB_AUTH_BASIC
-    //  Default to Basic authentication
+    /* Never offer Basic over cleartext; refusing the credential after receipt cannot protect it. */
+    if (web->host->requireTlsForBasic && !rIsSocketSecure(web->sock)) {
+        webError(web, 403, "Authentication requires HTTPS");
+        return;
+    }
     sendBasicChallenge(web);
 #else
     webError(web, 401, "Authentication required but not configured");
@@ -657,13 +850,42 @@ PUBLIC char *webHash(cchar *str, cchar *algorithm)
 }
 
 /*
+    Free a hash preimage.
+
+    Every preimage below is built with sfmt rather than SFMT into a fixed buffer. SFMT truncates
+    silently, and these preimages are assembled from client-supplied username, uri, nonce, nc and
+    cnonce: two inputs differing only past the truncation point produce the same hash, which in a
+    credential comparator is a collision the attacker chooses. An allocated buffer cannot truncate,
+    and this is at most one allocation per authentication - nothing next to the SHA-256 that follows.
+
+    The buffer holds the plaintext password on the stored-password paths and HA1 on the digest
+    paths, so clear it rather than leaving it in freed heap. Written through a volatile pointer so
+    the compiler cannot drop the stores as dead.
+ */
+static void freePreimage(char *buf)
+{
+    volatile char *p;
+    size_t        i, len;
+
+    if (!buf) {
+        return;
+    }
+    len = slen(buf);
+    p = (volatile char*) buf;
+    for (i = 0; i < len; i++) {
+        p[i] = '\0';
+    }
+    rFree(buf);
+}
+
+/*
     Hash password for storage
     Format: H(username:realm:password) where H is the algorithm
     Default is SHA-256
  */
 PUBLIC char *webHashPassword(WebHost *host, cchar *username, cchar *password)
 {
-    char  buf[512];
+    char  *buf, *result;
     cchar *realm, *algorithm;
 
     if (!host || !username || !password) {
@@ -671,30 +893,80 @@ PUBLIC char *webHashPassword(WebHost *host, cchar *username, cchar *password)
     }
     realm = host->realm ? host->realm : host->name;
     algorithm = host->algorithm ? host->algorithm : "SHA-256";
-    SFMT(buf, "%s:%s:%s", username, realm, password);
-    return webHash(buf, algorithm);
+    buf = sfmt("%s:%s:%s", username, realm, password);
+    result = webHash(buf, algorithm);
+    freePreimage(buf);
+    return result;
 }
 
 /*
-    Verify plain-text password against stored hash
-    Uses constant-time comparison to prevent timing attacks
+    Compare a plain-text password against a stored password hash.
+
+    This is the single definition of the stored password format. A stored hash may carry an
+    algorithm prefix - "BF1:", "MD5:" or "SHA256:" - which selects how it is verified; without a
+    prefix the host's configured algorithm is used, which is the legacy form. HTTP Basic,
+    webVerifyUserPassword and application logins all go through here, so they cannot drift apart.
+
+    A null stored value is an unknown user: verify against the decoy so the cost matches a known user.
+    Comparison is constant time via cryptMatch to avoid leaking the hash through timing.
  */
-PUBLIC bool webVerifyUserPassword(WebHost *host, cchar *username, cchar *password)
+PUBLIC bool webCheckPassword(WebHost *host, cchar *username, cchar *password, cchar *stored)
 {
-    WebUser *user;
-    char    *hashedPassword;
-    bool    match;
+    char  *buf, *encoded;
+    cchar *algorithm, *realm;
+    bool  match, known;
 
     if (!host || !username || !password) {
         return 0;
     }
-    if ((user = webLookupUser(host, username)) == 0) {
+    known = stored != 0;
+    if (!known && (stored = host->decoyPassword) == 0) {
         return 0;
     }
-    hashedPassword = webHashPassword(host, username, password);
-    match = cryptMatch(hashedPassword, user->password);
-    rFree(hashedPassword);
+    realm = host->realm ? host->realm : host->name;
+    buf = sfmt("%s:%s:%s", username, realm, password);
+
+    if (sstarts(stored, "BF1:")) {
+        /*
+            Bcrypt carries its salt in the stored value, so cryptCheckPassword re-encrypts with
+            that salt rather than comparing a precomputed hash.
+         */
+        match = cryptCheckPassword(buf, stored);
+        freePreimage(buf);
+        return match && known;
+    }
+    if (sstarts(stored, "MD5:")) {
+        algorithm = "MD5";
+        stored += 4;
+    } else if (sstarts(stored, "SHA256:")) {
+        algorithm = "SHA-256";
+        stored += 7;
+    } else if (sstarts(stored, "SHA512:")) {
+        //  Recognised in stored data but not supported
+        freePreimage(buf);
+        return 0;
+    } else {
+        algorithm = host->algorithm ? host->algorithm : "SHA-256";
+    }
+    encoded = webHash(buf, algorithm);
+    freePreimage(buf);
+    match = cryptMatch(encoded, stored);
+    rFree(encoded);
     return match;
+}
+
+/*
+    Verify plain-text password against stored hash
+ */
+PUBLIC bool webVerifyUserPassword(WebHost *host, cchar *username, cchar *password)
+{
+    WebUser *user;
+
+    if (!host || !username || !password) {
+        return 0;
+    }
+    user = webLookupUser(host, username);
+    return webCheckPassword(host, username, password, user ? user->password : 0);
 }
 
 /*
@@ -751,6 +1023,15 @@ static bool parseBasicAuth(Web *web)
     //  Split username:password
     if ((cp = strchr(decoded, ':')) != 0) {
         *cp++ = '\0';
+        /*
+            Bound both halves at the same limit webAddUser applies to a stored credential, so the
+            two ends agree. Without this the only bound is web.limits.header, and an over-long
+            credential is hashed in a degraded form rather than refused.
+         */
+        if (slen(decoded) > ME_WEB_MAX_AUTH || slen(cp) > ME_WEB_MAX_AUTH) {
+            rFree(decoded);
+            return 0;
+        }
         web->username = sclone(decoded);
         web->password = sclone(cp);
         web->encoded = 0;
@@ -779,68 +1060,17 @@ static void sendBasicChallenge(Web *web)
  */
 static bool verifyPassword(Web *web, WebUser *user)
 {
-    char  buf[512];
-    char  *encodedPassword, *storedHash;
-    cchar *algorithm, *realm;
-    bool  match;
-
     if (!web->password || !user) {
         return 0;
     }
-    /*
-        Detect algorithm from password prefix (MD5:, SHA256:, SHA512:, BF1:)
-        If no prefix, use host's configured algorithm
-     */
-    if (sstarts(user->password, "BF1:")) {
+    if (web->encoded) {
         /*
-            Bcrypt passwords are verified using cryptCheckPassword()
-            which extracts salt and re-encrypts for comparison
+            The client supplied an already-hashed password, so there is nothing left to hash.
+            Compare it against the stored value directly, in constant time.
          */
-        SFMT(buf, "%s:%s:%s", web->username,
-             web->host->realm ? web->host->realm : web->host->name,
-             web->password);
-        return cryptCheckPassword(buf, user->password);
-
-    } else if (sstarts(user->password, "MD5:") ||
-               sstarts(user->password, "SHA256:") ||
-               sstarts(user->password, "SHA512:")) {
-        if (sstarts(user->password, "MD5:")) {
-            algorithm = "MD5";
-            storedHash = user->password + 4; // Skip "MD5:"
-        } else if (sstarts(user->password, "SHA256:")) {
-            algorithm = "SHA-256";
-            storedHash = user->password + 7; // Skip "SHA256:"
-        } else {                             // SHA512 not supported
-            return 0;
-        }
-        //  Hash plain password with detected algorithm
-        realm = web->host->realm ? web->host->realm : web->host->name;
-        SFMT(buf, "%s:%s:%s", web->username, realm, web->password);
-        encodedPassword = webHash(buf, algorithm);
-        match = cryptMatch(encodedPassword, storedHash);
-        rFree(encodedPassword);
-        return match;
-
-    } else {
-        //  No prefix - use host's configured algorithm (legacy support)
-        if (!web->encoded && web->password) {
-            algorithm = web->host->algorithm ? web->host->algorithm : "SHA-256";
-            realm = web->host->realm ? web->host->realm : web->host->name;
-
-            //  Encode plain password: H(username:realm:password)
-            SFMT(buf, "%s:%s:%s", web->username, realm, web->password);
-            encodedPassword = webHash(buf, algorithm);
-            rFree(web->password);
-            web->password = encodedPassword;
-            web->encoded = 1;
-        }
-        /*
-            Use cryptMatch() from crypt module for constant-time comparison
-            This prevents timing attacks by always comparing full length
-         */
-        match = cryptMatch(web->password, user->password);
-        return match;
+        return cryptMatch(web->password, user->password);
     }
+    return webCheckPassword(web->host, web->username, web->password, user->password);
 }
 #endif /* ME_WEB_AUTH_BASIC */
 
@@ -853,8 +1083,7 @@ static bool verifyPassword(Web *web, WebUser *user)
  */
 static char *createNonce(Web *web, cchar *algorithm)
 {
-    char   macInput[256];
-    char   tsRndBuf[128];
+    char   *macInput, *tsRndBuf;
     uchar  mac[CRYPT_HMAC_SHA256_SIZE];
     char   *rnd, *result;
     RBuf   *payload;
@@ -865,18 +1094,22 @@ static char *createNonce(Web *web, cchar *algorithm)
     secret = web->host->secret;
     realm = web->host->realm ? web->host->realm : web->host->name;
     now = rGetTime();
-    rnd = cryptID(32);
-    SFMT(macInput, "%s:%s:%llx:%s", realm, algorithm ? algorithm : "SHA-256", (long long) now, rnd);
+    if ((rnd = cryptID(32)) == 0) {
+        return 0;
+    }
+    macInput = sfmt("%s:%s:%llx:%s", realm, algorithm ? algorithm : "SHA-256", (long long) now, rnd);
     cryptGetHmacSha256Block((cuchar*) secret, slen(secret), (cuchar*) macInput, slen(macInput), mac);
+    freePreimage(macInput);
 
     // Build payload: timestamp:random:binaryMAC
-    SFMT(tsRndBuf, "%llx:%s:", (long long) now, rnd);
+    tsRndBuf = sfmt("%llx:%s:", (long long) now, rnd);
     tsRndLen = slen(tsRndBuf);
     payload = rAllocBuf(tsRndLen + CRYPT_HMAC_SHA256_SIZE);
     rPutBlockToBuf(payload, tsRndBuf, tsRndLen);
     rPutBlockToBuf(payload, (char*) mac, CRYPT_HMAC_SHA256_SIZE);
 
     result = cryptEncode64Block((cuchar*) rGetBufStart(payload), rGetBufLength(payload));
+    freePreimage(tsRndBuf);
     rFree(rnd);
     rFreeBuf(payload);
     return result;
@@ -892,8 +1125,9 @@ static bool validateNonce(Web *web)
     size_t        decodedLen, textLen;
     uchar         expectedMac[CRYPT_HMAC_SHA256_SIZE], *decoded, *receivedMac;
     cchar         *realm, *secret, *algorithm;
-    char          *whenStr, *rnd, *tok, macInput[256];
-    int           age, currentNc, rc;
+    char          *whenStr, *rnd, *tok, *macInput;
+    uint64        currentNc;
+    int           age, rc;
     bool          match;
 
     if (!web->nonce) {
@@ -923,50 +1157,57 @@ static bool validateNonce(Web *web)
         // Validate timestamp
         when = (Ticks) stoix(whenStr, NULL, 16);
         now = rGetTime();
-        age = (int) ((now - when) / TPS);
+        //  The timestamp is client supplied: only a past time has a meaningful age
+        age = (when > 0 && when <= now) ? (int) ((now - when) / TPS) : -1;
         if (age >= 0 && age <= web->host->digestTimeout) {
             // Compute expected HMAC using same inputs
             realm = web->host->realm ? web->host->realm : web->host->name;
             secret = web->host->secret;
             algorithm = (web->route && web->route->algorithm) ? web->route->algorithm :
                         (web->host->algorithm ? web->host->algorithm : "SHA-256");
-            SFMT(macInput, "%s:%s:%s:%s", realm, algorithm, whenStr, rnd);
+            macInput = sfmt("%s:%s:%s:%s", realm, algorithm, whenStr, rnd);
             cryptGetHmacSha256Block((cuchar*) secret, slen(secret), (cuchar*) macInput, slen(macInput), expectedMac);
+            freePreimage(macInput);
             match = cryptMatchHmacSha256(expectedMac, receivedMac);
             if (match) {
-                // Replay protection: validate nonce count (nc) is incrementing
-                // Skip tracking if trackNonces is disabled (for testing/benchmarks)
-                if (web->nc && web->host->trackNonces) {
-                    currentNc = (int) stoix(web->nc, NULL, 16);
-                    entry = (WebNonceEntry*) rLookupName(web->host->nonces, web->nonce);
-                    if (entry) {
-                        // Nonce exists - validate nc is incrementing
-                        if (currentNc > entry->lastNc) {
-                            // Update last nc value
-                            entry->lastNc = currentNc;
-                            rc = 1;
-                        }
-                    } else {
-                        if (rGetHashLength(web->host->nonces) > web->host->maxDigest) {
-                            cleanupNonces(web->host);
-                        }
-                        if (rGetHashLength(web->host->nonces) <= web->host->maxDigest) {
-                            // First use of this nonce - create tracking entry
-                            entry = rAllocType(WebNonceEntry);
-                            entry->created = when;
-                            entry->lastNc = currentNc;
-                            rAddName(web->host->nonces, web->nonce, entry, 0);
-                            rc = 1;
+                /*
+                    Replay protection: the nonce count must increase on every use of a nonce.
+                    This only checks; nothing is recorded until commitNonce, after the digest
+                    has verified. Tracking is skipped when trackNonces is off (benchmarks).
+                 */
+                if (web->host->trackNonces) {
+                    if (parseNc(web->nc, &currentNc)) {
+                        entry = (WebNonceEntry*) rLookupName(web->host->nonces, web->nonce);
+                        if (entry) {
+                            rc = currentNc > entry->lastNc;
                         } else {
-                            static bool warned = false;
-                            if (!warned) {
-                                rError("web", "Digest authentication nonce limit reached: %d", web->host->maxDigest);
-                                warned = true;
+                            /*
+                                A nonce with no entry has never been used successfully, so this
+                                must be its first request. Requiring nc == 1 means that even if an
+                                entry were somehow lost, the replay of a later request could not be
+                                accepted as a fresh first use.
+                             */
+                            if (rGetHashLength(web->host->nonces) > web->host->maxDigest) {
+                                pruneNonces(web->host);
+                            }
+                            if (rGetHashLength(web->host->nonces) > web->host->maxDigest) {
+                                static bool warned = false;
+                                if (!warned) {
+                                    rError("web", "Digest authentication nonce limit reached: %d",
+                                           web->host->maxDigest);
+                                    warned = true;
+                                }
+                            } else if (nonceUserCount(web->host, web->username) >=
+                                       max(1, web->host->maxDigest / WEB_DIGEST_USERS)) {
+                                /* Limit each user's nonce share so one account cannot exhaust Digest capacity. */
+                                rDebug("web", "Digest nonce share reached for user %s", web->username);
+                            } else {
+                                rc = currentNc == 1;
                             }
                         }
                     }
                 } else {
-                    // No replay protection if qop not used or tracking disabled
+                    //  Tracking disabled (benchmarks only)
                     rc = 1;
                 }
             }
@@ -977,36 +1218,86 @@ static bool validateNonce(Web *web)
 }
 
 /*
-    Remove a nonce entry from the tracking hash
-    Called when authentication fails to prevent memory leak from failed attempts
+    Parse a nonce count. RFC 7616 defines nc as exactly eight hexadecimal digits, so anything
+    else is refused rather than passed to a lenient converter. The value is returned unsigned and
+    untruncated: counts of 0x80000000 and above are legitimate and must compare correctly.
  */
-static void removeNonceEntry(Web *web)
+static bool parseNc(cchar *nc, uint64 *value)
 {
-    WebNonceEntry *entry;
+    uint64 result;
+    int    i, c;
 
-    if (web->nonce && web->host && web->host->nonces) {
-        entry = (WebNonceEntry*) rLookupName(web->host->nonces, web->nonce);
-        if (entry) {
-            rRemoveName(web->host->nonces, web->nonce);
+    if (!nc || slen(nc) != 8) {
+        return 0;
+    }
+    result = 0;
+    for (i = 0; i < 8; i++) {
+        c = tolower((uchar) nc[i]);
+        if (c >= '0' && c <= '9') {
+            result = (result << 4) | (uint64) (c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            result = (result << 4) | (uint64) (10 + c - 'a');
+        } else {
+            return 0;
         }
     }
+    *value = result;
+    return 1;
 }
 
 /*
-    Clean up expired nonces from tracking hash
-    @param arg WebHost pointer
+    Update replay state only after Digest verification. Failed requests neither change counts nor remove entries;
+    pruneNonces reclaims expired entries.
  */
-static void cleanupNonces(void *arg)
+static bool commitNonce(Web *web)
 {
-    WebHost       *host;
+    WebNonceEntry *entry;
+    uint64        nc;
+
+    if (!web->host->trackNonces) {
+        return 1;
+    }
+    if (!parseNc(web->nc, &nc)) {
+        return 0;
+    }
+    entry = (WebNonceEntry*) rLookupName(web->host->nonces, web->nonce);
+    if (entry) {
+        entry->lastNc = nc;
+        return 1;
+    }
+    /*
+        validateNonce already refused the request if the table was full, and nothing yields
+        between the check and here, so the entry can be created. It is dated from now rather than
+        from the nonce's own timestamp: the nonce still expires on its issue time in validateNonce,
+        so an entry that outlives it by the difference is harmless and is reclaimed on the next
+        cleanup.
+     */
+    //  The username is stored in the same allocation, so the table's R_DYNAMIC_VALUE free releases both
+    entry = rAlloc(sizeof(WebNonceEntry) + slen(web->username) + 1);
+    memset(entry, 0, sizeof(WebNonceEntry));
+    entry->created = rGetTime();
+    entry->lastNc = nc;
+    entry->username = (char*) &entry[1];
+    scopy(entry->username, slen(web->username) + 1, web->username);
+    rAddName(web->host->nonces, web->nonce, entry, 0);
+    addNonceUser(web->host, entry->username, 1);
+    return 1;
+}
+
+static Ticks getNonceCleanupPeriod(WebHost *host)
+{
+    return (Ticks) max(1, min(30, host->digestTimeout / 2)) * TPS;
+}
+
+
+static void pruneNonces(WebHost *host)
+{
     WebNonceEntry *entry;
     RName         *np;
     RList         *toDelete;
-    Ticks         now, cutoff, period;
+    Ticks         now, cutoff;
     char          *nonceName;
     int           next;
-
-    host = (WebHost*) arg;
 
     if (rGetHashLength(host->nonces) > 0) {
         now = rGetTime();
@@ -1024,13 +1315,46 @@ static void cleanupNonces(void *arg)
         for (ITERATE_ITEMS(toDelete, nonceName, next)) {
             entry = (WebNonceEntry*) rLookupName(host->nonces, nonceName);
             if (entry) {
+                addNonceUser(host, entry->username, -1);
                 rRemoveName(host->nonces, nonceName);
             }
         }
         rFreeList(toDelete);
     }
-    period = min(30, host->digestTimeout / 2);
-    host->nonceCleanupEvent = rAllocEvent(NULL, (REventProc) cleanupNonces, host, period * TPS, 0);
+}
+
+
+static ssize nonceUserCount(WebHost *host, cchar *username)
+{
+    return (ssize) rLookupName(host->nonceUsers, username);
+}
+
+static void addNonceUser(WebHost *host, cchar *username, ssize delta)
+{
+    ssize count;
+
+    if (!username) {
+        return;
+    }
+    count = nonceUserCount(host, username) + delta;
+    if (count > 0) {
+        rAddName(host->nonceUsers, username, (void*) count, 0);
+    } else {
+        rRemoveName(host->nonceUsers, username);
+    }
+}
+
+/*
+    Only the timer re-arms; synchronous pruning must not start another timer chain.
+ */
+static void cleanupNonces(void *arg)
+{
+    WebHost *host;
+
+    host = (WebHost*) arg;
+    pruneNonces(host);
+    host->nonceCleanupEvent = rAllocEvent(NULL, (REventProc) cleanupNonces, host,
+                                          getNonceCleanupPeriod(host), 0);
 }
 
 /*
@@ -1038,10 +1362,8 @@ static void cleanupNonces(void *arg)
  */
 PUBLIC void webInitDigestAuth(WebHost *host)
 {
-    Ticks period;
-
-    period = min(30, host->digestTimeout / 2);
-    host->nonceCleanupEvent = rAllocEvent(NULL, (REventProc) cleanupNonces, host, period * TPS, 0);
+    host->nonceCleanupEvent = rAllocEvent(NULL, (REventProc) cleanupNonces, host,
+                                          getNonceCleanupPeriod(host), 0);
 }
 
 /*
@@ -1058,7 +1380,10 @@ static void sendDigestChallenge(Web *web, WebRoute *route)
     realm = web->host->realm ? web->host->realm : web->host->name;
     opaque = web->host->opaque ? web->host->opaque : "opaque";
 
-    nonce = createNonce(web, algorithm);
+    if ((nonce = createNonce(web, algorithm)) == 0) {
+        webError(web, 500, "Cannot generate authentication nonce");
+        return;
+    }
 
     webSetStatus(web, 401);
     webAddHeader(web, "WWW-Authenticate",
@@ -1069,83 +1394,147 @@ static void sendDigestChallenge(Web *web, WebRoute *route)
 }
 
 /*
+    One bit per Digest auth-param, to detect a repeat.
+ */
+#define WEB_DIGEST_USERNAME  0x001
+#define WEB_DIGEST_REALM     0x002
+#define WEB_DIGEST_NONCE     0x004
+#define WEB_DIGEST_URI       0x008
+#define WEB_DIGEST_QOP       0x010
+#define WEB_DIGEST_NC        0x020
+#define WEB_DIGEST_ALGORITHM 0x040
+#define WEB_DIGEST_CNONCE    0x080
+#define WEB_DIGEST_RESPONSE  0x100
+#define WEB_DIGEST_OPAQUE    0x200
+
+/*
     Parse Digest authentication header
     Format: Digest username="...", realm="...", nonce="...", uri="...", response="...", ...
+
+    RFC 7616 section 3.4 defines the credentials as a set of auth-params, so a repeated parameter
+    is malformed and is rejected. Resolving a duplicate by taking the last occurrence would let one
+    header carry two readings of the same field, so a front-end that reads the first and a server
+    that reads the last disagree about who is asking.
  */
 static bool parseDigestAuth(Web *web)
 {
-    char *key, *value, *tok, *details, *opaque;
+    char  *key, *value, *tok, *details, *opaque, **field, *dst;
+    cchar *realm;
+    int   bit, duplicate, malformed, seen;
 
     if (!web->authDetails) {
         return 0;
     }
     details = sclone(web->authDetails);
     key = details;
+    duplicate = 0;
+    malformed = 0;
+    seen = 0;
 
     while (*key) {
         //  Skip whitespace
         while (*key && isspace((uchar) * key)) key++;
         //  Find key
-        tok = key;
         for (tok = key; *tok && *tok != '=' && *tok != ','; tok++) {
         }
         if (*tok != '=') {
+            if (tok == key && *tok == ',') {
+
+                key = tok + 1;
+                continue;
+            }
+            //  A token without a value fails the parse rather than silently ending it
+            malformed = tok != key;
             break;
         }
         *tok++ = '\0';
-        //  Parse value (may be quoted)
+        /*
+            Unescape quoted pairs in place; output cannot exceed input length.
+         */
         if (*tok == '"') {
-            value = ++tok;
-            while (*tok && *tok != '"') tok++;
-            if (*tok == '"') *tok++ = '\0';
+            value = dst = ++tok;
+            while (*tok && *tok != '"') {
+                if (*tok == '\\' && tok[1]) {
+                    tok++;
+                }
+                *dst++ = *tok++;
+            }
+            if (*tok == '"') {
+                tok++;
+            }
+            *dst = '\0';
         } else {
             value = tok;
             while (*tok && *tok != ',') tok++;
         }
         if (*tok == ',') *tok++ = '\0';
 
-        //  Store parsed values
+        //  Map the parameter to the field that holds it and to its seen-bit
+        field = 0;
+        bit = 0;
         if (scaselessmatch(key, "username")) {
-            rFree(web->username);
-            web->username = sclone(value);
+            field = &web->username;
+            bit = WEB_DIGEST_USERNAME;
         } else if (scaselessmatch(key, "realm")) {
-            rFree(web->realm);
-            web->realm = sclone(value);
+            field = &web->realm;
+            bit = WEB_DIGEST_REALM;
         } else if (scaselessmatch(key, "nonce")) {
-            rFree(web->nonce);
-            web->nonce = sclone(value);
+            field = &web->nonce;
+            bit = WEB_DIGEST_NONCE;
         } else if (scaselessmatch(key, "uri")) {
-            rFree(web->uri);
-            web->uri = sclone(value);
+            field = &web->uri;
+            bit = WEB_DIGEST_URI;
         } else if (scaselessmatch(key, "qop")) {
-            rFree(web->qop);
-            web->qop = sclone(value);
+            field = &web->qop;
+            bit = WEB_DIGEST_QOP;
         } else if (scaselessmatch(key, "nc")) {
-            rFree(web->nc);
-            web->nc = sclone(value);
+            field = &web->nc;
+            bit = WEB_DIGEST_NC;
         } else if (scaselessmatch(key, "algorithm")) {
-            rFree(web->algorithm);
-            web->algorithm = sclone(value);
+            field = &web->algorithm;
+            bit = WEB_DIGEST_ALGORITHM;
         } else if (scaselessmatch(key, "cnonce")) {
-            rFree(web->cnonce);
-            web->cnonce = sclone(value);
+            field = &web->cnonce;
+            bit = WEB_DIGEST_CNONCE;
         } else if (scaselessmatch(key, "response")) {
-            rFree(web->digestResponse);
-            web->digestResponse = sclone(value);
+            field = &web->digestResponse;
+            bit = WEB_DIGEST_RESPONSE;
         } else if (scaselessmatch(key, "opaque")) {
-            rFree(web->opaque);
-            web->opaque = sclone(value);
+            field = &web->opaque;
+            bit = WEB_DIGEST_OPAQUE;
+        }
+        if (field) {
+            if (seen & bit) {
+                duplicate = 1;
+                break;
+            }
+            seen |= bit;
+            rFree(*field);
+            *field = sclone(value);
         }
         key = tok;
     }
     rFree(details);
 
-    //  Validate required fields
+    if (duplicate || malformed) {
+        return 0;
+    }
+    /* Require qop=auth, nc and cnonce as offered; the no-qop form lacks replay protection. */
     if (!web->username || !web->digestResponse || !web->realm || !web->nonce || !web->uri) {
         return 0;
     }
-    //  Validate field lengths (prevent buffer overflows)
+    if (!web->qop || !scaselessmatch(web->qop, "auth") || !web->nc || !web->cnonce) {
+        return 0;
+    }
+    /*
+        Validate field lengths. nc is 8 hex digits per RFC 7616 and cnonce is a client-chosen
+        token; neither was bounded, so both reached the digest preimage at whatever length the
+        header allowed.
+     */
     if (slen(web->username) > 64 || slen(web->nonce) > 256 || slen(web->uri) > 2048 || slen(web->realm) > 128) {
+        return 0;
+    }
+    if (slen(web->nc) > 16 || slen(web->cnonce) > 128) {
         return 0;
     }
     //  Validate algorithm is in whitelist
@@ -1161,7 +1550,37 @@ static bool parseDigestAuth(Web *web)
             return 0;
         }
     }
+    realm = web->host->realm ? web->host->realm : web->host->name;
+    if (!smatch(web->realm, realm)) {
+        return 0;
+    }
     return 1;
+}
+
+/*
+    Compare the digest uri parameter against the request target.
+    RFC 7616 section 3.4 makes the digest uri the Request-URI, so it carries the query string
+    whenever the request has one. The uri may be sent relative, without the leading "/".
+ */
+static bool matchDigestUri(Web *web, cchar *uri)
+{
+    cchar  *path, *query;
+    size_t len;
+
+    if ((query = schr(uri, '?')) != 0) {
+        len = (size_t) (query - uri);
+        query++;
+    } else {
+        len = slen(uri);
+    }
+    path = web->path;
+    if (*uri != '/' && *path == '/') {
+        path++;
+    }
+    if (slen(path) != len || sncmp(uri, path, len) != 0) {
+        return 0;
+    }
+    return smatch(query, web->query);
 }
 
 /*
@@ -1171,7 +1590,7 @@ static bool parseDigestAuth(Web *web)
  */
 static char *computeDigest(Web *web, cchar *password)
 {
-    char  a2Buf[512], digestBuf[1024];
+    char  *a2Buf, *digestBuf;
     char  *ha1, *ha2, *result;
     cchar *algorithm, *hashValue, *passwordAlg;
 
@@ -1215,16 +1634,14 @@ static char *computeDigest(Web *web, cchar *password)
     ha1 = sclone(hashValue);
 
     //  HA2 = H(method:uri)
-    SFMT(a2Buf, "%s:%s", web->method, web->uri);
+    a2Buf = sfmt("%s:%s", web->method, web->uri);
     ha2 = webHash(a2Buf, algorithm);
+    freePreimage(a2Buf);
 
-    //  Final digest
-    if (web->qop && scaselessmatch(web->qop, "auth")) {
-        SFMT(digestBuf, "%s:%s:%s:%s:%s:%s", ha1, web->nonce, web->nc, web->cnonce, web->qop, ha2);
-    } else {
-        SFMT(digestBuf, "%s:%s:%s", ha1, web->nonce, ha2);
-    }
+    //  Final digest. parseDigestAuth has required qop=auth, nc and cnonce.
+    digestBuf = sfmt("%s:%s:%s:%s:%s:%s", ha1, web->nonce, web->nc, web->cnonce, web->qop, ha2);
     result = webHash(digestBuf, algorithm);
+    freePreimage(digestBuf);
 
     rFree(ha1);
     rFree(ha2);
@@ -1232,10 +1649,79 @@ static char *computeDigest(Web *web, cchar *password)
 }
 #endif /* ME_WEB_AUTH_DIGEST */
 
+/*
+    Build dummy credentials to reduce timing differences for unknown users.
+ */
+PUBLIC void webInitAuthDummy(WebHost *host)
+{
+    cchar *realm, *placeholder;
+
+    realm = host->realm ? host->realm : host->name;
+    placeholder = "dummy-user-for-timing-equalization";
+
+    /*
+        Application logins check unknown users against this. It has the default bcrypt cost, which the
+        password utility uses.
+     */
+    {
+        char *buf;
+
+        buf = sfmt("%s:%s:%s", "decoy", realm, placeholder);
+        host->decoyPassword = cryptMakePassword(buf, CRYPT_BLOWFISH_SALT_LENGTH, CRYPT_BLOWFISH_ROUNDS);
+        freePreimage(buf);
+    }
+
+#if ME_WEB_AUTH_BASIC
+    /*
+        Match a configured bcrypt user's cost.
+     */
+    {
+        RName   *np;
+        WebUser *user;
+        cchar   *bcryptHash;
+        char    *buf, *rounds, *tok, *last;
+        int64   roundCount;
+
+        bcryptHash = 0;
+        for (ITERATE_NAMES(host->users, np)) {
+            user = (WebUser*) np->value;
+            if (user->password && sstarts(user->password, "BF1:")) {
+                bcryptHash = user->password;
+                break;
+            }
+        }
+        buf = sfmt("%s:%s:%s", "dummy", realm, placeholder);
+        if (bcryptHash) {
+            rounds = sclone(&bcryptHash[4]);
+            tok = stok(rounds, ":", &last);
+            roundCount = tok ? stoi(tok) : 0;
+            rFree(rounds);
+            host->dummyUser.password = cryptMakePassword(buf, 0, (size_t) (roundCount > 0 ? roundCount : 0));
+        } else {
+            host->dummyUser.password = webHash(buf, host->algorithm ? host->algorithm : "SHA-256");
+        }
+        freePreimage(buf);
+    }
+#endif
+
+#if ME_WEB_AUTH_DIGEST
+    /*
+        Digest requires a hash-format password, not bcrypt.
+     */
+    {
+        char *buf;
+
+        buf = sfmt("%s:%s:%s", "dummy-digest", realm, placeholder);
+        host->dummyDigestPassword = webHash(buf, host->algorithm ? host->algorithm : "SHA-256");
+        freePreimage(buf);
+    }
+#endif
+}
+
 #endif /* ME_WEB_HTTP_AUTH */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -1254,25 +1740,92 @@ static char *computeDigest(Web *web, cchar *password)
 /********************************** Includes **********************************/
 
 
+#if ME_WIN_LIKE && !defined(O_NONBLOCK)
+/*
+    Windows open() has no non-blocking flag and a FIFO cannot appear in a document tree, so
+    the flag is a no-op there. The regular-file check after open() still applies.
+ */
+    #define O_NONBLOCK 0
+#endif
+
 /************************************ Locals **********************************/
 
 typedef struct stat FileInfo;
 
 /************************************ Forwards *********************************/
 
-static int deleteFile(Web *web, char *path, size_t pathSize);
+static int deleteFile(Web *web, char *path);
+static void coalesceRanges(Web *web);
 static int fixRanges(Web *web, int64 fileSize);
 static int getFile(Web *web, char *path, size_t pathSize);
 static cchar *getEncoding(Web *web);
 static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding);
 static int pickRanges(Web *web, FileInfo *info, cchar *etag);
-static int putFile(Web *web, char *path, size_t pathSize);
+static int putFile(Web *web, char *path);
 static void redirectToDir(Web *web);
-static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **pEncoding);
+static bool pickFile(Web *web, char *path, size_t pathSize, FileInfo *info, cchar **pEncoding);
+static bool deniedPath(Web *web, cchar *path);
+#if ME_UNIX_LIKE
+static bool isStoredPath(WebHost *host, int fd, cchar *expected);
+#endif
 static int sendFileContent(Web *web, int fd, FileInfo *info);
 static void writeRangeHeader(Web *web, WebRange *range, int64 fileSize);
+static void fileEtag(Web *web, FileInfo *info, char *buf, size_t size);
 
 /************************************* Code ***********************************/
+
+/*
+    Test the request path against the host's deny patterns, one path segment at a time.
+
+    Every segment is tested, not just the last, so "/.git/objects/ab/cdef" is refused and not
+    merely "/.git". This runs in webFileHandler ahead of everything else, so it covers GET, HEAD,
+    POST, PUT and DELETE alike, and ahead of pickFile, which would otherwise reach a denied file
+    through its ".gz" and ".br" pre-compressed variants.
+
+    A denial is 404, never 403: a 403 confirms the file is there, which for "/.git/config" is most
+    of what the attacker wanted. It is traced, because an integrator whose legitimate file is being
+    refused needs to find that out quickly.
+ */
+static bool deniedPath(Web *web, cchar *path)
+{
+    cchar  *pattern;
+    char   segment[ME_MAX_FNAME];
+    cchar  *sp, *end;
+    size_t len;
+    int    next;
+
+    if (!web->host->deny || rGetListLength(web->host->deny) == 0) {
+        return 0;
+    }
+    for (sp = path; sp && *sp; sp = end) {
+        while (*sp == '/') {
+            sp++;
+        }
+        if (*sp == '\0') {
+            break;
+        }
+        if ((end = schr(sp, '/')) != 0) {
+            len = (size_t) (end - sp);
+        } else {
+            len = slen(sp);
+            end = &sp[len];
+        }
+        if (len >= sizeof(segment)) {
+            return 1;
+        }
+        scopy(segment, sizeof(segment), sp);
+        segment[len] = '\0';
+
+        for (ITERATE_ITEMS(web->host->deny, pattern, next)) {
+            if (rMatchFile(segment, pattern)) {
+                rTrace("web", "Denied \"%s\": segment \"%s\" matches deny pattern \"%s\"",
+                       path, segment, pattern);
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
 
 PUBLIC int webFileHandler(Web *web)
 {
@@ -1280,17 +1833,26 @@ PUBLIC int webFileHandler(Web *web)
     int  rc;
 
     /*
-        SECURITY Acceptable:: the path is already validated and normalized in
-        webValidateRequest / webNormalizePath
+        Normalization blocks lexical traversal. Descriptor checks below separately enforce
+        containment and exact spelling after filesystem resolution.
      */
-    sjoinbuf(path, sizeof(path), webGetDocs(web->host), web->path);
+    if (sjoinbuf(path, sizeof(path), webGetDocs(web->host), web->path) < 0) {
+        return webError(web, 414, "Request URI too long");
+    }
+    /*
+        After the length check, so an over-long path is still answered 414 rather than being
+        reported as a denied name, and before the method dispatch so it covers PUT and DELETE.
+     */
+    if (deniedPath(web, web->path)) {
+        return webError(web, 404, "Cannot locate document");
+    }
 
     if (web->get || web->head || web->post) {
         rc = getFile(web, path, sizeof(path));
     } else if (web->put) {
-        rc = putFile(web, path, sizeof(path));    // PUT always uses original path
+        rc = putFile(web, path);    // PUT always uses original path
     } else if (web->del) {
-        rc = deleteFile(web, path, sizeof(path)); // DELETE uses original path
+        rc = deleteFile(web, path); // DELETE uses original path
     } else {
         rc = webError(web, 405, "Unsupported method");
     }
@@ -1298,37 +1860,18 @@ PUBLIC int webFileHandler(Web *web)
 }
 
 /*
-    Verify that the file an open descriptor refers to is the file the request actually named.
-
-    Route selection - the only authorization gate in the server - matches the request path byte
-    for byte. The file system does not. Case-folding file systems (APFS, HFS+, NTFS, vfat, exfat)
-    and Unicode-normalizing file systems (APFS, HFS+) resolve many spellings to one file, and
-    Windows also accepts 8.3 short names, trailing dots and spaces, and the ::$DATA suffix. A
-    request spelled differently from a protected route therefore misses that route, falls through
-    to a later unauthenticated route, and the file system hands back the protected file anyway.
-
-    Rather than trying to enumerate every fold every file system applies, compare the name the
-    file system resolved against the name the request asked for. Two conditions must both hold:
-
-      1. Containment - the resolved file lies inside the document root. This also rejects a
-         symlink or traversal that escapes the root.
-      2. Spelling - the resolved name equals the requested name exactly. This is what closes the
-         authorization bypass.
-
-    Driving this from the descriptor rather than from the path leaves no time-of-check to
-    time-of-use window: the descriptor already refers to the file that will be served.
-
-    A mismatch returns 404, never a redirect to the canonical spelling. A redirect would confirm
-    that the resource exists, which is exactly what must not leak on a protected path.
-
-    Returns true if the descriptor may be served.
+    Require document-root containment and stored filename spelling. Return 404 without exposing canonical names.
  */
 static bool validateResolvedPath(Web *web, int fd, cchar *path)
 {
     WebHost *host;
-    char     actual[ME_MAX_FNAME];
-    cchar    *expected;
-    size_t   docsLen;
+    char    actual[ME_MAX_FNAME];
+    cchar   *expected;
+    size_t  docsLen;
+
+#if ME_WIN_LIKE
+    char *cp;
+#endif
 
     host = web->host;
 
@@ -1341,7 +1884,22 @@ static bool validateResolvedPath(Web *web, int fd, cchar *path)
         return 0;
     }
     docsLen = slen(host->canonicalDocs);
-    if (!sstarts(actual, host->canonicalDocs) || (actual[docsLen] != '/' && actual[docsLen] != '\0')) {
+    if (!sstarts(actual, host->canonicalDocs)) {
+        return 0;
+    }
+#if ME_WIN_LIKE
+    /*
+        Both names above are native, so the containment test compares like with like. The name
+        below is compared against the requested path, which came from a URL, so reduce the
+        resolved name to the URL form first.
+     */
+    for (cp = &actual[docsLen]; *cp; cp++) {
+        if (*cp == '\\') {
+            *cp = '/';
+        }
+    }
+#endif
+    if (actual[docsLen] != '/' && actual[docsLen] != '\0') {
         return 0;
     }
     /*
@@ -1350,8 +1908,99 @@ static bool validateResolvedPath(Web *web, int fd, cchar *path)
      */
     expected = &path[slen(webGetDocs(host))];
 
+#if ME_UNIX_LIKE
+    return isStoredPath(host, fd, expected);
+#else
     return smatch(&actual[docsLen], expected);
+#endif
 }
+
+#if ME_UNIX_LIKE
+/* Use readdir to verify stored spelling when case folding or Unicode normalization can affect lookup. */
+static bool isStoredName(int dir, cchar *name, struct stat *info)
+{
+    struct dirent *dp;
+    struct stat   alt;
+    DIR           *dirp;
+    char          *flipped, *cp;
+    bool          folds, found;
+    int           fd;
+
+    for (cp = (char*) name; *cp && !(*cp & 0x80); cp++) {
+    }
+    if (*cp == '\0') {
+        flipped = sclone(name);
+        for (cp = flipped; *cp && !isalpha((uchar) * cp); cp++) {
+        }
+        if (*cp) {
+            *cp = (char) (isupper((uchar) * cp) ? tolower((uchar) * cp) : toupper((uchar) * cp));
+        }
+        folds = !*cp || (fstatat(dir, flipped, &alt, AT_SYMLINK_NOFOLLOW) == 0 &&
+                         alt.st_ino == info->st_ino && alt.st_dev == info->st_dev);
+        rFree(flipped);
+        if (!folds) {
+            return 1;
+        }
+    }
+    found = 0;
+    if ((fd = openat(dir, ".", O_RDONLY | O_DIRECTORY)) < 0) {
+        return 0;
+    }
+    if ((dirp = fdopendir(fd)) == 0) {
+        close(fd);
+        return 0;
+    }
+    while ((dp = readdir(dirp)) != 0) {
+        if (smatch(dp->d_name, name)) {
+            found = 1;
+            break;
+        }
+    }
+    closedir(dirp);
+    return found;
+}
+
+/*
+    Walk from the document root without following links, verify stored component names, then bind the open
+    descriptor by device/inode. Descriptor paths may contain cached lookup spellings.
+ */
+static bool isStoredPath(WebHost *host, int fd, cchar *expected)
+{
+    struct stat info, target;
+    char        *copy, *name, *prior, *tok;
+    int         dir, next;
+    bool        valid;
+
+    if (fstat(fd, &target) < 0 || (dir = open(host->canonicalDocs, O_RDONLY | O_DIRECTORY)) < 0) {
+        return 0;
+    }
+    if (fstat(dir, &info) < 0) {
+        close(dir);
+        return 0;
+    }
+    copy = sclone(expected);
+    valid = 1;
+    prior = 0;
+    for (name = stok(copy, "/", &tok); name; name = stok(NULL, "/", &tok)) {
+        if (prior) {
+            if (!S_ISDIR(info.st_mode) || (next = openat(dir, prior, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) < 0) {
+                valid = 0;
+                break;
+            }
+            close(dir);
+            dir = next;
+        }
+        if (fstatat(dir, name, &info, AT_SYMLINK_NOFOLLOW) < 0 || !isStoredName(dir, name, &info)) {
+            valid = 0;
+            break;
+        }
+        prior = name;
+    }
+    close(dir);
+    rFree(copy);
+    return valid && info.st_ino == target.st_ino && info.st_dev == target.st_dev;
+}
+#endif
 
 static int getFile(Web *web, char *path, size_t pathSize)
 {
@@ -1359,7 +2008,7 @@ static int getFile(Web *web, char *path, size_t pathSize)
     cchar    *encoding;
     int      fd, rc;
 
-    if (!pickFile(web, path, &info, &encoding)) {
+    if (!pickFile(web, path, pathSize, &info, &encoding)) {
         webHook(web, WEB_HOOK_NOT_FOUND);
         if (!web->finalized) {
             return webError(web, 404, "Cannot locate document");
@@ -1369,18 +2018,66 @@ static int getFile(Web *web, char *path, size_t pathSize)
     if (web->finalized) {
         return 0;
     }
-    if ((fd = open(path, O_RDONLY | O_BINARY, 0)) < 0) {
+    /*
+        Authorize substituted index and compressed filenames through their destination routes.
+     */
+    if (!webAuthorizePath(web, &path[slen(webGetDocs(web->host))])) {
+        return 0;
+    }
+    /*
+        O_NONBLOCK matters here. open() on a FIFO with no writer blocks until one appears, and this
+        is a plain blocking syscall, not a fiber-aware one - so it stalls the thread, and with it
+        every fiber and every connection. A single request for a FIFO in the document root wedged
+        the whole server. Opening non-blocking lets the type check below run at all.
+     */
+    if ((fd = open(path, O_RDONLY | O_BINARY | O_NONBLOCK, 0)) < 0) {
         webError(web, 404, "Cannot open document");
         return R_ERR_CANT_OPEN;
+    }
+    /*
+        Serve only regular files, and take the size from the descriptor rather than the earlier
+        path-based stat. fstat closes the window in which the file could be replaced or truncated
+        between the stat and the send, which would otherwise emit a Content-Length that does not
+        match the body and desynchronise a kept-alive connection.
+     */
+    if (fstat(fd, &info) < 0 || !S_ISREG(info.st_mode)) {
+        close(fd);
+        webHook(web, WEB_HOOK_NOT_FOUND);
+        return webError(web, 404, "Cannot locate document");
     }
     if (!validateResolvedPath(web, fd, path)) {
         close(fd);
         webHook(web, WEB_HOOK_NOT_FOUND);
         return webError(web, 404, "Cannot locate document");
     }
+#if ME_UNIX_LIKE
+    //  Clear O_NONBLOCK so the send path reads normally
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
+#endif
     rc = sendFile(web, fd, &info, encoding);
     close(fd);
     return rc;
+}
+
+/* Salt SHA-256 file identity and emit 16 hex digits as ETag, hiding inode metadata. Validators change on restart. */
+static void fileEtag(Web *web, FileInfo *info, char *buf, size_t size)
+{
+    uchar  block[4 * sizeof(uint64) + sizeof(web->host->etagSalt)];
+    uchar  digest[CRYPT_SHA256_SIZE];
+    uint64 fields[4];
+    size_t i;
+
+    fields[0] = (uint64) info->st_dev;
+    fields[1] = (uint64) info->st_ino;
+    fields[2] = (uint64) info->st_size;
+    fields[3] = (uint64) info->st_mtime;
+    memcpy(block, fields, sizeof(fields));
+    memcpy(&block[sizeof(fields)], web->host->etagSalt, sizeof(web->host->etagSalt));
+    cryptGetSha256Block(block, sizeof(block), digest);
+    for (i = 0; i < 8 && (i * 2 + 2) < size; i++) {
+        snprintf(&buf[i * 2], 3, "%02x", digest[i]);
+    }
+    buf[i * 2] = '\0';
 }
 
 static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
@@ -1388,9 +2085,7 @@ static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
     char etag[24];
     int  rc;
 
-    //  Generate unquoted ETag for faster comparison
-    sitosbuf(etag, sizeof(etag), (int64) ((uint64) info->st_ino ^ (uint64) info->st_size ^ (uint64) info->st_mtime),
-             10);
+    fileEtag(web, info, etag, sizeof(etag));
 
     /*
         Check conditional request headers (If-None-Match, If-Modified-Since)
@@ -1398,6 +2093,14 @@ static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
         Per RFC 7232, this check happens before processing ranges
      */
     rc = 0;
+    if (web->route->compressed) {
+        //  Every response on a compressed route depends on Accept-Encoding, whichever variant it is
+        webAddVary(web, "Accept-Encoding");
+    }
+    if (encoding && web->ranges && web->ranges->next) {
+        //  The encoding headers would describe the multipart envelope, so serve the encoded variant whole
+        webFreeRanges(web);
+    }
     if (webContentNotModified(web, etag, info->st_mtime)) {
         web->txLen = 0;
         web->status = 304;
@@ -1405,8 +2108,14 @@ static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
         webAddHeaderDynamicString(web, "Last-Modified", webHttpDate(info->st_mtime));
         webAddHeader(web, "ETag", "\"%s\"", etag);
 
-    } else if (pickRanges(web, info, etag) < 0) {
-        webError(web, 416, "Requested range not satisfiable");
+    } else if ((rc = pickRanges(web, info, etag)) < 0) {
+        if (rc == R_ERR_BAD_REQUEST) {
+            rc = webError(web, 416, "Requested range not satisfiable");
+        } else if (rc == R_ERR_WONT_FIT) {
+            rc = webError(web, 500, "File is too large to serve on this platform");
+        } else {
+            rc = webError(web, 500, "Cannot generate range boundary");
+        }
 
     } else {
         //  Always send Last-Modified and ETag headers
@@ -1419,7 +2128,6 @@ static int sendFile(Web *web, int fd, FileInfo *info, cchar *encoding)
         //  Add compression headers if serving compressed file
         if (encoding) {
             webAddHeaderStaticString(web, "Content-Encoding", encoding);
-            webAddHeaderStaticString(web, "Vary", "Origin, Accept-Encoding");
         }
         if (!web->head) {
             rc = sendFileContent(web, fd, info);
@@ -1441,6 +2149,10 @@ static void redirectToDir(Web *web)
     char *url;
 
     buf = rAllocBuf(0);
+    //  A trimmed path is relative to the route prefix the client requested, so put it back
+    if (web->trimmed) {
+        rPutStringToBuf(buf, web->route->trim);
+    }
     rPutStringToBuf(buf, web->path);
     rPutCharToBuf(buf, '/');
     if (web->query) {
@@ -1450,100 +2162,169 @@ static void redirectToDir(Web *web)
         rPutToBuf(buf, "#%s", web->hash);
     }
     url = rBufToStringAndFree(buf);
-    webRedirect(web, 301, url);
+    //  Same-origin by construction: a relative Location cannot name the backend's scheme or port
+    webRedirectLocal(web, 301, url);
     rFree(url);
 }
 
-static int putFile(Web *web, char *path, size_t pathSize)
+/*
+    Mutations require descriptor-relative operations. Holding the validated parent prevents a
+    replaced symlink from redirecting a later create, rename or unlink. Platforms without these
+    primitives fail closed rather than falling back to path-based writes. ME_WEB_MUTATIONS in web.h
+    is the single definition of that condition, so callers can ask before they depend on it.
+ */
+#if ME_WEB_MUTATIONS
+
+static int openFileParent(Web *web, cchar *path)
 {
-    FileInfo info;
-    char     etag[24], *ptr;
-    size_t   bufsize;
-    ssize    nbytes;
-    int      fd, total;
+    char *parent;
+    int  fd;
 
-    /*
-        Check preconditions for state-changing requests per RFC 7232
-        If-Match and If-Unmodified-Since ensure the client has the current version
-     */
-    if ((web->ifMatchPresent || web->ifUnmodified) && stat(path, &info) == 0) {
-        sitosbuf(etag, sizeof(etag), (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime),
-                 10);
-
-        //  Check If-Match precondition (must match to proceed)
-        if (web->ifMatchPresent && !webMatchEtag(web, etag)) {
-            return webError(web, 412, "Precondition not satisfied");
-        }
-        //  Check If-Unmodified-Since precondition (must be unmodified to proceed)
-        if (web->ifUnmodified && !webMatchModified(web, info.st_mtime)) {
-            return webError(web, 412, "Precondition not satisfied");
-        }
-        web->exists = 1;
-    } else {
-        web->exists = stat(path, &info) == 0;
+    parent = rDirname(sclone(path));
+    fd = open(parent, O_RDONLY | O_DIRECTORY | O_NONBLOCK);
+    if (fd >= 0 && !validateResolvedPath(web, fd, parent)) {
+        close(fd);
+        fd = -1;
     }
-    assert(rGetBufLength(web->body) == 0);
+    rFree(parent);
+    return fd;
+}
 
-    if ((fd = open(path, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, 0600)) < 0) {
+/* Return 1 for a validated regular file, 0 for an absent leaf, and -1 for an unsafe target. */
+static int checkFileTarget(Web *web, int dir, cchar *path, FileInfo *info)
+{
+    int fd, valid;
+
+    fd = openat(dir, rBasename(path), O_RDONLY | O_BINARY | O_NONBLOCK | O_NOFOLLOW);
+    if (fd < 0) {
+        if (errno == ENOENT && fstatat(dir, rBasename(path), info, AT_SYMLINK_NOFOLLOW) < 0 && errno == ENOENT) {
+            return 0;
+        }
+        return -1;
+    }
+    valid = fstat(fd, info) == 0 && S_ISREG(info->st_mode) && validateResolvedPath(web, fd, path);
+    close(fd);
+    return valid ? 1 : -1;
+}
+
+static bool filePreconditions(Web *web, FileInfo *info)
+{
+    char etag[24];
+
+    fileEtag(web, info, etag, sizeof(etag));
+    return (!web->ifMatchPresent || webMatchEtag(web, etag)) &&
+           (!web->ifUnmodified || webMatchModified(web, info->st_mtime));
+}
+#endif
+
+static int putFile(Web *web, char *path)
+{
+#if ME_WEB_MUTATIONS
+    FileInfo info;
+    char     *ptr, *parent, temp[64];
+    uchar    random[16];
+    size_t   bufsize;
+    ssize    nbytes, total;
+    int      dir, fd, exists, rc, i;
+
+    if ((dir = openFileParent(web, path)) < 0) {
+        return webError(web, 404, "Cannot open document directory");
+    }
+    exists = checkFileTarget(web, dir, path, &info);
+    if (exists < 0) {
+        close(dir);
+        return webError(web, 404, "Cannot open document");
+    }
+    web->exists = exists ? 1 : 0;
+    if (exists && !filePreconditions(web, &info)) {
+        close(dir);
+        return webError(web, 412, "Precondition not satisfied");
+    }
+    /* Never truncate the old file: publish the complete body with an atomic rename. */
+    if (cryptGetRandomBytes(random, sizeof(random), 0) < 0) {
+        close(dir);
+        return webError(web, 500, "Cannot create temporary document");
+    }
+    scopy(temp, sizeof(temp), ".web-put-");
+    for (i = 0; i < (int) sizeof(random); i++) {
+        sfmtbuf(&temp[9 + i * 2], sizeof(temp) - (size_t) (9 + i * 2), "%02x", random[i]);
+    }
+    fd = openat(dir, temp, O_WRONLY | O_BINARY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+    if (fd < 0) {
+        close(dir);
         return webError(web, 404, "Cannot open document");
     }
     total = 0;
-    //  Zero-copy: read directly from rx buffer
+    rc = 0;
     bufsize = min(WEB_BUF_BOOST_16X, (size_t) web->rxRemaining);
     while ((nbytes = webReadDirect(web, &ptr, bufsize)) > 0) {
-        if (write(fd, ptr, (uint) nbytes) != nbytes) {
-            close(fd);
-            return webError(web, 500, "Cannot put document");
-        }
-        total += (int) nbytes;
+        total += nbytes;
         if (total > web->host->maxUpload) {
-            close(fd);
-            unlink(path);
-            return webError(web, 414, "Uploaded put file exceeds maximum %d", web->host->maxUpload);
+            rc = 413;
+            break;
+        }
+        if (write(fd, ptr, (uint) nbytes) != nbytes) {
+            rc = 500;
+            break;
         }
     }
-    close(fd);
-    if (nbytes < 0) {
-        unlink(path);
-        return (int) webWriteResponseString(web, 500, "PUT request failed with premature client disconnect");
+    if (close(fd) < 0 && !rc) {
+        rc = 500;
     }
-    if (web->rxRemaining > 0) {
-        unlink(path);
-        return (int) webWriteResponseString(web, 500, "PUT request received insufficient body data");
+    if (!rc && (nbytes < 0 || web->rxRemaining > 0)) {
+        rc = 500;
+    }
+    /* The body read yields: check the held directory and destination again before publishing. */
+    parent = rDirname(sclone(path));
+    if (!rc && !validateResolvedPath(web, dir, parent)) {
+        rc = 404;
+    }
+    rFree(parent);
+    if (!rc && checkFileTarget(web, dir, path, &info) < 0) {
+        rc = 404;
+    }
+    if (!rc && renameat(dir, temp, dir, rBasename(path)) < 0) {
+        rc = 500;
+    }
+    unlinkat(dir, temp, 0);
+    close(dir);
+    if (rc) {
+        return webError(web, rc, "Cannot complete PUT document");
     }
     return (int) webWriteResponseString(web, web->exists ? 204 : 201, "Document successfully updated");
+#else
+    (void) path;
+    return webError(web, 405, "Safe filesystem mutations are unavailable on this platform");
+#endif
 }
 
-static int deleteFile(Web *web, char *path, size_t pathSize)
+static int deleteFile(Web *web, char *path)
 {
+#if ME_WEB_MUTATIONS
     FileInfo info;
-    char     etag[24];
+    int      dir, rc;
 
-    /*
-        Check preconditions for state-changing requests per RFC 7232
-        If-Match and If-Unmodified-Since ensure the client has the current version
-     */
-    if (web->ifMatchPresent || web->ifUnmodified) {
-        if (stat(path, &info) == 0) {
-            sitosbuf(etag, sizeof(etag),
-                     (int64) ((uint64) info.st_ino ^ (uint64) info.st_size ^ (uint64) info.st_mtime), 10);
-
-            //  Check If-Match precondition (must match to proceed)
-            if (web->ifMatchPresent && !webMatchEtag(web, etag)) {
-                return webError(web, 412, "Precondition not satisfied");
-            }
-            //  Check If-Unmodified-Since precondition (must be unmodified to proceed)
-            if (web->ifUnmodified && !webMatchModified(web, info.st_mtime)) {
-                return webError(web, 412, "Precondition not satisfied");
-            }
-        } else {
-            return webError(web, 404, "Cannot locate document");
-        }
+    if ((dir = openFileParent(web, path)) < 0) {
+        return webError(web, 404, "Cannot locate document directory");
     }
-    if (unlink(path) != 0) {
+    if (checkFileTarget(web, dir, path, &info) != 1) {
+        close(dir);
+        return webError(web, 404, "Cannot locate document");
+    }
+    if (!filePreconditions(web, &info)) {
+        close(dir);
+        return webError(web, 412, "Precondition not satisfied");
+    }
+    rc = unlinkat(dir, rBasename(path), 0);
+    close(dir);
+    if (rc < 0) {
         return webError(web, 404, "Cannot delete document");
     }
     return (int) webWriteResponseString(web, 204, "Document successfully deleted");
+#else
+    (void) path;
+    return webError(web, 405, "Safe filesystem mutations are unavailable on this platform");
+#endif
 }
 
 /*
@@ -1563,18 +2344,18 @@ PUBLIC ssize webSendFile(Web *web, int fd, Offset offset, ssize len)
         return R_ERR_CANT_WRITE;
     }
 #if ME_HTTP_SENDFILE
-    //  Use zero-copy sendfile for non-TLS HTTP connections
-    if (!rIsSocketSecure(web->sock)) {
-        written = rSendFile(web->sock, fd, offset, (size_t) len);
+    // Chunked responses must pass through webWrite so each file block gets its framing.
+    if (web->txLen >= 0 && !rIsSocketSecure(web->sock)) {
+        written = rSendFile(web->sock, fd, offset, (size_t) len, web->deadline);
         if (written < 0 || written < len) {
             return webNetError(web, "Cannot send file");
         }
         return written;
     }
 #endif
-    //  Seek to offset if non-zero
+    /* Headers are committed; close on failure to avoid completing a response shorter than its declared length. */
     if (offset > 0 && lseek(fd, (off_t) offset, SEEK_SET) != offset) {
-        return webError(web, 500, "Cannot seek in file");
+        return webNetError(web, "Cannot seek in file");
     }
     bufSize = len < ME_BUFSIZE ? ME_BUFSIZE : WEB_BUF_BOOST_4X;
     buf = rAlloc(bufSize);
@@ -1582,11 +2363,11 @@ PUBLIC ssize webSendFile(Web *web, int fd, Offset offset, ssize len)
         toRead = min(len - written, (ssize) bufSize);
         if ((nbytes = read(fd, buf, (uint) toRead)) < 0) {
             rFree(buf);
-            return webError(web, 404, "Cannot read document");
+            return webNetError(web, "Cannot read document");
         }
         if (nbytes == 0) {
             rFree(buf);
-            return webError(web, 404, "Premature end of input");
+            return webNetError(web, "Premature end of input");
         }
         if ((nbytes = webWrite(web, buf, (size_t) nbytes)) < 0) {
             rFree(buf);
@@ -1636,7 +2417,50 @@ static int fixRanges(Web *web, int64 fileSize)
         }
         range->len = range->end - range->start;
     }
+    coalesceRanges(web);
     return 0;
+}
+
+/*
+    Merge overlapping and adjacent ranges so the bytes served never exceed the file. RFC 9110
+    14.1.2 permits coalescing; without it "0-99,0-99,..." serves the same bytes once per range.
+    The ranges are sorted by start first, which also normalises the order clients see. Ranges are
+    absolute by the time this runs.
+ */
+static void coalesceRanges(Web *web)
+{
+    WebRange *range, *next, *sorted, *prev, *cur;
+
+    sorted = NULL;
+    for (range = web->ranges; range; range = next) {
+        next = range->next;
+        range->next = NULL;
+        //  Insertion sort by start offset
+        for (prev = NULL, cur = sorted; cur && cur->start <= range->start; prev = cur, cur = cur->next) {
+        }
+        range->next = cur;
+        if (prev) {
+            prev->next = range;
+        } else {
+            sorted = range;
+        }
+    }
+    for (range = sorted; range && range->next; ) {
+        next = range->next;
+        if (next->start <= range->end) {
+            //  Overlapping or adjacent: absorb the next range
+            if (next->end > range->end) {
+                range->end = next->end;
+                range->len = range->end - range->start;
+            }
+            range->next = next->next;
+            rFree(next);
+        } else {
+            range = next;
+        }
+    }
+    web->ranges = sorted;
+    web->currentRange = sorted;
 }
 
 /*
@@ -1648,10 +2472,16 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
     WebRange *range;
     bool     rangeValid;
 
+    /*
+        Reject files beyond MAXSSIZE to prevent response and range length truncation on ILP32.
+     */
+    if ((int64) info->st_size > (int64) MAXSSIZE) {
+        return R_ERR_WONT_FIT;
+    }
     if (!web->ranges) {
         //  Default case: no ranges requested - serve full file
         web->status = 200;
-        web->txLen = info->st_size;
+        web->txLen = (ssize) info->st_size;
         return 0;
     }
     /*
@@ -1670,9 +2500,10 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
         }
         //  If condition doesn't match, ignore ranges and serve full content
         if (!rangeValid) {
-            web->ranges = NULL;
+            //  Free the list rather than unlinking it: webFreeRanges is its only owner
+            webFreeRanges(web);
             web->status = 200;
-            web->txLen = info->st_size;
+            web->txLen = (ssize) info->st_size;
             return 0;
         }
     }
@@ -1686,7 +2517,9 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
     if (web->ranges->next != NULL) {
         //  Multiple ranges - use multipart/byteranges
         rFree(web->rangeBoundary);
-        web->rangeBoundary = cryptID(16);
+        if ((web->rangeBoundary = cryptID(16)) == 0) {
+            return R_ERR_CANT_COMPLETE;
+        }
         rFree(web->rmime);
         web->mime = web->rmime = sfmt("multipart/byteranges; boundary=%s", web->rangeBoundary);
         web->txLen = -1;  // Unknown length for chunked encoding
@@ -1695,7 +2528,7 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
         range = web->ranges;
         webAddHeader(web, "Content-Range", "bytes %lld-%lld/%lld", web->ranges->start, range->end - 1,
                      (int64) info->st_size);
-        web->txLen = range->len;
+        web->txLen = (ssize) range->len;
     }
     return 0;
 }
@@ -1705,8 +2538,12 @@ static int pickRanges(Web *web, FileInfo *info, cchar *etag)
  */
 static void writeRangeHeader(Web *web, WebRange *range, int64 fileSize)
 {
+    cchar *mime;
+
+    //  web->mime is the multipart envelope's type. Each part carries the document's type.
+    mime = web->ext ? rLookupName(web->host->mimeTypes, web->ext) : 0;
     webWriteFmt(web, "\r\n--%s\r\n", web->rangeBoundary);
-    webWriteFmt(web, "Content-Type: %s\r\n", web->mime ? web->mime : "application/octet-stream");
+    webWriteFmt(web, "Content-Type: %s\r\n", mime ? mime : "application/octet-stream");
     webWriteFmt(web, "Content-Range: bytes %lld-%lld/%lld\r\n\r\n", range->start, range->end - 1, fileSize);
 }
 
@@ -1725,7 +2562,7 @@ static int sendFileContent(Web *web, int fd, FileInfo *info)
                 //  Multipart - write range header
                 writeRangeHeader(web, range, info->st_size);
             }
-            if (webSendFile(web, fd, range->start, range->len) < 0) {
+            if (webSendFile(web, fd, range->start, (ssize) range->len) < 0) {
                 return R_ERR_CANT_WRITE;
             }
         }
@@ -1778,7 +2615,7 @@ static cchar *getEncoding(Web *web)
     Sets *encoding to compression type ("br" or "gzip") if compressed file selected
     Returns true if file exists, false otherwise
  */
-static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **encoding)
+static bool pickFile(Web *web, char *path, size_t pathSize, FileInfo *info, cchar **encoding)
 {
     size_t len;
     bool   found;
@@ -1793,7 +2630,13 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
         For directory index, disable compression (avoid double-checking)
      */
     if (sends(path, "/")) {
-        sncat(path, ME_MAX_FNAME, web->host->index);
+        if (sncat(path, pathSize, web->host->index) < 0) {
+            return false;
+        }
+        //  The deny patterns ran on the directory name. The index leaf must pass them too.
+        if (deniedPath(web, &path[slen(webGetDocs(web->host))])) {
+            return false;
+        }
         web->exists = stat(path, info) == 0;
         web->ext = strrchr(web->host->index, '.');
     }
@@ -1801,12 +2644,14 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
 
     if (web->route->compressed && (*encoding = getEncoding(web)) != 0) {
         if (smatch(*encoding, "br")) {
-            sncat(path, ME_MAX_FNAME, ".br");
-            found = stat(path, info) == 0;
+            if (sncat(path, pathSize, ".br") >= 0) {
+                found = stat(path, info) == 0;
+            }
         }
         if (!found && smatch(*encoding, "gzip")) {
-            sncat(path, ME_MAX_FNAME, ".gz");
-            found = stat(path, info) == 0;
+            if (sncat(path, pathSize, ".gz") >= 0) {
+                found = stat(path, info) == 0;
+            }
         }
     }
     if (found) {
@@ -1816,7 +2661,7 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
         path[len] = '\0';
         *encoding = NULL;
         web->exists = stat(path, info) == 0;
-        if (web->exists && (info->st_mode & S_IFDIR) != 0) {
+        if (web->exists && S_ISDIR(info->st_mode)) {
             // External redirect to the directory
             redirectToDir(web);
             return 0;
@@ -1826,7 +2671,7 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -1842,20 +2687,42 @@ static bool pickFile(Web *web, char path[ME_MAX_FNAME], FileInfo *info, cchar **
 /********************************** Includes **********************************/
 
 
+#if ME_WIN_LIKE
+//  ConvertSidToStringSidA, for naming the owner in a diagnostic
+    #include <sddl.h>
+//  SetEntriesInAclA and EXPLICIT_ACCESS_A, to create a directory with an explicit DACL
+    #include <aclapi.h>
+#endif
+
 /************************************ Forwards *********************************/
 
 static WebListen *allocListen(WebHost *host, cchar *endpoint);
 static RHash *createMethodsHash(cchar *list);
 static void freeListen(WebListen *listen);
+static int getLimit(WebHost *host, cchar *field, cchar *defaultValue);
+static void closeConnections(WebHost *host);
+static void pruneListeners(WebHost *host);
+
+/*
+    How long webFreeHost waits for connection fibers resumed by closing their sockets to finish
+ */
+#define WEB_DRAIN_TIMEOUT (2 * TPS)
 static Ticks getTimeout(WebHost *host, cchar *field, cchar *defaultValue);
+static void initDeny(WebHost *host);
 static void initMethods(WebHost *host);
 static void initRedirects(WebHost *host);
 static void initRoutes(WebHost *host);
 static void loadMimeTypes(WebHost *host);
-static void loadAuth(WebHost *host);
+static int loadAuth(WebHost *host);
+static int checkRouteFeatures(WebHost *host);
+static bool supportedAuthType(cchar *authType);
 static void parseCacheControl(WebRoute *route, Json *json, int id);
 static void checkRouteKeys(cchar *match, Json *json, int id);
-static cchar *uploadDir(void);
+#if ME_WEB_UPLOAD
+static int checkUploadDir(WebHost *host);
+#endif
+static bool detectCaseFolding(cchar *documents);
+static char *flipCase(cchar *name);
 
 /************************************* Code ***********************************/
 
@@ -1870,9 +2737,10 @@ PUBLIC void webTerm(void)
 
 PUBLIC WebHost *webAllocHost(Json *config, int flags)
 {
-    WebHost *host;
-    cchar   *path, *show;
-    char    *errorMsg;
+    WebHost     *host;
+    cchar       *path, *show;
+    char        *errorMsg;
+    struct stat docsInfo;
 
     if ((host = rAllocType(WebHost)) == 0) {
         return 0;
@@ -1902,7 +2770,7 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
         if ((config = jsonParseFile(ME_WEB_CONFIG, &errorMsg, 0)) == 0) {
             rError("config", "%s", errorMsg);
             rFree(errorMsg);
-            rFree(host);
+            webFreeHost(host);
             return 0;
         }
         jsonLock(config);
@@ -1911,13 +2779,26 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
     host->config = config;
 
     /*
+        A "web.web" node is unambiguously the double-nesting mistake: a whole web.json5, which is
+        already rooted at "web", pasted under another "web" key. Every setting below it is then
+        invisible - including the route table, which leaves the host with the fail-closed catch-all
+        installed by initRoutes rather than the configured routes. Say so rather than reading none
+        of it.
+     */
+    if (jsonGetNode(host->config, 0, "web.web") != 0) {
+        rError("web", "Configuration has a nested 'web.web' node and everything under it is ignored. "
+               "The web configuration is the contents of the 'web' object, not another 'web' object.");
+    }
+
+    /*
         Parse a signatures.json file that is used to validate REST requests to the web server
      */
     if (jsonGetBool(host->config, 0, "web.signatures.enable", 0)) {
         path = jsonGet(host->config, 0, "web.signatures.path", 0);
         if ((host->signatures = jsonParseFile(path, &errorMsg, 0)) == 0) {
             rError("web", "Cannot parse signatures file: %s", errorMsg);
-            rFree(host);
+            rFree(errorMsg);
+            webFreeHost(host);
             return 0;
         }
         host->strictSignatures = jsonGetBool(host->config, 0, "web.signatures.strict", 0);
@@ -1925,57 +2806,92 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags)
 
     host->index = jsonGet(host->config, 0, "web.index", "index.html");
     host->parseTimeout = getTimeout(host, "web.timeouts.parse", "5secs");
+    /*
+        The whole of a buffered request body must arrive within this, measured from the start of the
+        request and not refreshed by activity. inactivity and request are both refreshed - the first
+        by every byte, the second is simply long - so a peer that drips one byte at a time held its
+        fiber, and therefore one of the pool's connection slots, for the full request timeout while
+        sending almost nothing. It bounds only webReadBody, which is the body the server buffers for
+        a handler and is already capped at web.limits.body; streamed routes, PUT and uploads read at
+        their own pace and are deliberately not covered.
+     */
+    host->receiveTimeout = getTimeout(host, "web.timeouts.receive", "30secs");
     host->inactivityTimeout = getTimeout(host, "web.timeouts.inactivity", "5mins");
     host->requestTimeout = getTimeout(host, "web.timeouts.request", "5mins");
     host->sessionTimeout = getTimeout(host, "web.timeouts.session", "30mins");
 
-#if ME_WEB_LIMITS
-    host->maxDigest = svaluei(jsonGet(host->config, 0, "web.limits.digest", "1000"));
-    host->maxBuffer = svaluei(jsonGet(host->config, 0, "web.limits.buffer", "64K"));
-    host->maxBody = svaluei(jsonGet(host->config, 0, "web.limits.body", "100K"));
-    host->maxConnections = svaluei(jsonGet(host->config, 0, "web.limits.connections", "100"));
-    host->maxHeader = svaluei(jsonGet(host->config, 0, "web.limits.header", "10K"));
-    host->maxSessions = svaluei(jsonGet(host->config, 0, "web.limits.sessions", "100"));
-    host->maxUpload = svaluei(jsonGet(host->config, 0, "web.limits.upload", "20MB"));
-    host->maxUploads = svaluei(jsonGet(host->config, 0, "web.limits.uploads", "0"));
-    host->maxRequests = svaluei(jsonGet(host->config, 0, "web.limits.requests", "1000"));
-#endif
-
-    host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
-    /*
-        Resolve the document root once. The file handler compares the name the file system
-        resolves a request to against this prefix, so it must be canonical. If it cannot be
-        resolved, canonicalDocs stays null and the file handler serves nothing - fail closed.
-     */
-    host->canonicalDocs = rGetRealPath(host->docs);
-    if (!host->canonicalDocs) {
-        rError("web", "Cannot resolve document root \"%s\". Static files will not be served.", host->docs);
+    host->maxDigest = getLimit(host, "web.limits.digest", "1000");
+    host->maxBuffer = getLimit(host, "web.limits.buffer", "64K");
+    host->maxBody = getLimit(host, "web.limits.body", "100K");
+    host->maxConnections = getLimit(host, "web.limits.connections", "100");
+    host->maxHeader = getLimit(host, "web.limits.header", "10K");
+    host->maxSessions = getLimit(host, "web.limits.sessions", "100");
+    host->maxUpload = getLimit(host, "web.limits.upload", "20MB");
+    host->maxUploads = getLimit(host, "web.limits.uploads", "50");
+    host->maxRequests = getLimit(host, "web.limits.requests", "1000");
+    host->maxVars = getLimit(host, "web.limits.vars", "1024");
+    /* Keep buffered body limits below ME_R_MAX_BUF with room for the terminator. */
+    if (host->maxBody > ME_R_MAX_BUF - 1) {
+        rInfo("web", "web.limits.body is limited to %d bytes", ME_R_MAX_BUF - 1);
+        host->maxBody = ME_R_MAX_BUF - 1;
     }
+
+    initDeny(host);
+    cryptGetRandomBytes(host->etagSalt, sizeof(host->etagSalt), 0);
+    host->docs = rGetFilePath(jsonGet(host->config, 0, "web.documents", "@site"));
+    /* Fail startup rather than silently exporting the filesystem or accepting an unusable root. */
+    host->canonicalDocs = rGetRealPath(host->docs);
+    if (!host->docs || !*host->docs) {
+        rError("web", "web.documents is empty");
+        webFreeHost(host);
+        return 0;
+    }
+    if (!host->canonicalDocs || stat(host->canonicalDocs, &docsInfo) < 0 || !S_ISDIR(docsInfo.st_mode)) {
+        rError("web", "web.documents \"%s\" is not an accessible directory", host->docs);
+        webFreeHost(host);
+        return 0;
+    }
+    if (smatch(host->canonicalDocs, "/") || smatch(host->canonicalDocs, "\\") ||
+        (slen(host->canonicalDocs) == 3 && host->canonicalDocs[1] == ':')) {
+        rError("web", "web.documents must not be a filesystem root");
+        webFreeHost(host);
+        return 0;
+    }
+    host->foldCase = detectCaseFolding(host->canonicalDocs);
     host->name = jsonGet(host->config, 0, "web.name", 0);
-    host->uploadDir = jsonGet(host->config, 0, "web.upload.dir", uploadDir());
+#if ME_WEB_UPLOAD
+    host->uploadDir = rGetFilePath(jsonGet(host->config, 0, "web.upload.dir", "@state/uploads"));
+#endif
     host->sessionCookie = jsonGet(host->config, 0, "web.sessions.cookie", WEB_SESSION_COOKIE);
     host->sameSite = jsonGet(host->config, 0, "web.sessions.sameSite", "Lax");
     host->httpOnly = jsonGetBool(host->config, 0, "web.sessions.httpOnly", 1);
     host->roles = jsonGetId(host->config, 0, "web.auth.roles");
     host->headers = jsonGetId(host->config, 0, "web.headers");
+    host->corsOrigins = jsonGetId(host->config, 0, "web.cors.origins");
 #if ME_WEB_FIBER_BLOCKS
     // Defaults to false
     host->fiberBlocks = jsonGetBool(host->config, 0, "web.fiberBlocks", 0);
 #endif
 
-    host->webSocketsMaxMessage = svaluei(jsonGet(host->config, 0, "web.limits.maxMessage", "100K"));
-    host->webSocketsMaxFrame = svaluei(jsonGet(host->config, 0, "web.limits.maxFrame", "100K"));
+    host->hosts = jsonGetId(host->config, 0, "web.hosts");
+#if ME_COM_WEBSOCK
+    host->webSocketsMaxMessage = getLimit(host, "web.limits.maxMessage", "100K");
+    host->webSocketsMaxFrame = getLimit(host, "web.limits.maxFrame", "100K");
     host->webSocketsPingPeriod = svaluei(jsonGet(host->config, 0, "web.webSockets.ping", "never"));
     host->webSocketsProtocol = jsonGet(host->config, 0, "web.webSockets.protocol", "chat");
+    host->webSocketsOrigins = jsonGetId(host->config, 0, "web.webSockets.origins");
     host->webSocketsEnable = jsonGetBool(host->config, 0, "web.webSockets.enable", 1);
     host->webSocketsValidateUTF = jsonGetBool(host->config, 0, "web.webSockets.validateUTF", 0);
+#endif
 
     initMethods(host);
     initRoutes(host);
     initRedirects(host);
     loadMimeTypes(host);
-    loadAuth(host);
-    webInitSessions(host);
+    if (loadAuth(host) < 0) {
+        webFreeHost(host);
+        return 0;
+    }
     return host;
 }
 
@@ -1987,18 +2903,32 @@ PUBLIC void webFreeHost(WebHost *host)
     WebRedirect *redirect;
     Web         *web;
     RName       *np;
+    Ticks       deadline;
     int         next;
 
     rStopEvent(host->sessionEvent);
 
+    /*
+        Close sockets to resume connection fibers, then wait boundedly for queued resumes to unwind before freeing
+        connections.
+     */
+    closeConnections(host);
+    if (!rIsMain()) {
+        for (deadline = rGetTicks() + WEB_DRAIN_TIMEOUT; rGetListLength(host->webs) > 0 && rGetTicks() < deadline; ) {
+            rSleep(10);
+        }
+    }
+    /*
+        Drain the list because webFree shifts its remaining elements.
+     */
+    while ((web = rGetItem(host->webs, 0)) != 0) {
+        webFree(web);
+    }
+    //  After the connections: a connection's disconnect path reads its listener
     for (ITERATE_ITEMS(host->listeners, listen, next)) {
         freeListen(listen);
     }
     rFreeList(host->listeners);
-
-    for (ITERATE_ITEMS(host->webs, web, next)) {
-        webFree(web);
-    }
     for (ITERATE_ITEMS(host->redirects, redirect, next)) {
         rFree(redirect);
     }
@@ -2028,18 +2958,27 @@ PUBLIC void webFreeHost(WebHost *host)
     }
     rFreeHash(host->sessions);
     rFreeHash(host->mimeTypes);
+    rFreeHash(host->authFailures);
 
 #if ME_WEB_HTTP_AUTH
     // Free HTTP authentication configuration (realm, authType, algorithm come from config - not cloned)
     rFree(host->secret);
     rFree(host->opaque);
+    rFree(host->decoyPassword);
+#if ME_WEB_AUTH_BASIC
+    rFree(host->dummyUser.password);
+#endif
 #if ME_WEB_AUTH_DIGEST
+    rFree(host->dummyDigestPassword);
     // Free nonce tracking hash table and stop cleanup timer
     if (host->nonceCleanupEvent) {
         rStopEvent(host->nonceCleanupEvent);
     }
     if (host->nonces) {
         rFreeHash(host->nonces);
+    }
+    if (host->nonceUsers) {
+        rFreeHash(host->nonceUsers);
     }
 #endif
 #endif
@@ -2059,10 +2998,32 @@ PUBLIC void webFreeHost(WebHost *host)
         jsonFree(host->signatures);
         host->signatures = 0;
     }
+    rFreeList(host->deny);
     rFree(host->docs);
+#if ME_WEB_UPLOAD
+    rFree(host->uploadDir);
+#endif
     rFree(host->canonicalDocs);
     rFree(host->ip);
     rFree(host);
+}
+
+PUBLIC int webGetFiberLimit(Json *config, int reserve)
+{
+    int maxConnections, maxFibers;
+
+    maxConnections = svaluei(jsonGet(config, 0, "web.limits.connections", "100"));
+    maxFibers = svaluei(jsonGet(config, 0, "limits.fibers", "0"));
+    if (maxFibers == 0) {
+        maxFibers = maxConnections + reserve;
+    } else if (maxFibers < maxConnections + reserve) {
+        rError("web",
+               "limits.fibers is %d but web.limits.connections is %d. The fiber pool is the real "
+               "ceiling, so connections beyond it are dropped without a response. Raise limits.fibers "
+               "to %d, or lower web.limits.connections.",
+               maxFibers, maxConnections, maxConnections + reserve);
+    }
+    return maxFibers;
 }
 
 PUBLIC int webStartHost(WebHost *host)
@@ -2073,22 +3034,31 @@ PUBLIC int webStartHost(WebHost *host)
     cchar     *endpoint;
 
     if (!host || !host->listeners) return 0;
+#if ME_WEB_UPLOAD
+    if (checkUploadDir(host) < 0) {
+        return R_ERR_CANT_OPEN;
+    }
+#endif
     json = host->config;
+    pruneListeners(host);
 
     for (ITERATE_JSON_KEY(json, 0, "web.listen", np, id)) {
         endpoint = jsonGet(json, id, 0, 0);
         if ((listen = allocListen(host, endpoint)) == 0) {
+            //  A failed start leaves the host stopped, not serving a subset of its endpoints
+            webStopHost(host);
+            pruneListeners(host);
             return R_ERR_CANT_OPEN;
         }
         rAddItem(host->listeners, listen);
     }
+    webInitSessions(host);
     return 0;
 }
 
 PUBLIC void webStopHost(WebHost *host)
 {
     WebListen *listen;
-    Web       *web;
     int       next;
 
     rStopEvent(host->sessionEvent);
@@ -2096,8 +3066,19 @@ PUBLIC void webStopHost(WebHost *host)
     for (ITERATE_ITEMS(host->listeners, listen, next)) {
         rCloseSocket(listen->sock);
     }
-    for (ITERATE_ITEMS(host->webs, web, next)) {
-        rCloseSocket(web->sock);
+    closeConnections(host);
+}
+
+/* Walk backwards because closing can resume a fiber that removes its connection from host->webs. */
+static void closeConnections(WebHost *host)
+{
+    Web *web;
+    int i;
+
+    for (i = rGetListLength(host->webs) - 1; i >= 0; i--) {
+        if (i < rGetListLength(host->webs) && (web = rGetItem(host->webs, i)) != 0) {
+            rCloseSocket(web->sock);
+        }
     }
 }
 
@@ -2109,6 +3090,7 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
     WebListen *listen;
     RSocket   *sock;
     char      *hostname, *sport, *scheme, *tok, *end;
+    int64     value;
     int       port;
 
     tok = sclone(endpoint);
@@ -2124,18 +3106,13 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
     if (!sport) {
         sport = smatch(scheme, "https") ? "443" : "80";
     }
-    port = (int) strtol(sport, &end, 10);
-    if (*end) {
-        rError("web", "Bad characters in port of endpoint \"%s\"", sport);
+    //  Strict: a sign, white space or a value that only fits after truncation is not a port
+    if (sparseUint(sport, 10, 65535, &end, &value) < 0 || *end || value == 0) {
+        rError("web", "Bad or missing port \"%s\" in endpoint \"%s\"", sport, endpoint);
         rFree(tok);
         return 0;
     }
-
-    if (port <= 0 || port > 65535) {
-        rError("web", "Bad or missing port %d in Listen directive", port);
-        rFree(tok);
-        return 0;
-    }
+    port = (int) value;
     if (*hostname == 0) {
         hostname = NULL;
     }
@@ -2151,18 +3128,65 @@ static WebListen *allocListen(WebHost *host, cchar *endpoint)
     listen->sock = sock = rAllocSocket();
     listen->port = port;
 
-#if ME_COM_SSL
     if (smatch(scheme, "https")) {
-        webSecureEndpoint(listen);
-    }
+#if ME_COM_SSL
+        if (webSecureEndpoint(listen) < 0) {
+            /*
+                Refuse to listen rather than accept connections that can never complete a
+                handshake. A device that cannot serve TLS must not come up pretending it can,
+                especially where a plaintext listener is also configured and would silently
+                carry the traffic instead.
+             */
+            rError("web", "Cannot secure endpoint %s - not listening", listen->endpoint);
+            freeListen(listen);
+            rFree(tok);
+            return 0;
+        }
+#else
+        //  Without a TLS stack an https listener would serve plaintext on the TLS port
+        rError("web", "TLS is not supported in this build - not listening on %s", listen->endpoint);
+        freeListen(listen);
+        rFree(tok);
+        return 0;
 #endif
+    }
     if (rListenSocket(sock, hostname, port, (RSocketProc) webAlloc, listen) < 0) {
         rError("web", "Cannot listen on %s:%d", hostname ? hostname : "*", port);
+        freeListen(listen);
         rFree(tok);
         return 0;
     }
     rFree(tok);
     return listen;
+}
+
+/*
+    Free stopped listeners unless a remaining connection still references them.
+ */
+static void pruneListeners(WebHost *host)
+{
+    WebListen *listen;
+    Web       *web;
+    int       i, next;
+    bool      inUse;
+
+    for (i = rGetListLength(host->listeners) - 1; i >= 0; i--) {
+        listen = rGetItem(host->listeners, i);
+        if (!rIsSocketClosed(listen->sock)) {
+            continue;
+        }
+        inUse = 0;
+        for (ITERATE_ITEMS(host->webs, web, next)) {
+            if (web->listen == listen) {
+                inUse = 1;
+                break;
+            }
+        }
+        if (!inUse) {
+            rRemoveItemAt(host->listeners, i);
+            freeListen(listen);
+        }
+    }
 }
 
 static void freeListen(WebListen *listen)
@@ -2177,28 +3201,75 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
 {
     Json  *config;
     cchar *ciphers;
-    char  *authority, *certificate, *key;
-    bool  verifyClient, verifyIssuer;
-    int   rc;
+    char  *authority, *certificate, *key, *revoke;
+    bool  verifyClient;
+    int   rc, verifyIssuer;
 
     config = listen->host->config;
 
+    /*
+        Configure this listener's own socket. These must NOT be set as process-wide defaults.
+
+        "tls.verify.client" asks whether this server requires and verifies a client certificate
+        (mutual TLS), and it is correctly false by default because few deployments want mTLS.
+        The process-wide default governs something different and nearly opposite: whether an
+        OUTBOUND socket verifies the certificate of the server it connects to. Routing a server
+        setting into that global turned "verify peers by default" into "verify nothing" for the
+        whole process the moment an https listener was configured - disabling certificate
+        verification on cloud sync, MQTT, the URL client and any integrator update channel.
+
+        rAcceptTls copies verifyPeer/verifyIssuer from the listener to each accepted connection,
+        so setting them here reaches every inbound connection and nothing else.
+     */
     ciphers = jsonGet(config, 0, "tls.ciphers", 0);
     if (ciphers) {
         char *clist = jsonToString(config, 0, "tls.ciphers", JSON_BARE);
-        rSetSocketDefaultCiphers(clist);
+        rSetSocketCiphers(listen->sock, clist);
         rFree(clist);
     }
     verifyClient = jsonGetBool(config, 0, "tls.verify.client", 0);
-    verifyIssuer = jsonGetBool(config, 0, "tls.verify.issuer", 0);
-    rSetSocketDefaultVerify(verifyClient, verifyIssuer);
+    /*
+        An absent "tls.verify.issuer" must inherit the runtime default, which verifies. Reading it
+        as a plain boolean wrote an explicit 0 over the runtime's -1 "inherit", and the verify
+        callback waives every chain-establishment error when issuer verification is off - so a
+        listener that required a client certificate accepted one the caller had generated seconds
+        earlier, chaining to nothing. tls.authority is loaded and even sent as the CA hint list, so
+        nothing about the configuration suggests it is not being enforced.
+     */
+    verifyIssuer = jsonGet(config, 0, "tls.verify.issuer", 0) == 0 ? -1 :
+                   (jsonGetBool(config, 0, "tls.verify.issuer", 1) ? 1 : 0);
+    if (verifyClient && verifyIssuer == 0) {
+        /*
+            Refuse rather than silently upgrade: a client certificate that chains to nothing is not
+            an identity, and an operator who wants any certificate at all should have to say so
+            somewhere this code can see it.
+         */
+        rError("web", "tls.verify.client requires tls.verify.issuer: a client certificate that "
+               "does not chain to tls.verify.authority is not an identity");
+        return R_ERR_BAD_ARGS;
+    }
+    /*
+        Use a dedicated client-certificate authority. Outbound roots or system public CAs must not grant mTLS
+        identities.
+     */
+    authority = verifyClient ? rGetFilePath(jsonGet(config, 0, "tls.verify.authority", 0)) : NULL;
+    if (verifyClient && !authority) {
+        rError("web", "tls.verify.client requires tls.verify.authority: the CA that issues client certificates");
+        return R_ERR_BAD_ARGS;
+    }
+    rSetSocketVerify(listen->sock, verifyClient, verifyIssuer);
 
-    authority = rGetFilePath(jsonGet(config, 0, "tls.authority", 0));
+    //  Revoked client certificates. Only meaningful when client certificates are verified.
+    revoke = verifyClient ? rGetFilePath(jsonGet(config, 0, "tls.verify.revoke", 0)) : NULL;
+
     certificate = rGetFilePath(jsonGet(config, 0, "tls.certificate", 0));
     key = rGetFilePath(jsonGet(config, 0, "tls.key", 0));
 
     rc = 0;
-    if (key && certificate) {
+    if (!key || !certificate) {
+        rError("web", "Secure endpoint %s has no tls.certificate or tls.key configured", listen->endpoint);
+        rc = R_ERR_CANT_OPEN;
+    } else {
         if (rAccessFile(key, R_OK) < 0) {
             rError("web", "Cannot access certificate key %s", key);
             rc = R_ERR_CANT_OPEN;
@@ -2208,14 +3279,15 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
         } else if (authority && rAccessFile(authority, R_OK) < 0) {
             rError("web", "Cannot access authority %s", authority);
             rc = R_ERR_CANT_OPEN;
+        } else if (revoke && rAccessFile(revoke, R_OK) < 0) {
+            rError("web", "Cannot access certificate revocation list %s", revoke);
+            rc = R_ERR_CANT_OPEN;
         }
     }
     if (rc == 0) {
-        rSetSocketCerts(listen->sock, authority, key, certificate, NULL);
-    } else {
-        rError("web", "Secure endpoint %s is not yet ready as it does not have a certificate or key.",
-               listen->endpoint);
+        rSetSocketCerts(listen->sock, authority, key, certificate, revoke);
     }
+    rFree(revoke);
     rFree(authority);
     rFree(certificate);
     rFree(key);
@@ -2227,6 +3299,21 @@ PUBLIC int webSecureEndpoint(WebListen *listen)
     Get a timeout value in milliseconds. If the value is greater than MAXINT / TPS, return MAXINT / TPS.
     This is to prevent overflow.
  */
+/*
+    Use the default for negative limits; clamp "unlimited" to MAXINT.
+ */
+static int getLimit(WebHost *host, cchar *field, cchar *defaultValue)
+{
+    int64 value;
+
+    value = svalue(jsonGet(host->config, 0, field, defaultValue));
+    if (value < 0) {
+        rError("web", "Configuration %s must not be negative; using default %s", field, defaultValue);
+        value = svalue(defaultValue);
+    }
+    return (int) min(value, MAXINT);
+}
+
 static Ticks getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
 {
     int64 value;
@@ -2237,31 +3324,527 @@ static Ticks getTimeout(WebHost *host, cchar *field, cchar *defaultValue)
      */
     value = svalue(jsonGet(host->config, 0, field, defaultValue));
     if (value < 0) {
-        value = 0;
+        rError("web", "Configuration %s must not be negative; using default %s", field, defaultValue);
+        value = svalue(defaultValue);
     } else if (value > MAXINT64 / TPS) {
         value = MAXINT64 / TPS;
     }
     return (Ticks) value * TPS;
 }
 
-static cchar *uploadDir(void)
-{
+#if ME_WEB_UPLOAD
+/*
+    On Windows, mode bits do not describe directory access. Check the owner and the DACL,
+    permitting write access only to the process user, Administrators and LocalSystem.
+ */
 #if ME_WIN_LIKE
-    return getenv("TEMP");
+/*
+    Name the SID for a diagnostic. The caller supplies the buffer: a message naming two SIDs
+    evaluates both before formatting either, so a shared buffer would print one twice.
+ */
+static cchar *sidName(SID *sid, char *buf, size_t bufsize)
+{
+    char *text;
+
+    if (sid && ConvertSidToStringSidA(sid, &text)) {
+        scopy(buf, bufsize, text);
+        LocalFree(text);
+        return buf;
+    }
+    return "unknown";
+}
+
+/*
+    Six distinct conditions used to share one message, which told an operator nothing they could
+    act on. Each now names itself.
+ */
+static bool privateUploadDir(cchar *path, int uid)
+{
+    SECURITY_DESCRIPTOR *security;
+    TOKEN_USER          *user;
+    ACL                 *acl;
+    ACE_HEADER          *ace;
+    ACCESS_ALLOWED_ACE  *allow;
+    SID                 *owner;
+    HANDLE              token;
+    char                ownerSid[256], userSid[256];
+    DWORD               size, attributes, i;
+    BOOL                present, defaulted;
+    bool                valid;
+
+    (void) uid;
+    security = NULL;
+    user = NULL;
+    token = NULL;
+    valid = 0;
+    attributes = GetFileAttributesA(path);
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        rError("web", "Upload directory %s does not exist", path);
+        return 0;
+    }
+    if (!(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        rError("web", "Upload directory %s is not a directory", path);
+        return 0;
+    }
+    if (attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        rError("web", "Upload directory %s is a reparse point", path);
+        return 0;
+    }
+    size = 0;
+    GetFileSecurityA(path, OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, NULL, 0, &size);
+    if (!size || !(security = rAlloc(size)) ||
+        !GetFileSecurityA(path, OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, security, size, &size) ||
+        !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+        rError("web", "Cannot read the security descriptor of upload directory %s", path);
+        goto done;
+    }
+    size = 0;
+    GetTokenInformation(token, TokenUser, NULL, 0, &size);
+    if (!size || !(user = rAlloc(size)) || !GetTokenInformation(token, TokenUser, user, size, &size)) {
+        rError("web", "Cannot read the process token");
+        goto done;
+    }
+    if (!GetSecurityDescriptorOwner(security, (PSID*) &owner, &defaulted) || !owner) {
+        rError("web", "Upload directory %s has no owner", path);
+        goto done;
+    }
+    /*
+        The same principals the DACL check below permits to write. An owner can do nothing that the
+        DACL does not already allow that principal to do, so demanding the process user alone
+        rejected directories that are private by every useful measure. Windows makes
+        BUILTIN\Administrators the owner of whatever a member of that group creates when the
+        "default owner for objects created by members of the Administrators group" policy says so,
+        which covers every directory an elevated service creates - including the one checkUploadDir
+        creates for itself a few lines above.
+     */
+    if (!EqualSid(owner, user->User.Sid) &&
+        !IsWellKnownSid(owner, WinLocalSystemSid) &&
+        !IsWellKnownSid(owner, WinBuiltinAdministratorsSid)) {
+        rError("web", "Upload directory %s is owned by %s, which is neither the server user %s, "
+               "LocalSystem nor Administrators", path,
+               sidName(owner, ownerSid, sizeof(ownerSid)), sidName((SID*) user->User.Sid, userSid, sizeof(userSid)));
+        goto done;
+    }
+    if (!GetSecurityDescriptorDacl(security, &present, &acl, &defaulted) || !present || !acl) {
+        rError("web", "Upload directory %s has no access control list", path);
+        goto done;
+    }
+    for (i = 0; i < acl->AceCount; i++) {
+        if (!GetAce(acl, i, (void**) &ace)) {
+            goto done;
+        }
+        if (ace->AceFlags & INHERIT_ONLY_ACE) {
+            continue;
+        }
+        if (ace->AceType == ACCESS_DENIED_ACE_TYPE) {
+            continue;
+        }
+        if (ace->AceType != ACCESS_ALLOWED_ACE_TYPE) {
+            rError("web", "Upload directory %s has an access control entry of an unsupported type", path);
+            goto done;
+        }
+        allow = (ACCESS_ALLOWED_ACE*) ace;
+        if ((allow->Mask & (GENERIC_ALL | GENERIC_WRITE | FILE_ADD_FILE | FILE_ADD_SUBDIRECTORY |
+                            FILE_DELETE_CHILD | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA | DELETE | WRITE_DAC |
+                            WRITE_OWNER)) &&
+            !EqualSid(&allow->SidStart, user->User.Sid) &&
+            !IsWellKnownSid(&allow->SidStart, WinLocalSystemSid) &&
+            !IsWellKnownSid(&allow->SidStart, WinBuiltinAdministratorsSid)) {
+            rError("web", "Upload directory %s grants write access to %s", path,
+                   sidName((SID*) &allow->SidStart, ownerSid, sizeof(ownerSid)));
+            goto done;
+        }
+    }
+    valid = 1;
+done:
+    if (token) CloseHandle(token);
+    rFree(user);
+    rFree(security);
+    return valid;
+}
 #else
-    return "/tmp";
+static bool privateUploadDir(cchar *path, int uid)
+{
+    struct stat info;
+
+#if ME_UNIX_LIKE
+    return lstat(path, &info) == 0 && S_ISDIR(info.st_mode) &&
+           info.st_uid == (uid_t) uid && !(info.st_mode & 0022);
+#else
+    return stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+#endif
+}
+#endif
+
+/*
+    Default to the application's state area, never the shared system temporary directory.
+    Explicit directories must already exist. Reject writable-by-others directories even with
+    the sticky bit: upload storage is private application state.
+ */
+/*
+    The identity the server will actually run as.
+
+    Binding a privileged port needs root, so a root-started server drops to web.user only after its
+    listeners are up - after this check has run. Validating the upload directory against the current
+    euid therefore asserted a property of an identity the server was about to stop having: a
+    root-owned directory passed startup and then failed every write for the life of the process,
+    while one owned by the runtime user failed startup outright.
+
+    Only root acts on web.user, so an embedder that never drops privileges is unaffected and the
+    library is told the identity rather than guessing it.
+ */
+static int runtimeUid(WebHost *host)
+{
+#if ME_UNIX_LIKE
+    struct passwd *pp;
+    cchar         *user;
+
+    //  The same default the web command drops to, so the upload directory is owned by that account
+    if (geteuid() == 0 && (user = jsonGet(host->config, 0, "web.user", ME_WEB_USER)) != 0 && *user &&
+        (pp = getpwnam(user)) != 0) {
+        return (int) pp->pw_uid;
+    }
+    return (int) geteuid();
+#else
+    (void) host;
+    return 0;
 #endif
 }
 
+#if ME_WIN_LIKE
+/*
+    Grant one principal full control, inherited by everything created underneath.
+ */
+static void grantFullControl(EXPLICIT_ACCESS_A *ea, PSID sid)
+{
+    ea->grfAccessPermissions = GENERIC_ALL;
+    ea->grfAccessMode = SET_ACCESS;
+    ea->grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+    ea->Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea->Trustee.TrusteeType = TRUSTEE_IS_UNKNOWN;
+    ea->Trustee.ptstrName = (LPSTR) sid;
+}
+
+/*
+    Create a directory carrying an explicit DACL that grants only the process user, LocalSystem and
+    Administrators - the same three principals privateUploadDir accepts.
+
+    osdep.h maps mkdir(a, b) to _mkdir(a) and discards the mode, documented there as an acceptable
+    tradeoff, so a directory created that way simply inherits its parent's ACEs. Where the parent
+    grants write to Users - a build agent workspace, or a directory created off a drive root - the
+    server created a directory that its own privateUploadDir then correctly refused, and so refused
+    to start. Fix the creation, not the check: accepting an inherited Users ACE would make upload
+    storage world-writable on exactly the machines where that matters.
+
+    An existing directory is left alone and reported as usable; the caller validates it. Taking
+    ownership of a directory somebody else provisioned is not this code's decision to make.
+ */
+static int makeRuntimeDir(cchar *path, int uid)
+{
+    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+    SECURITY_ATTRIBUTES      sa;
+    SECURITY_DESCRIPTOR      sd;
+    EXPLICIT_ACCESS_A        access[3];
+    TOKEN_USER               *user;
+    ACL                      *acl;
+    HANDLE                   token;
+    PSID                     system, admins;
+    DWORD                    size;
+    int                      rc;
+
+    (void) uid;
+    acl = NULL;
+    user = NULL;
+    token = NULL;
+    system = NULL;
+    admins = NULL;
+    rc = R_ERR_CANT_OPEN;
+
+    if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) {
+        return 0;
+    }
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
+        rError("web", "Cannot read the process token");
+        goto done;
+    }
+    size = 0;
+    GetTokenInformation(token, TokenUser, NULL, 0, &size);
+    if (!size || !(user = rAlloc(size)) || !GetTokenInformation(token, TokenUser, user, size, &size)) {
+        rError("web", "Cannot read the process token user");
+        goto done;
+    }
+    if (!AllocateAndInitializeSid(&ntAuthority, 1, SECURITY_LOCAL_SYSTEM_RID,
+                                  0, 0, 0, 0, 0, 0, 0, &system) ||
+        !AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID,
+                                  DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &admins)) {
+        rError("web", "Cannot create the well-known SIDs needed to secure %s", path);
+        goto done;
+    }
+    memset(access, 0, sizeof(access));
+    grantFullControl(&access[0], user->User.Sid);
+    grantFullControl(&access[1], system);
+    grantFullControl(&access[2], admins);
+
+    if (SetEntriesInAclA(3, access, NULL, &acl) != ERROR_SUCCESS || !acl) {
+        rError("web", "Cannot build the access control list for %s", path);
+        goto done;
+    }
+    if (!InitializeSecurityDescriptor(&sd, SECURITY_DESCRIPTOR_REVISION) ||
+        !SetSecurityDescriptorDacl(&sd, TRUE, acl, FALSE)) {
+        rError("web", "Cannot build the security descriptor for %s", path);
+        goto done;
+    }
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = &sd;
+    sa.bInheritHandle = FALSE;
+
+    if (!CreateDirectoryA(path, &sa)) {
+        if (GetLastError() == ERROR_ALREADY_EXISTS) {
+            rc = 0;
+        } else {
+            rError("web", "Cannot create directory %s", path);
+        }
+        goto done;
+    }
+    rc = 0;
+
+done:
+    if (acl) {
+        LocalFree(acl);
+    }
+    if (system) {
+        FreeSid(system);
+    }
+    if (admins) {
+        FreeSid(admins);
+    }
+    rFree(user);
+    if (token) {
+        CloseHandle(token);
+    }
+    return rc;
+}
+
+#else
+/*
+    Create a directory that the runtime user will own. Returns 0 if it exists and is usable.
+ */
+static int makeRuntimeDir(cchar *path, int uid)
+{
+    bool created;
+
+#if ME_UNIX_LIKE
+    struct stat info;
+    int         fd, rc;
+#endif
+
+    created = mkdir(path, 0700) == 0;
+    if (!created && errno != EEXIST) {
+        return R_ERR_CANT_OPEN;
+    }
+#if ME_UNIX_LIKE
+    /*
+        Chown only directories this call created. Use a non-symlink descriptor and verify process ownership to
+        exclude parent-directory replacement races.
+     */
+    if (created && (uid_t) uid != geteuid()) {
+        rc = R_ERR_CANT_OPEN;
+        if ((fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)) >= 0) {
+            if (fstat(fd, &info) == 0 && S_ISDIR(info.st_mode) && info.st_uid == geteuid() &&
+                fchown(fd, (uid_t) uid, (gid_t) -1) == 0) {
+                rc = 0;
+            }
+            close(fd);
+        }
+        if (rc < 0) {
+            rError("web", "Cannot set ownership of %s to uid %d", path, uid);
+            return rc;
+        }
+    }
+#endif
+    return 0;
+}
+#endif /* ME_WIN_LIKE */
+
+static int checkUploadDir(WebHost *host)
+{
+    char *state;
+    int  uid;
+
+    if (!host->uploadDir) {
+        return R_ERR_CANT_OPEN;
+    }
+    uid = runtimeUid(host);
+
+    if (!jsonGet(host->config, 0, "web.upload.dir", NULL)) {
+        state = rGetFilePath("@state");
+        if (!state) {
+            return R_ERR_CANT_OPEN;
+        }
+        /*
+            The state directory has to be traversable by the runtime user for the upload directory
+            inside it to be reachable at all.
+         */
+        if (makeRuntimeDir(state, uid) < 0 || !privateUploadDir(state, uid)) {
+            rError("web", "State directory %s must be a private directory owned by the server user", state);
+            rFree(state);
+            return R_ERR_CANT_OPEN;
+        }
+        rFree(state);
+        if (makeRuntimeDir(host->uploadDir, uid) < 0) {
+            rError("web", "Cannot create upload directory %s", host->uploadDir);
+            return R_ERR_CANT_OPEN;
+        }
+    }
+    if (!privateUploadDir(host->uploadDir, uid)) {
+        rError("web", "Upload directory %s must be an existing private directory owned by the server user",
+               host->uploadDir);
+        return R_ERR_CANT_OPEN;
+    }
+    return 0;
+}
+#endif /* ME_WEB_UPLOAD */
+
+/*
+    The set of methods the server accepts, from "web.methods".
+
+    This used to be read from the CORS response header "web.headers.Access-Control-Allow-Methods".
+    That header answers "what may a browser attempt cross-origin"; this hash answers "what may any
+    client do here", and it is the only method gate the server has. Setting the header to satisfy a
+    browser preflight therefore widened authorization for every route without its own "methods"
+    array - including the file handler's PUT and DELETE over the document root.
+
+    PUT and DELETE are not accepted from this host-wide default. They mutate the document root and
+    there is no safe default under which a catch-all route should accept them, so a route must list
+    them itself.
+ */
 static void initMethods(WebHost *host)
 {
     cchar *methods;
 
-    methods = jsonGet(host->config, 0, "web.headers.Access-Control-Allow-Methods", 0);
-    if (methods == 0) {
-        methods = "GET, POST";
+    if (jsonGet(host->config, 0, "web.headers.Access-Control-Allow-Methods", 0) != 0) {
+        rInfo("web", "The Access-Control-Allow-Methods header no longer sets the accepted methods. "
+              "Use web.methods for that, and a route's own methods array for PUT and DELETE.");
     }
+    methods = jsonGet(host->config, 0, "web.methods", "GET, POST");
     host->methods = createMethodsHash(methods);
+
+    if (rLookupName(host->methods, "PUT") || rLookupName(host->methods, "DELETE")) {
+        rError("web", "web.methods must not grant PUT or DELETE. They are ignored here - "
+               "list them in the methods array of the routes that should accept them.");
+        rRemoveName(host->methods, "PUT");
+        rRemoveName(host->methods, "DELETE");
+    }
+}
+
+/*
+    Return a copy of name with the first alphabetic character's case flipped, or NULL if it has none.
+ */
+static char *flipCase(cchar *name)
+{
+    char *alt;
+    int  i;
+
+    alt = sclone(name);
+    for (i = 0; alt[i]; i++) {
+        if (isalpha((uchar) alt[i])) {
+            alt[i] = islower((uchar) alt[i]) ? (char) toupper((uchar) alt[i]) : (char) tolower((uchar) alt[i]);
+            return alt;
+        }
+    }
+    rFree(alt);
+    return 0;
+}
+
+/*
+    Probe case folding inside the document root, whose filesystem may differ from its parent. Default to folding
+    when inconclusive. Mixed case-sensitive and case-folding mounts below the root are unsupported.
+ */
+static bool detectCaseFolding(cchar *documents)
+{
+#if ME_WIN_LIKE
+    /*
+        NTFS preserves case and does not distinguish it, and the Win32 layer folds regardless of the
+        volume. Windows also accepts 8.3 short names and trailing dots, so a byte-exact gate is
+        never right here.
+     */
+    (void) documents;
+    return 1;
+#else
+    struct dirent *dp;
+    struct stat   info, altInfo;
+    DIR           *dir;
+    char          *alt, *path, *probe;
+    bool          folds, probed;
+
+    if (!documents || !*documents || (dir = opendir(documents)) == 0) {
+        return 1;
+    }
+    folds = 1;
+    probed = 0;
+    while (!probed && (dp = readdir(dir)) != 0) {
+        if (smatch(dp->d_name, ".") || smatch(dp->d_name, "..") || (alt = flipCase(dp->d_name)) == 0) {
+            continue;
+        }
+        path = rJoinFile(documents, dp->d_name);
+        probe = rJoinFile(documents, alt);
+        if (lstat(path, &info) == 0) {
+            folds = lstat(probe, &altInfo) == 0 && altInfo.st_ino == info.st_ino && altInfo.st_dev == info.st_dev;
+            probed = 1;
+        }
+        rFree(path);
+        rFree(probe);
+        rFree(alt);
+    }
+    closedir(dir);
+    return folds;
+#endif
+}
+
+/*
+    Filename patterns that are never served, whatever the routes say.
+
+    The file handler serves any regular file under the document root that a route matched, and a
+    route matches on the path prefix, so a filename policy cannot be expressed as a route at all.
+    Anything that lands in the document tree - by a build step, a deployment script, an editor, or
+    a git clone - is otherwise reachable: ".env" carries cloud credentials, and a single fetch of
+    "/.git/HEAD" confirms the object store is there, after which every secret ever committed is
+    retrievable.
+
+    Matched against every path segment, so "/.git/objects/ab/cdef" is refused and not merely
+    "/.git". Configuring "web.deny" replaces this list rather than adding to it, so a site that
+    genuinely serves ".well-known/" can do so, but has to say so - which is the point.
+ */
+static cchar *defaultDeny[] = {
+    ".*",                                       /* dot-files and dot-directories */
+    "*~",                                       /* editor backups */
+    "*.bak", "*.old", "*.orig", "*.save",       /* editor and deployment backups */
+    "*.swp",                                    /* vim swap files */
+    "*.map",                                    /* source maps for minified assets */
+    0
+};
+
+static void initDeny(WebHost *host)
+{
+    JsonNode *item;
+    int      denyId, i;
+
+    host->deny = rAllocList(0, R_DYNAMIC_VALUE);
+
+    if ((denyId = jsonGetId(host->config, 0, "web.deny")) >= 0) {
+        for (ITERATE_JSON_ID(host->config, denyId, item, i)) {
+            if (item->value && *item->value) {
+                rAddItem(host->deny, sclone(item->value));
+            }
+        }
+        if (rLookupStringItem(host->deny, ".*") < 0) {
+            rInfo("web", "web.deny replaces the default list and omits \".*\": dot-files will be served");
+        }
+        return;
+    }
+    for (i = 0; defaultDeny[i]; i++) {
+        rAddItem(host->deny, sclone(defaultDeny[i]));
+    }
 }
 
 static RHash *createMethodsHash(cchar *list)
@@ -2271,9 +3854,15 @@ static RHash *createMethodsHash(cchar *list)
 
     methods = sclone(list);
     hash = rAllocHash(0, R_TEMPORAL_NAME);
-    for (method = stok(methods, " \t,", &tok); method; method = stok(NULL, " \t,", &tok)) {
+    //  Accepts a plain list or the string form of a JSON array, so brackets are separators too
+    for (method = stok(methods, " \t,[]", &tok); method; method = stok(NULL, " \t,[]", &tok)) {
         method = strim(method, "'\"", R_TRIM_BOTH);
-        rAddName(hash, method, "true", 0);
+        if (*method) {
+            rAddName(hash, method, "true", 0);
+        }
+    }
+    if (rLookupName(hash, "GET") && !rLookupName(hash, "HEAD")) {
+        rAddName(hash, "HEAD", "true", 0);
     }
     rFree(methods);
     return hash;
@@ -2363,7 +3952,7 @@ static void parseCacheControl(WebRoute *route, Json *json, int id)
         return;
     }
     cacheId = jsonGetId(json, id, "cache");
-    route->cacheMaxAge = (int) svalue(jsonGet(json, cacheId, "maxAge", NULL));
+    route->cacheMaxAge = svaluei(jsonGet(json, cacheId, "maxAge", NULL));
     route->cacheDirectives = jsonGet(json, cacheId, "directives", NULL);
 
     //  Parse extensions array (optional - if not specified, matches all)
@@ -2399,8 +3988,8 @@ static void checkRouteKeys(cchar *match, Json *json, int id)
         "match", "role", "redirect", "trim", "handler", "stream", "validate", "xsrf",
         "compressed", "methods", "cache", "authType", "algorithm", 0
     };
-    JsonNode *child;
-    int      i, found;
+    JsonNode     *child;
+    int          i, found;
 
     for (ITERATE_JSON_KEY(json, id, NULL, child, cid)) {
         if (child->name == 0 || *child->name == '\0') {
@@ -2433,11 +4022,20 @@ static void initRoutes(WebHost *host)
     routes = jsonGetNode(json, 0, "web.routes");
 
     if (routes == 0) {
+        /*
+            Fail closed. A host with no route table has not been configured, and the catch-all
+            carried no role at all - so a server whose routes failed to load served the whole
+            document tree to anonymous clients, silently, with checkRouteKeys never reached because
+            there were no routes to check.
+         */
+        rError("web", "No web.routes configured. Serving the document root to the 'admin' role only. "
+               "Declare web.routes, using [{}] for an unauthenticated catch-all.");
         rp = rAllocType(WebRoute);
         rp->match = "";
         rp->handler = "file";
+        rp->role = "admin";
         rp->methods = host->methods;
-        rp->validate = 0;
+        rp->validate = WEB_VALIDATE_DEFAULT;
         rAddItem(host->routes, rp);
 
     } else {
@@ -2445,9 +4043,8 @@ static void initRoutes(WebHost *host)
             rp = rAllocType(WebRoute);
 
             /*
-                Exact match if pattern non-empty and not a trailing "/"
-                Empty routes match everything
-                A match of "/" will do an exact match.
+                Slash-ended patterns match prefixes; others match whole segments and subtrees. Empty matches all; /
+                matches exactly.
              */
             match = rp->match = jsonGet(json, id, "match", "");
             rp->exact = (!match || slen(match) == 0 ||
@@ -2458,7 +4055,13 @@ static void initRoutes(WebHost *host)
             rp->trim = jsonGet(json, id, "trim", 0);
             rp->handler = jsonGet(json, id, "handler", "file");
             rp->stream = jsonGetBool(json, id, "stream", 0);
-            rp->validate = jsonGetBool(json, id, "validate", 0);
+            /*
+                Absent means "validate whatever the signature file describes". The route key used to
+                default to off, so a server configured with web.signatures.enable - the documented
+                way to turn validation on - loaded the signature file and validated nothing.
+             */
+            rp->validate = jsonGet(json, id, "validate", 0) == 0 ? WEB_VALIDATE_DEFAULT :
+                           (jsonGetBool(json, id, "validate", 0) ? WEB_VALIDATE_ON : WEB_VALIDATE_OFF);
             rp->xsrf = jsonGetBool(json, id, "xsrf", 0);
             rp->compressed = jsonGetBool(json, id, "compressed", 0);
 
@@ -2476,9 +4079,7 @@ static void initRoutes(WebHost *host)
             }
 #endif
             if ((methods = jsonToString(json, id, "methods", 0)) != 0) {
-                // Trim leading and trailing brackets
-                methods[slen(methods) - 1] = '\0';
-                rp->methods = createMethodsHash(&methods[1]);
+                rp->methods = createMethodsHash(methods);
                 rFree(methods);
             } else {
                 rp->methods = host->methods;
@@ -2521,10 +4122,68 @@ static void initRedirects(WebHost *host)
 }
 
 /*
+    Check whether this build supports the auth type; a missing type uses the host default.
+ */
+static bool supportedAuthType(cchar *authType)
+{
+    if (!authType) {
+        return 1;
+    }
+#if ME_WEB_AUTH_BASIC
+    if (scaselessmatch(authType, "basic")) {
+        return 1;
+    }
+#endif
+#if ME_WEB_AUTH_DIGEST
+    if (scaselessmatch(authType, "digest")) {
+        return 1;
+    }
+#endif
+    return 0;
+}
+
+/* Refuse configurations requiring unavailable features; never substitute a weaker authentication scheme. */
+static int checkRouteFeatures(WebHost *host)
+{
+    JsonNode *node;
+    cchar    *authType;
+
+#if !ME_WEB_SESSIONS
+    WebRoute *route;
+    int      next;
+#endif
+
+    authType = jsonGet(host->config, 0, "web.auth.authType", 0);
+    if (authType && !supportedAuthType(authType)) {
+        rError("web", "Unsupported web.auth.authType '%s' in this build", authType);
+        return R_ERR_BAD_ARGS;
+    }
+    //  Read from the configuration: a route keeps no authType without HTTP authentication
+    for (ITERATE_JSON_KEY(host->config, 0, "web.routes", node, id)) {
+        authType = jsonGet(host->config, id, "authType", 0);
+        if (authType && !supportedAuthType(authType)) {
+            rError("web", "Route '%s' has unsupported authType '%s' in this build",
+                   jsonGet(host->config, id, "match", "(catch-all)"), authType);
+            return R_ERR_BAD_ARGS;
+        }
+    }
+#if !ME_WEB_SESSIONS
+    for (ITERATE_ITEMS(host->routes, route, next)) {
+        if (route->xsrf) {
+            rError("web", "Route '%s' requires XSRF tokens, which need sessions, compiled out of this build",
+                   route->match && *route->match ? route->match : "(catch-all)");
+            return R_ERR_BAD_ARGS;
+        }
+    }
+#endif
+    return 0;
+}
+
+/*
     Load authentication configuration from web.json5
     Loads users, roles, and HTTP authentication settings
  */
-static void loadAuth(WebHost *host)
+static int loadAuth(WebHost *host)
 {
     Json     *json;
     JsonNode *users, *user;
@@ -2536,9 +4195,17 @@ static void loadAuth(WebHost *host)
     // Initialize users hash table (always available for session-based auth)
     host->users = rAllocHash(0, 0);
 
+    host->authFailures = rAllocHash(0, R_TEMPORAL_NAME | R_DYNAMIC_VALUE);
+    host->maxFailures = svaluei(jsonGet(json, 0, "web.auth.maxFailures", "10"));
+    host->failurePeriod = getTimeout(host, "web.auth.failurePeriod", "5mins");
+
+    if (checkRouteFeatures(host) < 0) {
+        return R_ERR_BAD_ARGS;
+    }
+
 #if ME_WEB_HTTP_AUTH
     // Load HTTP authentication settings (use config strings directly - they persist with host->config)
-    host->realm = jsonGet(json, 0, "web.auth.realm", host->name ? host->name : "web");
+    host->realm = jsonGet(json, 0, "web.auth.realm", host->name ? host->name : WEB_REALM);
     host->authType = jsonGet(json, 0, "web.auth.authType", "basic");
     algorithm = jsonGet(json, 0, "web.auth.algorithm", "SHA-256");
     if (algorithm && (!smatch(algorithm, "MD5") && !smatch(algorithm, "SHA-256"))) {
@@ -2552,7 +4219,10 @@ static void loadAuth(WebHost *host)
         host->digestTimeout = 60;
     }
     host->requireTlsForBasic = jsonGetBool(json, 0, "web.auth.requireTlsForBasic", 1);
-    host->opaque = cryptID(32);
+    if ((host->opaque = cryptID(32)) == 0) {
+        rError("web", "Cannot generate authentication opaque");
+        return R_ERR_CANT_INITIALIZE;
+    }
     // Generate random secret if not provided
     secret = jsonGet(json, 0, "web.auth.secret", 0);
     if (secret) {
@@ -2562,11 +4232,20 @@ static void loadAuth(WebHost *host)
         host->secret = cryptID(64);
     }
 
+    if (!host->secret || !*host->secret) {
+        rError("web", "Cannot initialize authentication secret");
+        return R_ERR_CANT_INITIALIZE;
+    }
+
 #if ME_WEB_AUTH_DIGEST
     // Initialize nonce tracking for replay protection
     // Use R_DYNAMIC_VALUE since we're storing allocated WebNonceEntry pointers, not strings
     host->trackNonces = jsonGetBool(json, 0, "web.auth.track", 1);
     host->nonces = rAllocHash(0, R_TEMPORAL_NAME | R_DYNAMIC_VALUE);
+    host->nonceUsers = rAllocHash(0, R_TEMPORAL_NAME | R_STATIC_VALUE);
+    if (host->maxDigest <= 0) {
+        host->maxDigest = 1000;
+    }
     webInitDigestAuth(host);
 #endif
 #endif
@@ -2585,6 +4264,10 @@ static void loadAuth(WebHost *host)
             }
         }
     }
+#if ME_WEB_HTTP_AUTH
+    webInitAuthDummy(host);
+#endif
+    return 0;
 }
 
 /*
@@ -2616,7 +4299,7 @@ PUBLIC void webSetHostDefaultIP(WebHost *host, cchar *ip)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -2646,8 +4329,13 @@ PUBLIC void webSetHostDefaultIP(WebHost *host, cchar *ip)
 #define isWhite(c) ((c) == ' ' || (c) == '\t')
 
 /*
-    Valid characters for HTTP header field names per RFC 7230.
-    Allows: A-Z, a-z, 0-9, and special characters: ! # $ % & ' * + - . ^ _ ` | ~
+    Limit Content-Length to ssize so ILP32 stores cannot truncate it.
+ */
+#define WEB_MAX_CONTENT_LENGTH ((int64) MAXSSIZE - 1 < MAXINT64 / 2 ? (int64) MAXSSIZE - 1 : MAXINT64 / 2)
+
+/*
+    Valid characters for an HTTP token per RFC 7230. Used for header field names and the request
+    method. Allows: A-Z, a-z, 0-9, and special characters: ! # $ % & ' * + - . ^ _ ` | ~
  */
 static cchar validHeaderChars[128] = {
     ['A'] = 1, ['B'] = 1, ['C'] = 1, ['D'] = 1, ['E'] = 1, ['F'] = 1, ['G'] = 1,
@@ -2670,23 +4358,56 @@ static cchar validHeaderChars[128] = {
  */
 #define WEB_HTTP_HEADER_SIZE 1024
 
+/*
+    Maximum length of a request method. The longest standard verb is OPTIONS; this leaves room for
+    extension verbs while bounding what reaches the Digest HA2 preimage and the trace log.
+ */
+#define WEB_MAX_METHOD       24
+
 /************************************ Forwards *********************************/
 
 static bool authenticateRequest(Web *web);
+static bool authorizeRoute(Web *web, WebRoute *route);
+static void logAuthFailure(Web *web, cchar *reason);
+static bool authorizeSignature(Web *web);
+static bool isValidated(Web *web);
 static void freeWebFields(Web *web, bool keepAlive);
+static bool acceptHost(Web *web);
 static int handleRequest(Web *web);
 static bool matchFrom(Web *web, cchar *from);
+static bool matchPath(WebHost *host, cchar *path, cchar *pattern, bool exact);
+static WebRoute *matchRoute(Web *web, cchar *path);
 static int parseHeaders(Web *web, size_t headerSize);
 static int parseMethod(Web *web, cchar *method);
+static int parseRequestLine(Web *web, char *line);
+/*
+    Parse an HTTP date header into seconds since the epoch.
+
+    rParseHttpDate returns ticks (milliseconds), matching rGetHttpDate and rParseIsoDate.
+    Web's conditional-request fields are time_t seconds, because they are compared against
+    stat's st_mtime. Convert here so the conversion lives in one place.
+ */
+static time_t parseDateHeader(cchar *value)
+{
+    Time when;
+
+    when = rParseHttpDate(value);
+    return when > 0 ? (time_t) (when / TPS) : 0;
+}
+
+
 static bool parseEtags(Web *web, cchar *value);
 static bool parseRangeHeader(Web *web, char *header);
+static char *parseRangePos(char *str, int64 *value);
 static int processBody(Web *web);
 static void processOptions(Web *web);
-static void processQuery(Web *web);
+static int processQuery(Web *web);
 static int redirectRequest(Web *web);
 static void resetWeb(Web *web);
 static bool routeRequest(Web *web);
+static void setRequestSignature(Web *web, WebRoute *route);
 static bool shouldCacheControl(Web *web, WebRoute *route);
+static bool credentialedResponse(Web *web);
 static int serveRequest(Web *web);
 static bool validateRequest(Web *web);
 static int webActionHandler(Web *web);
@@ -2758,6 +4479,14 @@ PUBLIC int webAlloc(WebListen *listen, RSocket *sock)
  */
 PUBLIC void webFree(Web *web)
 {
+    /*
+        Freeing the socket can resume a fiber that frees this connection. Prevent nested cleanup from freeing it
+        twice.
+     */
+    if (web->freeing) {
+        return;
+    }
+    web->freeing = 1;
     rRemoveItem(web->host->webs, web);
     rFreeSocket(web->sock);
     rFreeBuf(web->rx);
@@ -2783,6 +4512,9 @@ PUBLIC void webFreeRanges(Web *web)
     }
     rFree(web->rangeBoundary);
     web->rangeBoundary = NULL;
+    if (web->mime == web->rmime) {
+        web->mime = NULL;
+    }
     rFree(web->rmime);
     web->rmime = NULL;
 }
@@ -2793,13 +4525,20 @@ PUBLIC void webFreeRanges(Web *web)
  */
 static void freeWebFields(Web *web, bool keepAlive)
 {
-    RSocket   *sock;
-    WebListen *listen;
-    Ticks     connectionStarted;
-    RBuf      *rx, *rxHeaders, *body, *buffer;
-    RList     *etags;
-    int64     conn, count;
-    int       close;
+    /*
+        Saved across the memset below when the connection is kept alive, and unused otherwise.
+        Initialized at the declaration because the save and the restore sit in separate
+        "if (keepAlive)" blocks, which MSVC's flow analysis cannot correlate: it reports every
+        one of these as possibly uninitialized at the restore. The values are dead either way.
+     */
+    RSocket   *sock = NULL;
+    RFiber    *fiber = NULL;
+    WebListen *listen = NULL;
+    Ticks     connectionStarted = 0;
+    RBuf      *rx = NULL, *rxHeaders = NULL, *body = NULL, *buffer = NULL;
+    RList     *etags = NULL;
+    int64     conn = 0, count = 0;
+    int       close = 0;
 
     /*
         If keepAlive is true, we need to save some fields for the next request.
@@ -2807,6 +4546,7 @@ static void freeWebFields(Web *web, bool keepAlive)
     if (keepAlive) {
         close = web->close;
         conn = web->conn;
+        fiber = web->fiber;
         listen = web->listen;
         rx = web->rx;
         sock = web->sock;
@@ -2824,6 +4564,9 @@ static void freeWebFields(Web *web, bool keepAlive)
     rFree(web->path);
     rFree(web->redirect);
     rFree(web->securityToken);
+    rFree(web->sessionId);
+    rFree(web->role);
+    web->role = 0;
     rFreeHash(web->txHeaders);
 
 #if ME_WEB_HTTP_AUTH
@@ -2846,7 +4589,9 @@ static void freeWebFields(Web *web, bool keepAlive)
 #endif
     jsonFree(web->qvars);
     jsonFree(web->vars);
+#if ME_WEB_UPLOAD
     webFreeUpload(web);
+#endif
     webFreeRanges(web);
     rFree(web->ifMatch);
 
@@ -2888,6 +4633,8 @@ static void freeWebFields(Web *web, bool keepAlive)
         web->sock = sock;
         web->close = (uint) close;
         web->conn = conn;
+        // Reassign on keep-alive entry; one fiber serves all pipelined requests.
+        web->fiber = fiber;
         web->connectionStarted = connectionStarted;
         web->count = count;
         web->rxHeaders = rxHeaders;
@@ -2977,6 +4724,8 @@ static void webProcessRequest(Web *web)
         if (!host->fiberBlocks || blockResult == 0) {
 #endif
         web->fiber = rGetFiber();
+        /* Disarm the idle wait while this fiber owns the request, including waits elsewhere. */
+        rSetWaitHandler(web->sock->wait, NULL, NULL, 0, 0, 0);
 
         while (!web->close) {
             //  Process one complete request (blocks for I/O as needed)
@@ -2989,7 +4738,10 @@ static void webProcessRequest(Web *web)
             }
             //  Reset web instance object for next request
             resetWeb(web);
+            if (web->close) {
 
+                break;
+            }
             if (rGetBufLength(web->rx) == 0) {
                 //  No buffered data, setup wait for next request
                 webSetupKeepAliveWait(web);
@@ -3047,16 +4799,19 @@ static int serveRequest(Web *web)
 
     web->started = rGetTicks();
 
-    if (rGetTimeouts()) {
-        if (web->count > 0) {
-            web->deadline = min(web->started + web->host->inactivityTimeout,
-                                web->started + web->host->requestTimeout);
-        } else {
-            web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
-        }
-    } else {
-        web->deadline = 0;
-    }
+    /*
+        The parse budget applies to every request on the connection, not only the first.
+        serveRequest is entered because the socket became readable, so the request is already
+        arriving and the header block should complete within parseTimeout whatever the request
+        count. Giving a keep-alive request the inactivity timeout instead meant a peer could hold
+        the fiber - and so one of the pool's connection slots - for minutes by sending a partial
+        request line on a connection it had already used once, which is cheaper for an attacker
+        than opening a new one.
+     */
+    web->deadline = rGetTimeouts() ? web->started + web->host->parseTimeout : 0;
+
+    //  Before parsing, so errors answered during parsing carry the security headers too
+    webAddStandardHeaders(web);
 
     /*
         Read until we have all the headers up to the limit
@@ -3074,7 +4829,7 @@ static int serveRequest(Web *web)
             }
             return webError(web, -413, "Request headers too big");
         }
-        // I/O error or pattern not found before limit
+        // I/O error, timeout, or pattern not found before limit. A timeout has already answered.
         return R_ERR_CANT_READ;
     }
     web->count++;
@@ -3083,13 +4838,45 @@ static int serveRequest(Web *web)
     if (parseHeaders(web, (size_t) size) < 0) {
         return R_ERR_BAD_REQUEST;
     }
-    webAddStandardHeaders(web);
     webHook(web, WEB_HOOK_START);
 
     if (handleRequest(web) < 0) {
         return R_ERR_CANT_COMPLETE;
     }
     webHook(web, WEB_HOOK_END);
+    return 0;
+}
+
+/* Check web.hosts against Host to prevent DNS rebinding. Entries match the whole value or hostname without port. */
+static bool acceptHost(Web *web)
+{
+    JsonNode *child;
+    cchar *hostHeader, *end;
+    size_t nameLen;
+
+    if (web->host->hosts < 0) {
+        return 1;
+    }
+    if ((hostHeader = webGetHeader(web, "host")) == 0) {
+        //  HTTP/1.0 without Host: the request names no authority to misdirect
+        return 1;
+    }
+    // Strip the port without splitting bracketed IPv6 literals.
+    if (*hostHeader == '[') {
+        end = schr(hostHeader, ']');
+        end = end ? end + 1 : hostHeader + slen(hostHeader);
+    } else {
+        end = schr(hostHeader, ':');
+        end = end ? end : hostHeader + slen(hostHeader);
+    }
+    nameLen = (size_t) (end - hostHeader);
+
+    for (ITERATE_JSON_ID(web->host->config, web->host->hosts, child, id)) {
+        if (scaselessmatch(child->value, hostHeader) ||
+            (slen(child->value) == nameLen && sncaselesscmp(child->value, hostHeader, nameLen) == 0)) {
+            return 1;
+        }
+    }
     return 0;
 }
 
@@ -3106,6 +4893,10 @@ static int handleRequest(Web *web)
     if (web->error) {
         return 0;
     }
+    if (!acceptHost(web)) {
+        webError(web, 421, "Misdirected request");
+        return 0;
+    }
     if (redirectRequest(web)) {
         //  Protocol and site level redirections handled
         return 0;
@@ -3120,11 +4911,14 @@ static int handleRequest(Web *web)
         processOptions(web);
         return 0;
     }
+#if ME_WEB_UPLOAD
     if (web->uploads && webProcessUpload(web) < 0) {
         return 0;
     }
-    if (web->query) {
-        processQuery(web);
+#endif
+    if (web->query && processQuery(web) < 0) {
+        //  An error response has been generated
+        return 0;
     }
 #if ME_COM_WEBSOCK
     if (scaselessmatch(web->upgrade, "websocket")) {
@@ -3150,15 +4944,19 @@ static int handleRequest(Web *web)
         // Return zero as a valid response has been generated
         return 0;
     }
-    if (web->route->xsrf) {
+    if (web->route->xsrf || (web->policy && web->policy->xsrf)) {
         if (web->get) {
             /*
                 This will generate a new XSRF token if there is not one already in the session state.
              */
-            webAddSecurityToken(web, 0);
+            if (webAddSecurityToken(web, 0) < 0) {
+                return R_ERR_CANT_COMPLETE;
+            }
         } else if (!web->options && !web->head && !web->trace) {
             if (!webCheckSecurityToken(web)) {
-                webError(web, 400, "Invalid XSRF token");
+                if (!web->error) {
+                    webError(web, 400, "Invalid XSRF token");
+                }
                 return R_ERR_BAD_REQUEST;
             }
         }
@@ -3184,32 +4982,93 @@ static int handleRequest(Web *web)
  */
 static bool validateRequest(Web *web)
 {
-    WebHost *host;
-    char *path, *cp;
-    size_t len, urlLen;
-    bool rc;
-
     assert(web);
-    host = web->host;
 
-    len = slen(web->route->match);
-    urlLen = slen(web->url);
-    if (urlLen < len) {
+    if (web->host->signatures && isValidated(web)) {
+        return webValidateRequest(web);
+    }
+    return 1;
+}
+
+
+static bool isValidated(Web *web)
+{
+    return web->route->validate != WEB_VALIDATE_OFF || (web->policy && web->policy->validate != WEB_VALIDATE_OFF);
+}
+
+/*
+    Select the signature that describes this request, by slicing the route prefix off the path and
+    turning the separators into property terms.
+
+    The key must come from the same string routing and dispatch use. It was sliced off web->url,
+    which parseUrl decodes but does not normalize, while every other stage uses the normalized
+    web->path. A ".." segment therefore keyed a different signature, or none - and a missing
+    signature fails open unless web.signatures.strict is set, which is not the default. Deriving it
+    here, from web->path before any trim rewrite, makes route->match a prefix of the string being
+    sliced by construction, so the offset is well defined for every spelling.
+ */
+static void setRequestSignature(Web *web, WebRoute *route)
+{
+    char *key, *cp;
+    size_t len;
+    int sid;
+
+    if (!web->host->signatures) {
+        return;
+    }
+    len = slen(route->match);
+    if (slen(web->path) < len) {
+        return;
+    }
+    /*
+        Skip separators so the key never starts with an empty term: an empty or leading-empty key
+        resolves to the root of the signature file rather than to no signature at all.
+     */
+    for (cp = &web->path[len]; *cp == '/'; cp++) {
+    }
+    if (*cp == '\0') {
+        //  Nothing beyond the route prefix names no endpoint
+        return;
+    }
+    key = sclone(cp);
+    for (cp = key; *cp; cp++) {
+        if (*cp == '/') {
+            *cp = '.';
+        }
+    }
+    /*
+        Choose the longest endpoint prefix with a request/response block so trailing segments cannot bypass its
+        signature.
+     */
+    for (;;) {
+        sid = jsonGetId(web->host->signatures, 0, key);
+        if (sid >= 0 && (jsonGetId(web->host->signatures, sid, "request") >= 0 ||
+                         jsonGetId(web->host->signatures, sid, "response") >= 0)) {
+            web->signature = sid;
+            break;
+        }
+        if ((cp = srchr(key, '.')) == 0) {
+            break;
+        }
+        *cp = '\0';
+    }
+    rFree(key);
+}
+
+/*
+    Test if a path matches an action prefix. The prefix must cover whole path segments, so
+    "/api/status" does not answer for "/api/statusX", and a prefix that already ends in "/" is a
+    boundary in itself.
+ */
+static bool matchAction(cchar *path, cchar *match)
+{
+    size_t len;
+
+    if (!sstarts(path, match)) {
         return 0;
     }
-    rc = 1;
-    if (host->signatures) {
-        path = sclone(&web->url[len]);
-        for (cp = path; *cp; cp++) {
-            if (*cp == '/') *cp = '.';
-        }
-        web->signature = jsonGetId(host->signatures, 0, path);
-        if (web->route->validate) {
-            rc = webValidateRequest(web, path);
-        }
-        rFree(path);
-    }
-    return rc;
+    len = slen(match);
+    return len == 0 || match[len - 1] == '/' || path[len] == '\0' || path[len] == '/';
 }
 
 /*
@@ -3218,38 +5077,50 @@ static bool validateRequest(Web *web)
  */
 static int webActionHandler(Web *web)
 {
-    WebAction *action;
+    WebAction *action, *best;
+    size_t bestLen, len;
     int next;
 
+    /*
+        Select the longest matching prefix. A first-match dispatch would let an action registered
+        at a short prefix answer for a longer, later registration - including one that carries a
+        stronger role - so the shorter registration must not shadow the longer one.
+     */
+    best = 0;
+    bestLen = 0;
     for (ITERATE_ITEMS(web->host->actions, action, next)) {
-        /*
-            Check if the request path matches the action match pattern.
-         */
-        if (sstarts(web->path, action->match)) {
-            /*
-                For public actions (role == NULL or "public"), do not deny access.
-                Attempt authorization only if a specific non-public role is required.
-             */
-            if (action->role && !smatch(action->role, "public")) {
-                if (!webCan(web, action->role)) {
-                    webError(web, 403, "Access Denied. User has insufficient privilege.");
-                    return 0;
-                }
+        if (matchAction(web->path, action->match)) {
+            len = slen(action->match);
+            if (!best || len > bestLen) {
+                best = action;
+                bestLen = len;
             }
-            /*
-                Ignore range requests for dynamic content
-                Action handlers generate dynamic content that cannot be ranged
-             */
-            webFreeRanges(web);
-            //  Set Accept-Ranges: none for dynamic content
-            webAddHeaderStaticString(web, "Accept-Ranges", "none");
-
-            webHook(web, WEB_HOOK_ACTION);
-            (action->fn)(web);
+        }
+    }
+    if (!best) {
+        return webError(web, 404, "No action to handle request");
+    }
+    /*
+        For public actions (role == NULL or "public"), do not deny access.
+        Attempt authorization only if a specific non-public role is required.
+     */
+    if (best->role && !smatch(best->role, "public")) {
+        if (!webCan(web, best->role)) {
+            webError(web, 403, "Access Denied. User has insufficient privilege.");
             return 0;
         }
     }
-    return webError(web, 404, "No action to handle request");
+    /*
+        Ignore range requests for dynamic content
+        Action handlers generate dynamic content that cannot be ranged
+     */
+    webFreeRanges(web);
+    //  Set Accept-Ranges: none for dynamic content
+    webAddHeaderStaticString(web, "Accept-Ranges", "none");
+
+    webHook(web, WEB_HOOK_ACTION);
+    (best->fn)(web);
+    return 0;
 }
 
 /*
@@ -3259,50 +5130,229 @@ static int webActionHandler(Web *web)
  */
 static bool routeRequest(Web *web)
 {
-    WebRoute *route;
+    WebRoute *route, *target;
     char *path;
-    bool match;
-    int next;
+    size_t trimLen;
 
-    for (ITERATE_ITEMS(web->host->routes, route, next)) {
-        if (route->exact) {
-            match = smatch(web->path, route->match);
-        } else {
-            match = sstarts(web->path, route->match);
+    if ((route = matchRoute(web, web->path)) == 0) {
+        rInfo("web", "Cannot find route to serve request %s", web->path);
+        webHook(web, WEB_HOOK_NOT_FOUND);
+
+        if (!web->error) {
+            webWriteResponseString(web, 404, "No matching route");
         }
-        if (match) {
-            if (!rLookupName(route->methods, web->method)) {
+        return 0;
+    }
+    if (!rLookupName(route->methods, web->method)) {
+        webError(web, 405, "Unsupported method.");
+        return 0;
+    }
+    web->route = route;
+    if (!authorizeRoute(web, route)) {
+        return 0;
+    }
+    /*
+        A redirect is a complete response, not a route attribute applied alongside handling. Return
+        zero so dispatch stops here: the handler would otherwise still run and putFile, deleteFile
+        and action functions would perform their side effects behind the 302. This matches how
+        redirectRequest terminates a host-level redirect.
+     */
+    if (route->redirect) {
+        webRedirect(web, 302, route->redirect);
+        return 0;
+    }
+    //  Before any trim rewrite, while route->match is still a prefix of web->path
+    setRequestSignature(web, route);
+
+    if (route->trim && matchPath(web->host, web->path, route->trim, 0)) {
+        trimLen = slen(route->trim);
+        path = sclone(&web->path[trimLen]);
+        //  The extension borrows storage from the path being replaced.
+        if (web->ext) {
+            web->ext = web->ext >= web->path + trimLen ? path + (web->ext - (web->path + trimLen)) : 0;
+        }
+        rFree(web->path);
+        web->path = path;
+        web->trimmed = 1;
+        /*
+            Keep the trim route for dispatch, but enforce the destination route's role, unsafe methods, XSRF and
+            validation too. Safe methods remain governed by the trim route.
+         */
+        if ((target = matchRoute(web, web->path)) != 0 && target != route) {
+            if (!rLookupName(target->methods, web->method) &&
+                !(web->get || web->head || web->options || web->trace)) {
                 webError(web, 405, "Unsupported method.");
                 return 0;
             }
-            web->route = route;
-            if (route->redirect) {
-                webRedirect(web, 302, route->redirect);
+            if (!authorizeRoute(web, target)) {
+                return 0;
+            }
+            web->policy = target;
 
-            } else if (route->role && !smatch(route->role, "public") && !web->options) {
-                if (!authenticateRequest(web)) {
-                    return 0;
-                }
-                if (!webCan(web, route->role)) {
-                    webError(web, 403, "Access Denied. User has insufficient privilege.");
-                    return 0;
-                }
-            }
-            if (route->trim && sstarts(web->path, route->trim)) {
-                path = sclone(&web->path[slen(route->trim)]);
-                rFree(web->path);
-                web->path = path;
-            }
-            return 1;
+            web->signature = -1;
+            setRequestSignature(web, target);
         }
     }
-    rInfo("web", "Cannot find route to serve request %s", web->path);
-    webHook(web, WEB_HOOK_NOT_FOUND);
+    if (!authorizeSignature(web)) {
+        return 0;
+    }
+    return 1;
+}
 
-    if (!web->error) {
-        webWriteResponseString(web, 404, "No matching route");
+/* Require rewritten destinations to authorize the request too; retain the matched route for dispatch and policy. */
+PUBLIC bool webAuthorizePath(Web *web, cchar *path)
+{
+    WebRoute *target;
+
+    if ((target = matchRoute(web, path)) != 0 && target != web->route && !authorizeRoute(web, target)) {
+        return 0;
+    }
+    return 1;
+}
+
+/*
+    Enforce the endpoint role or controller _meta.role; field filtering alone does not authorize access.
+ */
+static bool authorizeSignature(Web *web)
+{
+    Json *signatures;
+    JsonNode *controller;
+    cchar *role;
+
+    signatures = web->host->signatures;
+    if (!signatures || web->signature < 0 || !isValidated(web) || web->options) {
+        return 1;
+    }
+    if ((role = jsonGet(signatures, web->signature, "role", 0)) == 0) {
+        for (ITERATE_JSON(signatures, NULL, controller, cid)) {
+            if (cid < web->signature && web->signature < controller->last) {
+                role = jsonGet(signatures, cid, "_meta.role", 0);
+                break;
+            }
+        }
+    }
+    if (!role || smatch(role, "public") || webCan(web, role)) {
+        return 1;
+    }
+    if (web->authenticated) {
+        webError(web, 403, "Access Denied. User has insufficient privilege.");
+    } else {
+        webError(web, 401, "Authentication required");
     }
     return 0;
+}
+
+/*
+    Compare a request path against a route pattern, folding case when the documents filesystem does.
+
+    Route selection is the only authorization gate in the server. A byte-exact compare against a
+    filesystem that resolves many spellings to one file decides authorization on a different string
+    from the one open() resolves, so an upper-case spelling of a protected prefix misses the route
+    that guards it and falls through to a later route carrying no role. webAllocHost probes the
+    documents filesystem once and sets host->foldCase from what it finds.
+ */
+static bool matchPath(WebHost *host, cchar *path, cchar *pattern, bool exact)
+{
+    size_t len;
+
+    len = slen(pattern);
+    if (!(host->foldCase ? sncaselesscmp(path, pattern, len) == 0 : sstarts(path, pattern))) {
+        return 0;
+    }
+    if (exact) {
+        //  A pattern without a trailing "/" names a resource and its subtree, on a segment boundary
+        return path[len] == '\0' || (path[len] == '/' && len > 1);
+    }
+    return 1;
+}
+
+/*
+    Find the first route whose match pattern covers the path. Returns NULL if none.
+ */
+static WebRoute *matchRoute(Web *web, cchar *path)
+{
+    WebRoute *route;
+    int next;
+
+    for (ITERATE_ITEMS(web->host->routes, route, next)) {
+        if (matchPath(web->host, path, route->match, route->exact)) {
+            return route;
+        }
+    }
+    return 0;
+}
+
+/*
+    Apply a route's authentication and authorization gate. The route is bound to web->route for the
+    duration so the challenge realm and digest algorithm come from the route being enforced.
+    Return true if the request may proceed.
+ */
+static bool authorizeRoute(Web *web, WebRoute *route)
+{
+    WebRoute *prior;
+    bool rc;
+
+    if (!route->role || smatch(route->role, "public") || web->options) {
+        return 1;
+    }
+    prior = web->route;
+    web->route = route;
+    rc = 1;
+    if (!authenticateRequest(web)) {
+        logAuthFailure(web, web->status == 429 ? "too many failures" : "authentication failed");
+        /*
+            HTTP authentication has already written its challenge. Session authentication has
+            nothing to challenge with, so answer rather than leave the request hanging until the
+            connection times out.
+         */
+        if (!web->error) {
+            webError(web, 401, "Authentication required");
+        }
+        rc = 0;
+
+    } else if (!webCan(web, route->role)) {
+        logAuthFailure(web, "insufficient privilege");
+        webError(web, 403, "Access Denied. User has insufficient privilege.");
+        rc = 0;
+    }
+    web->route = prior;
+    return rc;
+}
+
+/*
+    Audit route refusals only when credentials or cookies were presented, so an ordinary first challenge is not logged.
+ */
+static void logAuthFailure(Web *web, cchar *reason)
+{
+    bool presented;
+
+    presented = web->cookie != 0;
+#if ME_WEB_HTTP_AUTH
+    presented = presented || web->authDetails;
+#endif
+    if (presented) {
+        webLogAuthFailure(web, reason);
+    }
+}
+
+/*
+    Never log credentials or client-supplied usernames.
+ */
+PUBLIC void webLogAuthFailure(Web *web, cchar *reason)
+{
+    cchar *match;
+    char  ip[64];
+    int   port;
+
+    if (!web) {
+        return;
+    }
+    if (rGetSocketPeer(web->sock, ip, sizeof(ip), &port) < 0 || !*ip) {
+        scopy(ip, sizeof(ip), "unknown");
+    }
+    match = web->route && web->route->match && *web->route->match ? web->route->match : "(catch-all)";
+    rInfo("auth", "Refused %s from %s on connection %lld: %s (route '%s')", web->method, ip, web->conn,
+          reason ? reason : "refused", match);
 }
 
 static bool authenticateRequest(Web *web)
@@ -3431,11 +5481,33 @@ static bool parseEtags(Web *web, cchar *value)
     - "bytes=500-"         From byte 500 to end
     - "bytes=0-49,100-149" Multiple ranges
  */
+/*
+    Parse decimal byte positions, saturating at MAXINT64-1 to leave room for exclusive ends. Return the next
+    character, or NULL without digits.
+ */
+static char *parseRangePos(char *str, int64 *value)
+{
+    int64 limit, v;
+    int digit;
+
+    if (!isdigit((uchar) * str)) {
+        return 0;
+    }
+    limit = MAXINT64 - 1;
+    for (v = 0; isdigit((uchar) * str); str++) {
+        digit = *str - '0';
+        v = (v > (limit - digit) / 10) ? limit : v * 10 + digit;
+    }
+    *value = v;
+    return str;
+}
+
 static bool parseRangeHeader(Web *web, char *header)
 {
     WebRange *range, *last;
     int64 end, len, start;
     char *tok, *ep, *value;
+    int count;
 
     //  Must start with "bytes="
     if (!sstarts(header, "bytes=")) {
@@ -3443,52 +5515,34 @@ static bool parseRangeHeader(Web *web, char *header)
     }
     header += 6;  // Skip "bytes="
     last = NULL;
+    count = 0;
 
     //  Parse comma-separated ranges
     for (tok = stok(header, ",", (char**) &value); tok; tok = stok(NULL, ",", (char**) &value)) {
         tok = strim(tok, " \t", R_TRIM_BOTH);
-        start = end = len = 0;
+        len = 0;
 
-        //  Parse start-end
+        //  Parse start-end. Each position must be followed by exactly the expected delimiter.
         if (*tok == '-') {
-            /*
-                Suffix range: -500 means last 500 bytes
-                Validate that the rest is numeric
-             */
-            if (!tok[1] || !isdigit((uchar) tok[1])) {
+            //  Suffix range: -500 means last 500 bytes
+            if ((ep = parseRangePos(tok + 1, &end)) == 0 || *ep || end <= 0) {
                 return 0;
             }
             start = -1;
-            end = stoi(tok + 1);
-            if (end <= 0) {
-                return 0;
-            }
-        } else if ((ep = strchr(tok, '-')) != NULL) {
-            //  Validate start is numeric
-            if (!isdigit((uchar) * tok)) {
-                return 0;
-            }
-            start = stoi(tok);
-            if (start < 0) {
+        } else {
+            if ((ep = parseRangePos(tok, &start)) == 0 || *ep != '-') {
                 return 0;
             }
             if (ep[1] == '\0') {
                 //  Open-ended: 500- means from 500 to end
                 end = -1;
             } else {
-                /*
-                    Normal range: 0-499. Validate end is numeric.
-                 */
-                if (!isdigit((uchar) ep[1])) {
+                //  Normal range: 0-499
+                if ((ep = parseRangePos(ep + 1, &end)) == 0 || *ep) {
                     return 0;
                 }
-                end = stoi(ep + 1) + 1;  // +1 for exclusive end
-                if (end < 0) {
-                    return 0;
-                }
+                end++;  // Exclusive end. Cannot overflow: parseRangePos saturates below MAXINT64.
             }
-        } else {
-            return 0;
         }
         //  Validate range
         if (start >= 0 && end >= 0) {
@@ -3496,6 +5550,17 @@ static bool parseRangeHeader(Web *web, char *header)
                 return 0;
             }
             len = end - start;
+        }
+        /*
+            Each range is served in full, so a header listing the same span hundreds of times
+            turns a small request into a response hundreds of times the file. RFC 9110 14.2 lets a
+            server ignore a Range header it chooses not to honour: past the cap the whole
+            document is served as a plain 200, which is bounded by the file size.
+         */
+        if (++count > WEB_MAX_RANGES) {
+            rTrace("web", "Ignoring Range header with more than %d ranges", WEB_MAX_RANGES);
+            webFreeRanges(web);
+            return 1;
         }
         range = rAllocType(WebRange);
         range->start = start;
@@ -3595,7 +5660,7 @@ PUBLIC bool webContentNotModified(Web *web, cchar *currentEtag, time_t mtime)
 static int parseHeaders(Web *web, size_t headerSize)
 {
     RBuf *buf;
-    char *end, *method, *tok;
+    char *end, *line, *redacted, *tok;
 
     buf = web->rx;
     if (headerSize <= 10 || headerSize > (size_t) rGetBufLength(buf)) {
@@ -3604,33 +5669,37 @@ static int parseHeaders(Web *web, size_t headerSize)
     end = buf->start + headerSize;
     end[-2] = '\0';
 
+    /*
+        Reserve room for the block and its terminator together. rPutBlockToBuf skips its trailing
+        NUL when it fills the buffer exactly, and the deferred rAddNullToBuf would then grow the
+        buffer - reallocating and freeing the storage that web->method, web->url and web->protocol
+        point into, since the request line is tokenised in place below. Reserving here keeps those
+        pointers valid and keeps the block terminated for the string operations that follow.
+     */
+    if (rReserveBufSpace(web->rxHeaders, headerSize - 1) < 0) {
+        return webNetError(web, "Cannot allocate request header buffer");
+    }
     rPutBlockToBuf(web->rxHeaders, buf->start, headerSize - 2);
     rAdjustBufStart(buf, end - buf->start);
 
     if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
-        rLog("raw", "web", "Request <<<<\n\n%s\n", web->rxHeaders->start);
+        redacted = webRedactHeaders(web->rxHeaders->start);
+        rLog("raw", "web", "Request <<<<\n\n%s\n", redacted);
+        rFree(redacted);
     }
-    method = supper(stok(web->rxHeaders->start, " \t", &tok));
-    if (parseMethod(web, method) < 0) {
-        return R_ERR_BAD_REQUEST;
-    }
-    web->url = stok(tok, " \t", &tok);
-    web->protocol = supper(stok(tok, "\r", &tok));
-    web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
-
-    if (tok == 0) {
+    line = web->rxHeaders->start;
+    if ((tok = scontains(line, "\r\n")) == 0) {
         return webNetError(web, "Bad request header");
     }
-    rAdjustBufStart(web->rxHeaders, tok - web->rxHeaders->start + 1);
+    *tok = '\0';
+    if (parseRequestLine(web, line) < 0) {
+        return R_ERR_BAD_REQUEST;
+    }
+    web->scheme = rIsSocketSecure(web->sock) ? "https" : "http";
+
+    rAdjustBufStart(web->rxHeaders, tok + 2 - line);
     rAddNullToBuf(web->rxHeaders);
 
-    /*
-        Only support HTTP/1.0 without keep alive - all clients should be supporting HTTP/1.1
-     */
-    if (smatch(web->protocol, "HTTP/1.0")) {
-        web->http10 = 1;
-        web->close = 1;
-    }
     if (!webParseHeadersBlock(web, web->rxHeaders->start, rGetBufLength(web->rxHeaders), 0)) {
         return R_ERR_BAD_REQUEST;
     }
@@ -3641,10 +5710,70 @@ static int parseHeaders(Web *web, size_t headerSize)
     return 0;
 }
 
+/*
+    Parse the request line: method SP request-target SP HTTP-version. The line has already been
+    terminated at its CRLF.
+
+    RFC 9112 section 3 permits exactly one space at each delimiter and exactly three tokens. Runs of
+    spaces, tabs as delimiters, a trailing token or an unknown version are all shapes a front end may
+    resolve differently to this server, which is a request-smuggling differential, so each is refused
+    here rather than normalized. Validating the version also makes web->protocol one of two server
+    owned constants, so the response status line can never carry client supplied bytes.
+ */
+static int parseRequestLine(Web *web, char *line)
+{
+    char *protocol, *url;
+
+    if ((url = strchr(line, ' ')) == 0 || url[1] == ' ') {
+        return webError(web, -400, "Bad request line");
+    }
+    *url++ = '\0';
+    if ((protocol = strchr(url, ' ')) == 0 || protocol[1] == ' ') {
+        return webError(web, -400, "Bad request line");
+    }
+    *protocol++ = '\0';
+    if (*url == '\0' || *protocol == '\0' || strchr(protocol, ' ') != 0) {
+        //  Empty or absent token, or a fourth token trailing the version
+        return webError(web, -400, "Bad request line");
+    }
+    if (smatch(protocol, "HTTP/1.1")) {
+        web->protocol = "HTTP/1.1";
+    } else if (smatch(protocol, "HTTP/1.0")) {
+        /*
+            Only support HTTP/1.0 without keep alive - all clients should be supporting HTTP/1.1
+         */
+        web->protocol = "HTTP/1.0";
+        web->http10 = 1;
+        web->close = 1;
+    } else {
+        return webError(web, -505, "Unsupported HTTP version");
+    }
+    //  RFC 9110 9.1: the method is case-sensitive, so it is not normalized
+    if (parseMethod(web, line) < 0) {
+        return R_ERR_BAD_REQUEST;
+    }
+    web->url = url;
+    return 0;
+}
+
+/*
+    Validate and record the request method. The route's method hash rejects unknown verbs, but the
+    method also reaches the Digest HA2 preimage and the trace log, so bound it to an RFC 9110 token
+    of sane length here.
+ */
 static int parseMethod(Web *web, cchar *method)
 {
-    if (!method) {
-        return webNetError(web, "Bad request method");
+    cchar *cp;
+    uchar uc;
+
+    if (!method || *method == '\0' || slen(method) > WEB_MAX_METHOD) {
+        return webError(web, -400, "Bad request method");
+    }
+    for (cp = method; *cp; cp++) {
+        uc = (uchar) * cp;
+        if (uc >= sizeof(validHeaderChars) || !validHeaderChars[uc]) {
+            return webError(web, -400, "Bad request method");
+        }
     }
     switch (method[0]) {
     case 'D':
@@ -3690,15 +5819,40 @@ static int parseMethod(Web *web, cchar *method)
     return 0;
 }
 
+/* Parse Connection as comma-separated options with optional whitespace (RFC 9110 7.6.1). */
+static void parseConnection(Web *web, cchar *value)
+{
+    cchar *cp, *start;
+    size_t len;
+
+    for (cp = value; *cp; ) {
+        while (*cp == ' ' || *cp == '\t' || *cp == ',') {
+            cp++;
+        }
+        for (start = cp; *cp && *cp != ','; cp++) {
+        }
+        len = (size_t) (cp - start);
+        while (len > 0 && (start[len - 1] == ' ' || start[len - 1] == '\t')) {
+            len--;
+        }
+        if (len == 5 && sncaselesscmp(start, "close", 5) == 0) {
+            web->close = 1;
+        } else if (len == 7 && sncaselesscmp(start, "upgrade", 7) == 0) {
+            web->connUpgrade = 1;
+        }
+    }
+}
+
 /*
     Parse a headers block. Used here and by file upload.
  */
 PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bool upload)
 {
     cchar *end;
-    char c, *cp, *endKey, *key, *prior, *t, *value;
+    char c, *cp, *endKey, *idEnd, *key, *prior, *t, *value;
     uchar uc;
-    bool hasCL = 0, hasTE = 0;
+    int64 eventId, length;
+    bool hasAuth = 0, hasCL = 0, hasCT = 0, hasHost = 0, hasIfRange = 0, hasRange = 0, hasTE = 0;
 
     if (headers && *headers) {
         end = &headers[headersSize];
@@ -3734,18 +5888,18 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
             }
             *cp++ = '\0';
 
-            // Trim white space from value
-            for (t = cp - 2; t >= value; t--) {
-                if (isWhite(*t)) {
-                    *t = '\0';
-                } else {
-                    break;
-                }
-            }
             /*
-                From here, we've ensured the key and value are valid and do not contain any whitespace.
-                This prevents CRLF injection attacks in header values.
+                Trim trailing whitespace before the replaced CR/LF terminators. Iterators skip the resulting NUL
+                run.
              */
+            for (t = cp - 3; t >= value && isWhite(*t); t--) {
+                *t = '\0';
+            }
+            //  RFC 9110 5.1: a field name is at least one token character
+            if (key == endKey) {
+                webError(web, -400, "Empty header name");
+                return 0;
+            }
 
             //  Validate header name
             for (t = key; t < endKey; t++) {
@@ -3754,7 +5908,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                     return 0;
                 }
             }
-            c = tolower(*key);
+            c = (char) tolower((uchar) * key);
 
             if (upload && c != 'c' && (
                     !scaselessmatch(key, "content-disposition") &&
@@ -3762,8 +5916,13 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                 webNetError(web, "Bad upload headers");
                 return 0;
             }
-#if ME_WEB_HTTP_AUTH
             if (c == 'a' && scaselessmatch(key, "authorization")) {
+                if (hasAuth) {
+                    webError(web, -400, "Duplicate Authorization");
+                    return 0;
+                }
+                hasAuth = 1;
+#if ME_WEB_HTTP_AUTH
                 //  Parse Authorization header: "Basic xxx" or "Digest xxx"
                 char *authType = value;
                 char *sp = strchr(value, ' ');
@@ -3772,18 +5931,32 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                     web->authType = sclone(authType);
                     web->authDetails = sclone(sp);
                 }
-            } else
 #endif
+            } else
             if (c == 'c') {
                 if (scaselessmatch(key, "content-disposition")) {
                     web->contentDisposition = value;
 
                 } else if (scaselessmatch(key, "content-type")) {
+                    /*
+                        Reject repeats to avoid reinitializing upload state.
+                     */
+                    if (hasCT) {
+                        webError(web, -400, "Duplicate Content-Type header");
+                        return 0;
+                    }
+                    hasCT = 1;
                     web->contentType = value;
                     if (scontains(value, "multipart/form-data")) {
+#if ME_WEB_UPLOAD
                         if (webInitUpload(web) < 0) {
                             return 0;
                         }
+#else
+                        //  Refuse rather than parse a multipart body as something else
+                        webError(web, 415, "Uploads are not supported");
+                        return 0;
+#endif
 
                     } else if (smatch(value, "application/x-www-form-urlencoded")) {
                         web->formBody = 1;
@@ -3793,16 +5966,24 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                     }
 
                 } else if (scaselessmatch(key, "connection")) {
-                    if (scaselessmatch(value, "close")) {
-                        web->close = 1;
-                    }
+                    parseConnection(web, value);
                 } else if (scaselessmatch(key, "content-length")) {
-                    hasCL = 1;
-                    web->rxLen = web->rxRemaining = stoi(value);
-                    if (web->rxLen < 0) {
+                    /*
+                        RFC 9112 6.3: the value is 1*DIGIT and nothing else. A sign, a suffix, a
+                        comma list or a second differing Content-Length is a request a front-end
+                        may frame differently from us, which is a smuggling primitive, so each is
+                        refused. Repeated identical values are tolerated as the RFC permits.
+                     */
+                    if (sparseUint(value, 10, WEB_MAX_CONTENT_LENGTH, &t, &length) < 0 || *t != '\0') {
                         webError(web, -400, "Bad Content-Length");
                         return 0;
                     }
+                    if (hasCL && length != web->rxLen) {
+                        webError(web, -400, "Conflicting Content-Length");
+                        return 0;
+                    }
+                    hasCL = 1;
+                    web->rxLen = web->rxRemaining = (ssize) length;
 
                 } else if (scaselessmatch(key, "cookie")) {
                     if (web->cookie) {
@@ -3823,7 +6004,7 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                     web->ifMatchPresent = 1;
 
                 } else if (scaselessmatch(key, "if-modified-since")) {
-                    web->since = rParseHttpDate(value);
+                    web->since = parseDateHeader(value);
                     if (web->since > 0) {
                         web->ifModified = 1;
                     }
@@ -3836,6 +6017,15 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                     web->ifNoneMatch = 1;
 
                 } else if (scaselessmatch(key, "if-range")) {
+                    /*
+                        One If-Range only. A repeat overwrote web->ifMatch without freeing the
+                        previous clone, leaking on every repeat.
+                     */
+                    if (hasIfRange) {
+                        webError(web, -400, "Duplicate If-Range header");
+                        return 0;
+                    }
+                    hasIfRange = 1;
                     //  Can be either an ETag or a date - strip quotes for faster comparison
                     if (*value == '"') {
                         web->ifMatch = sclone(strim((char*) value, "\"", R_TRIM_BOTH));
@@ -3844,24 +6034,45 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                         web->ifMatch = sclone(strim((char*) value + 2, "\"", R_TRIM_BOTH));
                     } else {
                         //  Date format - parse it into web->since (will be used for conditional range)
-                        web->since = rParseHttpDate(value);
+                        web->since = parseDateHeader(value);
                     }
                     web->ifRange = 1;
 
                 } else if (scaselessmatch(key, "if-unmodified-since")) {
-                    web->unmodifiedSince = rParseHttpDate(value);
+                    web->unmodifiedSince = parseDateHeader(value);
                     if (web->unmodifiedSince > 0) {
                         web->ifUnmodified = 1;
                     }
                 }
 
+            } else if (c == 'h' && scaselessmatch(key, "host")) {
+                //  RFC 9112 3.2: more than one Host is a bad request
+                if (hasHost) {
+                    webError(web, -400, "Duplicate Host header");
+                    return 0;
+                }
+                hasHost = 1;
+
             } else if (c == 'l' && scaselessmatch(key, "last-event-id")) {
-                web->lastEventId = stoi(value);
+
+                if (sparseUint(value, 10, MAXINT64, &idEnd, &eventId) == 0 && *idEnd == '\0') {
+                    web->lastEventId = (ssize) eventId;
+                }
 
             } else if (c == 'o' && scaselessmatch(key, "origin")) {
                 web->origin = value;
 
             } else if (c == 'r' && scaselessmatch(key, "range")) {
+                /*
+                    One Range only. parseRangeHeader assigns the list head unconditionally, so a
+                    repeat orphaned the whole previous list - unrecoverable for the life of the
+                    process - and left the framing of two disagreeing headers ambiguous.
+                 */
+                if (hasRange) {
+                    webError(web, -400, "Duplicate Range header");
+                    return 0;
+                }
+                hasRange = 1;
                 value = sclone(value);
                 if (!parseRangeHeader(web, value)) {
                     rFree(value);
@@ -3871,9 +6082,29 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
                 rFree(value);
 
             } else if (c == 't' && scaselessmatch(key, "transfer-encoding")) {
-                if (scaselessmatch(value, "chunked")) {
-                    hasTE = 1;
+                if (hasTE) {
+                    webError(web, -400, "Duplicate Transfer-Encoding");
+                    return 0;
+                }
+                /*
+                    RFC 9112 6.1: Transfer-Encoding is a comma-separated list of codings, and
+                    "chunked" must be final and appear exactly once. A recipient that cannot
+                    decode the codings MUST respond 501 and MUST NOT treat the header as absent.
+
+                    Matching the whole value against "chunked" meant "gzip, chunked" and
+                    "chunked, chunked" were silently ignored - the body was then treated as
+                    zero-length while a front-end decoded it, which is a smuggling desync. It
+                    also left hasTE clear, so such a request slipped past the Content-Length
+                    conflict check below and the Content-Length was honoured instead.
+
+                    hasTE is therefore set on the presence of the header, not on the value.
+                 */
+                hasTE = 1;
+                if (scaselessmatch(strim(value, " \t", R_TRIM_BOTH), "chunked")) {
                     web->chunked = WEB_CHUNK_START;
+                } else {
+                    webError(web, -501, "Unsupported transfer coding");
+                    return 0;
                 }
             } else if (c == 'u' && scaselessmatch(key, "upgrade")) {
                 web->upgrade = value;
@@ -3895,6 +6126,26 @@ PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bo
         webNetError(web, "Cannot have both Content-Length and Transfer-Encoding");
         return 0;
     }
+    //  RFC 9112 6.1: Transfer-Encoding on an HTTP/1.0 request is faulty framing
+    if (hasTE && web->http10) {
+        webError(web, -400, "Transfer-Encoding is not supported with HTTP/1.0");
+        return 0;
+    }
+    /*
+        Switch protocols only when Connection lists upgrade and the request keeps the connection open (RFC 9110
+        7.8).
+     */
+    if (!upload && web->upgrade && (!web->connUpgrade || web->close)) {
+        web->upgrade = 0;
+    }
+    /*
+        Refuse unframed multipart bodies: without Content-Length or Transfer-Encoding the request has no body (RFC
+        9112 6.3). Part headers are exempt.
+     */
+    if (!upload && web->uploads && !web->chunked && web->rxLen < 0) {
+        webError(web, -411, "Multipart upload requires Content-Length or Transfer-Encoding");
+        return 0;
+    }
     if (!web->chunked && !web->uploads && web->rxLen < 0) {
         web->rxRemaining = 0;
     }
@@ -3913,24 +6164,24 @@ PUBLIC cchar *webGetHeader(Web *web, cchar *name)
     end = rGetBufEnd(web->rxHeaders);
     value = 0;
 
-    for (cp = start; cp < end; cp++) {
+    for (cp = start; cp < end; ) {
         if (scaselessmatch(cp, name)) {
             cp += slen(name) + 1;
             while (isWhite(*cp)) cp++;
             value = cp;
             break;
         }
+
         cp += slen(cp) + 1;
-        if (cp < end && *cp) {
-            cp += slen(cp) + 1;
-        }
+        cp += slen(cp);
+        while (cp < end && *cp == '\0') cp++;
     }
     return value;
 }
 
 PUBLIC bool webGetNextHeader(Web *web, cchar **pkey, cchar **pvalue)
 {
-    cchar *cp, *start;
+    cchar *cp, *end, *start;
 
     assert(pkey);
     assert(pvalue);
@@ -3939,7 +6190,10 @@ PUBLIC bool webGetNextHeader(Web *web, cchar **pkey, cchar **pvalue)
         return 0;
     }
     if (*pvalue) {
-        start = *pvalue + slen(*pvalue) + 2;
+        // Trailing whitespace produces more than two terminating NULs.
+        end = rGetBufEnd(web->rxHeaders);
+        for (start = *pvalue + slen(*pvalue); start < end && *start == '\0'; start++) {
+        }
     } else {
         start = rGetBufStart(web->rxHeaders);
     }
@@ -3962,17 +6216,45 @@ PUBLIC int webReadBody(Web *web)
     WebRoute *route;
     RBuf *buf;
     ssize nbytes;
+    Ticks receiveBy;
 
     route = web->route;
-    if ((route && route->stream) || web->webSocket || web->put || (web->rxRemaining <= 0 && !web->chunked)) {
+    /*
+        bodyRead rather than a test of the framing state. web->chunked is a state-machine position,
+        not a boolean, and its terminal value WEB_CHUNK_EOF is still truthy, so "no body remains"
+        was false for a fully-read chunked request. A second call then re-parsed the same body and
+        orphaned the first parse. Any caller after the body has been read - a directory redirect,
+        a route redirect, a handler - is now a no-op whatever the framing.
+     */
+    /* Buffer and validate PUT bodies described by signatures; otherwise stream them to the handler. */
+    if (web->bodyRead || (route && route->stream) || web->webSocket ||
+        (web->put && !(web->signature >= 0 && isValidated(web))) ||
+        (web->rxRemaining <= 0 && !web->chunked)) {
         // Delay reading request body
         return 0;
     }
     if (!web->body) {
         web->body = rAllocBuf(ME_BUFSIZE);
     }
+    /*
+        Bound the whole read, not each wait within it. webConsumeBody calls webUpdateDeadline for
+        every byte taken from the buffer, which resets the deadline to the inactivity window and,
+        byte by byte, out to the full request timeout - so a peer sending one byte at a time held
+        this fiber, and therefore one of the fiber pool's connection slots, for minutes while
+        sending almost nothing. receiveTimeout is measured from the start of the request and is not
+        refreshed, so the body either arrives inside the budget or the request fails.
+
+        Only this path is bounded, and only up to web.limits.body: the guard above has already
+        returned for streamed routes, WebSockets and PUT, which read at the peer's pace by design
+        and where a large upload over a slow link is legitimate traffic of the same shape.
+     */
+    receiveBy = rGetTimeouts() ? web->started + web->host->receiveTimeout : 0;
+
     buf = web->body;
     do {
+        if (receiveBy) {
+            web->deadline = min(web->deadline, receiveBy);
+        }
         rReserveBufSpace(buf, ME_BUFSIZE);
         nbytes = webRead(web, rGetBufEnd(buf), rGetBufSpace(buf));
         if (nbytes < 0) {
@@ -3985,6 +6267,12 @@ PUBLIC int webReadBody(Web *web)
         }
     } while (nbytes > 0 && web->rxRemaining > 0);
     rAddNullToBuf(buf);
+    if (buf->end >= buf->endbuf) {
+        //  processBody parses the body as a C string, so never hand it an unterminated block
+        webError(web, -413, "Request is too big");
+        return R_ERR_CANT_READ;
+    }
+    web->bodyRead = 1;
 
     if (processBody(web) < 0) {
         //  Continue
@@ -4005,21 +6293,24 @@ static int processBody(Web *web)
     if (web->host->flags & WEB_SHOW_REQ_BODY && rGetBufLength(web->body)) {
         rLog("raw", "web", "Request Body <<<<\n\n%s\n\n", rBufToString(web->body));
     }
+    //  Never orphan an earlier parse: a re-entry must replace it, not leak it
     if (web->jsonBody) {
+        jsonFree(web->vars);
         if ((web->vars = webParseJson(web)) == 0) {
             return webError(web, 400, "JSON body is malformed");
         }
     } else if (web->formBody) {
+        jsonFree(web->vars);
         web->vars = jsonAlloc();
-        webParseForm(web);
+        return webParseForm(web);
     }
     return 0;
 }
 
-static void processQuery(Web *web)
+static int processQuery(Web *web)
 {
     web->qvars = jsonAlloc();
-    webParseQuery(web);
+    return webParseQuery(web);
 }
 
 static void processOptions(Web *web)
@@ -4071,6 +6362,10 @@ PUBLIC void webUpdateDeadline(Web *web)
  */
 PUBLIC void webBuffer(Web *web, size_t size)
 {
+    /* Stop buffering once headers fix framing; buffering can no longer compute Content-Length. */
+    if (web->wroteHeaders) {
+        return;
+    }
     if (size <= 0) {
         size = ME_BUFSIZE;
     }
@@ -4082,6 +6377,36 @@ PUBLIC void webBuffer(Web *web, size_t size)
     } else {
         web->buffer = rAllocBuf(size);
     }
+    web->buffering = 1;
+}
+
+/*
+    Determine if this response may be stored and reused by a cache at all.
+    Cacheability is a property of the response, not only of the route: an error, an authentication
+    challenge, a credentialed body or a response minting a session cookie must never be stored,
+    however the route is configured. A cached 401 locks the legitimate user out for the route's
+    maxAge, and a cached authenticated 200 is served to the next anonymous client.
+ */
+/* Authenticated, session-bound and token-bearing responses must not enter shared caches. */
+static bool credentialedResponse(Web *web)
+{
+    return web->authenticated || web->session || rLookupName(web->txHeaders, "Set-Cookie") ||
+           rLookupName(web->txHeaders, WEB_XSRF_HEADER);
+}
+
+static bool cacheableResponse(Web *web)
+{
+    if (!(web->status == 200 || web->status == 203 || web->status == 204 ||
+          web->status == 206 || web->status == 304)) {
+        return false;
+    }
+    if (!web->get && !web->head) {
+        return false;
+    }
+    if (credentialedResponse(web)) {
+        return false;
+    }
+    return true;
 }
 
 /*
@@ -4093,6 +6418,9 @@ static bool shouldCacheControl(Web *web, WebRoute *route)
 
     if (route->cacheMaxAge == 0 && !route->cacheDirectives) {
         //  Check if cache control is configured (maxAge > 0 or directives set)
+        return false;
+    }
+    if (!cacheableResponse(web)) {
         return false;
     }
     if (!route->extensions) {
@@ -4117,15 +6445,26 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
     WebRoute *route;
     RBuf *buf;
     time_t expires;
-    bool hasNoCache, hasNoStore;
+    bool hasNoCache, hasNoStore, hasPrivate;
 
     route = web->route;
-    if (!route) {
+    if (!route || !shouldCacheControl(web, route)) {
+        /*
+            Without route policy, explicitly forbid caching errors, challenges and credential/session-bound
+            responses.
+         */
+        if ((web->status >= 400 || credentialedResponse(web)) && !rLookupName(web->txHeaders, "Cache-Control")) {
+            webAddHeaderStaticString(web, "Cache-Control", "no-store");
+        }
         return;
     }
-    if (!shouldCacheControl(web, route)) {
+    if (rLookupName(web->txHeaders, "Cache-Control")) {
+        //  The handler set its own policy. Appending the route's would send two that disagree.
         return;
     }
+    hasNoCache = route->cacheDirectives && scontains(route->cacheDirectives, "no-cache");
+    hasNoStore = route->cacheDirectives && scontains(route->cacheDirectives, "no-store");
+    hasPrivate = route->cacheDirectives && scontains(route->cacheDirectives, "private");
     /*
         Build Cache-Control header value
         Always prefix directives with ", " then skip the first comma
@@ -4148,15 +6487,19 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
         rFreeBuf(buf);
     }
 
+    /* Merge request-dependent headers into Vary for shared caches. Private caches need no shared key. */
+    if (!hasPrivate && !hasNoStore) {
+        webAddVary(web, "Cookie");
+        webAddVary(web, "Authorization");
+    }
+
     /*
         Set Expires and Pragma headers for HTTP/1.0 compatibility
         HTTP/1.1+ clients understand Cache-Control and don't need these headers
      */
     if (web->http10) {
-        hasNoCache = route->cacheDirectives && scontains(route->cacheDirectives, "no-cache");
-        hasNoStore = route->cacheDirectives && scontains(route->cacheDirectives, "no-store");
-
-        if (route->cacheMaxAge > 0 && !hasNoCache && !hasNoStore) {
+        //  An HTTP/1.0 cache does not understand private, so a private response gets no Expires
+        if (route->cacheMaxAge > 0 && !hasNoCache && !hasNoStore && !hasPrivate) {
             expires = time(0) + route->cacheMaxAge;
             webAddHeaderDynamicString(web, "Expires", webHttpDate(expires));
 
@@ -4169,7 +6512,7 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -4187,13 +6530,22 @@ PUBLIC void webSetCacheControlHeaders(Web *web)
 
 /************************************ Forwards *********************************/
 
-static char *findPatternFrom(RBuf *buf, cchar *pattern, size_t patLen, size_t fromOffset);
+static ssize bodyAvailable(Web *web);
+static int decodeChunks(Web *web);
+static ssize fillBuffer(Web *web, size_t toRead);
+static char *findCrlf(char *buf, size_t len, bool *bad);
+static char *findPatternFrom(RBuf *buf, cchar *pattern, size_t patLen, size_t fromOffset, size_t len);
 static bool isprintable(cchar *s, size_t len);
-static ssize consumeChunkStart(Web *web, size_t desiredSize);
-static int consumeChunkData(Web *web, ssize nbytes);
-static ssize readSocketBuffer(Web *web, size_t desiredSize);
+static bool isTrailerField(cchar *line, size_t len);
 static ssize readSocketBlock(Web *web, size_t desiredSize);
+static void sendRedirect(Web *web, int status, cchar *location);
 static int writeChunkDivider(Web *web, size_t bufsize);
+
+/*
+    Bound on a chunk-size line, including any chunk extension. Legal lines are a few hex digits;
+    a line this long is not a size, it is an attempt to pin the buffer.
+ */
+#define WEB_CHUNK_LINE 128
 
 /************************************* Code ***********************************/
 /*
@@ -4205,16 +6557,8 @@ static int writeChunkDivider(Web *web, size_t bufsize);
  */
 PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize)
 {
-    RBuf   *bp;
-    ssize  nbytes;
-    size_t outstanding;
+    ssize nbytes;
 
-    bp = web->rx;
-
-    if (!web->chunked) {
-        outstanding = max(rGetBufLength(bp), (size_t) web->rxRemaining);
-        bufsize = min(bufsize, outstanding);
-    }
     if ((nbytes = readSocketBlock(web, bufsize)) < 0) {
         if (web->rxRemaining > 0) {
             return webNetError(web, "Cannot read from socket");
@@ -4225,11 +6569,8 @@ PUBLIC ssize webRead(Web *web, char *buf, size_t bufsize)
     if (nbytes == 0) {
         return 0;
     }
-    //  Copy to user buffer
-    memcpy(buf, bp->start, (size_t) nbytes);
-    if (consumeChunkData(web, nbytes) < 0) {
-        return R_ERR_CANT_READ;
-    }
+    memcpy(buf, web->rx->start, (size_t) nbytes);
+    webConsumeBody(web, (size_t) nbytes);
     return nbytes;
 }
 
@@ -4244,6 +6585,14 @@ static ssize readSocket(Web *web, size_t toRead, Ticks deadline)
 
     bp = web->rx;
     if ((nbytes = rReadSocket(web->sock, bp->end, toRead, deadline)) < 0) {
+        /*
+            Distinguish "you were too slow" from "the connection broke". Both arrive here as a
+            negative read, and funnelling them together is why every timeout closed silently and
+            was indistinguishable at the client from a crash or a network failure.
+         */
+        if (deadline && rGetTicks() >= deadline) {
+            web->timedOut = 1;
+        }
         return R_ERR_CANT_READ;
     }
     rAdjustBufEnd(bp, nbytes);
@@ -4252,137 +6601,265 @@ static ssize readSocket(Web *web, size_t toRead, Ticks deadline)
 }
 
 /*
-    Parse chunk header and transition from WEB_CHUNK_START to WEB_CHUNK_DATA.
-    Returns desiredSize (capped to chunkRemaining) on success, 0 on EOF, negative on error.
+    Request body bytes ready at the front of the rx buffer. For a chunked body this is the decoded
+    region: the raw bytes behind it still carry their framing and are not body data yet. For a body
+    of known length it is bounded by the bytes remaining, so a pipelined request buffered behind the
+    body is never handed out as body data. Before the headers are parsed nothing is known and the
+    whole buffer is available.
  */
-static ssize consumeChunkStart(Web *web, size_t desiredSize)
+PUBLIC size_t webBufferedBody(Web *web)
 {
-    ssize chunkSize;
-    char  cbuf[32];
-
-    if (web->chunked == WEB_CHUNK_EOF) {
-        return 0;
+    if (web->chunked) {
+        return (size_t) web->rxDecoded;
     }
-    if (web->chunked == WEB_CHUNK_START) {
-        if (webReadUntil(web, "\r\n", cbuf, sizeof(cbuf)) < 0) {
-            return webError(web, -400, "Bad chunk data");
-        }
-        cbuf[sizeof(cbuf) - 1] = '\0';
-        chunkSize = (ssize) stoix(cbuf, NULL, 16);
-        if (chunkSize < 0) {
-            return webError(web, -400, "Bad chunk specification");
-        }
-        if (chunkSize == 0) {
-            //  Zero chunk -- end of body
-            if (webReadUntil(web, "\r\n", cbuf, sizeof(cbuf)) < 0) {
-                return webError(web, -400, "Bad chunk data");
-            }
-            web->chunkRemaining = 0;
-            web->rxRemaining = 0;
-            web->chunked = WEB_CHUNK_EOF;
-            return 0;
-        }
-        web->chunkRemaining = chunkSize;
-        web->chunked = WEB_CHUNK_DATA;
-    }
-    //  Cap desiredSize to chunkRemaining
-    return (ssize) min(desiredSize, (size_t) web->chunkRemaining);
+    return min(rGetBufLength(web->rx), (size_t) web->rxRemaining);
 }
 
 /*
-    Consume data from the rx buffer and update chunk state.
-    Handles rAdjustBufStart, chunkRemaining, rxRemaining, and trailing CRLF.
-    Returns 0 on success, negative on error.
+    Body bytes ready at the front of the rx buffer, after decoding any raw chunked data that
+    arrived with the headers or behind the region already decoded. Negative on a framing error,
+    after the error response has been issued.
  */
-static int consumeChunkData(Web *web, ssize nbytes)
+static ssize bodyAvailable(Web *web)
 {
-    char cbuf[32];
-
-    if (nbytes <= 0) {
-        return 0;
+    if (web->chunked && decodeChunks(web) < 0) {
+        return R_ERR_BAD_REQUEST;
     }
-    rAdjustBufStart(web->rx, nbytes);
+    return (ssize) webBufferedBody(web);
+}
 
-    if (web->chunked == WEB_CHUNK_DATA) {
-        web->chunkRemaining -= nbytes;
-        if (web->chunkRemaining <= 0) {
-            web->chunked = WEB_CHUNK_START;
-            web->chunkRemaining = WEB_UNLIMITED;
-            if (webReadUntil(web, "\r\n", cbuf, sizeof(cbuf)) < 0) {
-                return webNetError(web, "Bad chunk data");
-            }
+/*
+    Consume body bytes from the front of the rx buffer after they have been used.
+ */
+PUBLIC void webConsumeBody(Web *web, size_t nbytes)
+{
+    if (nbytes == 0) {
+        return;
+    }
+    rAdjustBufStart(web->rx, (ssize) nbytes);
+    if (web->chunked) {
+        web->rxDecoded -= (ssize) nbytes;
+        if (web->rxDecoded == 0 && web->chunked == WEB_CHUNK_EOF) {
+            web->rxRemaining = 0;
         }
-    } else if (web->chunked == WEB_CHUNK_EOF) {
-        web->rxRemaining = 0;
     } else {
-        web->rxRemaining -= nbytes;
+        web->rxRemaining -= (Offset) nbytes;
     }
     webUpdateDeadline(web);
+}
+
+/* Find CRLF within len; return NULL if incomplete. Set bad on bare CR/LF to prevent ambiguous framing. */
+static char *findCrlf(char *buf, size_t len, bool *bad)
+{
+    char *cp, *end;
+
+    *bad = 0;
+    end = &buf[len];
+    for (cp = buf; cp < end; cp++) {
+        if (*cp == '\r') {
+            if (&cp[1] >= end) {
+                return 0;
+            }
+            if (cp[1] == '\n') {
+                return cp;
+            }
+            *bad = 1;
+            return 0;
+        } else if (*cp == '\n') {
+            *bad = 1;
+            return 0;
+        }
+    }
     return 0;
 }
 
 /*
-    Internal: Low level read and buffer.
-    Fill the rx buffer from socket without chunk handling.
-    Returns bytes available in buffer or negative on error.
+    Require token-name, colon, and no NUL in trailers (RFC 9112 7.1.2).
  */
-static ssize readSocketBuffer(Web *web, size_t desiredSize)
+static bool isTrailerField(cchar *line, size_t len)
 {
-    RBuf   *bp;
-    ssize  nbytes;
-    size_t available, bufsize, toRead;
+    cchar *cp, *end;
 
-    bp = web->rx;
-
-    //  If data already in buffer, return available bytes
-    available = rGetBufLength(bp);
-    if (available > 0) {
-        return (ssize) min(available, desiredSize);
+    end = &line[len];
+    for (cp = line; cp < end && *cp != ':'; cp++) {
+        if (!isalnum((uchar) * cp) && !schr("!#$%&'*+-.^_`|~", *cp)) {
+            return 0;
+        }
     }
-    //  If no more body data expected (and buffer is empty), return EOF
-    if (web->rxRemaining == 0) {
+    if (cp == line || cp >= end) {
         return 0;
     }
-    /*
-        Size the buffer as large as possible to minimize the number of socket reads.
-        Limit to the remaining body data, the desired size or 64K
-     */
-    bufsize = max(desiredSize, WEB_BUF_BOOST_4X);
-    if (web->rxRemaining > 0 && (size_t) web->rxRemaining < bufsize) {
-        bufsize = (size_t) web->rxRemaining;
-    }
-    if (bufsize <= ME_BUFSIZE) {
-        bufsize = ME_BUFSIZE;
-    }
-    rCompactBuf(bp);
-    rGrowBufSize(bp, bufsize);
-    toRead = rGetBufSpace(bp);
-    if (web->rxRemaining > 0) {
-        toRead = min(toRead, (size_t) web->rxRemaining);
-    }
-    if ((nbytes = readSocket(web, toRead, web->deadline)) < 0) {
-        return webNetError(web, "Cannot read from socket");
-    }
-    return (ssize) min(rGetBufLength(bp), desiredSize);
+    return memchr(cp, '\0', (size_t) (end - cp)) == 0;
 }
 
 /*
-    Internal: Fill the rx buffer with request body data without copying.
-    Returns the number of bytes available in web->rx buffer, or negative on error.
-    Handles chunk header parsing for chunked transfer encoding.
-    Does NOT consume data - caller must call consumeChunkData() after processing.
+    Decode chunks in place after the decoded region, resuming incomplete framing on later reads. Require bounded
+    hexadecimal sizes and valid extensions/trailers (RFC 9112 7.1). Leave pipelined bytes untouched. Return 0, or
+    negative after an error response.
+ */
+static int decodeChunks(Web *web)
+{
+    RBuf   *bp;
+    char   *raw, *eol, *ep;
+    int64  value, maxChunk;
+    size_t rawLen, lineLen, limit;
+    ssize  nbytes;
+    bool   bad;
+    int    rc;
+
+    bp = web->rx;
+    maxChunk = (web->uploads || web->put) ? web->host->maxUpload : web->host->maxBody;
+    while (web->chunked != WEB_CHUNK_EOF) {
+        raw = &bp->start[web->rxDecoded];
+        rawLen = (size_t) (bp->end - raw);
+        if (rawLen == 0) {
+            break;
+        }
+        if (web->chunked == WEB_CHUNK_DATA) {
+            nbytes = (ssize) min(rawLen, (size_t) web->chunkRemaining);
+            web->rxDecoded += nbytes;
+            web->chunkRemaining -= nbytes;
+            if (web->chunkRemaining == 0) {
+                web->chunked = WEB_CHUNK_END;
+            }
+            continue;
+        }
+        /*
+            The remaining states each expect a CRLF-terminated line. A chunk-size line is short by
+            nature, so bound it tightly; a trailer section is bounded like the headers.
+         */
+        limit = (web->chunked == WEB_CHUNK_TRAILER) ? (size_t) web->host->maxHeader : WEB_CHUNK_LINE;
+        if ((eol = findCrlf(raw, min(rawLen, limit), &bad)) == 0) {
+            if (bad || rawLen >= limit) {
+                return webError(web, -400, "Bad chunk specification");
+            }
+            //  Need more data
+            break;
+        }
+        lineLen = (size_t) (eol - raw) + 2;
+
+        //  Framing and trailers are read and buffered like the body, so they share its limit
+        web->rxFraming += (ssize) lineLen;
+        if (web->rxFraming > maxChunk) {
+            return webError(web, -413, "Chunk framing exceeds the body limit");
+        }
+        if (web->chunked == WEB_CHUNK_START) {
+            *eol = '\0';
+            rc = sparseUint(raw, 16, maxChunk, &ep, &value);
+            *eol = '\r';
+            if (rc < 0 || (ep != eol && *ep != ';')) {
+                return webError(web, -400, "Bad chunk specification");
+            }
+            if (value == 0) {
+                web->chunked = WEB_CHUNK_TRAILER;
+            } else {
+                web->chunkRemaining = value;
+                web->chunked = WEB_CHUNK_DATA;
+            }
+
+        } else if (web->chunked == WEB_CHUNK_END) {
+            if (lineLen != 2) {
+                return webError(web, -400, "Bad chunk data");
+            }
+            web->chunked = WEB_CHUNK_START;
+
+        } else if (lineLen != 2 && !isTrailerField(raw, lineLen - 2)) {
+            return webError(web, -400, "Bad chunk trailer");
+
+        } else if (lineLen == 2) {
+            /*
+                Empty line ends the trailer section and the body. The body is not finished with
+                until the decoded data has been consumed as well, so rxRemaining stays set while
+                any is pending and webConsumeBody clears it.
+             */
+            web->chunked = WEB_CHUNK_EOF;
+            if (web->rxDecoded == 0) {
+                web->rxRemaining = 0;
+            }
+        }
+        //  Close the data up over the framing line
+        memmove(raw, &raw[lineLen], rawLen - lineLen);
+        rAdjustBufEnd(bp, -(ssize) lineLen);
+    }
+    return 0;
+}
+
+/*
+    Answer a request that ran out of time before any response was written.
+
+    RFC 9110 section 15.5.9: a server that times out waiting for a request should send 408 and
+    close. Without it the client sees a bare TCP close, indistinguishable from a crash or a dropped
+    link, so a retry loop that would back off on a 408 retries immediately against a server already
+    under timeout pressure, and an operator debugging dropped requests has no signal at either end.
+
+    This must run before webNetError, which closes the socket: once it is closed there is nothing
+    left to answer on, and that is why every timeout path was silent.
+
+    Two cases stay silent, deliberately. Once response headers are on the wire a status cannot be
+    prepended. And an idle keep-alive connection with no request in flight never reaches here - it
+    times out in the wait handler, which RFC 9112 section 9.5 allows to close without a response.
+ */
+static void timeoutResponse(Web *web)
+{
+    if (!web->timedOut || web->wroteHeaders || rIsSocketClosed(web->sock)) {
+        return;
+    }
+    web->close = 1;
+    webWriteResponseString(web, -408, "Request timed out");
+}
+
+/*
+    Read from the socket into the rx buffer. Reads up to toRead bytes, growing the buffer as
+    required, and decodes any chunk framing on what arrived. Returns the number of bytes read from
+    the socket or negative on error, after issuing the error response.
+ */
+static ssize fillBuffer(Web *web, size_t toRead)
+{
+    RBuf  *bp;
+    ssize nbytes;
+
+    bp = web->rx;
+    rCompactBuf(bp);
+    //  Never read past the end of a body of known length
+    if (!web->chunked && (size_t) web->rxRemaining < toRead) {
+        toRead = (size_t) web->rxRemaining;
+    }
+    rReserveBufSpace(bp, toRead);
+    toRead = min(toRead, rGetBufSpace(bp));
+    if ((nbytes = readSocket(web, toRead, web->deadline)) < 0) {
+        timeoutResponse(web);
+        return webNetError(web, "Cannot read from socket");
+    }
+    if (web->chunked && decodeChunks(web) < 0) {
+        return R_ERR_BAD_REQUEST;
+    }
+    return nbytes;
+}
+
+/*
+    Make request body data available at the front of the rx buffer, reading from the socket as
+    required. Returns the number of bytes available up to desiredSize, 0 at the end of the body, or
+    negative on error. The data is not consumed: callers call webConsumeBody() when done with it.
  */
 static ssize readSocketBlock(Web *web, size_t desiredSize)
 {
-    ssize size;
+    ssize  available;
+    size_t toRead;
 
-    if (web->chunked) {
-        if ((size = consumeChunkStart(web, desiredSize)) <= 0) {
-            return size;  // 0 for EOF, negative for error
+    while ((available = bodyAvailable(web)) == 0) {
+        if (web->rxRemaining == 0) {
+            return 0;
         }
-        desiredSize = (size_t) size;
+        //  Read as much as possible to minimize the number of socket reads
+        toRead = max(desiredSize, WEB_BUF_BOOST_4X);
+        if (fillBuffer(web, toRead) < 0) {
+            return R_ERR_CANT_READ;
+        }
     }
-    return readSocketBuffer(web, desiredSize);
+    if (available < 0) {
+        return available;
+    }
+    return min(available, (ssize) desiredSize);
 }
 
 /*
@@ -4407,11 +6884,7 @@ PUBLIC ssize webReadDirect(Web *web, char **dataPtr, size_t desiredSize)
     }
     //  Save pointer before consuming
     *dataPtr = web->rx->start;
-
-    //  Consume data internally (adjusts start pointer, handles chunk state)
-    if (consumeChunkData(web, nbytes) < 0) {
-        return R_ERR_CANT_READ;
-    }
+    webConsumeBody(web, (size_t) nbytes);
     return nbytes;
 }
 
@@ -4443,21 +6916,30 @@ PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, size_t limit)
         return R_ERR_CANT_FIND;
     }
     if (buf && nbytes > 0) {
-        //  Copy data into the supplied buffer
-        len = (ssize) min((size_t) nbytes, limit);
+        /*
+            Refuse rather than truncate. Copying min(nbytes, limit) while returning nbytes left the
+            tail of an over-long line in the buffer, where the caller then consumed it as data -
+            the buffer and the returned length disagreed, which is a desync waiting for a caller.
+         */
+        if ((size_t) nbytes > limit) {
+            return R_ERR_WONT_FIT;
+        }
+        len = (ssize) nbytes;
         memcpy(buf, bp->start, (size_t) len);
-        rAdjustBufStart(bp, len);
+        webConsumeBody(web, (size_t) len);
     }
     return nbytes;
 }
 
 /*
     Read until the specified pattern is seen or until the size limit.
-    This may read headers and body data for this request.
-    If reading headers, we may read all the body data and (WARNING) any pipelined request following.
-    If chunked, we may also read a subsequent pipelined request. May call webNetError.
-    Return the total number of buffered bytes up to the requested pattern.
-    Return zero if pattern not found before limit or negative on errors.
+    Reading the headers may also read all the body data and (WARNING) any pipelined request
+    following. Only the request body region of the buffer is scanned: a chunked body is decoded
+    as it arrives and a body of known length is never scanned past its end, so the pattern is
+    matched against body bytes alone.
+    Return the total number of buffered bytes up to and including the requested pattern.
+    Return zero if the pattern is not found before the limit, negative if the body ends before
+    the pattern is seen or on a read error.
 
     Uses incremental scanning: tracks how much has been scanned and only scans new data
     plus a safety overlap of pattern length to handle patterns split across reads.
@@ -4466,11 +6948,10 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *pattern, size_t limit)
 {
     RBuf   *bp;
     char   *end;
-    size_t patLen, toRead, scanned, scanFrom;
-    ssize  nbytes;
+    ssize  available;
+    size_t patLen, scanned, scanFrom;
 
     assert(web);
-    assert(limit >= 0);
     assert(pattern);
 
     bp = web->rx;
@@ -4478,30 +6959,26 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *pattern, size_t limit)
     scanned = 0;
 
     while (1) {
+        if ((available = bodyAvailable(web)) < 0) {
+            return available;
+        }
         //  Scan from (scanned - patLen) to handle patterns split across reads
         scanFrom = (scanned > patLen) ? scanned - patLen : 0;
 
-        if ((end = findPatternFrom(bp, pattern, patLen, scanFrom)) != 0) {
+        if ((end = findPatternFrom(bp, pattern, patLen, scanFrom, (size_t) available)) != 0) {
             break;
         }
-        if (rGetBufLength(bp) >= limit) {
+        if ((size_t) available >= limit) {
             //  Pattern not found before limit
             return 0;
         }
+        if (web->chunked == WEB_CHUNK_EOF || web->rxRemaining <= available) {
+            //  The body has ended without the pattern
+            return R_ERR_CANT_FIND;
+        }
         //  Mark current buffer as fully scanned before reading more
-        scanned = rGetBufLength(bp);
-
-        rCompactBuf(bp);
-        rReserveBufSpace(bp, limit - rGetBufLength(bp));
-        toRead = rGetBufSpace(bp);
-        if (limit) {
-            toRead = min(toRead, limit - rGetBufLength(bp));
-        }
-        if (toRead <= 0) {
-            //  Pattern not found before the limit
-            return 0;
-        }
-        if ((nbytes = readSocket(web, toRead, web->deadline)) < 0) {
+        scanned = (size_t) available;
+        if (fillBuffer(web, limit - (size_t) available) < 0) {
             return R_ERR_CANT_READ;
         }
     }
@@ -4515,28 +6992,23 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *pattern, size_t limit)
     plus a safety overlap to handle patterns split across socket reads.
     Return a pointer to the pattern in the buffer or NULL if not found.
  */
-static char *findPatternFrom(RBuf *buf, cchar *pattern, size_t patLen, size_t fromOffset)
+static char *findPatternFrom(RBuf *buf, cchar *pattern, size_t patLen, size_t fromOffset, size_t len)
 {
-    char   *cp, *endp, *searchStart;
-    size_t bufLen;
+    char *cp, *endp, *searchStart;
 
     assert(buf);
 
-    bufLen = rGetBufLength(buf);
-    if (bufLen < patLen || fromOffset < 0) {
+    if (len < patLen) {
         return 0;
     }
     searchStart = buf->start + fromOffset;
-    endp = buf->start + (bufLen - patLen) + 1;
+    endp = buf->start + (len - patLen) + 1;
 
     if (searchStart >= endp) {
         return 0;
     }
     for (cp = searchStart; cp < endp; cp++) {
         if ((cp = (char*) memchr(cp, *pattern, (size_t) (endp - cp))) == 0) {
-            return 0;
-        }
-        if ((size_t) (buf->end - cp) < patLen) {
             return 0;
         }
         if (memcmp(cp, pattern, patLen) == 0) {
@@ -4572,6 +7044,7 @@ PUBLIC ssize webWriteHeaders(Web *web)
     RName   *header;
     RBuf    *buf;
     cchar   *connection, *protocol;
+    char    *redacted;
     ssize   nbytes;
     int     status;
 
@@ -4597,7 +7070,7 @@ PUBLIC ssize webWriteHeaders(Web *web)
     }
     webAddHeaderDynamicString(web, "Date", webHttpDate(time(0)));
 
-    if (web->upgrade) {
+    if (web->upgrade && status == 101) {
         connection = "Upgrade";
     } else if (web->close) {
         connection = "close";
@@ -4609,10 +7082,19 @@ PUBLIC ssize webWriteHeaders(Web *web)
     }
     webAddHeaderStaticString(web, "Connection", connection);
 
+    web->chunkedTx = 0;
     if (!((100 <= status && status <= 199) || status == 204 || status == 304)) {
         //  Server must not emit a content length header for 1XX, 204 and 304 status
         if (web->txLen < 0) {
-            webAddHeaderStaticString(web, "Transfer-Encoding", "chunked");
+            /*
+                HTTP/1.0 has no chunked transfer coding, so a 1.0 client parses the chunk-size lines
+                as body content. Frame by connection close instead - web->close is already set for
+                1.0 in parseRequestLine.
+             */
+            if (!web->http10) {
+                web->chunkedTx = 1;
+                webAddHeaderStaticString(web, "Transfer-Encoding", "chunked");
+            }
         } else {
             web->txRemaining = web->txLen;
             webAddHeader(web, "Content-Length", "%lld", (long long) web->txLen);
@@ -4621,11 +7103,16 @@ PUBLIC ssize webWriteHeaders(Web *web)
     if (web->redirect) {
         webAddHeaderStaticString(web, "Location", web->redirect);
     }
-    if (!web->mime && web->ext) {
-        web->mime = rLookupName(host->mimeTypes, web->ext);
-    }
-    if (web->mime) {
-        webAddHeaderStaticString(web, "Content-Type", web->mime);
+    if (!rLookupName(web->txHeaders, "Content-Type")) {
+        if (!web->mime && web->ext) {
+            web->mime = rLookupName(host->mimeTypes, web->ext);
+        }
+        if (!web->mime && web->txLen != 0) {
+            web->mime = "application/octet-stream";
+        }
+        if (web->mime) {
+            webAddHeaderStaticString(web, "Content-Type", web->mime);
+        }
     }
 
     //  Set client-side cache control headers based on route configuration
@@ -4642,7 +7129,8 @@ PUBLIC ssize webWriteHeaders(Web *web)
     /*
         Emit HTTP response line
      */
-    protocol = web->protocol ? web->protocol : "HTTP/1.1";
+    //  Always a server owned constant. Never echo the token the client sent.
+    protocol = web->http10 ? "HTTP/1.0" : "HTTP/1.1";
 
     buf = rAllocBuf(1024);
     rPutStringToBuf(buf, protocol);
@@ -4665,10 +7153,16 @@ PUBLIC ssize webWriteHeaders(Web *web)
         rPutStringToBuf(buf, "\r\n");
     }
     if (host->flags & WEB_SHOW_RESP_HEADERS) {
-        rLog("raw", "web", "Response >>>>\n\n%s\n", rBufToString(buf));
+        redacted = webRedactHeaders(rBufToString(buf));
+        rLog("raw", "web", "Response >>>>\n\n%s\n", redacted);
+        rFree(redacted);
     }
-    if (web->txLen >= 0 || web->upgraded) {
-        //  Delay adding if using transfer encoding. This optimization eliminates a write per chunk.
+    if (!web->chunkedTx || web->head) {
+        /*
+            Delay adding if using transfer encoding. This optimization eliminates a write per chunk.
+            A HEAD response writes no chunk framing at all, so its terminator has to be emitted here
+            or the header block runs straight into the next response on the connection.
+         */
         rPutStringToBuf(buf, "\r\n");
     }
     if ((nbytes = webWrite(web, rGetBufStart(buf), rGetBufLength(buf))) < 0) {
@@ -4701,10 +7195,10 @@ PUBLIC void webAddStandardHeaders(Web *web)
         { "Referrer-Policy",        "no-referrer" },
         { 0, 0 }
     };
-    WebHost  *host;
-    Json     *json;
-    JsonNode *header;
-    int      i;
+    WebHost      *host;
+    Json         *json;
+    JsonNode     *header;
+    int          i;
 
     host = web->host;
     if (host->headers >= 0) {
@@ -4744,27 +7238,77 @@ PUBLIC void webAddHeaderStaticString(Web *web, cchar *key, cchar *value)
     rAddDuplicateName(web->txHeaders, key, (void*) value, R_STATIC_VALUE);
 }
 
+/* Allow absent Origin, same-origin requests, or explicitly configured origins. A configured * allows all origins. */
+PUBLIC bool webMatchOrigin(Web *web, int originsId)
+{
+    JsonNode *child;
+    cchar    *origin, *hostHeader;
+    char     *hostname, *expect;
+    bool     ok;
+
+    origin = web->origin;
+    if (origin == 0 || *origin == '\0') {
+        return 1;
+    }
+    if (originsId >= 0) {
+        for (ITERATE_JSON_ID(web->host->config, originsId, child, id)) {
+            if (smatch(child->value, "*") || smatch(child->value, origin)) {
+                return 1;
+            }
+        }
+        return 0;
+    }
+    hostname = 0;
+    if ((hostHeader = webGetHeader(web, "host")) == 0 || *hostHeader == '\0') {
+        if ((hostname = webGetHostName(web)) == 0) {
+            return 0;
+        }
+        hostHeader = hostname;
+    }
+    expect = sfmt("%s://%s", rIsSocketSecure(web->sock) ? "https" : "http", hostHeader);
+    ok = smatch(origin, expect);
+    rFree(expect);
+    rFree(hostname);
+    return ok;
+}
+
 /*
-    Add an Access-Control-Allow-Origin response header necessary for CORS requests.
+    Merge into Vary so caches retain every request-dependent field.
  */
+PUBLIC void webAddVary(Web *web, cchar *field)
+{
+    char  *list, *tok, *next;
+    cchar *vary;
+    bool  found;
+
+    if (!field || !*field) {
+        return;
+    }
+    if ((vary = rLookupName(web->txHeaders, "Vary")) == 0) {
+        webAddHeaderDynamicString(web, "Vary", sclone(field));
+        return;
+    }
+    found = 0;
+    list = sclone(vary);
+    for (tok = stok(list, ", \t", &next); tok && !found; tok = stok(NULL, ", \t", &next)) {
+        found = scaselessmatch(tok, field) || smatch(tok, "*");
+    }
+    rFree(list);
+    if (!found) {
+        //  Replace rather than add a second Vary field. The new value is built before the old is freed.
+        rAddName(web->txHeaders, "Vary", sfmt("%s, %s", vary, field), R_DYNAMIC_VALUE);
+    }
+}
+
+/* Echo Origin only when same-origin or allowed by web.cors.origins; otherwise name this host to deny CORS. */
 PUBLIC void webAddAccessControlHeader(Web *web)
 {
     char  *hostname;
-    cchar *schema, *contentEncoding;
+    cchar *schema;
 
-    /*
-        Check if Content-Encoding is set (pre-compressed content)
-        If so, include both Origin and Accept-Encoding in Vary header
-     */
-    if (!rLookupName(web->txHeaders, "Vary")) {
-        contentEncoding = rLookupName(web->txHeaders, "Content-Encoding");
-        if (contentEncoding) {
-            webAddHeaderStaticString(web, "Vary", "Origin, Accept-Encoding");
-        } else {
-            webAddHeaderStaticString(web, "Vary", "Origin");
-        }
-    }
-    if (web->origin) {
+    //  The header depends on Origin, so a cache must key on it
+    webAddVary(web, "Origin");
+    if (web->origin && *web->origin && webMatchOrigin(web, web->host->corsOrigins)) {
         webAddHeaderStaticString(web, "Access-Control-Allow-Origin", web->origin);
     } else {
         hostname = webGetHostName(web);
@@ -4783,7 +7327,7 @@ PUBLIC void webAddAccessControlHeader(Web *web)
  */
 PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
 {
-    ssize written;
+    ssize written, buffered;
 
     if (web->finalized) {
         return 0;
@@ -4793,14 +7337,27 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
     } else if (bufsize == 0 || bufsize >= MAXINT) {
         bufsize = slen(buf);
     }
-    if (web->buffer && !web->writingHeaders) {
+    /*
+        Check the response flag; the buffer persists across keep-alive requests.
+     */
+    buffered = 0;
+    if (web->buffering && !web->writingHeaders) {
         if (buf) {
             rPutBlockToBuf(web->buffer, buf, bufsize);
             return (ssize) bufsize;
         }
-        buf = rGetBufStart(web->buffer);
-        bufsize = rGetBufLength(web->buffer);
-        webSetContentLength(web, bufsize);
+        /*
+            Flush buffered data before finalization so chunked responses still emit their terminating chunk.
+         */
+        web->buffering = 0;
+        if (!web->wroteHeaders) {
+            webSetContentLength(web, rGetBufLength(web->buffer));
+        }
+        if (rGetBufLength(web->buffer) > 0) {
+            if ((buffered = webWrite(web, rGetBufStart(web->buffer), rGetBufLength(web->buffer))) < 0) {
+                return R_ERR_CANT_WRITE;
+            }
+        }
     }
     if (!web->wroteHeaders && webWriteHeaders(web) < 0) {
         //  Already closed
@@ -4822,9 +7379,11 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
         if (web->wroteHeaders && web->host->flags & WEB_SHOW_RESP_BODY) {
             if (isprintable(buf, (size_t) written)) {
                 if (web->moreBody) {
-                    write(rGetLogFile(), (char*) buf, (uint) written);
+                    if (write(rGetLogFile(), (char*) buf, (uint) written) < 0) {
+                        //  The log is where a failure would be reported, so a failed log write is dropped
+                    }
                 } else {
-                    rLog("raw", "web", "Response Body >>>>\n\n%*s", (int) written, (char*) buf);
+                    rLog("raw", "web", "Response Body >>>>\n\n%.*s", (int) written, (char*) buf);
                     web->moreBody = 1;
                 }
             }
@@ -4836,7 +7395,7 @@ PUBLIC ssize webWrite(Web *web, cvoid *buf, size_t bufsize)
         written = 0;
     }
     webUpdateDeadline(web);
-    return written;
+    return written + buffered;
 }
 
 /*
@@ -4893,7 +7452,16 @@ static int writeChunkDivider(Web *web, size_t size)
 {
     char chunk[24];
 
-    if (web->txLen >= 0 || !web->wroteHeaders || web->upgraded) {
+    if (!web->chunkedTx || !web->wroteHeaders) {
+        return 0;
+    }
+    /*
+        RFC 9112 section 6.3(1): a response to HEAD is terminated by the first empty line after the
+        header fields, whatever framing the headers declare. The body suppression in webWrite is
+        keyed on a non-empty buffer, so the finalizing write - which carries no data - would
+        otherwise emit the terminating chunk here and desynchronize the connection.
+     */
+    if (web->head) {
         return 0;
     }
     if (size == 0) {
@@ -4947,6 +7515,11 @@ PUBLIC ssize webWriteResponseString(Web *web, int status, cchar *msg)
     if (web->error) {
         msg = web->error;
     }
+    if (web->buffering) {
+        //  This response replaces any partially buffered body
+        rFlushBuf(web->buffer);
+        web->buffering = 0;
+    }
     web->txLen = (ssize) slen(msg);
 
     webAddHeaderStaticString(web, "Content-Type", "text/plain");
@@ -4992,11 +7565,17 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...)
 PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...)
 {
     va_list ap;
-    char    *buf;
+    RBuf    *out;
+    char    *buf, *line, *end;
     ssize   nbytes;
 
+    //  A line break in the name would start a new SSE field
+    if (name && strpbrk(name, "\r\n")) {
+        return R_ERR_BAD_ARGS;
+    }
     if (id <= 0) {
-        id = ++web->lastEventId;
+        //  The id may be seeded by the client's Last-Event-ID: stop at the largest rather than wrap
+        id = web->lastEventId < MAXSSIZE ? ++web->lastEventId : web->lastEventId;
     }
     va_start(ap, fmt);
     buf = sfmtv(fmt, ap);
@@ -5005,10 +7584,27 @@ PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...)
     if (!web->wroteHeaders) {
         webAddHeaderStaticString(web, "Content-Type", "text/event-stream");
         if (webWriteHeaders(web) < 0) {
+            rFree(buf);
             return R_ERR_CANT_WRITE;
         }
     }
-    nbytes = webWriteFmt(web, "id: %lld\nevent: %s\ndata: %s\n\n", (long long) id, name, buf);
+    out = rAllocBuf(slen(buf) + 64);
+    rPutToBuf(out, "id: %lld\nevent: %s\n", (long long) id, name);
+
+    //  Each line of the data, broken at CR, LF or CRLF, is sent as its own data field
+    for (line = buf; ; ) {
+        end = line + strcspn(line, "\r\n");
+        rPutStringToBuf(out, "data: ");
+        rPutBlockToBuf(out, line, (size_t) (end - line));
+        rPutCharToBuf(out, '\n');
+        if (*end == '\0') {
+            break;
+        }
+        line = end + ((end[0] == '\r' && end[1] == '\n') ? 2 : 1);
+    }
+    rPutCharToBuf(out, '\n');
+    nbytes = webWrite(web, rGetBufStart(out), rGetBufLength(out));
+    rFreeBuf(out);
     rFree(buf);
     return nbytes;
 }
@@ -5031,15 +7627,20 @@ PUBLIC void webSetContentLength(Web *web, size_t len)
  */
 PUBLIC char *webGetHostName(Web *web)
 {
-    char *hostname, ipbuf[40];
+    char *cp, *hostname, ipbuf[40];
     int  port;
 
     if (web->host->name) {
         //  Canonical host name
         hostname = sclone(web->host->name);
     } else {
-        if ((hostname = strstr(web->listen->endpoint, "://")) != 0 && *hostname != ':') {
-            hostname = sclone(&hostname[3]);
+        /*
+            Hostname from the listening endpoint, e.g. "http://example.com:4240". An endpoint
+            that names no host, "http://:80", must not yield ":80": fall through to the
+            socket address instead.
+         */
+        if ((cp = strstr(web->listen->endpoint, "://")) != 0 && cp[3] && cp[3] != ':') {
+            hostname = sclone(&cp[3]);
         } else {
             if (rGetSocketAddr(web->sock, (char*) &ipbuf, sizeof(ipbuf), &port) < 0) {
                 webError(web, -400, "Missing hostname");
@@ -5076,13 +7677,16 @@ PUBLIC void webRedirect(Web *web, int status, cchar *target)
         webWriteResponseString(web, 404, "Cannot parse redirection target");
         return;
     }
-    if (!port && !scheme && !host) {
+    if (!port && !scheme && !host && !web->host->name) {
+        /*
+            Use the configured port; a proxy's backend port may be inaccessible to clients.
+         */
         rGetSocketAddr(web->sock, ip, sizeof(ip), &port);
     }
     if (!host) {
         freeHost = webGetHostName(web);
         host = stok(freeHost, ":", &currentPort);
-        if (!port && currentPort && smatch(web->scheme, scheme)) {
+        if (!port && currentPort && (!scheme || smatch(web->scheme, scheme))) {
             //  Use current port if the scheme isn't changing
             port = (int) stoi(currentPort);
         }
@@ -5118,15 +7722,31 @@ PUBLIC void webRedirect(Web *web, int status, cchar *target)
     }
     psep = port ? ":" : "";
     uri = sfmt("%s://%s%s%s/%s%s%s%s%s", scheme, host, psep, pbuf, path, qsep, query, hsep, hash);
-
-    rFree(web->redirect);
-    web->redirect = webEncode(uri);
-    web->upgrade = NULL;
+    sendRedirect(web, status, uri);
     rFree(uri);
-
-    webWriteResponseString(web, status, NULL);
     rFree(freeHost);
     rFree(buf);
+}
+
+/* Use relative Location for local redirects so the client retains its external scheme, host and port. */
+PUBLIC void webRedirectLocal(Web *web, int status, cchar *path)
+{
+    (void) webReadBody(web);
+
+    //  "//host" and "/\host" are network-path references a browser resolves to another site
+    if (!path || path[0] != '/' || path[1] == '/' || path[1] == '\\') {
+        webError(web, 500, "Bad local redirection target");
+        return;
+    }
+    sendRedirect(web, status, path);
+}
+
+static void sendRedirect(Web *web, int status, cchar *location)
+{
+    rFree(web->redirect);
+    web->redirect = webEncode(location);
+    web->upgrade = NULL;
+    webWriteResponseString(web, status, NULL);
 }
 
 /*
@@ -5143,6 +7763,13 @@ PUBLIC int webError(Web *web, int status, cchar *fmt, ...)
         va_start(args, fmt);
         web->error = sfmtv(fmt, args);
         va_end(args);
+    }
+    if (web->wroteHeaders && !web->finalized) {
+        /* Close incomplete responses after headers are committed. Already finalized responses remain a no-op. */
+        rTrace("web", "%s", web->error);
+        web->close = 1;
+        webHook(web, WEB_HOOK_ERROR);
+        return R_ERR_CANT_COMPLETE;
     }
     webWriteResponseString(web, status, NULL);
     webHook(web, WEB_HOOK_ERROR);
@@ -5180,7 +7807,7 @@ static bool isprintable(cchar *s, size_t len)
     if (len == 0) {
         return 1;
     }
-    for (cp = s; *cp && cp < &s[len]; cp++) {
+    for (cp = s; cp < &s[len] && *cp; cp++) {
         c = *cp;
         if ((c > 126) || (c < 32 && c != 10 && c != 13 && c != 9)) {
             return 0;
@@ -5190,7 +7817,7 @@ static bool isprintable(cchar *s, size_t len)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -5234,6 +7861,7 @@ static void pruneSessions(WebHost *host);
 
 PUBLIC int webInitSessions(WebHost *host)
 {
+    rStopEvent(host->sessionEvent);
     host->sessionEvent = rStartEvent((REventProc) pruneSessions, host, WEB_SESSION_PRUNE);
     return 0;
 }
@@ -5249,16 +7877,19 @@ static WebSession *webAllocSession(Web *web, Ticks lifespan)
     }
     sp->lifespan = lifespan;
     sp->expires = rGetTicks() + lifespan;
-    sp->id = cryptID(32);
+    if ((sp->id = cryptID(32)) == 0) {
+        webFreeSession(sp);
+        return 0;
+    }
 
-    if ((sp->cache = rAllocHash(0, 0)) == 0) {
+    //  Variable names come from callers and may be request data, so the cache owns copies
+    if ((sp->cache = rAllocHash(0, R_TEMPORAL_NAME | R_DYNAMIC_VALUE)) == 0) {
         rFree(sp->id);
         rFree(sp);
         return 0;
     }
     if (rAddName(web->host->sessions, sp->id, sp, 0) == 0) {
-        rFree(sp->id);
-        rFree(sp);
+        webFreeSession(sp);
         return 0;
     }
     return sp;
@@ -5276,47 +7907,101 @@ PUBLIC void webFreeSession(WebSession *sp)
     rFree(sp);
 }
 
-PUBLIC void webDestroySession(Web *web)
+/*
+    Drop the server-side session without touching the client's cookie.
+ */
+static void removeSession(Web *web)
 {
     WebSession *session;
 
     if ((session = webGetSession(web, 0)) != 0) {
-        webSetCookie(web, web->host->sessionCookie, NULL, "/", 0, 0);
         rRemoveName(web->host->sessions, session->id);
         webFreeSession(session);
         web->session = 0;
+        rFree(web->sessionId);
+        web->sessionId = 0;
     }
 }
 
+PUBLIC void webDestroySession(Web *web)
+{
+    if (webGetSession(web, 0) != 0) {
+        webSetCookie(web, web->host->sessionCookie, NULL, "/", 0, 0);
+        removeSession(web);
+    }
+}
+
+/*
+    Destroy every session logged in as the user. Requests in flight that hold one are detached first.
+ */
+PUBLIC void webDestroyUserSessions(WebHost *host, cchar *username)
+{
+    WebSession *sp;
+    Web        *web;
+    RName      *np;
+    RList      *sessions;
+    int        next, wnext;
+
+    if (!host || !username) {
+        return;
+    }
+    sessions = rAllocList(0, 0);
+    for (ITERATE_NAMES(host->sessions, np)) {
+        sp = (WebSession*) np->value;
+        if (smatch(rLookupName(sp->cache, WEB_SESSION_USERNAME), username)) {
+            rAddItem(sessions, sp);
+        }
+    }
+    for (ITERATE_ITEMS(sessions, sp, next)) {
+        for (ITERATE_ITEMS(host->webs, web, wnext)) {
+            if (web->session == sp) {
+                web->session = 0;
+            }
+        }
+        rRemoveName(host->sessions, sp->id);
+        webFreeSession(sp);
+    }
+    rFreeList(sessions);
+}
+
+/*
+    Replace the session. The old session is dropped without emitting a clearing cookie: createSession
+    writes a Set-Cookie for the same name immediately afterwards, and same-named response headers do
+    not reach the wire in insertion order, so a clear emitted here could arrive last and log the
+    client out while leaving an authenticated session behind that nothing can reach or evict.
+ */
 PUBLIC WebSession *webCreateSession(Web *web)
 {
-    webDestroySession(web);
+    removeSession(web);
     return createSession(web);
 }
 
 /*
     Get the user session by parsing the cookie. If "create" is true, create the session if required.
+
+    The session id is cached on the request, never the WebSession pointer. Sessions are owned by
+    host->sessions and are freed by logout, by expiry pruning and by anonymous eviction, none of
+    which can see the borrows held by in-flight requests. Ioto is cooperatively scheduled and a
+    request yields in webProcessUpload and webReadBody after the session has first been resolved, so
+    a cached pointer could be freed under it and every later call would read and write freed memory.
+    Re-resolving the id on each call makes the cache a lookup accelerator rather than a lifetime
+    assertion: a session freed while a request holds it is simply gone from that request's view.
  */
 WebSession *webGetSession(Web *web, int create)
 {
     WebSession *session;
-    char       *id;
 
     assert(web);
 
-    session = web->session;
-
-    if (!session) {
-        id = webParseCookie(web, web->host->sessionCookie);
-        if (id) {
-            session = rLookupName(web->host->sessions, id);
-            rFree(id);
-        }
-        if (!session && create) {
-            session = createSession(web);
-        }
-        web->session = session;
+    if (!web->sessionId) {
+        web->sessionId = webParseCookie(web, web->host->sessionCookie);
     }
+    session = web->sessionId ? rLookupName(web->host->sessions, web->sessionId) : 0;
+
+    if (!session && create) {
+        session = createSession(web);
+    }
+    web->session = session;
     if (session) {
         session->expires = rGetTicks() + session->lifespan;
     }
@@ -5347,13 +8032,17 @@ static WebSession *createSession(Web *web)
         return 0;
     }
     if ((session = webAllocSession(web, host->sessionTimeout)) == 0) {
-        webError(web, 429, "Failed to create session");
+        webError(web, 500, "Failed to create session");
         return 0;
     }
     webSetCookie(web, web->host->sessionCookie, session->id, "/", 0, 0);
+    rFree(web->sessionId);
+    web->sessionId = sclone(session->id);
     web->session = session;
     return session;
 }
+
+#endif /* ME_WEB_SESSIONS */
 
 PUBLIC char *webParseCookie(Web *web, cchar *name)
 {
@@ -5371,6 +8060,15 @@ PUBLIC char *webParseCookie(Web *web, cchar *name)
 
     for (tok = buf; tok && tok < end; ) {
         cookie = stok(tok, ";", &tok);
+        if (cookie == 0) {
+            /*
+                A header of nothing but delimiters. stok returns NULL here, and passing that to the
+                next stok makes it resume from vtok, which nothing has assigned - a read through an
+                uninitialised pointer and, when a delimiter is found in the residue, a NUL write
+                through it.
+             */
+            break;
+        }
         cookie = strim(cookie, " ", R_TRIM_START);
         key = stok(cookie, "=", &vtok);
         if (smatch(key, name)) {
@@ -5383,6 +8081,7 @@ PUBLIC char *webParseCookie(Web *web, cchar *name)
     return value;
 }
 
+#if ME_WEB_SESSIONS
 /*
     Get a session variable from the session state
  */
@@ -5433,14 +8132,14 @@ PUBLIC cchar *webSetSessionVar(Web *web, cchar *key, cchar *fmt, ...)
     assert(fmt);
 
     if ((sp = webGetSession(web, 1)) == 0) {
-        webError(web, 429, "Failed to create session");
         return 0;
     }
     va_start(ap, fmt);
     value = sfmtv(fmt, ap);
     va_end(ap);
 
-    if ((np = rAddName(sp->cache, key, (void*) value, R_DYNAMIC_VALUE)) == 0) {
+    if ((np = rAddName(sp->cache, key, (void*) value, 0)) == 0) {
+        rFree(value);
         return 0;
     }
     return np->value;
@@ -5529,7 +8228,14 @@ static void pruneSessions(WebHost *host)
     This will create a security token and save it in session state.
     This will not send the token to the client. Use webAddSecurityToken to send the XSRF token to the client.
     Security tokens are expected to be sent with POST requests to verify the request is not being forged.
-    Note: the Session API prevents session hijacking by pairing with the client IP
+    Note: a session is identified by its cookie value ALONE. There is no client-address pairing
+    and no other binding - possession of the cookie is sufficient to use the session. This is the
+    normal property of a cookie session; address pairing is deliberately not implemented because
+    it breaks mobile clients, carrier NAT and load-balanced deployments while being defeated by
+    any attacker on the same NAT, which on a device LAN is the likely attacker.
+
+    The controls that do protect the token are: 128 bits from the system RNG, HttpOnly, SameSite,
+    Secure on TLS connections, and regeneration on login.
  */
 PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
 {
@@ -5545,8 +8251,18 @@ PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
         }
     }
     if (web->securityToken == 0) {
-        web->securityToken = cryptID(32);
-        webSetSessionVar(web, WEB_SESSION_XSRF, "%s", web->securityToken);
+        if ((web->securityToken = cryptID(32)) == 0) {
+            webError(web, 500, "Cannot generate security token");
+            return 0;
+        }
+        if (!webSetSessionVar(web, WEB_SESSION_XSRF, "%s", web->securityToken)) {
+            rFree(web->securityToken);
+            web->securityToken = 0;
+            if (!web->error) {
+                webError(web, 500, "Cannot store security token");
+            }
+            return 0;
+        }
     }
     return web->securityToken;
 }
@@ -5560,7 +8276,9 @@ PUBLIC int webAddSecurityToken(Web *web, bool recreate)
 {
     cchar *securityToken;
 
-    securityToken = webGetSecurityToken(web, recreate);
+    if ((securityToken = webGetSecurityToken(web, recreate)) == 0) {
+        return R_ERR_CANT_COMPLETE;
+    }
     webAddHeaderDynamicString(web, WEB_XSRF_HEADER, sclone(securityToken));
     return 0;
 }
@@ -5600,6 +8318,87 @@ PUBLIC bool webCheckSecurityToken(Web *web)
     return 1;
 }
 
+#else /* !ME_WEB_SESSIONS */
+/*
+    Keep session APIs linkable when disabled. Login cannot persist; XSRF checks fail closed.
+ */
+PUBLIC int webInitSessions(WebHost *host)
+{
+    (void) host;
+    return 0;
+}
+
+PUBLIC void webFreeSession(WebSession *sp)
+{
+    (void) sp;
+}
+
+PUBLIC void webDestroySession(Web *web)
+{
+    (void) web;
+}
+
+PUBLIC void webDestroyUserSessions(WebHost *host, cchar *username)
+{
+    (void) host;
+    (void) username;
+}
+
+PUBLIC WebSession *webCreateSession(Web *web)
+{
+    (void) web;
+    return 0;
+}
+
+PUBLIC WebSession *webGetSession(Web *web, int create)
+{
+    (void) web;
+    (void) create;
+    return 0;
+}
+
+PUBLIC cchar *webGetSessionVar(Web *web, cchar *key, cchar *defaultValue)
+{
+    (void) web;
+    (void) key;
+    return defaultValue;
+}
+
+PUBLIC void webRemoveSessionVar(Web *web, cchar *key)
+{
+    (void) web;
+    (void) key;
+}
+
+PUBLIC cchar *webSetSessionVar(Web *web, cchar *key, cchar *fmt, ...)
+{
+    (void) web;
+    (void) key;
+    (void) fmt;
+    return 0;
+}
+
+PUBLIC cchar *webGetSecurityToken(Web *web, bool recreate)
+{
+    (void) web;
+    (void) recreate;
+    return 0;
+}
+
+PUBLIC int webAddSecurityToken(Web *web, bool recreate)
+{
+    (void) web;
+    (void) recreate;
+    return R_ERR_BAD_STATE;
+}
+
+PUBLIC bool webCheckSecurityToken(Web *web)
+{
+    (void) web;
+    return 0;
+}
+#endif /* ME_WEB_SESSIONS */
+
 /*
     Get a request cookie. The web->cookie contains a list of header cookies.
     A site may submit multiple cookies separated by ";"
@@ -5618,6 +8417,10 @@ PUBLIC char *webGetCookie(Web *web, cchar *name)
 
     for (tok = buf; tok && tok < end; ) {
         cookie = stok(tok, ";", &tok);
+        if (cookie == 0) {
+            //  Nothing but delimiters - see webParseCookie
+            break;
+        }
         cookie = strim(cookie, " ", R_TRIM_BOTH);
         key = stok(cookie, "=", &vtok);
         if (smatch(key, name)) {
@@ -5653,6 +8456,21 @@ static bool isValidCookieValue(cchar *value)
 }
 
 /*
+    RFC 6265 path-value: any CHAR except CTLs and ";"
+ */
+static bool isValidCookiePath(cchar *path)
+{
+    cuchar *cp;
+
+    for (cp = (cuchar*) path; *cp; cp++) {
+        if (*cp < 0x20 || *cp >= 0x7f || *cp == ';') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/*
     Set a response cookie
  */
 PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks lifespan, int flags)
@@ -5660,9 +8478,15 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
     WebHost *host;
     cchar   *httpOnly, *secure, *sameSite;
     Ticks   maxAge;
+    bool    remove;
 
-    if (value == NULL) {
-        // Clearing the cookie
+    /*
+        A null value means remove the cookie. That has to be an expiry the client acts on: a
+        lifespan of zero otherwise selects the configured session timeout below, which stored an
+        empty cookie for the whole session lifetime instead of deleting it.
+     */
+    remove = value == NULL;
+    if (remove) {
         value = "";
     }
     if (slen(name) > 4096) {
@@ -5677,6 +8501,15 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
     if (!isValidCookieValue(value)) {
         return R_ERR_BAD_ARGS;
     }
+    if (path == 0) {
+        path = "/";
+    }
+    if (slen(path) > 4096) {
+        return R_ERR_WONT_FIT;
+    }
+    if (!isValidCookiePath(path)) {
+        return R_ERR_BAD_ARGS;
+    }
     host = web->host;
     if (flags & WEB_COOKIE_OVERRIDE) {
         httpOnly = flags & WEB_COOKIE_HTTP_ONLY ? "HttpOnly; " : "";
@@ -5687,23 +8520,26 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
         secure = rIsSocketSecure(web->sock) ? "Secure; " : "";
         sameSite = host->sameSite ? host->sameSite : "Lax";
     }
-    if (path == 0) {
-        path = "/";
-    }
-    maxAge = (lifespan ? lifespan: host->sessionTimeout) / TPS;
     /*
         Max-Age is a Ticks (int64). It must be passed as a long long with a %lld conversion.
         A %d conversion would consume only one varargs slot on 32-bit ABIs and shift every
         pointer argument that follows.
      */
-    webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%lld; path=%s; %s%sSameSite=%s",
-                 name, value, (long long) maxAge, path, secure, httpOnly, sameSite);
+    if (remove) {
+        //  Expires as well as Max-Age: clients predating RFC 6265 honour only the former
+        webAddHeader(web, "Set-Cookie",
+                     "%s=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; path=%s; %s%sSameSite=%s",
+                     name, path, secure, httpOnly, sameSite);
+    } else {
+        maxAge = (lifespan ? lifespan : host->sessionTimeout) / TPS;
+        webAddHeader(web, "Set-Cookie", "%s=%s; Max-Age=%lld; path=%s; %s%sSameSite=%s",
+                     name, value, (long long) maxAge, path, secure, httpOnly, sameSite);
+    }
     return 0;
 }
-#endif /* ME_WEB_SESSION */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -5722,22 +8558,63 @@ PUBLIC int webSetCookie(Web *web, cchar *name, cchar *value, cchar *path, Ticks 
 #include    "web.h"
 
 #if ME_COM_WEBSOCK
+/*********************************** Locals ***********************************/
+
+//  Length of a Sec-WebSocket-Key: RFC 6455 section 4.1 makes it base64 of a 16 byte nonce
+#define WS_KEY_LEN 24
+
 /********************************** Forwards **********************************/
 
 static int addHeaders(Web *web);
+static bool checkOrigin(Web *web);
 static int selectProtocol(Web *web, cchar *protocol);
 
 /*********************************** Code *************************************/
 
 PUBLIC int webSocketOpen(WebHost *host)
 {
+    (void) host;
+
     assert(host);
     return 0;
 }
 
 PUBLIC void webSocketClose(WebHost *host)
 {
+    (void) host;
+
     assert(host);
+}
+
+/*
+    Validate the Origin of a WebSocket upgrade.
+
+    The WebSocket handshake is deliberately exempt from the same-origin policy - RFC 6455 4.2.2
+    puts the check on the server, because a browser will open a cross-origin WebSocket and send
+    the target's cookies with the handshake. Without this check, any page the victim visits can
+    open a socket to the device and inherit their authenticated session, and unlike a cross-origin
+    fetch there is no preflight and no response header that stops it.
+
+    Policy:
+      - Origin present: it must match the request Host, or appear in web.webSockets.origins.
+        Configuring "*" opts out explicitly.
+      - Origin absent: allowed. Only a browser attaches Origin automatically, so an absent Origin
+        is not the browser-mediated attack this defends against - and a non-browser attacker can
+        send any Origin it likes, so refusing the absent case costs legitimate non-browser clients
+        (which device deployments commonly have) and buys nothing.
+
+    Host is the right reference for the same-origin case: a browser sets it to the target it is
+    connecting to and the attacking page cannot forge it, so Origin == Host is exactly "the page
+    that opened this socket was served by us".
+ */
+static bool checkOrigin(Web *web)
+{
+    if (webMatchOrigin(web, web->host->webSocketsOrigins)) {
+        return 1;
+    }
+    rError("web", "WebSocket upgrade refused: Origin %s is not the same origin and is not in "
+           "web.webSockets.origins", web->origin);
+    return 0;
 }
 
 PUBLIC int webUpgradeSocket(Web *web)
@@ -5752,6 +8629,15 @@ PUBLIC int webUpgradeSocket(Web *web)
     }
     host = web->host;
 
+    /* Reject body-framed handshake bytes; an intermediary already treats them as HTTP, not WebSocket frames. */
+    if (web->rxLen > 0 || web->chunked) {
+        webError(web, 400, "WebSocket upgrade request must not have a body");
+        return R_ERR_BAD_ARGS;
+    }
+    if (!checkOrigin(web)) {
+        webError(web, 403, "Cross-origin WebSocket upgrade refused");
+        return R_ERR_BAD_ARGS;
+    }
     if ((ws = webSocketAlloc(web->sock, WS_SERVER)) == 0) {
         rFatal("sockets", "memory error");
         return R_ERR_MEMORY;
@@ -5835,14 +8721,24 @@ static int addHeaders(Web *web)
         webError(web, 400, "Unsupported Sec-WebSocket-Version");
         return R_ERR_BAD_ARGS;
     }
-    if ((key = webGetHeader(web, "sec-websocket-key")) == 0) {
+    /*
+        RFC 6455 section 4.1: the key is the base64 encoding of a 16 byte nonce, so exactly 24
+        base64 characters. Validating it here keeps an attacker-length value away from the join
+        below: sjoinbuf refuses rather than truncates and leaves the destination untouched, so an
+        unchecked join left the SHA-1 running over uninitialised stack and encoded the digest of it
+        into the response.
+     */
+    if ((key = webGetHeader(web, "sec-websocket-key")) == 0 || slen(key) != WS_KEY_LEN ||
+        sspn(key, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=") != WS_KEY_LEN) {
+        webError(web, 400, "Bad Sec-WebSocket-Key");
+        return R_ERR_BAD_ARGS;
+    }
+    if (sjoinbuf(keybuf, sizeof(keybuf), key, WS_MAGIC) < 0) {
         webError(web, 400, "Bad Sec-WebSocket-Key");
         return R_ERR_BAD_ARGS;
     }
     webSetStatus(web, 101);
     webAddHeaderStaticString(web, "Upgrade", "WebSocket");
-
-    sjoinbuf(keybuf, sizeof(keybuf), key, WS_MAGIC);
     webAddHeaderDynamicString(web, "Sec-WebSocket-Accept", cryptGetSha1Base64(keybuf, 0));
 
     protocol = webSocketGetProtocol(web->webSocket);
@@ -5858,7 +8754,7 @@ static int addHeaders(Web *web)
 #endif /* ME_COM_WEBSOCK */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -5877,7 +8773,7 @@ static int addHeaders(Web *web)
 /********************************** Includes **********************************/
 
 
-#if ME_DEBUG || ME_BENCHMARK
+#if ME_WEB_TEST_ACTIONS || ME_BENCHMARK
 /************************************* Locals *********************************/
 
 static void showRequestContext(Web *web, Json *json);
@@ -5899,8 +8795,8 @@ static void showRequest(Web *web)
     jsonSetFmt(json, 0, "url", "%s", web->url);
     jsonSetFmt(json, 0, "method", "%s", web->method);
     jsonSetFmt(json, 0, "protocol", "%s", web->protocol);
-    jsonSetFmt(json, 0, "connection", "%ld", web->conn);
-    jsonSetFmt(json, 0, "count", "%ld", web->count);
+    jsonSetFmt(json, 0, "connection", "%lld", (long long) web->conn);
+    jsonSetFmt(json, 0, "count", "%lld", (long long) web->count);
 
     /*
         Query
@@ -5949,7 +8845,7 @@ static void showRequest(Web *web)
     if (web->body && rGetBufLength(web->body)) {
         len = rGetBufLength(web->body);
         body = rGetBufStart(web->body);
-        jsonSetFmt(json, 0, "bodyLength", "%ld", len);
+        jsonSetFmt(json, 0, "bodyLength", "%lld", (long long) len);
         isPrintable = 1;
         for (i = 0; i < (int) len; i++) {
             if (!isprint((uchar) body[i]) && body[i] != '\n' && body[i] != '\r' && body[i] != '\t') {
@@ -5971,8 +8867,9 @@ static void showRequest(Web *web)
 
 static void showRequestContext(Web *web, Json *json)
 {
-    char ipbuf[256];
-    int  port;
+    WebSession *session;
+    char       ipbuf[256];
+    int        port;
 
     jsonSetFmt(json, 0, "authenticated", "%s", web->authChecked ? "authenticated" : "public");
     if (web->contentDisposition) {
@@ -5981,7 +8878,7 @@ static void showRequestContext(Web *web, Json *json)
     if (web->chunked) {
         jsonSetFmt(json, 0, "contentLength", "%s", "chunked");
     } else {
-        jsonSetFmt(json, 0, "contentLength", "%lld", web->rxLen);
+        jsonSetFmt(json, 0, "contentLength", "%lld", (long long) web->rxLen);
     }
     if (web->contentType) {
         jsonSetFmt(json, 0, "contentType", "%s", web->contentType);
@@ -6012,8 +8909,9 @@ static void showRequestContext(Web *web, Json *json)
     if (web->role) {
         jsonSetFmt(json, 0, "role", "%s", web->role);
     }
-    if (web->session) {
-        jsonSetFmt(json, 0, "session", "%s", web->session ? web->session->id : "");
+    //  Resolve rather than reading the borrowed web->session, which the owning table may have freed
+    if ((session = webGetSession(web, 0)) != 0) {
+        jsonSetFmt(json, 0, "session", "%s", session->id);
     }
     if (web->username) {
         jsonSetFmt(json, 0, "username", "%s", web->username);
@@ -6037,11 +8935,11 @@ static void showServerContext(Web *web, Json *json)
     jsonSetFmt(json, 0, "host.requestTimeout", "%lld", (long long) host->requestTimeout);
     jsonSetFmt(json, 0, "host.sessionTimeout", "%lld", (long long) host->sessionTimeout);
     jsonSetFmt(json, 0, "host.connections", "%d", host->connections);
-    jsonSetFmt(json, 0, "host.maxBody", "%lld", host->maxBody);
-    jsonSetFmt(json, 0, "host.maxConnections", "%lld", host->maxConnections);
-    jsonSetFmt(json, 0, "host.maxHeader", "%lld", host->maxHeader);
-    jsonSetFmt(json, 0, "host.maxSessions", "%lld", host->maxSessions);
-    jsonSetFmt(json, 0, "host.maxUpload", "%lld", host->maxUpload);
+    jsonSetFmt(json, 0, "host.maxBody", "%d", host->maxBody);
+    jsonSetFmt(json, 0, "host.maxConnections", "%d", host->maxConnections);
+    jsonSetFmt(json, 0, "host.maxHeader", "%d", host->maxHeader);
+    jsonSetFmt(json, 0, "host.maxSessions", "%d", host->maxSessions);
+    jsonSetFmt(json, 0, "host.maxUpload", "%d", host->maxUpload);
 }
 
 /*
@@ -6049,8 +8947,16 @@ static void showServerContext(Web *web, Json *json)
  */
 static void eventAction(Web *web)
 {
+    cchar *data;
     int64 id;
     int   count, i;
+
+    //  "data" sends one event carrying that text, named by "name"
+    if ((data = webGetQueryVar(web, "data", 0)) != 0) {
+        webWriteEvent(web, 0, webGetQueryVar(web, "name", "test"), "%s", data);
+        webFinalize(web);
+        return;
+    }
 
     /*
         "id" selects an explicit starting event id. This exercises the int64 id conversion
@@ -6146,13 +9052,17 @@ static void bufferAction(Web *web)
 static void sigAction(Web *web)
 {
     // Pretend to be authenticated with "user" role
-    web->role = "user";
+    rFree(web->role);
+    web->role = sclone("user");
     web->authChecked = 1;
     rFree(web->username);
     web->username = sclone("user");
 
-    if (web->vars) {
+    if (web->vars && web->vars->count > 0) {
         webWriteValidatedJson(web, web->vars, NULL);
+    } else if (web->qvars) {
+        //  Echo the query the same way, so the request-direction query filter is observable
+        webWriteValidatedJson(web, web->qvars, NULL);
     } else {
         webWriteValidatedData(web, rBufToString(web->body), NULL);
     }
@@ -6252,6 +9162,10 @@ static void sessionAction(Web *web)
             webWriteFmt(web, "denied");
         }
 
+    } else if (smatch(web->path, "/test/session/logout")) {
+        webLogout(web);
+        webWriteFmt(web, "%s", "out");
+
     } else if (smatch(web->path, "/test/session/check")) {
         /*
             Check the session token matches the query token
@@ -6300,11 +9214,11 @@ static void xsrfAction(Web *web)
  */
 static void recurse(Web *web, int depth)
 {
-    char buf[1024];
+    volatile char buf[1024];
 
+    //  Read the buffer back so the frame is really used and cannot be optimized away
     buf[0] = 'a';
-    assert(buf[0] == 'a');
-    if (depth > 0) {
+    if (depth > 0 && buf[0] == 'a') {
         recurse(web, depth - 1);
     }
 }
@@ -6339,24 +9253,55 @@ static void streamAction(Web *web)
 /*
     Echo back user provided message.
     On connected, buf will be null
+
+    The WebSocket layer delivers each frame as it arrives: WS_EVENT_PARTIAL_MESSAGE for every frame
+    but the last, and WS_EVENT_MESSAGE for the last, each carrying only that frame's own bytes. It
+    does not reassemble. Echoing the payload of WS_EVENT_MESSAGE alone therefore returns just the
+    final fragment of a fragmented message, which is what the Autobahn suite reported for 30 of its
+    cases. Fragments are accumulated here so the echo is the whole message. The accumulator is
+    bounded by the connection's maxMessage, which the WebSocket layer enforces on the way in.
  */
 static void onEvent(WebSocket *ws, int event, cchar *buf, size_t len, Web *web)
 {
-    if (event == WS_EVENT_MESSAGE) {
+    RBuf *frags;
+
+    (void) web;
+
+    frags = webSocketGetData(ws);
+
+    if (event == WS_EVENT_PARTIAL_MESSAGE) {
+        if (!frags) {
+            frags = rAllocBuf(len + 1);
+            webSocketSetData(ws, frags);
+        }
+        rPutBlockToBuf(frags, buf, len);
+
+    } else if (event == WS_EVENT_MESSAGE) {
         // rTrace("test", "Echoing: %ld bytes", len);
         // Echo back with the same message type (preserves binary/text)
-        // Use ws->type for accumulated message type (handles multi-frame messages)
-        webSocketSendBlock(ws, ws->type, buf, len);
+        // ws->type is the message type, which a continuation frame does not carry
+        if (frags) {
+            rPutBlockToBuf(frags, buf, len);
+            webSocketSendBlock(ws, ws->type, rGetBufStart(frags), rGetBufLength(frags));
+            rFreeBuf(frags);
+            webSocketSetData(ws, 0);
+        } else {
+            webSocketSendBlock(ws, ws->type, buf, len);
+        }
     }
 }
 
 static void webSocketAction(Web *web)
 {
-    if (!web->upgrade) {
+    if (!web->upgraded) {
         webError(web, 400, "Connection not upgraded to WebSocket");
         return;
     }
     webSocketRun(web->webSocket, (WebSocketProc) onEvent, web, web->rx, web->host->inactivityTimeout);
+
+    //  A connection that ends part way through a fragmented message leaves fragments accumulated
+    rFreeBuf(webSocketGetData(web->webSocket));
+    webSocketSetData(web->webSocket, 0);
     rDebug("test", "WebSocket closed");
 }
 #endif
@@ -6412,6 +9357,11 @@ PUBLIC void webTestInit(WebHost *host, cchar *prefix)
     webAddAction(host, SFMT(url, "%s/bench", prefix), successAction, NULL);
     webAddAction(host, SFMT(url, "%s/put", prefix), putAction, NULL);
     webAddAction(host, SFMT(url, "%s/show", prefix), showAction, NULL);
+    //  Registered under a role-bearing route so a rewrite into that namespace has something to reach
+    webAddAction(host, SFMT(url, "%s/admin/show", prefix), showAction, NULL);
+    //  The shorter prefix is registered first: dispatch must still select the longer one
+    webAddAction(host, SFMT(url, "%s/shadow", prefix), successAction, NULL);
+    webAddAction(host, SFMT(url, "%s/shadow/deep", prefix), showAction, NULL);
     webAddAction(host, SFMT(url, "%s/stream", prefix), streamAction, NULL);
 #if ME_WEB_UPLOAD
     webAddAction(host, SFMT(url, "%s/upload", prefix), uploadAction, NULL);
@@ -6438,7 +9388,7 @@ PUBLIC void dummyTest(void)
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -6474,26 +9424,69 @@ PUBLIC void dummyTest(void)
 
 static WebUpload *allocUpload(Web *web, cchar *name, cchar *filename);
 static void freeUpload(WebUpload *up);
+static int createUploadFile(cchar *dir, char **filename);
+static char *findBoundary(cchar *contentType);
 static size_t getUploadDataLength(Web *web);
 static int processUploadData(Web *web);
 static int processUploadHeaders(Web *web);
 
 /************************************* Code ***********************************/
 
+/*
+    Parse a possibly quoted boundary parameter (RFC 2046 5.1.1). Return an allocated value or NULL.
+ */
+static char *findBoundary(cchar *contentType)
+{
+    char *params, *param, *tok, *value, *end, *result;
+
+    result = 0;
+    params = sclone(contentType);
+    //  The first token is the media type. Boundary characters do not include ";".
+    for (param = stok(params, ";", &tok); param; param = stok(NULL, ";", &tok)) {
+        param = strim(param, " \t", R_TRIM_BOTH);
+        if (sncaselesscmp(param, "boundary=", 9) == 0) {
+            value = param + 9;
+            if (*value == '"') {
+                value++;
+                if ((end = strchr(value, '"')) == 0 || end[1]) {
+                    break;
+                }
+                *end = '\0';
+            }
+            if (*value) {
+                result = sclone(value);
+            }
+            break;
+        }
+    }
+    rFree(params);
+    return result;
+}
+
 PUBLIC int webInitUpload(Web *web)
 {
     char *boundary;
 
-    if ((boundary = scontains(web->contentType, "boundary=")) != 0) {
-        web->boundary = sjoin("--", &boundary[9], NULL);
-        web->boundaryLen = slen(web->boundary);
-    }
-    if (web->boundaryLen == 0 || *web->boundary == '\0') {
+    if ((boundary = findBoundary(web->contentType)) == 0) {
         webError(web, 400, "Bad boundary");
         return R_ERR_BAD_ARGS;
     }
+    /*
+        Check the 70-character boundary limit before allocating upload state (RFC 2046 5.1.1). Oversized boundaries
+        cannot fit the part scanner.
+     */
+    if (slen(boundary) > WEB_MAX_BOUNDARY) {
+        rFree(boundary);
+        webError(web, 400, "Upload boundary is too long");
+        return R_ERR_BAD_ARGS;
+    }
+    web->boundary = sjoin("--", boundary, NULL);
+    rFree(boundary);
+    web->boundaryLen = slen(web->boundary);
     web->uploads = rAllocHash(0, 0);
+    web->uploadList = rAllocList(0, 0);
     web->numUploads = 0;
+    web->uploadSize = 0;
     if (!web->vars) {
         web->vars = jsonAlloc();
     }
@@ -6502,14 +9495,23 @@ PUBLIC int webInitUpload(Web *web)
 
 PUBLIC void webFreeUpload(Web *web)
 {
-    RName *np;
+    WebUpload *upload;
+    int       next;
 
+    //  The boundary is set before web->uploads, so free it whether or not the upload started
+    rFree(web->boundary);
+    web->boundary = 0;
     if (web->uploads == 0) return;
 
-    for (ITERATE_NAMES(web->uploads, np)) {
-        freeUpload(np->value);
+    /*
+        Free from the list, which owns every upload including any that a duplicate part name
+        displaced from the hash.
+     */
+    for (ITERATE_ITEMS(web->uploadList, upload, next)) {
+        freeUpload(upload);
     }
-    rFree(web->boundary);
+    rFreeList(web->uploadList);
+    web->uploadList = 0;
     rFreeHash(web->uploads);
     web->uploads = 0;
     rFree(web->uploadName);
@@ -6527,6 +9529,16 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *clientFilename)
     char      *filename, *path;
     int       fd;
 
+    /*
+        Count files here rather than parts in the boundary loop: this is the only path that opens
+        a descriptor and consumes an upload-directory inode, so it is the resource the limit is
+        for. Non-file parts are bounded separately by web.limits.vars via webAddRequestVar.
+        A configured zero disables the limit.
+     */
+    if (web->host->maxUploads > 0 && ++web->numUploads > web->host->maxUploads) {
+        webError(web, 413, "Too many files uploaded");
+        return 0;
+    }
     if (!name || *name == '\0') {
         webError(web, -400, "Missing upload name for filename");
         return 0;
@@ -6555,23 +9567,20 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *clientFilename)
     /*
         Create the file to hold the uploaded data
      */
-    if ((filename = rGetTempFile(web->host->uploadDir, "tmp")) == 0) {
+    if ((fd = createUploadFile(web->host->uploadDir, &filename)) < 0) {
         webError(web, 500, "Cannot create upload temp file. Check upload directory configuration");
         rFree(path);
         return 0;
     }
     rTrace("web", "File upload of: %s stored as %s", path, filename);
 
-    if ((fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0600)) < 0) {
-        webError(web, 500, "Cannot open upload temp file");
-        rFree(path);
-        rFree(filename);
-        return 0;
-    }
     if ((upload = rAllocType(WebUpload)) == 0) {
         // Memory errors handled globally
         webError(web, 500, "Cannot allocate upload");
         close(fd);
+        unlink(filename);
+        rFree(filename);
+        rFree(path);
         return 0;
     }
     upload->name = sclone(name);
@@ -6583,15 +9592,55 @@ static WebUpload *allocUpload(Web *web, cchar *name, cchar *clientFilename)
     return upload;
 }
 
+/*
+    Keep the descriptor from exclusive creation. Never reopen a temporary pathname: even an
+    O_NOFOLLOW reopen would still permit replacement by a regular file or a hard link.
+    Local to web until the companion r temporary-file descriptor API is available.
+ */
+static int createUploadFile(cchar *dir, char **filename)
+{
+    static cchar hex[] = "0123456789abcdef";
+    uchar        random[16];
+    char         token[33], *path;
+    int          attempt, error, fd, i;
+
+    *filename = NULL;
+    for (attempt = 0; attempt < 16; attempt++) {
+        if (cryptGetRandomBytes(random, sizeof(random), 0) < 0) {
+            return -1;
+        }
+        for (i = 0; i < 16; i++) {
+            token[i * 2] = hex[random[i] >> 4];
+            token[i * 2 + 1] = hex[random[i] & 0xf];
+        }
+        token[32] = '\0';
+        if ((path = sjoin(dir, "/tmp-", token, ".tmp", NULL)) == NULL) {
+            return -1;
+        }
+        fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0600);
+        if (fd >= 0) {
+            *filename = path;
+            return fd;
+        }
+        error = errno;
+        rFree(path);
+        if (error != EEXIST) {
+            return -1;
+        }
+    }
+    return -1;
+}
+
 static void freeUpload(WebUpload *upload)
 {
-    if (upload->filename) {
-        unlink(upload->filename);
-        rFree(upload->filename);
-    }
+    /* Close before unlinking; Windows _open does not allow deletion of open files. */
     if (upload->fd >= 0) {
         close(upload->fd);
         upload->fd = -1;
+    }
+    if (upload->filename) {
+        unlink(upload->filename);
+        rFree(upload->filename);
     }
     rFree(upload->clientFilename);
     rFree(upload->name);
@@ -6601,19 +9650,14 @@ static void freeUpload(WebUpload *upload)
 
 PUBLIC int webProcessUpload(Web *web)
 {
-    RBuf  *buf;
     char  suffix[8];
     ssize nbytes;
 
-    buf = web->rx;
     while (1) {
-        if (web->host->maxUploads > 0 && ++web->numUploads > web->host->maxUploads) {
-            return webError(web, 413, "Too many files uploaded");
-        }
         if ((nbytes = webBufferUntil(web, web->boundary, WEB_BUF_BOOST_2X)) <= 0) {
             return webError(web, -400, "Bad upload request boundary");
         }
-        rAdjustBufStart(buf, nbytes);
+        webConsumeBody(web, (size_t) nbytes);
 
         //  Should be \r\n after each boundary. On the last boundary, it is "--\r\n"
         suffix[0] = '\0';
@@ -6635,14 +9679,21 @@ PUBLIC int webProcessUpload(Web *web)
             return R_ERR_CANT_WRITE;
         }
     }
-    web->rxRemaining = 0;
+    /*
+        A framed body is drained to its end when the request completes. A body with neither a
+        Content-Length nor a Transfer-Encoding has no end to read to, so it ends at the final
+        boundary.
+     */
+    if (web->rxLen < 0 && !web->chunked) {
+        web->rxRemaining = 0;
+    }
     return 0;
 }
 
 static int processUploadHeaders(Web *web)
 {
     WebUpload *upload;
-    char      *content, *field, *key, *next, *rest, *value, *type;
+    char      *content, *field, *filename, *key, *next, *rest, *value, *type;
     ssize     nbytes;
 
     if ((nbytes = webBufferUntil(web, "\r\n\r\n", WEB_BUF_BOOST_2X)) < 2) {
@@ -6651,16 +9702,28 @@ static int processUploadHeaders(Web *web)
     }
     content = web->rx->start;
     content[nbytes - 2] = '\0';
-    rAdjustBufStart(web->rx, nbytes);
+    webConsumeBody(web, (size_t) nbytes);
 
     if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
         rLog("raw", "web", "Upload Header %d <<<<\n\n%s\n", (int) web->rx->buflen, content);
     }
 
-    /*
-        The mime headers may contain Content-Disposition and Content-Type headers
-     */
-    for (key = content; key && stok(key, "\r\n", &next); ) {
+    //  Each part stands alone: nothing from the previous part's headers carries over
+    web->upload = 0;
+    rFree(web->uploadName);
+    web->uploadName = 0;
+    filename = type = 0;
+
+    /* Allocate each upload only after its complete part header. Require CRLF and reject bare CR/LF. */
+    for (key = content; key && *key; key = next) {
+        if ((next = strstr(key, "\r\n")) != 0) {
+            *next = '\0';
+            next += 2;
+        }
+        if (strpbrk(key, "\r\n")) {
+            webError(web, -400, "Bad upload headers");
+            return R_ERR_BAD_REQUEST;
+        }
         ssplit(key, ": ", &rest);
         if (scaselessmatch(key, "Content-Disposition")) {
             for (field = rest; field && stok(field, ";", &rest); ) {
@@ -6676,25 +9739,34 @@ static int processUploadHeaders(Web *web)
                     web->uploadName = sclone(value);
 
                 } else if (scaselessmatch(field, "filename")) {
-                    if ((upload = allocUpload(web, web->uploadName, value)) == 0) {
-                        return R_ERR_CANT_COMPLETE;
+                    if (filename) {
+                        webError(web, -400, "Bad upload headers. Multiple filenames in one part");
+                        return R_ERR_BAD_REQUEST;
                     }
-                    rAddName(web->uploads, upload->name, upload, 0);
-                    web->upload = upload;
+                    filename = value;
                 }
                 field = rest;
             }
         } else if (scaselessmatch(key, "Content-Type")) {
             type = strim(rest, " ", R_TRIM_BOTH);
-            if (web->upload) {
-                rFree(web->upload->contentType);
-                web->upload->contentType = sclone(type);
-            }
-        } else if (!web->uploadName) {
-            webError(web, -400, "Bad upload headers. Missing Content-Disposition name");
-            return R_ERR_BAD_REQUEST;
         }
-        key = next;
+    }
+    if (!web->uploadName) {
+        webError(web, -400, "Bad upload headers. Missing Content-Disposition name");
+        return R_ERR_BAD_REQUEST;
+    }
+    if (filename) {
+        if ((upload = allocUpload(web, web->uploadName, filename)) == 0) {
+            return R_ERR_CANT_COMPLETE;
+        }
+        upload->contentType = type ? sclone(type) : 0;
+        /*
+            Keep every upload in an ownership list; duplicate names retain last-wins hash lookup without orphaning
+            earlier files.
+         */
+        rAddItem(web->uploadList, upload);
+        rAddName(web->uploads, upload->name, upload, 0);
+        web->upload = upload;
     }
     return 0;
 }
@@ -6709,12 +9781,14 @@ static int processUploadData(Web *web)
     WebUpload *upload;
     RBuf      *buf;
     char      *data;
-    size_t    len;
+    size_t    buffered, len, prior;
     ssize     nbytes, written;
 
     upload = web->upload;
     buf = web->rx;
+    prior = (size_t) -1;
     do {
+        len = 0;
         if ((nbytes = webBufferUntil(web, web->boundary, WEB_BUF_BOOST_16X)) < 0) {
             return webError(web, -400, "Bad upload request boundary");
         }
@@ -6725,9 +9799,13 @@ static int processUploadData(Web *web)
              */
             if (nbytes) {
                 /*
-                    Extract the data before the \r\n delimiter and boundary
+                    Extract the data before the \r\n delimiter and boundary. Do the subtraction in
+                    signed space and clamp at zero BEFORE casting to size_t: casting nbytes to size_t
+                    first makes `(size_t) nbytes - boundaryLen - 2` underflow to a huge value when a
+                    boundary matches with fewer than boundaryLen + 2 preceding bytes, which the
+                    maxUpload guard below then wraps past, driving an out-of-bounds read in write().
                  */
-                len = (size_t) max(0, (size_t) nbytes - web->boundaryLen - 2);
+                len = (size_t) max(0, nbytes - (ssize) web->boundaryLen - 2);
             } else {
                 /*
                     Not a complete boundary, so preserve a possible partial boundary.
@@ -6735,22 +9813,24 @@ static int processUploadData(Web *web)
                 len = getUploadDataLength(web);
             }
             if (len > 0) {
-                if ((upload->size + len) > (size_t) web->host->maxUpload) {
+                /* Check total bytes across all files, including requests without a declared length. */
+                if ((web->uploadSize + len) > (size_t) web->host->maxUpload) {
                     if (upload->fd >= 0) {
                         close(upload->fd);
                         upload->fd = -1;
                     }
-                    return webError(web, 414, "Uploaded file exceeds maximum %d", web->host->maxUpload);
+                    return webError(web, 413, "Uploaded files exceed maximum %d", web->host->maxUpload);
                 }
-                if ((written = write(upload->fd, buf->start, (uint) len)) < 0) {
+                if ((written = write(upload->fd, buf->start, (uint) len)) != (ssize) len) {
                     if (upload->fd >= 0) {
                         close(upload->fd);
                         upload->fd = -1;
                     }
                     return webError(web, 500, "Cannot write uploaded file");
                 }
-                rAdjustBufStart(buf, (ssize) len);
+                webConsumeBody(web, len);
                 upload->size += (size_t) written;
+                web->uploadSize += (size_t) written;
                 if (upload->fd >= 0 && web->host->flags & WEB_SHOW_REQ_HEADERS) {
                     rLog("raw", "web", "Upload File Data %d <<<<\n%d bytes\n", (int) written, (int) upload->size);
                 }
@@ -6762,16 +9842,33 @@ static int processUploadData(Web *web)
             }
             //  Strip \r\n. Keep boundary in data to be consumed by webProcessUpload.
             nbytes -= (ssize) web->boundaryLen;
-            if (nbytes < 3) {
+            //  The value and its CRLF. An empty value is legal: browsers send empty fields.
+            if (nbytes < 2) {
                 return webError(web, -400, "Bad upload form data");
             }
             buf->start[nbytes - 2] = '\0';
             data = webDecode(buf->start);
-            webSetVar(web, web->uploadName, data);
+            if (webAddRequestVar(web, web->vars, web->uploadName, data) < 0) {
+                return R_ERR_BAD_REQUEST;
+            }
             if (web->host->flags & WEB_SHOW_REQ_HEADERS) {
                 rLog("raw", "web", "Upload Form Field <<<<\n\n%s = %s\n", web->uploadName, data);
             }
-            rAdjustBufStart(buf, nbytes);
+            webConsumeBody(web, (size_t) nbytes);
+        }
+        if (nbytes == 0 && len == 0) {
+            /*
+                No complete boundary was seen and no data could be written, so this pass consumed
+                nothing. That is normal while a partial boundary waits for more bytes, but only if
+                more bytes are arriving: webBufferUntil returns zero without reading once the
+                buffered body reaches its scan limit, so a loop that sees the same amount of data
+                twice will never progress and must stop rather than spin the fiber.
+             */
+            buffered = webBufferedBody(web);
+            if (buffered == prior) {
+                return webError(web, -400, "Upload is not making progress");
+            }
+            prior = buffered;
         }
     } while (nbytes == 0);
 
@@ -6788,25 +9885,29 @@ static int processUploadData(Web *web)
  */
 static size_t getUploadDataLength(Web *web)
 {
-    RBuf  *buf;
-    cchar *cp, *from;
+    ssize avail;
+    char  *start, *end, *cp, *from;
 
-    buf = web->rx;
-    from = max(buf->start, buf->end - web->boundaryLen - 2);
+    start = web->rx->start;
+    end = &start[webBufferedBody(web)];
+    from = max(start, end - (ssize) web->boundaryLen - 2);
 
     /*
-        Check if the first character of the boundary "-" is found at the end of the buffer
-        Start search at the end of the buffer, less the boundary length and \r\n delimiter
+        Check if the first character of the boundary "-" is found at the end of the body data
+        Start search at the end of the data, less the boundary length and \r\n delimiter
      */
-    if ((cp = memchr(from, web->boundary[0], (size_t) (buf->end - from))) != NULL) {
-        return (size_t) max(0, cp - buf->start - 2);
+    if ((cp = memchr(from, web->boundary[0], (size_t) (end - from))) != NULL) {
+        //  Signed before clamping - max(0, <unsigned>) cannot clamp a value that already wrapped
+        avail = (ssize) (cp - start) - 2;
+        return avail > 0 ? (size_t) avail : 0;
     }
-    return (size_t) max(0, rGetBufLength(buf) - 2);
+    avail = (ssize) (end - start) - 2;
+    return avail > 0 ? (size_t) avail : 0;
 }
 #endif /* ME_WEB_UPLOAD */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
@@ -6851,7 +9952,10 @@ static WebStatus webStatus[] = {
     { 405, "Unsupported Method" },
     { 406, "Not Acceptable" },
     { 408, "Request Timeout" },
+    { 411, "Length Required" },
     { 413, "Request too large" },
+    { 421, "Misdirected Request" },
+    { 429, "Too Many Requests" },
     { 500, "Internal Server Error" },
     { 501, "Not Implemented" },
     { 503, "Service Unavailable" },
@@ -6908,8 +10012,11 @@ PUBLIC cchar *webGetStatusMsg(int status)
  */
 PUBLIC char *webHttpDate(time_t when)
 {
-    struct tm tm;
-    char      buf[32];
+    static cchar *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    static cchar *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    struct tm    tm;
+    char         buf[32];
 
 #if ME_WIN_LIKE
     if (gmtime_s(&tm, &when) != 0) {
@@ -6920,10 +10027,18 @@ PUBLIC char *webHttpDate(time_t when)
         return 0;
     }
 #endif
-    buf[0] = '\0';
-    if (strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tm) == 0) {
+    /*
+        Do not use strftime here. Its %a and %b are locale-dependent, and an embedding application
+        that calls setlocale - a reasonable thing to do for a localised device UI - would silently
+        change the wire format. RFC 9110 5.6.7 fixes HTTP-date to these English abbreviations
+        regardless of locale.
+     */
+    if (tm.tm_wday < 0 || tm.tm_wday > 6 || tm.tm_mon < 0 || tm.tm_mon > 11) {
         return 0;
     }
+    sfmtbuf(buf, sizeof(buf), "%s, %02d %s %d %02d:%02d:%02d GMT",
+            days[tm.tm_wday], tm.tm_mday, months[tm.tm_mon], tm.tm_year + 1900,
+            tm.tm_hour, tm.tm_min, tm.tm_sec);
     return sclone(buf);
 }
 
@@ -6935,7 +10050,16 @@ PUBLIC cchar *webGetDocs(WebHost *host)
 /*
     URL encoding decode
  */
-PUBLIC char *webDecode(char *str)
+/*
+    Percent-decode in place.
+
+    "plusAsSpace" selects the form. RFC 3986 3.3 makes "+" a literal character in a path; the
+    plus-means-space rule belongs only to application/x-www-form-urlencoded, that is to query
+    strings and form bodies. Decoding a path with that rule aliases two spellings onto one file
+    - "/a+b.txt" and "/a%20b.txt" both reach "a b.txt" - which evades any route policy keyed on
+    the literal path, exactly as case-variance did.
+ */
+static char *decode(char *str, bool plusAsSpace)
 {
     char   *ip,  *op;
     size_t len;
@@ -6946,7 +10070,7 @@ PUBLIC char *webDecode(char *str)
     }
     len = slen(str);
     for (ip = op = str; len > 0 && *ip; ip++, op++) {
-        if (*ip == '+') {
+        if (*ip == '+' && plusAsSpace) {
             *op = ' ';
         } else if (*ip == '%' && isxdigit((uchar) ip[1]) && isxdigit((uchar) ip[2]) &&
                    !(ip[1] == '0' && ip[2] == '0')) {
@@ -6976,6 +10100,67 @@ PUBLIC char *webDecode(char *str)
 /*
     Note: the path does not contain a leading "/". Similarly, the query and hash do not contain the ? or #
  */
+/*
+    Redact credential header values from a header block before it is logged
+ */
+PUBLIC char *webRedactHeaders(cchar *headers)
+{
+    static cchar *secrets[] = { "authorization", "proxy-authorization", "cookie", "set-cookie", 0 };
+    RBuf         *buf;
+    cchar        *colon, *eol, *line;
+    size_t       nameLen;
+    int          i;
+    bool         redact;
+
+    if (!headers) {
+        return 0;
+    }
+    buf = rAllocBuf(slen(headers) + 1);
+    for (line = headers; *line; line = eol) {
+        eol = line + strcspn(line, "\n");
+        if (*eol == '\n') {
+            eol++;
+        }
+        redact = 0;
+        nameLen = 0;
+        if ((colon = memchr(line, ':', (size_t) (eol - line))) != 0) {
+            nameLen = (size_t) (colon - line);
+            for (i = 0; secrets[i]; i++) {
+                if (nameLen == slen(secrets[i]) && sncaselesscmp(line, secrets[i], nameLen) == 0) {
+                    redact = 1;
+                    break;
+                }
+            }
+        }
+        if (redact) {
+            rPutBlockToBuf(buf, line, nameLen + 1);
+            rPutStringToBuf(buf, " [redacted]");
+            if (eol > line && eol[-1] == '\n') {
+                rPutStringToBuf(buf, (eol - 1 > line && eol[-2] == '\r') ? "\r\n" : "\n");
+            }
+        } else {
+            rPutBlockToBuf(buf, line, (size_t) (eol - line));
+        }
+    }
+    return rBufToStringAndFree(buf);
+}
+
+/*
+    Decode a query or form value. "+" becomes a space.
+ */
+PUBLIC char *webDecode(char *str)
+{
+    return decode(str, 1);
+}
+
+/*
+    Decode a URI path. "+" is a literal plus, per RFC 3986.
+ */
+PUBLIC char *webDecodePath(char *str)
+{
+    return decode(str, 0);
+}
+
 PUBLIC char *webParseUrl(cchar *uri,
                          cchar **scheme,
                          cchar **host,
@@ -6984,7 +10169,9 @@ PUBLIC char *webParseUrl(cchar *uri,
                          cchar **query,
                          cchar **hash)
 {
-    char *buf, *end, *next, *tok;
+    char  *buf, *end, *next, *tok;
+    int64 value;
+    bool  hasAuthority;
 
     if (scheme) *scheme = 0;
     if (host) *host = 0;
@@ -7026,44 +10213,50 @@ PUBLIC char *webParseUrl(cchar *uri,
             }
             tok = &next[3];
         }
+        hasAuthority = 0;
         if (*tok == '[' && ((next = strchr(tok, ']')) != 0)) {
             /* IPv6  [::]:port/url */
             if (host) {
                 *host = &tok[1];
             }
             *next++ = 0;
+            /*
+                The literal is terminated at its "]". Whatever follows is the ":port" and "/path",
+                which the shared block below parses exactly as it does for a named host. Falling
+                straight through to the path assignment instead left the port unset and glued the
+                ":port" onto the front of the path.
+             */
             tok = next;
+            hasAuthority = 1;
 
         } else if (*tok && *tok != '/') {
             // hostname:port/path
             if (host) {
                 *host = tok;
             }
-            if ((tok = spbrk(tok, ":/")) != 0) {
-                if (*tok == ':') {
-                    *tok++ = 0;
-                    if (port) {
-                        *port = (int) strtol(tok, &end, 10);
-                        if (end == tok || (*end != '\0' && *end != '/')) {
-                            //  Invalid characters in port
-                            rFree(buf);
-                            return 0;
-                        }
-                        if (*port <= 0 || *port > 65535) {
-                            rFree(buf);
-                            return 0;
-                        }
+            tok = spbrk(tok, ":/");
+            hasAuthority = 1;
+        }
+        if (hasAuthority && tok) {
+            if (*tok == ':') {
+                *tok++ = 0;
+                if (port) {
+                    //  Strict: a sign, white space or a value that only fits after truncation is not a port
+                    if (sparseUint(tok, 10, 65535, &end, &value) < 0 || (*end != '\0' && *end != '/') || value == 0) {
+                        goto fail;
                     }
-                    if ((tok = schr(tok, '/')) == 0) {
-                        tok = "";
-                    }
-                } else {
-                    if (tok[0] == '/' && tok[1] == '\0' && path) {
-                        //  Bare path "/"
-                        *path = "";
-                    }
-                    *tok++ = 0;
+                    *port = (int) value;
                 }
+                if ((tok = schr(tok, '/')) == 0) {
+                    tok = "";
+                }
+            } else if (*tok == '/') {
+                //  Remove only the authority separator. A further leading "/" belongs to the path.
+                *tok++ = 0;
+                if (path) {
+                    *path = tok;
+                }
+                tok = 0;
             }
         }
         if (tok && *tok && path) {
@@ -7079,6 +10272,16 @@ PUBLIC char *webParseUrl(cchar *uri,
         *host = 0;
     }
     return buf;
+
+fail:
+    if (scheme) *scheme = 0;
+    if (host) *host = 0;
+    if (port) *port = 0;
+    if (path) *path = 0;
+    if (query) *query = 0;
+    if (hash) *hash = 0;
+    rFree(buf);
+    return 0;
 }
 
 /*
@@ -7326,36 +10529,71 @@ PUBLIC Json *webParseJson(Web *web)
     return json;
 }
 
-PUBLIC void webParseEncoded(Web *web, Json *vars, cchar *str)
+/*
+    Define a variable supplied by the client, from a query string, a url-encoded body or a multipart
+    form field. Every producer of client variables must come through here so none can miss the count
+    cap: capping only the url-encoded parser left the multipart producer unbounded.
+
+    web.limits.vars caps the count over the query and the body together. Each jsonSet linear-scans the
+    already-parsed keys, so parsing is O(n^2) in the variable count; with only the byte limits to bound
+    it, a 100K form body of ~25k short pairs or a 20MB multipart body of ~100k form-field parts drives
+    minutes of synchronous CPU before the handler runs - a cheap, unauthenticated exhaustion vector on
+    a single-threaded runtime.
+ */
+PUBLIC int webAddRequestVar(Web *web, Json *vars, cchar *name, cchar *value)
+{
+    if (++web->numVars > web->host->maxVars) {
+        webError(web, 413, "Too many request parameters (max %d)", web->host->maxVars);
+        return R_ERR_WONT_FIT;
+    }
+    /*
+        Store client names literally and reject structural characters that webGetVar cannot address. Structured
+        input uses application/json.
+     */
+    if (name == NULL || strpbrk(name, ".[]") != NULL) {
+        webError(web, 400, "Invalid request parameter name");
+        return R_ERR_BAD_ARGS;
+    }
+    jsonSetKey(vars, 0, name, value, 0);
+    return 0;
+}
+
+PUBLIC int webParseEncoded(Web *web, Json *vars, cchar *str)
 {
     char *data, *keyword, *value, *tok;
+    int  rc;
 
+    rc = 0;
     data = sclone(str);
     keyword = stok(data, "&", &tok);
     while (keyword != NULL) {
         if ((value = strchr(keyword, '=')) != NULL) {
             *value++ = '\0';
-            webDecode(keyword);
             webDecode(value);
         } else {
             value = "";
         }
-        jsonSet(vars, 0, keyword, value, 0);
+        webDecode(keyword);
+        if ((rc = webAddRequestVar(web, vars, keyword, value)) < 0) {
+            break;
+        }
         keyword = stok(tok, "&", &tok);
     }
     rFree(data);
+    return rc;
 }
 
-PUBLIC void webParseQuery(Web *web)
+PUBLIC int webParseQuery(Web *web)
 {
     if (web->query) {
-        webParseEncoded(web, web->qvars, web->query);
+        return webParseEncoded(web, web->qvars, web->query);
     }
+    return 0;
 }
 
-PUBLIC void webParseForm(Web *web)
+PUBLIC int webParseForm(Web *web)
 {
-    webParseEncoded(web, web->vars, rBufToString(web->body));
+    return webParseEncoded(web, web->vars, rBufToString(web->body));
 }
 
 /*
@@ -7392,7 +10630,7 @@ PUBLIC cchar *webGetQueryVar(Web *web, cchar *name, cchar *defaultValue)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 
@@ -7488,21 +10726,20 @@ static cchar *getType(Web *web, int sid);
 static int parseUrl(Web *web);
 static bool valError(Web *web, Json *json, cchar *fmt, ...);
 static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag);
+static int findField(Json *signatures, int fieldsId, cchar *name);
 static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag);
 static bool validatePrimitive(Web *web, cchar *data, int sid, cchar *tag);
 static bool validateProperty(Web *web, RBuf *buf, Json *json, int jid, int sid, cchar *tag);
 
 /************************************* Code ***********************************/
 /*
-    Validate the request using a URL request path and the host->signatures.
-    The path is used as a JSON property path into the signatures.json5 file.
-    Generally, this is the controller.method format, but custom formats are supported.
+    Validate the request using the signature selected for the URL by validateRequest.
     This routine will generate an error response if the signature is not found or if
     the signature is invalid. Depending on the host->strictSignatures flag, it will either
     return 0 or R_ERR_BAD_REQUEST. If invalid, the connection is closed after the error
     response is written.
  */
-PUBLIC bool webValidateRequest(Web *web, cchar *path)
+PUBLIC bool webValidateRequest(Web *web)
 {
     WebHost *host;
     cchar   *type;
@@ -7513,15 +10750,23 @@ PUBLIC bool webValidateRequest(Web *web, cchar *path)
         return 0;
     }
     if (web->signature < 0) {
-        if (host->strictSignatures) {
+        /*
+            Strict mode refuses a request the signature file does not describe. That is only a
+            sensible demand of a route that asked to be validated: a route validated by default -
+            static files, endpoints outside the signature file - simply has nothing to check.
+         */
+        if (host->strictSignatures && (web->route->validate == WEB_VALIDATE_ON ||
+                                       (web->policy && web->policy->validate == WEB_VALIDATE_ON))) {
             return valError(web, NULL, "Missing request signature for request");
         }
         rDebug("web", "Cannot find signature for %s, continuing.", web->path);
         return 1;
     }
-    //  Optional query signature
+    //  Optional query signature. It is checked in addition to the body, not instead of it.
     if (web->qvars && (sid = jsonGetId(host->signatures, web->signature, "request.query")) >= 0) {
-        return webValidateSignature(web, NULL, web->qvars, 0, sid, 0, "query");
+        if (!webValidateSignature(web, NULL, web->qvars, 0, sid, 0, "query")) {
+            return 0;
+        }
     }
     if ((sid = jsonGetId(host->signatures, web->signature, "request")) < 0) {
         if (host->strictSignatures) {
@@ -7623,7 +10868,7 @@ static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int
     Json     *signatures;
     JsonNode *array, *item;
     cchar    *oftype;
-    int      oid;
+    int      iid, oid;
 
     signatures = web->host->signatures;
     if (!json) {
@@ -7638,7 +10883,9 @@ static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int
     if (buf) {
         rPutCharToBuf(buf, '[');
     }
-    for (ITERATE_JSON_ID(json, jid, item, iid)) {
+    /* Walk by index because filtering can change the JSON node count. */
+    for (iid = jid + 1; iid < json->nodes[jid].last; iid = json->nodes[iid].last) {
+        item = &json->nodes[iid];
         oid = jsonGetId(signatures, sid, "of");
         if (oid >= 0) {
             oftype = jsonGet(signatures, oid, "type", "object");
@@ -7656,8 +10903,8 @@ static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int
             }
         } else {
             // Allow untyped array without a signature "of" block
-            if (buf) {
-                jsonPutToBuf(buf, json, iid, JSON_JSON);
+            if (buf && jsonPutToBuf(buf, json, iid, JSON_JSON) < 0) {
+                return valError(web, NULL, "Cannot serialize %s", tag);
             }
         }
         if (buf) {
@@ -7677,23 +10924,57 @@ static bool validateArray(Web *web, RBuf *buf, Json *json, int jid, int sid, int
     Validate a object properties and write to the optional buffer.
     The json object may be NULL to indicate no body.
  */
+/*
+    Response filtering omits output; request filtering must remove vars/qvars. Return true after removal so the
+    caller revisits the sibling moved into this slot.
+ */
+static bool omitField(RBuf *buf, Json *json, int vid)
+{
+    if (buf) {
+        return 0;
+    }
+    jsonRemove(json, vid, 0);
+    return 1;
+}
+
+/*
+    Look up literal field names; interpreting client names as paths could select other signature nodes.
+ */
+static int findField(Json *signatures, int fieldsId, cchar *name)
+{
+    JsonNode *field;
+
+    for (ITERATE_JSON_ID(signatures, fieldsId, field, fid)) {
+        if (smatch(field->name, name)) {
+            return fid;
+        }
+    }
+    return -1;
+}
+
 static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, int depth, cchar *tag)
 {
     Json     *signatures;
-    JsonNode *drop, *field, *fields, *parent, *var;
+    JsonNode *drop, *field, *fields, *var;
     cchar    *def, *dropRole, *ftype, *methodRole, *required, *role, *value;
     char     dropBuf[128];
-    bool     hasRequired, hasWild, strict;
-    int      fid, id, fieldsId;
+    bool     hasRequired, hasWild, omitted, strict;
+    int      fid, fieldsId, vid;
 
     signatures = web->host->signatures;
     strict = web->host->strictSignatures;
 
+    /*
+        Require an object; permit an absent body.
+     */
+    if (json && (var = jsonGetNode(json, jid, 0)) != 0 && var->type != JSON_OBJECT) {
+        return valError(web, NULL, "Bad %s, expected an object", tag);
+    }
     fields = jsonGetNode(signatures, sid, "fields");
     if (!fields) {
         //  Generic object with no fields defined
-        if (buf && json) {
-            jsonPutToBuf(buf, json, jid, JSON_JSON);
+        if (buf && json && jsonPutToBuf(buf, json, jid, JSON_JSON) < 0) {
+            return valError(web, NULL, "Cannot serialize %s", tag);
         }
         return 1;
     }
@@ -7713,12 +10994,12 @@ static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, in
         /*
             Ensure all required fields are present.
          */
-        for (ITERATE_JSON(signatures, fields, field, fid)) {
-            required = jsonGet(signatures, fid, "required", 0);
+        for (ITERATE_JSON(signatures, fields, field, requiredId)) {
+            required = jsonGet(signatures, requiredId, "required", 0);
             if (required) {
                 value = jsonGet(json, jid, field->name, 0);
                 if (!value) {
-                    def = jsonGet(signatures, fid, "default", 0);
+                    def = jsonGet(signatures, requiredId, "default", 0);
                     if (required && !def) {
                         return valError(web, json, "Missing required %s field '%s'", tag, field->name);
                     }
@@ -7741,37 +11022,69 @@ static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, in
     }
     fieldsId = jsonGetNodeId(signatures, fields);
 
-    if (json) {
-        parent = jsonGetNode(json, jid, 0);
-        for (ITERATE_JSON(json, parent, var, vid)) {
+    if (json && json->count > 0) {
+        /*
+            Revisit the current index after removal; nested filtering changes node counts and invalidates
+            ITERATE_JSON bounds.
+         */
+        for (vid = jid + 1, omitted = 0; vid < json->nodes[jid].last;
+             vid = omitted ? vid : json->nodes[vid].last, omitted = 0) {
+            var = &json->nodes[vid];
             if (var->name[0] == '_' || smatch(var->name, "pk") || smatch(var->name, "sk")) {
                 // Always hidden
+                omitted = omitField(buf, json, vid);
                 continue;
             }
-            fid = jsonGetId(signatures, fieldsId, var->name);
-            if (fid < 0 && !hasWild) {
-                if (strict) {
-                    return valError(web, json, "Invalid %s field '%s' in %s", tag, var->name, web->url);
+            fid = findField(signatures, fieldsId, var->name);
+            if (fid < 0) {
+                if (!hasWild) {
+                    if (strict) {
+                        return valError(web, json, "Invalid %s field '%s' in %s", tag, var->name, web->url);
+                    }
+                    rDebug("web", "Invalid %s field '%s' in %s", tag, var->name, web->url);
+                    continue;
                 }
-                rDebug("web", "Invalid %s field '%s' in %s", tag, var->name, web->url);
+                /*
+                    hasWild admits properties the signature does not declare. There is no field
+                    signature to check them against, so emit the value unchanged. Passing fid (-1)
+                    on to the role, drop and type checks below would fail all of them, and the
+                    resulting rejection is what made a wildcard object unusable. The method role
+                    still gates the field, as it does for a declared field with no role of its own.
+                 */
+                if (methodRole && !webCan(web, methodRole)) {
+                    omitted = omitField(buf, json, vid);
+                    continue;
+                }
+                if (buf) {
+                    jsonPutValueToBuf(buf, var->name, JSON_JSON);
+                    rPutCharToBuf(buf, ':');
+                    if (jsonPutToBuf(buf, json, vid, JSON_JSON) < 0) {
+                        return valError(web, NULL, "Cannot serialize %s", tag);
+                    }
+                    rPutCharToBuf(buf, ',');
+                }
                 continue;
             }
             role = jsonGet(signatures, fid, "role", methodRole);
             if (role && !webCan(web, role)) {
                 // Silently drop if role does not permit access
+                omitted = omitField(buf, json, vid);
                 continue;
             }
             drop = jsonGetNode(signatures, fid, "drop");
             if (drop != 0) {
                 if (drop->type == JSON_PRIMITIVE && smatch(drop->value, "true")) {
+                    omitted = omitField(buf, json, vid);
                     continue;
                 } else if (drop->type == JSON_STRING) {
                     if (!webCan(web, drop->value)) {
+                        omitted = omitField(buf, json, vid);
                         continue;
                     }
                 } else if (drop->type == JSON_OBJECT) {
                     dropRole = jsonGet(signatures, fid, SFMT(dropBuf, "drop.%s", tag), 0);
                     if (dropRole && !webCan(web, dropRole)) {
+                        omitted = omitField(buf, json, vid);
                         continue;
                     }
                 }
@@ -7781,14 +11094,9 @@ static bool validateObject(Web *web, RBuf *buf, Json *json, int jid, int sid, in
                 rPutCharToBuf(buf, ':');
             }
             ftype = jsonGet(signatures, fid, "type", 0);
-            if (smatch(ftype, "object")) {
-                id = jsonGetId(json, jid, var->name);
-                if (!webValidateSignature(web, buf, json, id, fid, depth + 1, tag)) {
-                    return 0;
-                }
-            } else if (smatch(ftype, "array")) {
-                id = jsonGetId(json, jid, var->name);
-                if (!webValidateSignature(web, buf, json, id, fid, depth + 1, tag)) {
+            if (smatch(ftype, "object") || smatch(ftype, "array")) {
+                //  Validate this occurrence: a lookup by name finds only the first of a repeated name
+                if (!webValidateSignature(web, buf, json, vid, fid, depth + 1, tag)) {
                     return 0;
                 }
             } else if (!validateProperty(web, buf, json, vid, fid, tag)) {
@@ -7837,12 +11145,17 @@ static bool validatePrimitive(Web *web, cchar *data, int sid, cchar *tag)
     assert(web);
     assert(tag);
 
+    /*
+        A missing signature is a server-side configuration fault, not a bad request, but it must
+        still produce a response. Returning silently left the caller to finalize a request with
+        nothing written, so the client saw the connection close with no status at all.
+     */
     if (!web->host->signatures || sid < 0) {
-        return 0;
+        return valError(web, NULL, "Missing %s signature", tag);
     }
     type = getType(web, sid);
     if ((signature = jsonGetNode(web->host->signatures, sid, 0)) == 0) {
-        return 0;
+        return valError(web, NULL, "Missing %s signature", tag);
     }
     if (smatch(type, "null")) {
         if (data && *data) {
@@ -7937,8 +11250,8 @@ PUBLIC bool webValidateJson(Web *web, RBuf *buf, const Json *cjson, int jid, cch
         sid = jsonGetId(web->host->signatures, web->signature, "response");
         if (sid < 0) {
             // Allow a signature to omit the response field (even with strict mode)
-            if (buf) {
-                jsonPutToBuf(buf, cjson, jid, JSON_JSON);
+            if (buf && jsonPutToBuf(buf, cjson, jid, JSON_JSON) < 0) {
+                return valError(web, NULL, "Cannot serialize %s", tag);
             }
             return 1;
         }
@@ -8023,20 +11336,21 @@ static int parseUrl(Web *web)
     stok(path, "#", &web->hash);
     stok(path, "?", &web->query);
 
-    if ((tok = strrchr(path, '.')) != 0) {
-        if (tok[1]) {
-            if ((delim = strrchr(path, '/')) != 0) {
-                if (delim < tok) {
-                    web->ext = tok;
-                }
-            } else {
-                web->ext = webDecode(tok);
-            }
+    //  Query is decoded when parsed in webParseQuery and webParseEncoded
+    webDecodePath(path);
+    webDecode(web->hash);
+
+    /*
+        webValidatePath allow-lists the encoded URL, so a control byte can only arrive
+        percent-encoded and only shows itself here. One in the path reaches the file system and
+        every log line that names the request, where a decoded newline splits the entry and lets
+        a request forge a log record. Refuse the whole range; a path never legitimately holds one.
+     */
+    for (tok = path; *tok; tok++) {
+        if ((uchar) * tok < 0x20 || *tok == 0x7f) {
+            return webError(web, -400, "Bad characters in URL");
         }
     }
-    //  Query is decoded when parsed in webParseQuery and webParseEncoded
-    webDecode(path);
-    webDecode(web->hash);
 
     /*
         Normalize and sanitize the path. This routine will process ".." and "." segments.
@@ -8045,6 +11359,12 @@ static int parseUrl(Web *web)
      */
     if ((web->path = webNormalizePath(path)) == 0) {
         return webError(web, -400, "Illegal URL");
+    }
+    //  Derive the extension from the final decoded filename, not an encoded URL offset.
+    web->ext = 0;
+    delim = strrchr(web->path, '/');
+    if ((tok = strrchr(delim ? delim + 1 : web->path, '.')) != 0 && tok[1]) {
+        web->ext = tok;
     }
     return 0;
 }
@@ -8091,7 +11411,7 @@ static bool valError(Web *web, Json *json, cchar *fmt, ...)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 

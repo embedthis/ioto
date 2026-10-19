@@ -143,10 +143,11 @@ struct {
 static MqttMsg *allocMsg(Mqtt *mq, uint type, int id, size_t size);
 static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, MqttWaitFlags wait);
 static void dequeueMsg(Mqtt *mq, MqttMsg *msg);
+static cchar *findMaster(Mqtt *mq, cchar *topic);
 static MqttMsg *findMsg(Mqtt *mq, MqttPacketType type, int id);
 static MqttMsg *findMsgByType(Mqtt *mq, MqttPacketType type);
 static void freeMsg(MqttMsg *msg);
-static void freeTopics(Mqtt *mq, cchar *topic);
+static void freeTopics(Mqtt *mq, cchar *topic, cchar *prefix);
 static void freeTopic(MqttTopic *tp);
 static int getId(Mqtt *mq);
 static int getStringLen(cchar *s);
@@ -155,6 +156,7 @@ static void idleCheck(Mqtt *mq);
 static void incomingMsg(MqttRecv *rp);
 static bool matchTopic(MqttTopic *tp, cchar **segments);
 static void notify(Mqtt *mq, int event);
+static void onConnected(Mqtt *mq);
 static int packHdr(Mqtt *mq, uchar *bp, MqttHdr *hdr);
 static int packString(uchar *bp, cchar *str);
 static int packUnit16(uchar *bp, uint16 integer);
@@ -165,7 +167,7 @@ static int processSentMsg(Mqtt *mq, MqttMsg *msg);
 static int pubAck(Mqtt *mq, int id);
 static int pubComp(Mqtt *mq, int id);
 static int pubRec(Mqtt *mq, int id);
-static int pubRel(Mqtt *mq, int id);
+static int pubRel(Mqtt *mq, MqttMsg *pub);
 static int publish(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, MqttWaitFlags wait, int retain, cchar *topic);
 static void queueMsg(Mqtt *mq, MqttMsg *msg, uchar *end);
 static int recvMsgs(Mqtt *mq);
@@ -175,6 +177,8 @@ static int setError(Mqtt *mq, int error, cchar *fmt, ...);
 static void setState(Mqtt *mq, MqttMsg *msg, int state);
 static cchar **splitTopic(cchar *topic, size_t topicLen, char **segbuf);
 static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags wait, cchar *topic);
+static void trimMasterTopic(char *topic);
+static bool underMaster(cchar *topic, cchar *master);
 static int unpackConn(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static int unpackPub(Mqtt *mq, MqttRecv *rp, cuchar *bp);
@@ -184,6 +188,10 @@ static int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static int unpackUnsubAck(Mqtt *mq, MqttRecv *rp, cuchar *bp);
 static uint16 unpackUint16(cuchar *bp);
 static bool validateTopic(cchar *topic, bool publishing);
+static void waitForFibers(Mqtt *mq);
+static void freeMqtt(Mqtt *mq);
+static void hold(Mqtt *mq);
+static bool release(Mqtt *mq);
 static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags state);
 
 /************************************* Code ***********************************/
@@ -192,20 +200,12 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
 {
     Mqtt *mq;
 
-    if (clientId == NULL || *clientId == '\0') {
+    if (clientId == NULL || *clientId == '\0' || slen(clientId) > MQTT_MAX_CLIENT_ID_SIZE) {
         return NULL;
     }
     mq = rAllocType(Mqtt);
-
-    if ((mq->buf = rAllocBuf(MQTT_BUF_SIZE)) == 0) {
-        return 0;
-    }
-    if ((mq->topics = rAllocList(0, 0)) == 0) {
-        return 0;
-    }
-    if (slen(clientId) > MQTT_MAX_CLIENT_ID_SIZE) {
-        return 0;
-    }
+    mq->buf = rAllocBuf(MQTT_BUF_SIZE);
+    mq->topics = rAllocList(0, 0);
     mq->id = sclone(clientId);
     mq->proc = proc;
     mq->head.next = mq->head.prev = &mq->head;
@@ -221,22 +221,36 @@ PUBLIC Mqtt *mqttAlloc(cchar *clientId, MqttEventProc proc)
 
 PUBLIC void mqttFree(Mqtt *mq)
 {
-    if (!mq) return;
+    if (!mq || mq->freeing) return;
 
+    if (mq->holds > 0) {
+        /* Defer destruction requested by callbacks until the holder releases the instance. */
+        mq->freeing = 1;
+        mq->error = R_ERR_CANT_COMPLETE;
+        return;
+    }
+    freeMqtt(mq);
+}
+
+static void freeMqtt(Mqtt *mq)
+{
     if (mq->sock && mq->sock->wait) {
         rSetWaitMask(mq->sock->wait, 0, 0);
     }
     resumeFibers(mq);
+    waitForFibers(mq);
     if (mq->keepAliveEvent) {
         rStopEvent(mq->keepAliveEvent);
     }
-    freeTopics(mq, NULL);
+    freeTopics(mq, NULL, NULL);
     rFreeBuf(mq->buf);
     rFreeList(mq->topics);
     rFreeList(mq->masterTopics);
     rFree(mq->errorMsg);
     rFree(mq->willMsg);
     rFree(mq->willTopic);
+    rFree(mq->username);
+    rFree(mq->password);
     rFree(mq->id);
     // Just for debugging
     mq->destroyed = 1;
@@ -244,30 +258,56 @@ PUBLIC void mqttFree(Mqtt *mq)
 }
 
 /*
-    Resume all waiting fibers and wait for them to complete
+    Hold the instance while running application code that may call mqttFree
+ */
+static void hold(Mqtt *mq)
+{
+    mq->holds++;
+}
+
+/*
+    Return false if releasing the hold freed the instance.
+ */
+static bool release(Mqtt *mq)
+{
+    if (--mq->holds == 0 && mq->freeing) {
+        freeMqtt(mq);
+        return 0;
+    }
+    return 1;
+}
+
+/*
+    Resume all fibers waiting for a message to be sent or acknowledged. Does not yield: a resumed
+    fiber runs only when the caller next yields, so the caller keeps exclusive use of mq.
  */
 static void resumeFibers(Mqtt *mq)
 {
     MqttMsg *msg, *next;
-    int     i;
 
     if (!mq) {
         return;
     }
-    /*
-        Resume all fibers waiting for message sent or ack
-     */
     for (msg = mq->head.next; msg != &mq->head; msg = next) {
         next = msg->next;
         if (msg->fiber) {
-            /*
-                The resume will not switch immediately to the other fiber
-                We wait below till the fiberCount reaches zero
-             */
             rResumeFiber(msg->fiber, (void*) (ssize) R_ERR_NOT_CONNECTED);
         }
         msg->wait = 0;
         dequeueMsg(mq, msg);
+    }
+}
+
+/*
+    Wait for the fibers resumed above to unwind before the memory they use goes away. This yields,
+    so only a caller that is about to free mq may use it: a resumed fiber can free mq itself.
+ */
+static void waitForFibers(Mqtt *mq)
+{
+    int i;
+
+    if (!mq) {
+        return;
     }
     for (i = 0; i < 100 && mq->fiberCount > 0; i++) {
         rSleep(0);
@@ -285,29 +325,43 @@ static void processMqtt(Mqtt *mq)
     if (!mq) {
         return;
     }
+    hold(mq);
     if (mq->sock) {
         mask = (int) (ssize) (rGetFiber()->result);
-        if (mask != 0) {
-            if (mask & R_READABLE) {
-                recvMsgs(mq);
-            }
-            if (mask & R_WRITABLE && mqttMsgsToSend(mq)) {
-                sendMsgs(mq);
-            }
+        if (mask & R_READABLE) {
+            recvMsgs(mq);
+        }
+        /*
+            Send whatever is queued, including acknowledgements queued while receiving above.
+            Waiting for a writable event stalls those: the socket is already writable, so there is
+            no transition to wait for. sendMsgs asks for a writable event if a write is partial.
+         */
+        if (!mq->error && mqttMsgsToSend(mq)) {
+            sendMsgs(mq);
         }
     } else {
         setError(mq, R_ERR_NETWORK, "Socket closed");
     }
     if (mq->error) {
+        /*
+            The connection is finished. Stop the wait handler so this runs once, then tell the
+            application exactly once. Do not wait for the resumed fibers here: one of them is the
+            caller of the failed operation and it may free mq as soon as it runs.
+         */
         resumeFibers(mq);
         mq->processing = 0;
-        if (rGetState() <= R_STOPPING) {
+        mq->connected = 0;
+        if (mq->sock && mq->sock->wait) {
+            rSetWaitMask(mq->sock->wait, 0, 0);
+        }
+        if (rGetState() <= R_STOPPING && !mq->freeing) {
             notify(mq, MQTT_EVENT_DISCONNECT);
         }
     } else {
         mask = R_READABLE | (mqttMsgsToSend(mq) ? R_WRITABLE : 0);
         rSetWaitMask(mq->sock->wait, mask, rGetTicks() + MQTT_WAIT_TIMEOUT);
     }
+    release(mq);
 }
 
 PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password)
@@ -315,15 +369,14 @@ PUBLIC int mqttSetCredentials(Mqtt *mq, cchar *username, cchar *password)
     if (!mq) {
         return R_ERR_BAD_ARGS;
     }
-    rFree(mq->password);
-    rFree(mq->username);
-
     if (slen(username) > MQTT_MAX_USERNAME_SIZE) {
         return R_ERR_BAD_ARGS;
     }
     if (slen(password) > MQTT_MAX_PASSWORD_SIZE) {
         return R_ERR_BAD_ARGS;
     }
+    rFree(mq->password);
+    rFree(mq->username);
     mq->password = sclone(password);
     mq->username = sclone(username);
     return 0;
@@ -333,7 +386,6 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
 {
     MqttMsg *msg;
     MqttHdr hdr;
-    Ticks   delay;
     cchar   *id;
     uchar   *bp;
     size_t  length;
@@ -347,6 +399,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     }
     flags = flags & ~(MQTT_CONNECT_RESERVED);
     mq->sock = sock;
+    mq->connected = 0;
 
     id = mq->id ? mq->id : "";
     mq->error = 0;
@@ -366,7 +419,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     length = 10;
     rc = getStringLen(id);
     if (rc < 0) {
-        return setError(mq, R_ERR_BAD_ARGS, "Client ID too long");
+        return R_ERR_BAD_ARGS;
     }
     length += (size_t) rc;
 
@@ -374,18 +427,15 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         flags |= MQTT_CONNECT_WILL_FLAG;
         rc = getStringLen(mq->willTopic);
         if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Will topic too long");
+            return R_ERR_BAD_ARGS;
         }
         length += (size_t) rc;
-
-        if (mq->willMsg == NULL) {
-            return setError(mq, R_ERR_BAD_ARGS, "Missing will message");
-        }
         length += 2 + (size_t) mq->willMsgSize;
 
         if ((flags & 0x18) == 0x18) {
             // bitwise equality with QoS 3 (invalid)
-            return setError(mq, R_ERR_BAD_ARGS, "Bad QOS in flags 0x%x", flags);
+            rTrace("mqtt", "Bad will QoS in connect flags 0x%x", flags);
+            return R_ERR_BAD_ARGS;
         }
     } else {
         // there is no will so set all will flags to zero
@@ -398,7 +448,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         flags |= MQTT_CONNECT_USER_NAME;
         rc = getStringLen(mq->username);
         if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Username too long");
+            return R_ERR_BAD_ARGS;
         }
         length += (size_t) rc;
     } else {
@@ -409,7 +459,7 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         flags |= MQTT_CONNECT_PASSWORD;
         rc = getStringLen(mq->password);
         if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Password too long");
+            return R_ERR_BAD_ARGS;
         }
         length += (size_t) rc;
     } else {
@@ -443,35 +493,20 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
         Set the server side up to the max keep alive
      */
     bp += packUnit16(bp, (int) (mq->keepAlive / TPS));
-    rc = packString(bp, id);
-    if (rc < 0) {
-        return setError(mq, R_ERR_BAD_ARGS, "Client ID too long");
-    }
-    bp += rc;
+    //  The string lengths were validated above
+    bp += packString(bp, id);
 
     if (flags & MQTT_CONNECT_WILL_FLAG) {
-        rc = packString(bp, mq->willTopic);
-        if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Will topic too long");
-        }
-        bp += rc;
+        bp += packString(bp, mq->willTopic);
         bp += packUnit16(bp, (uint16) mq->willMsgSize);
         memcpy(bp, mq->willMsg, mq->willMsgSize);
         bp += mq->willMsgSize;
     }
     if (flags & MQTT_CONNECT_USER_NAME) {
-        rc = packString(bp, mq->username);
-        if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Username too long");
-        }
-        bp += rc;
+        bp += packString(bp, mq->username);
     }
     if (flags & MQTT_CONNECT_PASSWORD) {
-        rc = packString(bp, mq->password);
-        if (rc < 0) {
-            return setError(mq, R_ERR_BAD_ARGS, "Password too long");
-        }
-        bp += rc;
+        bp += packString(bp, mq->password);
     }
     if (!mq->processing) {
         rSetWaitHandler(mq->sock->wait, (RWaitProc) processMqtt, mq, R_IO, rGetTicks() + MQTT_WAIT_TIMEOUT, 0);
@@ -479,11 +514,32 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     }
     queueMsg(mq, msg, bp);
 
-    //  Wait for conn ack
-    waitUntil(mq, msg, wait);
+    if (wait & MQTT_WAIT_ACK) {
+        waitUntil(mq, msg, wait);
+        if (!mq->connected) {
+            return R_ERR_CANT_CONNECT;
+        }
+        onConnected(mq);
+    } else {
+        /*
+            Not waiting for the CONNACK: the connection is completed when it arrives
+         */
+        if (waitUntil(mq, msg, wait) < 0) {
+            return R_ERR_CANT_CONNECT;
+        }
+    }
+    return 0;
+}
 
-    if (!mq->connected) {
-        return R_ERR_CANT_CONNECT;
+/*
+    The broker accepted the connection. Start the keep-alive timer and tell the application.
+ */
+static void onConnected(Mqtt *mq)
+{
+    Ticks delay;
+
+    if (!mq || !mq->connected || mq->error) {
+        return;
     }
     if (mq->keepAliveEvent) {
         rStopEvent(mq->keepAliveEvent);
@@ -491,14 +547,20 @@ PUBLIC int mqttConnect(Mqtt *mq, RSocket *sock, int flags, MqttWaitFlags wait)
     delay = min(mq->keepAlive, mq->timeout);
     mq->keepAliveEvent = rStartEvent((REventProc) idleCheck, mq, delay);
     notify(mq, MQTT_EVENT_CONNECTED);
-    return 0;
 }
 
 static void idleCheck(Mqtt *mq)
 {
     Ticks delay, elapsed;
 
-    if (!mq || !mq->sock || mq->error) return;
+    if (!mq) return;
+    /*
+        This event has fired, so there is nothing left to stop. Every reschedule below is saved
+        here: an untracked event outlives mqttFree and then runs on freed memory.
+     */
+    mq->keepAliveEvent = 0;
+
+    if (!mq->sock || mq->error) return;
 
     elapsed = rGetTicks() - mq->lastActivity + 1;
     if (elapsed >= mq->timeout) {
@@ -511,7 +573,7 @@ static void idleCheck(Mqtt *mq)
             mqttPing(mq);
         }
         delay = max(min(mq->keepAlive, mq->timeout) - elapsed, TPS);
-        rStartEvent((REventProc) idleCheck, mq, delay);
+        mq->keepAliveEvent = rStartEvent((REventProc) idleCheck, mq, delay);
     }
 }
 
@@ -537,9 +599,9 @@ static bool onDemandAttach(Mqtt *mq)
         The caller should call mqttConnect which defines mq->sock
      */
     rDebug("mqtt", "Attaching socket");
+    hold(mq);
     notify(mq, MQTT_EVENT_ATTACH);
-
-    if (!mq->sock) {
+    if (!release(mq) || mq->freeing || !mq->sock) {
         return 0;
     }
     return 1;
@@ -571,12 +633,18 @@ static int waitUntil(Mqtt *mq, MqttMsg *msg, MqttWaitFlags wait)
     mq->fiberCount--;
     msg->hold = 0;
 
-    if (wait == MQTT_WAIT_ACK) {
-        // WAIT_SENT messages must wait for the actual ack to come before freeing
+    /*
+        A message dequeued while waiting (acknowledged, or dropped on an error) has no other
+        reference. One still queued after a wait-for-sent is awaiting its acknowledgement and is
+        freed when that dequeues it.
+     */
+    if (msg->next == NULL) {
         freeMsg(msg);
+    } else {
+        msg->wait = 0;
     }
     if (result < 0) {
-        return R_ERR_NOT_CONNECTED;
+        return (int) result;
     }
     return 0;
 }
@@ -627,9 +695,12 @@ PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, Mq
         rTrace("mqtt", "Publish with null or empty topic");
         return R_ERR_BAD_ARGS;
     }
-    if (!buf || bufsize < 0) {
+    if (!buf) {
         rTrace("mqtt", "Publish with null buffer");
         return R_ERR_BAD_ARGS;
+    }
+    if (mq->error) {
+        return mq->error;
     }
     va_start(ap, topic);
     len = rVsnprintf(topicBuf, sizeof(topicBuf), topic, ap);
@@ -682,7 +753,8 @@ static int publish(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, MqttWaitFlags 
     hdr.type = MQTT_PACKET_PUBLISH;
 
     if (!validateTopic(topic, 1)) {
-        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
+        rTrace("mqtt", "Bad publish topic \"%s\"", topic);
+        return R_ERR_BAD_ARGS;
     }
     length = getStringLen(topic);
     if (qos > 0) {
@@ -704,12 +776,7 @@ static int publish(Mqtt *mq, cvoid *buf, size_t bufsize, int qos, MqttWaitFlags 
         return (int) rc;
     }
     bp += rc;
-    rc = packString(bp, topic);
-    if (rc < 0) {
-        freeMsg(msg);
-        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
-    }
-    bp += rc;
+    bp += packString(bp, topic);
     if (qos > 0) {
         bp += packUnit16(bp, id);
     }
@@ -777,7 +844,6 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     va_list ap;
     char    *topic;
     int     rc;
-    size_t  len;
 
     if (!mq) {
         return R_ERR_BAD_ARGS;
@@ -787,15 +853,14 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     va_end(ap);
 
     if (!validateTopic(topic, 0)) {
-        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
+        rTrace("mqtt", "Bad master topic \"%s\"", topic);
+        rFree(topic);
+        return R_ERR_BAD_ARGS;
     }
     rTrace("mqtt", "Define master MQTT subscription \"%s\"", topic);
 
     if ((rc = mqttSubscribe(mq, NULL, maxQos, wait, "%s", topic)) == 0) {
-        len = slen(topic);
-        if (len > 1 && (sends(topic, "/+") || sends(topic, "/#"))) {
-            topic[len - 2] = '\0';
-        }
+        trimMasterTopic(topic);
         //  The masterTopics list will own the topic memory and will free when exiting.
         rAddItem(mq->masterTopics, topic);
     } else {
@@ -804,13 +869,49 @@ PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags wait, cchar *
     return rc;
 }
 
+/*
+    Reduce a master topic filter to the prefix it covers: "device/#" and "device/+" become "device"
+ */
+static void trimMasterTopic(char *topic)
+{
+    size_t len;
+
+    len = slen(topic);
+    if (len > 1 && (sends(topic, "/+") || sends(topic, "/#"))) {
+        topic[len - 2] = '\0';
+    }
+}
+
+/*
+    True if the topic is the master prefix or lies under it at a level boundary
+ */
+static bool underMaster(cchar *topic, cchar *master)
+{
+    size_t len;
+
+    len = slen(master);
+    return sstarts(topic, master) && (topic[len] == '/' || topic[len] == '\0');
+}
+
+static cchar *findMaster(Mqtt *mq, cchar *topic)
+{
+    cchar *master;
+    int   next;
+
+    for (ITERATE_ITEMS(mq->masterTopics, master, next)) {
+        if (underMaster(topic, master)) {
+            return master;
+        }
+    }
+    return NULL;
+}
+
 PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags wait, cchar *fmt, ...)
 {
     MqttTopic *tp;
     va_list   ap;
-    cchar     *masterTopic;
+    cchar     *master;
     char      topic[MQTT_MAX_TOPIC_SIZE];
-    int       mid;
     ssize     len;
 
     if (mq == 0) {
@@ -824,23 +925,22 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFl
     len = rVsnprintf(topic, sizeof(topic), fmt, ap);
     va_end(ap);
 
-    if (len >= (ssize) sizeof(topic)) {
+    if (len < 0 || len >= (ssize) sizeof(topic)) {
         rTrace("mqtt", "Topic is too big");
         return R_ERR_BAD_ARGS;
     }
     if (!validateTopic(topic, 0)) {
-        return setError(mq, R_ERR_BAD_ARGS, "Bad topic");
+        rTrace("mqtt", "Bad subscribe topic \"%s\"", topic);
+        return R_ERR_BAD_ARGS;
     }
     if (callback) {
         if ((tp = allocTopic(mq, callback, topic, wait)) == 0) {
             return R_ERR_MEMORY;
         }
         rAddItem(mq->topics, tp);
-        for (ITERATE_ITEMS(mq->masterTopics, masterTopic, mid)) {
-            if (sstarts(topic, masterTopic)) {
-                rDebug("mqtt", "Local subscription to \"%s\" via master \"%s\"", topic, masterTopic);
-                return 0;
-            }
+        if ((master = findMaster(mq, topic)) != NULL) {
+            rDebug("mqtt", "Local subscription to \"%s\" via master \"%s\"", topic, master);
+            return 0;
         }
     }
     return subscribe(mq, callback, maxQos, wait, topic);
@@ -853,6 +953,8 @@ static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags 
     uchar   *bp;
     int     id, rc;
 
+    (void) callback;
+
     if (!onDemandAttach(mq)) {
         return R_ERR_CANT_WRITE;
     }
@@ -864,7 +966,7 @@ static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags 
      */
     rc = getStringLen(topic);
     if (rc < 0) {
-        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+        return R_ERR_BAD_ARGS;
     }
     hdr.length = 2 + (uint) rc + 1;
 
@@ -886,22 +988,20 @@ static int subscribe(Mqtt *mq, MqttCallback callback, int maxQos, MqttWaitFlags 
     queueMsg(mq, msg, bp);
 
     rDebug("mqtt", "Subscribe to \"%s\"", topic);
-    if (waitUntil(mq, msg, wait) < 0) {
-        return R_ERR_BAD_STATE;
-    }
-    return 0;
+    return waitUntil(mq, msg, wait);
 }
 
 PUBLIC int mqttUnsubscribe(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
 {
-    cchar *masterTopic;
-    int   mid;
+    cchar *master;
 
-    for (ITERATE_ITEMS(mq->masterTopics, masterTopic, mid)) {
-        if (sstarts(topic, masterTopic)) {
-            rDebug("mqtt", "Unsubscribe locally from \"%s\" via master \"%s\"", topic, masterTopic);
-            return 0;
-        }
+    if (!mq || !topic) {
+        return R_ERR_BAD_ARGS;
+    }
+    if ((master = findMaster(mq, topic)) != NULL) {
+        rDebug("mqtt", "Unsubscribe locally from \"%s\" via master \"%s\"", topic, master);
+        freeTopics(mq, topic, NULL);
+        return 0;
     }
     return mqttUnsubscribeMaster(mq, topic, wait);
 }
@@ -911,21 +1011,30 @@ PUBLIC int mqttUnsubscribeMaster(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
     MqttHdr hdr;
     MqttMsg *msg;
     uchar   *bp;
-    int     id, rc;
+    char    *prefix;
+    int     id, index, rc;
 
+    if (!mq || !topic) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (mq->error) {
+        return mq->error;
+    }
     if (!onDemandAttach(mq)) {
         return R_ERR_CANT_WRITE;
     }
-    id = getId(mq);
-
     hdr.type = MQTT_PACKET_UNSUB;
     hdr.flags = 2;
+    /*
+        Packet ID + string
+     */
     rc = getStringLen(topic);
     if (rc < 0) {
-        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
+        return R_ERR_BAD_ARGS;
     }
     hdr.length = 2 + (uint) rc;
 
+    id = getId(mq);
     if ((msg = allocMsg(mq, hdr.type, id, hdr.length)) == 0) {
         return R_ERR_MEMORY;
     }
@@ -937,22 +1046,25 @@ PUBLIC int mqttUnsubscribeMaster(Mqtt *mq, cchar *topic, MqttWaitFlags wait)
         return rc;
     }
     bp += rc;
-    rc = packString(bp, topic);
-    if (rc < 0) {
-        freeMsg(msg);
-        return setError(mq, R_ERR_BAD_ARGS, "Topic too long");
-    }
-    bp += rc;
-
+    bp += packUnit16(bp, id);
+    bp += packString(bp, topic);
     queueMsg(mq, msg, bp);
-    freeTopics(mq, topic);
+
+    /*
+        If this was a master subscription, drop it and the local subscriptions it covered
+     */
+    prefix = sclone(topic);
+    trimMasterTopic(prefix);
+    if ((index = rLookupStringItem(mq->masterTopics, prefix)) >= 0) {
+        rRemoveItemAt(mq->masterTopics, index);
+        freeTopics(mq, topic, prefix);
+    } else {
+        freeTopics(mq, topic, NULL);
+    }
+    rFree(prefix);
 
     rDebug("mqtt", "Unsubscribe %s", topic);
-
-    if (waitUntil(mq, msg, wait) < 0) {
-        return R_ERR_CANT_CONNECT;
-    }
-    return 0;
+    return waitUntil(mq, msg, wait);
 }
 
 PUBLIC int mqttPing(Mqtt *mq)
@@ -1007,7 +1119,7 @@ PUBLIC int mqttDisconnect(Mqtt *mq)
     }
     hdr.type = MQTT_PACKET_DISCONNECT;
     hdr.flags = 0;
-    hdr.length = 2;
+    hdr.length = 0;
 
     if ((msg = allocMsg(mq, hdr.type, 0, hdr.length)) == 0) {
         return R_ERR_MEMORY;
@@ -1019,6 +1131,7 @@ PUBLIC int mqttDisconnect(Mqtt *mq)
         freeMsg(msg);
         return rc;
     }
+    bp += rc;
     queueMsg(mq, msg, bp);
     rTrace("mqtt", "Disconnect");
     return 0;
@@ -1048,14 +1161,22 @@ static int pubRec(Mqtt *mq, int id)
     return 0;
 }
 
-static int pubRel(Mqtt *mq, int id)
+/*
+    Send a PUBREL for a QoS 2 publish. The publish is complete once the PUBREL is acknowledged, so
+    a fiber waiting on the publish waits on the PUBREL from here.
+ */
+static int pubRel(Mqtt *mq, MqttMsg *pub)
 {
     MqttMsg *msg;
 
-    if (!mq || !id) {
+    if (!mq || !pub || !pub->id) {
         return R_ERR_BAD_ARGS;
     }
-    msg = packPub(mq, MQTT_PACKET_PUB_REL, id);
+    if ((msg = packPub(mq, MQTT_PACKET_PUB_REL, pub->id)) == 0) {
+        return R_ERR_MEMORY;
+    }
+    msg->wait = pub->wait;
+    msg->fiber = pub->fiber;
     queueMsg(mq, msg, NULL);
     return 0;
 }
@@ -1142,7 +1263,7 @@ static int sendMsgs(Mqtt *mq)
         if ((rc = processSentMsg(mq, msg)) != 0) {
             return rc;
         }
-        if (wait == MQTT_WAIT_SENT) {
+        if (wait & MQTT_WAIT_SENT && msg->fiber) {
             rResumeFiber(msg->fiber, 0);
         }
     }
@@ -1168,12 +1289,10 @@ static int processSentMsg(Mqtt *mq, MqttMsg *msg)
     case MQTT_PACKET_PUBLISH:
         if (msg->qos == 0) {
             setState(mq, msg, MQTT_COMPLETE);
-        } else if (msg->qos == 1) {
-            setState(mq, msg, MQTT_AWAITING_ACK);
-            //  set DUP flag for subsequent sends [Spec MQTT-3.3.1-1]
-            msg->start[0] |= MQTT_DUP;
         } else {
             setState(mq, msg, MQTT_AWAITING_ACK);
+            //  Set the DUP flag in the fixed header for any retransmission [Spec MQTT-3.3.1-1]
+            msg->buf[0] |= MQTT_DUP;
         }
         break;
 
@@ -1217,8 +1336,14 @@ static int recvMsgs(Mqtt *mq)
             if (rGrowBuf(buf, MQTT_BUF_SIZE) < 0) {
                 return setError(mq, R_ERR_MEMORY, "Cannot grow receive buffer");
             }
+            space = rGetBufSpace(buf);
         }
-        bytes = rReadSocketSync(mq->sock, rGetBufStart(buf), rGetBufSpace(buf));
+        /*
+            Append at the end of the buffer: a partial packet may be held at the start.
+            Reserve a byte for the trailing null so that adding it can never grow the buffer and
+            free the block that the unpacked MqttRecv points into.
+         */
+        bytes = rReadSocketSync(mq->sock, rGetBufEnd(buf), space - 1);
         if (bytes < 0) {
             return setError(mq, R_ERR_NETWORK, "Cannot read from socket, errno %d", rGetOsError());
         }
@@ -1227,6 +1352,9 @@ static int recvMsgs(Mqtt *mq)
         }
         rDebug("mqtt", "Read %zd bytes from mqtt", bytes);
         rAdjustBufEnd(buf, bytes);
+        //  A null helps debugging. Not required as dataSize determines data length.
+        //  Must precede the unpack: MqttRecv holds pointers into this buffer.
+        rAddNullToBuf(buf);
 
         mq->lastActivity = rGetTicks();
 
@@ -1239,8 +1367,6 @@ static int recvMsgs(Mqtt *mq)
             return 0;
         }
         rAdjustBufStart(buf, consumed);
-        //  Add a null helps debugging. Not required as dataSize determines data length.
-        rAddNullToBuf(buf);
 
         processRecvMsg(mq, &recv);
     }
@@ -1253,7 +1379,7 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
     MqttRecv  *arg;
     MqttTopic *tp;
     RFiber    *fiber;
-    int       rc, wait;
+    int       rc, result, wait;
 
     if (!mq || !rp) {
         return R_ERR_BAD_ARGS;
@@ -1272,8 +1398,14 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             rc = setError(mq, R_ERR_BAD_ACK, "Cannot find connect message to acknowledge");
             break;
         }
+        wait = msg->wait;
+        fiber = msg->fiber;
         if (rp->code == MQTT_CONNACK_ACCEPTED) {
             mq->connected = 1;
+            if (!(wait & MQTT_WAIT_ACK)) {
+                //  Nobody is waiting for the CONNACK: complete the connection from here
+                rStartEvent((REventProc) onConnected, mq, 0);
+            }
         } else {
             mq->connected = 0;
             if (rp->code == MQTT_CONNACK_REFUSED_IDENTIFIER_REJECTED) {
@@ -1282,12 +1414,9 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
                 rc = setError(mq, R_ERR_CANT_CONNECT, "Connection refused");
             }
         }
-        wait = msg->wait;
-        fiber = msg->fiber;
-
         setState(mq, msg, MQTT_COMPLETE);
 
-        if (wait == MQTT_WAIT_ACK) {
+        if (wait & MQTT_WAIT_ACK) {
             rResumeFiber(fiber, (void*) 0);
         }
         break;
@@ -1313,7 +1442,8 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             }
         }
         if ((tp = getTopic(mq, rp)) == 0) {
-            rInfo("mqtt", "Ignoring message, not subscribed to %s", rp->topic);
+            rTrace("mqtt", "Ignoring %zu byte message, not subscribed to %.*s", rp->dataSize, (int) rp->topicSize,
+                   rp->topic);
             break;
         }
         if (tp->callback) {
@@ -1348,6 +1478,7 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
                     arg->data = 0;
                 }
                 mq->fiberCount++;
+                hold(mq);
                 fiber = rAllocFiber("incoming-mqtt", (RFiberProc) incomingMsg, arg);
                 rStartFiber(fiber, 0);
             }
@@ -1379,12 +1510,14 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             rc = setError(mq, R_ERR_BAD_ACK, "Unknown ack for pubRec message");
             break;
         }
-        setState(mq, msg, MQTT_COMPLETE);
-        rc = pubRel(mq, rp->id);
+        rc = pubRel(mq, msg);
         if (rc != 0) {
             setError(mq, rc, "Cannot send rel for message");
             break;
         }
+        //  The PUBREL now carries the waiter, so the publish message has no waiter of its own
+        msg->wait = 0;
+        setState(mq, msg, MQTT_COMPLETE);
         break;
 
     case MQTT_PACKET_PUB_REL:
@@ -1407,7 +1540,14 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
             rc = setError(mq, R_ERR_BAD_ACK, "Unknown ack for pubComp message");
             break;
         }
+        wait = msg->wait;
+        fiber = msg->fiber;
+        //  The waiter frees its publish message. The PUBREL is freed when dequeued.
+        msg->wait = 0;
         setState(mq, msg, MQTT_COMPLETE);
+        if (wait & MQTT_WAIT_ACK) {
+            rResumeFiber(fiber, 0);
+        }
         break;
 
     case MQTT_PACKET_SUB_ACK:
@@ -1420,12 +1560,17 @@ static int processRecvMsg(Mqtt *mq, MqttRecv *rp)
         fiber = msg->fiber;
 
         setState(mq, msg, MQTT_COMPLETE);
-        // check that subscription was successful (not currently only one subscribe at a time)
+        /*
+            A refused subscription is an outcome for the caller, not a connection failure.
+            One topic per SUBSCRIBE, so one return code.
+         */
+        result = 0;
         if (rp->codes[0] == MQTT_SUBACK_FAILURE) {
-            rc = setError(mq, R_ERR_CANT_COMPLETE, "Subscribe failed");
+            rError("mqtt", "Broker refused subscription");
+            result = R_ERR_CANT_COMPLETE;
         }
         if (wait & MQTT_WAIT_ACK) {
-            rResumeFiber(fiber, 0);
+            rResumeFiber(fiber, (void*) (ssize) result);
         }
         break;
 
@@ -1476,13 +1621,16 @@ static void incomingMsg(MqttRecv *rp)
     }
     mq = rp->mq;
 
-    (rp->matched->callback)(rp);
-
+    // Do not deliver to a client freed by application code.
+    if (!mq->freeing) {
+        (rp->matched->callback)(rp);
+    }
     //  This was allocated in processRecvMsg
     rFree(rp->topic);
     rFree(rp->data);
     rFree(rp);
     mq->fiberCount--;
+    release(mq);
 }
 
 static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, MqttWaitFlags wait)
@@ -1504,20 +1652,25 @@ static MqttTopic *allocTopic(Mqtt *mq, MqttCallback callback, cchar *topic, Mqtt
     return tp;
 }
 
-static void freeTopics(Mqtt *mq, cchar *topic)
+/*
+    Free the local subscriptions matching the topic, or all of them if topic is NULL. With a
+    master prefix, also free the subscriptions that lie under it.
+ */
+static void freeTopics(Mqtt *mq, cchar *topic, cchar *prefix)
 {
     MqttTopic *tp;
-    int       next;
+    int       i;
 
     if (!mq) {
         return;
     }
-    for (ITERATE_ITEMS(mq->topics, tp, next)) {
-        if (!topic || smatch(topic, tp->topic)) {
+    for (i = rGetListLength(mq->topics) - 1; i >= 0; i--) {
+        tp = rGetItem(mq->topics, i);
+        if (!topic || smatch(topic, tp->topic) || (prefix && underMaster(tp->topic, prefix))) {
             freeTopic(tp);
+            rRemoveItemAt(mq->topics, i);
         }
     }
-    rClearList(mq->topics);
 }
 
 static void freeTopic(MqttTopic *tp)
@@ -1587,8 +1740,12 @@ static cchar **splitTopic(cchar *topic, size_t topicLen, char **segbuf)
     memcpy(*segbuf, topic, topicLen);
     (*segbuf)[topicLen] = '\0';
 
-    for (i = 0, next = *segbuf; next != 0; i++) {
-        segments[i] = stok(next, "/", &next);
+    // Every "/" separates a level and empty levels are significant: "a//b", "/a/b" and "a/b/" differ from "a/b"
+    for (i = 0, next = *segbuf; next; i++) {
+        segments[i] = next;
+        if ((next = strchr(next, '/')) != 0) {
+            *next++ = '\0';
+        }
     }
     segments[i] = 0;
     return (cchar**) segments;
@@ -1736,6 +1893,8 @@ static MqttMsg *allocMsg(Mqtt *mq, uint type, int id, size_t size)
 {
     MqttMsg *msg;
 
+    (void) mq;
+
     // Reject negative and oversized sizes before adding header slack
     if (size < 0) {
         return NULL;
@@ -1806,6 +1965,9 @@ static int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *bp)
     rp->qos = (hdr->flags & MQTT_QOS_FLAGS_MASK) >> 1;
     rp->retain = hdr->flags & MQTT_RETAIN;
 
+    if (rp->qos > 2) {
+        return setError(mq, R_ERR_BAD_RESPONSE, "Bad QoS in received message");
+    }
     if (rp->hdr.length < 4) {
         return setError(mq, R_ERR_BAD_RESPONSE, "Bad received message length");
     }
@@ -1813,6 +1975,10 @@ static int unpackPublish(Mqtt *mq, MqttRecv *rp, cuchar *bp)
     bp += 2;
     if (topicSize > hdr->length - 2) {
         return setError(mq, R_ERR_BAD_RESPONSE, "Topic size exceeds buffer");
+    }
+    // A topic name is non-empty and holds no wildcard or NUL
+    if (topicSize == 0 || memchr(bp, '\0', topicSize) || memchr(bp, '+', topicSize) || memchr(bp, '#', topicSize)) {
+        return setError(mq, R_ERR_BAD_RESPONSE, "Invalid topic name in received message");
     }
     rp->topic = (char*) bp;
     rp->topicSize = topicSize;
@@ -1876,6 +2042,8 @@ static int unpackPub(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
     uint16 id;
 
+    (void) mq;
+
     if (rp->hdr.length != 2) {
         return R_ERR_BAD_RESPONSE;
     }
@@ -1888,6 +2056,8 @@ static int unpackPub(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 static int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
     uint length;
+
+    (void) mq;
 
     if (rp->hdr.length < 3) {
         return R_ERR_BAD_RESPONSE;
@@ -1904,6 +2074,8 @@ static int unpackSuback(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 
 static int unpackUnsubAck(Mqtt *mq, MqttRecv *rp, cuchar *bp)
 {
+    (void) mq;
+
     if (rp->hdr.length != 2) {
         return R_ERR_BAD_RESPONSE;
     }
@@ -2080,7 +2252,13 @@ PUBLIC bool mqttCheckQueue(Mqtt *mq)
 {
     MqttMsg *msg;
 
+    if (!mq) {
+        return 0;
+    }
     for (msg = mq->head.next; msg != &mq->head; msg = msg->next) {
+        if (!msg->next || !msg->prev) {
+            return 0;
+        }
     }
     return 1;
 }
@@ -2101,6 +2279,8 @@ static void queueMsg(Mqtt *mq, MqttMsg *msg, uchar *end)
 
 static void dequeueMsg(Mqtt *mq, MqttMsg *msg)
 {
+    (void) mq;
+
     msg->prev->next = msg->next;
     msg->next->prev = msg->prev;
     msg->next = NULL;
@@ -2135,6 +2315,9 @@ PUBLIC int mqttGetQueueCount(Mqtt *mq)
     MqttMsg *msg;
     int     count;
 
+    if (!mq) {
+        return 0;
+    }
     for (count = 0, msg = mq->head.next; msg != &mq->head; msg = msg->next) {
         count++;
     }
@@ -2175,13 +2358,14 @@ static MqttMsg *findMsgByType(Mqtt *mq, MqttPacketType type)
 
 PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, size_t size)
 {
-    if (!topic || !msg || size <= 0) {
+    if (!mq || !topic || !msg || size <= 0) {
         return R_ERR_BAD_ARGS;
     }
     if (slen(topic) > MQTT_MAX_TOPIC_SIZE) {
         return R_ERR_BAD_ARGS;
     }
-    if (size > MQTT_MAX_MESSAGE_SIZE) {
+    //  The will message is carried in the CONNECT packet with a two byte length
+    if (size > 0xFFFF) {
         return R_ERR_BAD_ARGS;
     }
     rFree(mq->willTopic);
@@ -2227,7 +2411,7 @@ static int setError(Mqtt *mq, int error, cchar *fmt, ...)
 
 PUBLIC bool mqttIsConnected(Mqtt *mq)
 {
-    if (!mq || !mq->connected) {
+    if (!mq || !mq->connected || mq->error) {
         return 0;
     }
     if (rIsSocketClosed(mq->sock)) {
@@ -2370,7 +2554,7 @@ PUBLIC void dummyMqtt(void)
 #endif /* ME_COM_MQTT */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 

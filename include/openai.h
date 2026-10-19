@@ -2,8 +2,8 @@
     openai.h - OpenAI API client library for embedded systems
 
     This library provides a C interface to OpenAI's APIs including Chat Completion,
-    Responses API with agent callbacks, Real-Time API with WebSocket connections, and streaming
-    responses with Server-Sent Events. Built on the EmbedThis Safe Runtime foundation with
+    Responses API with agent callbacks, and streaming responses with Server-Sent Events. Built on the EmbedThis Safe
+       Runtime foundation with
     modular integration for JSON parsing, URL handling, and cryptographic functions.
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
@@ -15,10 +15,10 @@
 /********************************** Product ***********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME              "openai"
+    #define ME_NAME  "openai"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE             ME_NAME
+    #define ME_TITLE ME_NAME
 #endif
 
 /********************************** Includes **********************************/
@@ -53,6 +53,13 @@ extern "C" {
 #if ME_COM_OPENAI
 /*********************************** Defines **********************************/
 
+#ifndef ME_OPENAI_MAX_TOOL_CALLS
+    #define ME_OPENAI_MAX_TOOL_CALLS 64 /**< Default limit on agent tool invocations per openaiResponses call */
+#endif
+#ifndef ME_OPENAI_MAX_TURNS
+    #define ME_OPENAI_MAX_TURNS      16 /**< Default limit on agent tool-invocation turns per request */
+#endif
+
 /**
     OpenAI client configuration structure
     @description Contains the configuration settings for connecting to OpenAI services.
@@ -63,6 +70,8 @@ typedef struct OpenAI {
     char *endpoint;                     /**< OpenAI API endpoint URL (default: https://api.openai.com/v1) */
     char *headers;                      /**< HTTP headers including authorization bearer token */
     int flags;                          /**< Configuration flags controlling tracing and behavior */
+    int maxToolCalls;                   /**< Maximum agent tool invocations per openaiResponses call */
+    int maxTurns;                       /**< Maximum agent tool-invocation turns for openaiResponses */
 } OpenAI;
 
 /**
@@ -85,6 +94,11 @@ typedef char*(*OpenAIAgent)(cchar *name, Json *request, Json *response, void *ar
     The API automatically sets default values: model='gpt-4o-mini', truncation='auto'.
     Response text is aggregated into "output_text" field for convenient access.
     Agent callbacks are invoked for processing structured responses.
+    The tool-invocation loop is bounded by the "ai.maxTurns" configuration so that an endpoint which
+    keeps requesting tools cannot drive the loop indefinitely. The total number of tool invocations across
+    all turns is bounded by the "ai.maxToolCalls" configuration, since a single response may request any
+    number of tools. When either bound is reached, no further tools are invoked and the last response is
+    returned with an "error" property describing the limit.
     @param props JSON object containing Response API parameters. Required fields depend on the specific API endpoint.
     Common fields include 'messages', 'model', 'max_tokens', 'temperature'.
     @param agent Callback function invoked for each response chunk. May be NULL if no agent processing required.
@@ -104,8 +118,10 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg);
     @param props JSON object containing Response API parameters. Must include required fields for the target endpoint.
     @param callback SSE callback function invoked for each streaming chunk. Cannot be NULL.
     @param arg User-defined argument passed to the callback function. May be NULL.
-    @return Url object representing the active streaming connection on success. Returns NULL on failure.
-    Use urlClose to terminate the stream when finished.
+    The callback may stop the stream by calling urlFree on the Url, in which case the Url is released
+    when the stream exits and openaiStream returns NULL.
+    @return Url object for the completed stream on success. Caller must free using urlFree. Returns NULL on
+    failure, or if the callback freed the Url.
     @stability Evolving
  */
 PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg);
@@ -159,7 +175,10 @@ PUBLIC Json *openaiFineTune(cchar *data);
     @param endpoint OpenAI API base endpoint URL. Use NULL for default "https://api.openai.com/v1".
     @param key OpenAI API key for authentication. Must be a valid API key starting with "sk-".
     @param config JSON object containing additional configuration parameters. May be NULL for defaults.
-    Optional fields include timeout settings and custom headers.
+    The "ai.maxTurns" property bounds the number of agent tool-invocation turns openaiResponses will
+    run for a single request (default ME_OPENAI_MAX_TURNS). The "ai.maxToolCalls" property bounds the
+    total number of agent tool invocations for a single request (default ME_OPENAI_MAX_TOOL_CALLS).
+    The config is only read during this call and is not retained.
     @param flags Bitmask of AI_SHOW_* flags controlling debug output and tracing behavior.
     @return Returns 0 on successful initialization. Returns negative error code on failure.
     @stability Internal
@@ -184,6 +203,6 @@ PUBLIC void openaiTerm(void);
 #endif /* _h_OPENAI_H */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

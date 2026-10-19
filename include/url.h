@@ -32,7 +32,7 @@
 /********************************** Includes **********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME "url"
+    #define ME_NAME  "url"
 #endif
 #ifndef ME_TITLE
     #define ME_TITLE ME_NAME
@@ -147,11 +147,11 @@ struct Url;
     Desktop/server platforms use boosted sizes for performance
  */
 #if ESP32 || FREERTOS || VXWORKS
-    #define URL_BUF_BOOST_2X    ME_BUFSIZE
-    #define URL_BUF_BOOST_1024X ME_BUFSIZE
+    #define URL_BUF_BOOST_2X            ME_BUFSIZE
+    #define URL_BUF_BOOST_1024X         ME_BUFSIZE
 #else
-    #define URL_BUF_BOOST_2X    (ME_BUFSIZE * 2)
-    #define URL_BUF_BOOST_1024X (ME_BUFSIZE * 1024)
+    #define URL_BUF_BOOST_2X            (ME_BUFSIZE * 2)
+    #define URL_BUF_BOOST_1024X         (ME_BUFSIZE * 1024)
 #endif
 
 #if URL_SSE
@@ -177,13 +177,15 @@ typedef struct Url {
     int status;                    /**< Response (rx) status */
     uint chunked : 4;              /**< Request is using transfer chunk encoding */
     uint close : 1;                /**< Connection should be closed on completion of the current request */
-    uint certsDefined : 1;         /**< Certificates have been defined */
+    uint closeFrame : 1;           /**< Response body is delimited by the connection close */
     uint finalized : 1;            /**< The request body has been fully written */
     uint gotResponse : 1;          /**< Response has been read */
+    uint reused : 1;               /**< Request was sent on a reused keep-alive connection */
     uint inCallback : 1;           /**< SSE callback is in progress */
     uint linger: 1;                /**< Connection should be kept alive for subsequent requests */
     uint needFree : 1;             /**< Free the URL object */
     uint nonblock : 1;             /**< Don't block in SSE callback */
+    uint offeredBasic : 1;         /**< The server has challenged with Basic authentication */
     uint protocol : 2;             /**< Use HTTP/1.0 without keep-alive. Defaults to HTTP/1.1. */
     uint sse : 1;                  /**< SSE request */
     uint upgraded : 1;             /**< WebSocket upgrade has been completed */
@@ -195,6 +197,19 @@ typedef struct Url {
     char *urlbuf;                  /**< Parsed and tokenized URL*/
     char *method;                  /** HTTP request method */
     char *boundary;                /**< Multipart mime upload file boundary */
+
+    /*
+        TLS settings are owned here and applied to every connection this object makes. The
+        socket is replaced whenever the scheme, host or port changes, so settings held only on
+        the socket would silently revert to the defaults after the first reconnect.
+     */
+    char *caFile;                  /**< Certificate authority bundle to verify the peer against */
+    char *keyFile;                 /**< Private key for the client certificate */
+    char *certFile;                /**< Client certificate to present */
+    char *revokeFile;              /**< Certificate revocation list */
+    char *ciphers;                 /**< Cipher suite list */
+    int verifyPeer;                /**< Verify the peer certificate. -1 selects the runtime default */
+    int verifyIssuer;              /**< Verify the certificate issuer. -1 selects the runtime default */
 
     ssize txLen;                   /**< Length of tx body */
     RBuf *rx;                      /**< Buffer for progressive reading response data */
@@ -223,7 +238,6 @@ typedef struct Url {
     Ticks timeout;                 /**< Request timeout */
 
     RFiber *fiber;                 /**< Fiber */
-    REvent abortEvent;             /**< Abort event */
     void *sseArg;                  /**< SSE callback argument */
 
 #if URL_AUTH
@@ -237,6 +251,7 @@ typedef struct Url {
     char *opaque;                  /**< Digest auth opaque value */
     char *algorithm;               /**< Digest auth algorithm (MD5 or SHA-256 only) */
     uint nc;                       /**< Digest auth nonce count */
+    char *authOrigin;              /**< Origin (scheme://host:port) that issued the current challenge */
 #endif
 
 #if ME_COM_WEBSOCK
@@ -281,7 +296,7 @@ PUBLIC void urlClose(Url *up);
     @return Zero if successful, otherwise a negative status code.
     @stability Evolving
  */
-PUBLIC int urlError(Url *up, cchar *message, ...);
+PUBLIC int urlError(Url *up, cchar *message, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Fetch a URL
@@ -311,7 +326,8 @@ PUBLIC int urlError(Url *up, cchar *message, ...);
     @return Response HTTP status code. Use urlGetResponse or urlRead to read the response.
     @stability Evolving
  */
-PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers, ...);
+PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers,
+                    ...) PRINTF_ATTRIBUTE(6, 7);
 
 /**
     Fetch a URL and return a JSON response if the HTTP request is successful.
@@ -332,14 +348,15 @@ PUBLIC int urlFetch(Url *up, cchar *method, cchar *url, cvoid *data, size_t size
         Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers, ...);
+PUBLIC Json *urlJson(Url *up, cchar *method, cchar *url, cvoid *data, size_t size, cchar *headers,
+                     ...) PRINTF_ATTRIBUTE(6, 7);
 
 /**
     Finalize the request.
     @description This routine finalizes the request and signifies that the entire request including any
     request body data has been sent to the server. This routine MUST be called at the end of writing
     the request body (if any). It will read the response status and headers before returning.
-    If using WebSockets, this should be called before calling urlWebSocketAsync to verify the WebSocket handshake.
+    If using WebSockets, this verifies the WebSocket handshake before returning.
     Internally, this function is implemented by calling urlWrite with a NULL buffer. This call is idempotent.
     @param up Url object
     @return Zero if successful.
@@ -369,7 +386,7 @@ PUBLIC void urlFree(Url *up);
     @return Response body if successful, otherwise null. Caller must free.
     @stability Evolving
  */
-PUBLIC char *urlGet(cchar *url, cchar *headers, ...);
+PUBLIC char *urlGet(cchar *url, cchar *headers, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Get a cookie from the response headers.
@@ -414,7 +431,7 @@ PUBLIC cchar *urlGetHeader(Url *up, cchar *header);
         is not JSON, the request returns NULL. Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *urlGetJson(cchar *url, cchar *headers, ...);
+PUBLIC Json *urlGetJson(cchar *url, cchar *headers, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Get the response to a URL request as a JSON object tree.
@@ -472,8 +489,8 @@ PUBLIC int urlGetStatus(Url *up);
 
 /**
     Parse a URL into its constituent components in the Url structure.
-    @description This will parse URLs or URL portions. It will use default values for missing components. For example:
-       'http://' will use localhost as the host, port 80 and a path of '/'. If passed 'a-string', it wll interpret this
+    @description This will parse URLs or URL portions. It will use default values for missing components. A URL with a
+       scheme must have a host: 'http://' and 'http:///path' fail. If passed 'a-string', it wll interpret this
        as the path portion and use 'http' as the scheme and 'localhost' as the host. If passed ':4100/' it will
        interpret this as the path portion and use 'http' as the scheme and 'localhost' as the host and port 4100. This
        should not be manually called while a URL request is in progress as it will invalidate the current request.
@@ -506,7 +523,7 @@ PUBLIC bool urlParseAuthChallenge(Url *up);
     @return Response body if successful, otherwise null. Caller must free.
     @stability Evolving
  */
-PUBLIC char *urlPost(cchar *url, cvoid *data, size_t size, cchar *headers, ...);
+PUBLIC char *urlPost(cchar *url, cvoid *data, size_t size, cchar *headers, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Issue a HTTP POST request and return parsed JSON.
@@ -521,7 +538,7 @@ PUBLIC char *urlPost(cchar *url, cvoid *data, size_t size, cchar *headers, ...);
         the request returns NULL. Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *urlPostJson(cchar *url, cvoid *data, size_t len, cchar *headers, ...);
+PUBLIC Json *urlPostJson(cchar *url, cvoid *data, size_t len, cchar *headers, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Low level read routine to read response data for a request.
@@ -577,6 +594,15 @@ PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
         When a 401 response is received, the library will parse the authentication challenge and retry
         the request with appropriate credentials.
 
+    The authType is the weakest scheme the credentials may be sent with, and a server challenge can
+    only strengthen it, never weaken it:
+    - "digest": Digest only. A server that offers only Basic gets no credentials and the request fails.
+    - "basic": Basic is sent preemptively on every request, including over plain HTTP. A Digest
+        challenge is answered with Digest.
+    - NULL (auto): nothing is sent until the server challenges. A Digest challenge is answered with
+        Digest. A Basic challenge is answered with Basic over HTTPS only; over plain HTTP the request
+        fails rather than disclose the password. Set "basic" explicitly to allow that.
+
     IMPORTANT SECURITY CONSIDERATIONS:
     - Developer Responsibility: The application must validate and sanitize the username parameter
         before calling this function. The library escapes quotes in digest auth per RFC 7616, but
@@ -584,16 +610,20 @@ PUBLIC void urlSetCiphers(Url *up, cchar *ciphers);
     - Basic Authentication: Credentials are sent in base64-encoded form (not encrypted). Use HTTPS
         for production deployments. A debug warning is issued when Basic auth is used over HTTP.
     - Digest Authentication: Supports MD5 (RFC 2617) and SHA-256 (RFC 7616) algorithms.
-        The qop="auth" mode is supported; qop="auth-int" is not supported.
-    - Nonce Handling: The server manages nonce expiration via the stale parameter. The library
-        automatically handles stale nonces by clearing cached challenge data and retrying.
+        The qop="auth" mode is supported; qop="auth-int" is not supported. A challenge without qop
+        (RFC 2069) is refused, as its response carries no client nonce.
+    - Nonce Handling: The server manages nonce expiration via the stale parameter. A stale=true
+        challenge is answered once with the new nonce, and the nonce count restarts for each new nonce.
+    - Origin Binding: A server challenge is answered only for the origin (scheme, host and port)
+        that issued it. A request to another origin on the same Url starts again with no challenge.
+    - Credentials and challenge parameters containing control characters fail the request.
 
     @param up URL object to configure
     @param username Username for authentication. Set to NULL to disable authentication.
         The application must validate this parameter if it comes from untrusted input.
     @param password Password for authentication. May be NULL if username is NULL.
-    @param authType Optional authentication type: "basic" or "digest". Set to NULL for auto-detection
-        based on server challenge.
+    @param authType Weakest permitted authentication type: "basic" or "digest". Set to NULL to send
+        credentials only in answer to a server challenge.
     @stability Evolving
  */
 PUBLIC void urlSetAuth(Url *up, cchar *username, cchar *password, cchar *authType);
@@ -603,7 +633,10 @@ PUBLIC void urlSetAuth(Url *up, cchar *username, cchar *password, cchar *authTyp
     Set the default request timeout to use for future URL instances.
     @description This does not change the timeout for existing Url objects. The timeout applies to
         the entire request including connection establishment, data transfer, and response reading.
-    @param timeout Timeout in milliseconds. Set to 0 for no timeout.
+    @param timeout Timeout in milliseconds. Set to 0 to bound only inactivity: each wait for the peer
+        is then limited by the runtime default (ME_HANDSHAKE_TIMEOUT, 30 seconds), so a stalled peer
+        fails while a transfer that keeps progressing runs to completion. Set to a negative value for
+        no limit at all, such as for an SSE stream that may be idle longer than that.
     @stability Evolving
  */
 PUBLIC void urlSetDefaultTimeout(Ticks timeout);
@@ -640,7 +673,8 @@ PUBLIC void urlSetProtocol(Url *up, int protocol);
     @description The timeout applies to the entire request including connection establishment,
         data transfer, and response reading. Overrides the default timeout for this URL object.
     @param up URL object to configure
-    @param timeout Timeout in milliseconds. Set to 0 for no timeout.
+    @param timeout Timeout in milliseconds. Set to 0 to bound only inactivity by the runtime default
+        (ME_HANDSHAKE_TIMEOUT, 30 seconds). Set to a negative value for no limit at all.
     @stability Evolving
  */
 PUBLIC void urlSetTimeout(Url *up, Ticks timeout);
@@ -681,7 +715,7 @@ PUBLIC int urlStart(Url *up, cchar *method, cchar *url);
     @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
-PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...);
+PUBLIC int urlUpload(Url *up, RList *files, RHash *forms, cchar *headers, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Write body data for a request
@@ -703,7 +737,7 @@ PUBLIC ssize urlWrite(Url *up, cvoid *data, size_t size);
     @return The number of bytes actually written. On errors, returns a negative status code.
     @stability Evolving
  */
-PUBLIC ssize urlWriteFmt(Url *up, cchar *fmt, ...);
+PUBLIC ssize urlWriteFmt(Url *up, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Write a file contents for a request
@@ -756,17 +790,6 @@ PUBLIC int urlWebSocket(cchar *url, WebSocketProc callback, void *arg, cchar *he
  */
 PUBLIC WebSocket *urlGetWebSocket(Url *up);
 
-/**
-    Define async WebSocket callbacks.
-    @description Configure asynchronous WebSocket message handling. This will invoke the callback function
-        with an OPEN event initially, then MESSAGE events for received data.
-    @param up URL object with WebSocket connection
-    @param callback Callback function to invoke for WebSocket events
-    @param arg User argument to pass to the callback function
-    @return Zero if successful, negative error code on failure.
-    @stability Evolving
- */
-PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
 #endif /* ME_COM_WEBSOCK */
 
 #if URL_SSE
@@ -780,7 +803,8 @@ PUBLIC int urlWebSocketAsync(Url *up, WebSocketProc callback, void *arg);
     @param arg User argument to pass to the callback function
     @param buf Buffer containing any pre-read data from HTTP response (can be NULL)
     @param deadline System time in ticks for timeout (0 for no timeout)
-    @return Zero on orderly close, negative error code on failure.
+    @return Zero on orderly close, negative error code on failure. Returns R_ERR_DELETED if the callback
+        called urlFree: the Url has then been freed and must not be used or freed again.
     @stability Evolving
  */
 PUBLIC int urlSseRun(Url *up, UrlSseProc callback, void *arg, RBuf *buf, Ticks deadline);
@@ -797,7 +821,7 @@ PUBLIC int urlSseRun(Url *up, UrlSseProc callback, void *arg, RBuf *buf, Ticks d
     @return Zero if successful, negative error code on failure.
     @stability Evolving
  */
-PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, ...);
+PUBLIC int urlGetEvents(cchar *uri, UrlSseProc proc, void *arg, char *headers, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Set the maximum number of retries for SSE requests.
@@ -818,6 +842,6 @@ PUBLIC void urlSetMaxRetries(Url *up, int maxRetries);
 #endif /* _h_URL */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

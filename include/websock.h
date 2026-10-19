@@ -14,10 +14,10 @@
 /********************************** Includes **********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME    "websock"
+    #define ME_NAME  "websock"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE   "Embedthis WebSockets"
+    #define ME_TITLE "Embedthis WebSockets"
 #endif
 
 /*
@@ -49,17 +49,25 @@ extern "C" {
 struct WebSocket;
 
 #define WS_EVENT_OPEN            0  /**< WebSocket connection is open */
-#define WS_EVENT_MESSAGE         1  /**< WebSocket full (or last part of) message is received */
-#define WS_EVENT_PARTIAL_MESSAGE 2  /**< WebSocket partial message is received */
+#define WS_EVENT_MESSAGE         1  /**< Final frame of a message is received, carrying that frame only */
+#define WS_EVENT_PARTIAL_MESSAGE 2  /**< A frame of a message that has more frames to follow */
 #define WS_EVENT_ERROR           3  /**< WebSocket error is detected */
 #define WS_EVENT_CLOSE           4  /**< WebSocket connection is closed */
 
 /**
     WebSocket callback procedure invoked when a message is received or the connection is first opened.
+    @description Frames are delivered as they arrive and are not reassembled. A message sent in one
+        frame arrives as a single WS_EVENT_MESSAGE. A fragmented message arrives as one
+        WS_EVENT_PARTIAL_MESSAGE per frame followed by a WS_EVENT_MESSAGE for the last, and buf
+        holds only that frame's own bytes each time, not the message so far. An application that
+        needs the whole message must accumulate the frames itself, bounded by the maxMessage set
+        with #webSocketSetLimits. #webSocketGetMessageLength returns the total received so far
+        across the frames, and the message type is available as the WebSocket's type field, which
+        a continuation frame does not carry.
     @param webSocket WebSocket object
     @param event Event type
-    @param buf Message buffer holding the message data. On open and close, the buffer is NULL and the length is 0.
-    @param len Length of the message
+    @param buf Buffer holding this frame's data. On open and close, the buffer is NULL and the length is 0.
+    @param len Length of this frame's data
     @param arg User argument
  */
 typedef void (*WebSocketProc)(struct WebSocket *webSocket, int event, cchar *buf, size_t len, void *arg);
@@ -91,7 +99,7 @@ typedef struct WebSocket {
     int closeStatus;                              /**< Close status code provided by peer */
     int maskOffset;                               /**< Current offset in data masking array */
     int opcode;                                   /**< Opcode of current received message */
-    int partialUTF;                               /**< Last frame contained partial UTF-8 sequence */
+    uint utfState;                                /**< UTF-8 decoder state carried across message frames */
     int rxSeq;                                    /**< Incoming packet sequence number (debug) */
     int state;                                    /**< Current WebSocket protocol state */
     int txSeq;                                    /**< Outgoing packet sequence number (debug) */
@@ -175,6 +183,12 @@ typedef struct WebSocket {
 #define WS_STATE_CLOSING            2             /**< WebSocket is closing */
 #define WS_STATE_CLOSED             3             /**< WebSocket is closed */
 
+/*
+    NULL contract for the entry points below: every routine that takes a WebSocket object tolerates a
+    NULL ws. Those returning a status return R_ERR_BAD_ARGS, the accessors return a zero value and the
+    setters do nothing. A caller may thus pass the result of a failed upgrade without testing it first.
+ */
+
 /**
     Allocate a new WebSocket object
     @description This routine allocates and initializes a new WebSocket object.
@@ -205,13 +219,13 @@ PUBLIC int webSocketProcess(WebSocket *ws);
 /**
     Run the WebSocket event loop until the connection closes
     @description This function runs the WebSocket event loop that handles reading,
-        processing messages, and sending pings. It blocks until the connection is closed or the
-        the timeout expires.
+        processing messages, and sending pings. It blocks until the connection is closed or no
+        I/O completes within the timeout.
     @param ws WebSocket object
     @param callback Callback function to handle WebSocket events
     @param arg User argument passed to the callback function
     @param buf Buffer containing pre-read data from HTTP upgrade (may be NULL)
-    @param timeout Timeout for I/O operations (use 0 for no timeout)
+    @param timeout Inactivity timeout in milliseconds for I/O operations. Zero means no inactivity limit.
     @return 0 on orderly close, < 0 on error
     @stability Evolving
  */
@@ -401,9 +415,17 @@ PUBLIC void webSocketSetPingPeriod(WebSocket *ws, Time pingPeriod);
 /**
     Set the maximum frame size and message size
     @description Set the maximum frame size and message size for the WebSocket object.
+        A whole frame is buffered before it is delivered, so maxFrame cannot exceed what a buffer
+        can hold and is clamped to ME_R_MAX_BUF less the null the parser adds for the callback.
+        A message is not buffered whole, being delivered a frame at a time, so maxMessage may be
+        any size. A frame beyond the limit is refused with WS_STATUS_MESSAGE_TOO_LARGE from its
+        header, before the payload is buffered.
+        \n\n
+        Zero means no limit for either: maxFrame becomes the largest frame a buffer can hold and
+        maxMessage becomes unbounded.
     @param ws WebSocket object
-    @param maxFrame Maximum frame size
-    @param maxMessage Maximum message size
+    @param maxFrame Maximum frame size, or zero for the largest a buffer can hold
+    @param maxMessage Maximum message size, or zero for no limit
     @stability Evolving
  */
 PUBLIC void webSocketSetLimits(WebSocket *ws, size_t maxFrame, size_t maxMessage);
@@ -434,6 +456,6 @@ PUBLIC void webSocketSetValidateUTF(WebSocket *ws, bool validateUTF);
 #endif /* _h_WEBSOCK */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

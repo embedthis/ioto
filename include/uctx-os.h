@@ -35,7 +35,7 @@
     Use compiler definitions to determine the CPU type and select the relevant fiber module.
  */
 #if defined(ESP_PLATFORM) || defined(INC_FREERTOS_H) || defined(FREERTOS)
-    // ESP32/FreeRTOS uses FreeRTOS tasks
+// ESP32/FreeRTOS uses FreeRTOS tasks
     #define UCTX_ARCH UCTX_FREERTOS
     #undef FREERTOS
     #define FREERTOS  1

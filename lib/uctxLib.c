@@ -60,6 +60,7 @@ void *uctx_getstack(uctx_t *up)
  */
 int uctx_init(uctx_t *ucp)
 {
+    (void) ucp;
     return 0;
 }
 
@@ -78,6 +79,14 @@ void uctx_term(void)
 #define MCONTEXT_GREGS	(32)
 #define VFP_MAGIC_OFFSET (232)
 #define VFP_D8_OFFSET (304)
+
+/*
+    Preserve d8-d15 whenever hardware floating point is enabled.
+    Contexts built with makecontext alone lack the runtime VFP marker.
+ */
+#if defined(__ARM_FP) && !defined(FORCE_HARD_FLOAT) && !defined(FORCE_SOFT_FLOAT)
+#define FORCE_HARD_FLOAT 1
+#endif
 
 #define TYPE(__proc)	.type	__proc, %function;
 
@@ -141,7 +150,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -260,7 +269,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -300,8 +309,8 @@ void uctx_trampoline(void)
 
     FreeRTOS User Context Implementation
 
-    This module is used for ESP32/FreeRTOS on Xtensa processors. ESP32/FreeRTOS on RiscV uses 
-    the native assembler implementations.
+    This module is selected for every FreeRTOS build: any ESP_PLATFORM build (Xtensa and RISC-V
+    ESP32 parts alike) and any build that defines FREERTOS or includes FreeRTOS.h. See uctx-os.h.
 
     This module implements cooperative context switching (coroutines/fibers) on FreeRTOS
     by mapping each fiber to a FreeRTOS task. Since FreeRTOS tasks are preemptively
@@ -317,6 +326,14 @@ void uctx_trampoline(void)
        immediately blocks until first swapcontext
     3. swapcontext: Signals target to resume, then blocks until re-signaled
     4. freecontext: Signals task to terminate and cleans up semaphores
+
+    A terminated task never resumes the fiber's code. It exits from wherever it is blocked, so a
+    context that is torn down behaves as it does on the native backends: it simply never runs again.
+
+    Per-fiber memory: each child context is a FreeRTOS task whose stack (the requested stack size)
+    and TCB are allocated from the FreeRTOS heap, plus three semaphores. On ESP-IDF that is internal
+    RAM. Approximate cost: stack + sizeof(StaticTask_t) + 3 * sizeof(StaticSemaphore_t) + heap
+    overhead. Callers that bound the number of fibers must budget for this.
 */
 
     #include <stdio.h>
@@ -329,6 +346,19 @@ void uctx_trampoline(void)
 
 #ifndef UCTX_NAME
     #define UCTX_NAME "uctx"
+#endif
+
+/*
+    Size of the unit in which xTaskCreate expects usStackDepth to be expressed.
+    ESP-IDF documents usStackDepth as a byte count. Vanilla FreeRTOS documents it as a count of
+    StackType_t words. Ports with other semantics can override this.
+ */
+#ifndef UCTX_STACK_UNIT
+    #if ESP32
+        #define UCTX_STACK_UNIT ((size_t) 1)
+    #else
+        #define UCTX_STACK_UNIT (sizeof(StackType_t))
+    #endif
 #endif
 
 /*
@@ -345,6 +375,7 @@ void uctx_trampoline(void)
 */
 
 static void *uctx_task_wrapper(uctx_t *ucp);
+static void uctx_task_exit(uctx_t *ucp);
 
 typedef int (*uctx_predicate_fn)(uctx_t *ucp);
 
@@ -354,14 +385,6 @@ typedef int (*uctx_predicate_fn)(uctx_t *ucp);
 static int resumed_or_done(uctx_t *ucp)
 {
     return ucp->resumed || ucp->done;
-}
-
-/*
-    Predicate: fiber should wake because it was resumed
-*/
-static int resumed(uctx_t *ucp)
-{
-    return ucp->resumed;
 }
 
 /*
@@ -382,12 +405,16 @@ static int uctx_wait_until(uctx_t *ucp, uctx_predicate_fn predicate)
 
 /*
     Signal a context to resume execution.
-    Sets the resumed flag and signals the condition semaphore while holding mutex.
+    Sets the resumed flag, and the done flag when the context is being torn down, then signals the
+    condition semaphore. Both flags are set under the mutex the waiter tests them under.
 */
-static int uctx_signal_resume(uctx_t *ucp)
+static int uctx_signal_resume(uctx_t *ucp, int done)
 {
     if (xSemaphoreTake(ucp->mutex, portMAX_DELAY) != pdTRUE) {
         return -1;
+    }
+    if (done) {
+        ucp->done = 1;
     }
     ucp->resumed = 1;
     if (xSemaphoreGive(ucp->cond) != pdTRUE) {
@@ -413,16 +440,30 @@ static int uctx_signal_resume(uctx_t *ucp)
 int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
 {
     va_list        args;
+    size_t         depth;
 
+    depth = 0;
+    if (entry) {
+        //  Round up so the task never receives less stack than the caller requested
+        depth = (ucp->uc_stack.ss_size + UCTX_STACK_UNIT - 1) / UCTX_STACK_UNIT;
+        //  Vanilla FreeRTOS defaults configSTACK_DEPTH_TYPE to uint16_t, which large stacks overflow
+        if ((size_t) (configSTACK_DEPTH_TYPE) depth != depth) {
+            return -1;
+        }
+    }
     // Create synchronization primitives
     if ((ucp->mutex = xSemaphoreCreateMutex()) == NULL) {
         return -1;
     }
     // Counting semaphore starts at 0 - task will block until signaled
     if ((ucp->cond = xSemaphoreCreateCounting(INT_MAX, 0)) == NULL) {
+        vSemaphoreDelete(ucp->mutex);
+        ucp->mutex = NULL;
         return -1;
     }
     ucp->resumed = 0;
+    ucp->done = 0;
+    ucp->exited = NULL;
 
     if (entry) {
         // Child fiber: create new task that will block until resumed
@@ -431,11 +472,28 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
         for (int i = 0; i < argc && i < UCTX_MAX_ARGS; i++) {
             ucp->args[i] = va_arg(args, void*);
         }
-        int words = ucp->uc_stack.ss_size / sizeof(int);
-        if (xTaskCreate((void*) uctx_task_wrapper, UCTX_NAME, words, ucp, 1, &ucp->task) < 0) {
+        va_end(args);
+        /*
+            Posted by the task as its last act, so uctx_freecontext can wait for the task to be
+            finished with this context before the caller releases the memory holding it.
+         */
+        if ((ucp->exited = xSemaphoreCreateBinary()) == NULL) {
+            vSemaphoreDelete(ucp->cond);
+            vSemaphoreDelete(ucp->mutex);
+            ucp->cond = NULL;
+            ucp->mutex = NULL;
             return -1;
         }
-        va_end(args);
+        if (xTaskCreate((void*) uctx_task_wrapper, UCTX_NAME, (configSTACK_DEPTH_TYPE) depth, ucp, 1,
+                        &ucp->task) != pdPASS) {
+            vSemaphoreDelete(ucp->exited);
+            vSemaphoreDelete(ucp->cond);
+            vSemaphoreDelete(ucp->mutex);
+            ucp->exited = NULL;
+            ucp->cond = NULL;
+            ucp->mutex = NULL;
+            return -1;
+        }
     } else {
         // Main fiber: use existing task
         ucp->task = xTaskGetCurrentTaskHandle();
@@ -455,67 +513,80 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
     2. Blocks waiting for resumed flag (or done flag for early termination)
     3. If done: task was terminated before running - just exit
     4. Otherwise: execute user's entry function
-    5. Delete self when entry function returns
+    5. Tell freecontext we are finished with the context, then delete self
 */
 static void *uctx_task_wrapper(uctx_t *ucp)
 {
-    TaskHandle_t    task;
+    int base;
 
     // Record the actual stack location (FreeRTOS allocated the stack)
-    ucp->uc_stack.ss_sp = (void*) ((int) &task - ucp->uc_stack.ss_size + sizeof(int));
+    ucp->uc_stack.ss_sp = (char*) &base - ucp->uc_stack.ss_size + sizeof(int);
 
     // Block until swapcontext resumes us (or freecontext terminates us)
     uctx_wait_until(ucp, resumed_or_done);
-    task = ucp->task;
 
     if (!ucp->done) {
         // Execute the fiber's entry function
         ucp->entry(ucp->args[0], ucp->args[1], ucp->args[2]);
     }
-    // Entry function returned - clean up semaphores and delete task
-    vSemaphoreDelete(ucp->cond);
-    vSemaphoreDelete(ucp->mutex);
-    vTaskDelete(task);
+    uctx_task_exit(ucp);
     return NULL;
 }
 
 /*
-    Switch execution from one fiber to another.
+    Post exited before deleting this task. The caller may then free ucp, so do not access it again.
+    uctx_freecontext destroys the semaphores. Does not return.
+ */
+static void uctx_task_exit(uctx_t *ucp)
+{
+    xSemaphoreGive(ucp->exited);
+    vTaskDelete(NULL);
+}
 
-    This is the core of cooperative multitasking:
-    1. Mark current fiber as not running (resumed = 0)
-    2. Signal target fiber to wake up and run
-    3. Block until someone swaps back to us
-
-    The from->done check handles the case where the fiber is being
-    terminated - don't block waiting for a resume that won't come.
-*/
+/*
+    Wake the target fiber and wait to resume. If terminated while waiting, exit without returning to fiber code.
+ */
 int uctx_swapcontext(uctx_t *from, uctx_t *to)
 {
     // Mark ourselves as idle - we're about to block
     from->resumed = 0;
 
     // Wake up the target fiber
-    if (uctx_signal_resume(to) != 0) {
+    if (uctx_signal_resume(to, 0) != 0) {
         return -1;
     }
-    // Block until another fiber swaps back to us (unless we're terminating)
-    if (!from->done) {
-        uctx_wait_until(from, resumed);
+    // Block until another fiber swaps back to us, or until we are being torn down
+    uctx_wait_until(from, resumed_or_done);
+    if (from->done) {
+        uctx_task_exit(from);
     }
     return 0;
 }
 
 /*
-    Terminate and clean up a fiber context.
-
-    Signals the fiber's task to exit (via done flag) and wakes it.
-    The task will clean up its own semaphores before deleting itself.
-*/
+    Signal termination and wait until the task stops using ucp before destroying its semaphores.
+    The caller may free ucp on return.
+ */
 void uctx_freecontext(uctx_t *ucp)
 {
+    if (ucp->mutex == NULL) {
+        //  Already freed
+        return;
+    }
+    if (ucp->exited && ucp->task != xTaskGetCurrentTaskHandle()) {
+        uctx_signal_resume(ucp, 1);
+        //  Wait for the task to finish with the context before releasing what lives inside it
+        xSemaphoreTake(ucp->exited, portMAX_DELAY);
+    }
     ucp->done = 1;
-    uctx_signal_resume(ucp);
+    if (ucp->exited) {
+        vSemaphoreDelete(ucp->exited);
+        ucp->exited = NULL;
+    }
+    vSemaphoreDelete(ucp->cond);
+    vSemaphoreDelete(ucp->mutex);
+    ucp->cond = NULL;
+    ucp->mutex = NULL;
 }
 
 /*
@@ -722,7 +793,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -852,7 +923,7 @@ void uctx_trampoline(void)
 
 #include "uctx.h"
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #endif // MIPS
 
@@ -955,7 +1026,7 @@ void uctx_freecontext(uctx_t *up) { }
 
 #include "uctx.h"
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #endif // MIPS64
 
@@ -1184,7 +1255,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -1343,7 +1414,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -1411,16 +1482,17 @@ int uctx_setcontext(uctx_t *ucp)
  */
 int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
 {
-    pthread_attr_t attr;
-    va_list        args;
+    va_list args;
 
     if (pthread_mutex_init(&ucp->mutex, NULL) != 0) {
         return -1;
     }
     if (pthread_cond_init(&ucp->cond, NULL) != 0) {
+        pthread_mutex_destroy(&ucp->mutex);
         return -1;
     }
     ucp->resumed = 0;
+    ucp->done = 0;
 
     if (entry) {
         va_start(args, argc);
@@ -1428,14 +1500,16 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
         for (int i = 0; i < argc && i < UCTX_MAX_ARGS; i++) {
             ucp->args[i] = va_arg(args, void*);
         }
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-        pthread_attr_setstacksize(&attr, ucp->uc_stack.ss_size);
-
+        va_end(args);
+        /*
+            The thread must remain joinable. uctx_freecontext joins it so that the caller can free
+            the memory holding this context as soon as uctx_freecontext returns.
+         */
         if (pthread_create(&ucp->thread, NULL, (void*) uctx_thread_wrapper, ucp) != 0) {
+            pthread_cond_destroy(&ucp->cond);
+            pthread_mutex_destroy(&ucp->mutex);
             return -1;
         }
-        va_end(args);
     } else {
         ucp->thread = pthread_self();
         ucp->resumed = 1;
@@ -1446,36 +1520,41 @@ int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
 /*
     Thread function that waits until it's signaled to start
  */
-static void *uctx_thread_wrapper(uctx_t *ucp) 
+static void *uctx_thread_wrapper(uctx_t *ucp)
 {
-    int base;
+    int base, done;
 
     ucp->uc_stack.ss_sp = &base;
 
     /*
-        Wait to be resumed
+        Wait to be resumed, or to be terminated before ever running
      */
     pthread_mutex_lock(&ucp->mutex);
-    while (!ucp->resumed) {
+    while (!ucp->resumed && !ucp->done) {
         if (pthread_cond_wait(&ucp->cond, &ucp->mutex) != 0) {
+            pthread_mutex_unlock(&ucp->mutex);
             return NULL;
         }
     }
+    done = ucp->done;
     pthread_mutex_unlock(&ucp->mutex);
 
-    /*  
+    /*
         Invoke the entry (fiberEntry) function
      */
-    ucp->entry(ucp->args[0], ucp->args[1], ucp->args[2]);
-
+    if (!done) {
+        ucp->entry(ucp->args[0], ucp->args[1], ucp->args[2]);
+    }
     return NULL;
 }
 
 /*
     Swap stacks
  */
-int uctx_swapcontext(uctx_t *from, uctx_t *to) 
+int uctx_swapcontext(uctx_t *from, uctx_t *to)
 {
+    int done;
+
     /*
         Mark our context as idle 
      */
@@ -1489,30 +1568,59 @@ int uctx_swapcontext(uctx_t *from, uctx_t *to)
     }
     to->resumed = 1;
     if (pthread_cond_signal(&to->cond) != 0) {
+        //  Must not return holding the mutex - uctx_freecontext would then block on it forever
+        pthread_mutex_unlock(&to->mutex);
         return -1;
     }
     pthread_mutex_unlock(&to->mutex);
 
     /*
-        Wait to be resumed if not already done
+        Wait to be resumed, unless this context is being torn down. Both flags are tested under the
+        mutex that uctx_freecontext sets them under.
      */
-    if (!from->done) {
-        pthread_mutex_lock(&from->mutex);
-        while (!from->resumed) {
-            if (pthread_cond_wait(&from->cond, &from->mutex) != 0) {
-                return -1;
-            }
+    pthread_mutex_lock(&from->mutex);
+    while (!from->resumed && !from->done) {
+        if (pthread_cond_wait(&from->cond, &from->mutex) != 0) {
+            pthread_mutex_unlock(&from->mutex);
+            return -1;
         }
-        pthread_mutex_unlock(&from->mutex);
+    }
+    done = from->done;
+    pthread_mutex_unlock(&from->mutex);
+
+    if (done) {
+        //  Torn down while blocked here: exit without running any more of the context's code
+        pthread_exit(NULL);
     }
     return 0;
 }
 
+/*
+    Signal termination and join the thread before destroying its synchronization objects.
+    The caller may free the context on return.
+ */
 void uctx_freecontext(uctx_t *ucp)
 {
+    pthread_t thread;
+
+    if (ucp->done) {
+        //  Already freed
+        return;
+    }
+    thread = ucp->thread;
+
+    if (pthread_equal(thread, pthread_self())) {
+        ucp->done = 1;
+    } else {
+        pthread_mutex_lock(&ucp->mutex);
+        ucp->done = 1;
+        ucp->resumed = 1;
+        pthread_cond_signal(&ucp->cond);
+        pthread_mutex_unlock(&ucp->mutex);
+        pthread_join(thread, NULL);
+    }
     pthread_cond_destroy(&ucp->cond);
     pthread_mutex_destroy(&ucp->mutex);
-    ucp->done = 1;
 }
 
 /*
@@ -1640,7 +1748,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -1784,7 +1892,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -1891,7 +1999,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -1977,7 +2085,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -2020,17 +2128,22 @@ void uctx_trampoline(void)
 #include "uctx.h"
 
 static LPVOID mainWinFiber = NULL;
+static int    convertedThread = 0;   /* uctx_init converted the thread, so uctx_term converts it back */
 
 /*
-    Initialize the UCTX subsystem - convert thread to fiber
+    Initialize the UCTX subsystem - convert thread to fiber unless the application already did
 */
 PUBLIC int uctx_init(uctx_t *ucp)
 {
     if (mainWinFiber != NULL) {
         return 0;
     }
-    if ((mainWinFiber = ConvertThreadToFiber(NULL)) == NULL) {
+    if (IsThreadAFiber()) {
+        mainWinFiber = GetCurrentFiber();
+    } else if ((mainWinFiber = ConvertThreadToFiber(NULL)) == NULL) {
         return -1;
+    } else {
+        convertedThread = 1;
     }
     if (ucp) {
         uctx_makecontext(ucp, NULL, 0);
@@ -2039,10 +2152,14 @@ PUBLIC int uctx_init(uctx_t *ucp)
 }
 
 /*
-    Terminate the UCTX subsystem
+    Terminate the UCTX subsystem. Must be called on the main fiber.
 */
 PUBLIC void uctx_term(void)
 {
+    if (convertedThread) {
+        ConvertFiberToThread();
+        convertedThread = 0;
+    }
     mainWinFiber = NULL;
 }
 
@@ -2068,6 +2185,7 @@ static VOID CALLBACK fiberWrapper(PVOID param)
 */
 PUBLIC int uctx_getcontext(uctx_t *ucp)
 {
+    (void) ucp;
     return 0;
 }
 
@@ -2076,6 +2194,7 @@ PUBLIC int uctx_getcontext(uctx_t *ucp)
 */
 PUBLIC int uctx_setcontext(uctx_t *ucp)
 {
+    (void) ucp;
     return 0;
 }
 
@@ -2113,6 +2232,7 @@ PUBLIC int uctx_makecontext(uctx_t *ucp, void (*entry)(void), int argc, ...)
 */
 PUBLIC int uctx_swapcontext(uctx_t *from, uctx_t *to)
 {
+    (void) from;
     if (to == NULL || to->fiber == NULL) {
         return -1;
     }
@@ -2322,7 +2442,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));
@@ -2472,7 +2592,7 @@ int uctx_makecontext(uctx_t *ucp, void (*func)(void), int argc, ...)
 	return 0;
 }
 
-void uctx_freecontext(uctx_t *up) { }
+void uctx_freecontext(uctx_t *up) { (void) up; }
 
 #ifdef EXPORT_UNPREFIXED
 extern __typeof(uctx_makecontext) makecontext __attribute__((weak, __alias__("uctx_makecontext")));

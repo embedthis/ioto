@@ -22,7 +22,7 @@
  */
 
 #ifndef _h_WEB
-#define _h_WEB 1
+#define _h_WEB             1
 
 /*
     ME_COM defaults -- must be before includes so dependent headers see them.
@@ -30,22 +30,22 @@
     crypt.h defines: ME_COM_CRYPT
  */
 #ifndef ME_NAME
-    #define ME_NAME         "web"
+    #define ME_NAME        "web"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE        ME_NAME
+    #define ME_TITLE       ME_NAME
 #endif
 #ifndef ME_COM_WEB
-    #define ME_COM_WEB      1
+    #define ME_COM_WEB     1
 #endif
 #ifndef ME_COM_JSON
-    #define ME_COM_JSON     1
+    #define ME_COM_JSON    1
 #endif
 #ifndef ME_COM_URL
-    #define ME_COM_URL      1
+    #define ME_COM_URL     1
 #endif
 #ifndef ME_COM_WEBSOCK
-    #define ME_COM_WEBSOCK  1
+    #define ME_COM_WEBSOCK 1
 #endif
 
 /********************************** Includes **********************************/
@@ -69,27 +69,45 @@ extern "C" {
  * @{
  */
 #ifndef ME_WEB_HTTP_AUTH
-    #define ME_WEB_HTTP_AUTH        1               /**< Enable HTTP Basic and Digest authentication protocols */
+    #define ME_WEB_HTTP_AUTH ME_CRYPT_BCRYPT        /**< Enable HTTP Basic and Digest authentication protocols */
+#endif
+#if ME_WEB_HTTP_AUTH && !ME_CRYPT_BCRYPT
+//  Stored passwords are bcrypt hashes, so there is no way to verify a credential without it
+    #error "ME_WEB_HTTP_AUTH requires ME_CRYPT_BCRYPT. Set ME_CRYPT_BCRYPT=1 or ME_WEB_HTTP_AUTH=0."
 #endif
 #if ME_WEB_HTTP_AUTH
     #ifndef ME_WEB_AUTH_BASIC
-        #define ME_WEB_AUTH_BASIC   1               /**< Enable HTTP Basic authentication */
+        #define ME_WEB_AUTH_BASIC  1                /**< Enable HTTP Basic authentication */
     #endif
     #ifndef ME_WEB_AUTH_DIGEST
-        #define ME_WEB_AUTH_DIGEST  1               /**< Enable HTTP Digest authentication */
-    #endif
-    #ifndef ME_WEB_MAX_AUTH
-        #define ME_WEB_MAX_AUTH     256             /**< Default maximum length for usernames and password hashes */
+        #define ME_WEB_AUTH_DIGEST 1                /**< Enable HTTP Digest authentication */
     #endif
 #endif
-#ifndef ME_WEB_LIMITS
-    #define ME_WEB_LIMITS           1               /**< Enable resource limits and security constraints */
+//  Bounds user records whether or not HTTP authentication is compiled: sessions and webAddUser use it too
+#ifndef ME_WEB_MAX_AUTH
+    #define ME_WEB_MAX_AUTH 256                     /**< Default maximum length for usernames and password hashes */
 #endif
 #ifndef ME_WEB_SESSIONS
-    #define ME_WEB_SESSIONS         1               /**< Enable session management support */
+    #define ME_WEB_SESSIONS 1                       /**< Enable session management support */
+#endif
+#ifndef ME_WEB_MAX_AUTH_CLIENTS
+    #define ME_WEB_MAX_AUTH_CLIENTS 256             /**< Maximum client addresses tracked for authentication failures */
 #endif
 #ifndef ME_WEB_UPLOAD
-    #define ME_WEB_UPLOAD           1               /**< Enable file upload functionality */
+    #define ME_WEB_UPLOAD   1                       /**< Enable file upload functionality */
+#endif
+/*
+    Whether the file handler can serve PUT and DELETE. Mutations require descriptor-relative
+    operations, so that holding the validated parent prevents a replaced symlink from redirecting a
+    later create, rename or unlink. A platform without those primitives fails closed with 405 rather
+    than falling back to path-based writes, so callers and tests must be able to ask.
+ */
+#ifndef ME_WEB_MUTATIONS
+    #if ME_UNIX_LIKE && defined(O_NOFOLLOW) && defined(O_DIRECTORY) && defined(AT_SYMLINK_NOFOLLOW)
+        #define ME_WEB_MUTATIONS    1               /**< File handler supports PUT and DELETE */
+    #else
+        #define ME_WEB_MUTATIONS    0
+    #endif
 #endif
 #ifndef ME_HTTP_SENDFILE
     #define ME_HTTP_SENDFILE        ME_HAS_SENDFILE /**< Enable sendfile for zero-copy file transfers */
@@ -101,6 +119,15 @@ extern "C" {
         #define ME_WEB_FIBER_BLOCKS 0
     #endif
 #endif
+#ifndef ME_WEB_USER
+    #define ME_WEB_USER             "nobody"        /**< Account a root-started server drops to without web.user */
+#endif
+/*
+    Enable unauthenticated test actions only in test builds, independently of ME_DEBUG.
+ */
+#ifndef ME_WEB_TEST_ACTIONS
+    #define ME_WEB_TEST_ACTIONS     0               /**< Compile and register the /test action table */
+#endif
 /** @} */
 
 /**
@@ -108,9 +135,25 @@ extern "C" {
  * @description Core constants used throughout the Web Server Module.
  * @{
  */
-#define WEB_MAX_SIG         160         /**< Maximum size of controller.method URL portion in API signatures */
-#define WEB_MAX_COOKIE_SIZE 8192        /**< Maximum size of cookie header (security limit) */
-#define WEB_MAX_SIG_DEPTH   16          /**< Maximum recursion depth for signature validation */
+#define WEB_MAX_SIG          160        /**< Maximum size of controller.method URL portion in API signatures */
+#define WEB_REALM            "web"      /**< Authentication realm when neither web.auth.realm nor web.name is set */
+#define WEB_MAX_COOKIE_SIZE  8192       /**< Maximum size of cookie header (security limit) */
+#define WEB_MAX_SIG_DEPTH    16         /**< Maximum recursion depth for signature validation */
+#define WEB_MAX_RANGES       16         /**< Maximum ranges honoured in one Range header; more and the header is ignored
+                                         */
+#define WEB_MAX_BOUNDARY     70         /**< Maximum multipart boundary token length, per RFC 2046 section 5.1.1 */
+
+/**
+    Route request-validation setting.
+    @description A route with no "validate" key is validated whenever the request resolves to a
+    signature, so enabling web.signatures is sufficient to validate the endpoints the signature file
+    describes. Setting "validate: true" additionally makes web.signatures.strict refuse a request
+    that resolves to no signature at all, which is only meaningful for a route whose endpoints are
+    all described. Setting "validate: false" exempts the route.
+ */
+#define WEB_VALIDATE_OFF     0          /**< Route explicitly exempted from request validation */
+#define WEB_VALIDATE_ON      1          /**< Route explicitly validated; a missing signature is strict-checked */
+#define WEB_VALIDATE_DEFAULT (-1)       /**< Validate when the request resolves to a signature */
 /** @} */
 
 /**
@@ -121,13 +164,13 @@ extern "C" {
  * @{
  */
 #if ESP32 || FREERTOS || VXWORKS
-    #define WEB_BUF_BOOST_2X   ME_BUFSIZE
-    #define WEB_BUF_BOOST_4X   ME_BUFSIZE
-    #define WEB_BUF_BOOST_16X  ME_BUFSIZE
+    #define WEB_BUF_BOOST_2X  ME_BUFSIZE
+    #define WEB_BUF_BOOST_4X  ME_BUFSIZE
+    #define WEB_BUF_BOOST_16X ME_BUFSIZE
 #else
-    #define WEB_BUF_BOOST_2X   (ME_BUFSIZE * 2)
-    #define WEB_BUF_BOOST_4X   (ME_BUFSIZE * 4)
-    #define WEB_BUF_BOOST_16X  (ME_BUFSIZE * 16)
+    #define WEB_BUF_BOOST_2X  (ME_BUFSIZE * 2)
+    #define WEB_BUF_BOOST_4X  (ME_BUFSIZE * 4)
+    #define WEB_BUF_BOOST_16X (ME_BUFSIZE * 16)
 #endif
 /** @} */
 
@@ -177,9 +220,11 @@ extern "C" {
  * @description State flags for HTTP chunked transfer encoding processing.
  * @{
  */
-#define WEB_CHUNK_START     1              /**< Start of a new chunk */
-#define WEB_CHUNK_DATA      2              /**< Start of chunk data */
-#define WEB_CHUNK_EOF       4              /**< End of chunk data */
+#define WEB_CHUNK_START     1              /**< Expecting a chunk-size line */
+#define WEB_CHUNK_DATA      2              /**< Reading chunk data */
+#define WEB_CHUNK_END       3              /**< Expecting the CRLF that ends the chunk data */
+#define WEB_CHUNK_TRAILER   4              /**< Last chunk seen, reading trailer fields to the empty line */
+#define WEB_CHUNK_EOF       5              /**< End of the chunked body */
 /** @} */
 
 #define WEB_HEADERS         16             /**< Initial number of header slots to allocate */
@@ -206,6 +251,10 @@ struct WebUpload;
 struct WebUser;
 
 #if ME_WEB_HTTP_AUTH && ME_WEB_AUTH_DIGEST
+#ifndef WEB_DIGEST_USERS
+    #define WEB_DIGEST_USERS 10 /**< Each user may hold at most 1/WEB_DIGEST_USERS of the digest nonce table */
+#endif
+
 /**
     Nonce tracking entry for replay protection
     @description Tracks nonce usage and nonce count (nc) values to prevent replay attacks.
@@ -215,7 +264,8 @@ struct WebUser;
  */
 typedef struct WebNonceEntry {
     Ticks created;              /**< Time when nonce was created (for expiration) */
-    int lastNc;                 /**< Last nonce count (nc) value seen for this nonce */
+    uint64 lastNc;              /**< Highest nonce count (nc) accepted for this nonce */
+    char *username;             /**< User that first used the nonce. Allocated with the entry */
 } WebNonceEntry;
 #endif
 
@@ -278,8 +328,8 @@ typedef struct WebAction {
 typedef struct WebRoute {
     cchar *match;                       /**< Matching URI path pattern */
     bool compressed : 1;                /**< Serve pre-compressed files (.gz, .br) */
-    bool exact : 1;                     /**< Exact match vs prefix match. If trailing "/" in route. */
-    bool validate : 1;                  /**< Validate request */
+    bool exact : 1;                     /**< Segment match (no trailing "/"): the path and its subtree */
+    int validate;                       /**< Validate requests: WEB_VALIDATE_* */
     bool xsrf : 1;                      /**< Use XSRF tokens */
     RHash *methods;                     /**< HTTP methods verbs */
     cchar *handler;                     /**< Request handler (file, action) */
@@ -340,7 +390,7 @@ PUBLIC void webTerm(void);
  */
 typedef struct WebUser {
     char *username;             /**< User name */
-    char *password;             /**< Encrypted password hash: H(username:realm:password) */
+    char *password;             /**< Encrypted password hash: H(username:realm:password). NULL if none */
     char *role;                 /**< Single role name assigned to this user */
     RHash *abilities;           /**< Computed abilities hash expanded from role inheritance */
 } WebUser;
@@ -387,6 +437,7 @@ typedef struct WebHost {
     REvent sessionEvent;        /**< Session timer event */
     int roles;                  /**< Base ID of roles in config */
     int headers;                /**< Base ID for headers in config */
+    int corsOrigins;            /**< JSON id of web.cors.origins, or -1 for same-origin only */
 
     cchar *name;                /**< Host name for canonical redirects and URL generation */
     cchar *index;               /**< Default index file (e.g., "index.html") for directory requests */
@@ -395,38 +446,54 @@ typedef struct WebHost {
     char *docs;                 /**< Document root directory path for serving static files */
     char *canonicalDocs;        /**< Canonical (realpath) document root used for containment checks */
     char *ip;                   /**< Default IP address for redirects when host IP is indeterminate */
+    bool foldCase : 1;          /**< The documents filesystem folds case, so route matching must too */
 
     //  Timeout configuration (in seconds)
     Ticks inactivityTimeout;    /**< Maximum inactivity before closing connection (ticks) */
     Ticks parseTimeout;         /**< Maximum time allowed for parsing HTTP request headers (ticks) */
+    Ticks receiveTimeout;       /**< Maximum time to receive a buffered request body (ticks) */
     Ticks requestTimeout;       /**< Maximum time for complete request processing (ticks) */
     Ticks sessionTimeout;       /**< Maximum inactivity before a session expires (ticks) */
     int connections;            /**< Current count of active client connections */
     int64 connSequence;         /**< Connection sequence number for per-host connection tracking */
 
+    RHash *authFailures;        /**< Authentication failure counts indexed by client IP address */
+    Ticks failurePeriod;        /**< Period over which authentication failures are counted (ticks) */
+    int maxFailures;            /**< Authentication failures per client per period before refusing (0 for no limit) */
+
 #if ME_WEB_HTTP_AUTH
     //  HTTP authentication configuration (Basic/Digest protocols)
     cchar *realm;               /**< Authentication realm (default: host name) */
-    cchar *authType;            /**< Default authentication type: "basic" or "digest" */
+    cchar *authType;            /**< Challenge type for webHttpAuthenticate when a route sets no authType (web.auth.authType, default "basic"). Does not enable HTTP auth: only a route with its own authType requires it */
     cchar *algorithm;           /**< Digest algorithm: "MD5" or "SHA-256" */
     char *secret;               /**< Random master secret for nonce generation */
     int digestTimeout;          /**< Digest nonce time-to-live (seconds) */
     bool requireTlsForBasic : 1;/**< Require TLS for Basic authentication */
     char *opaque;               /**< Digest opaque value emitted in challenges */
+    char *decoyPassword;        /**< Fixed bcrypt hash webCheckPassword verifies for an unknown user */
+#if ME_WEB_AUTH_BASIC
+    WebUser dummyUser;          /**< Fixed credentials verified for an unknown username to equalize Basic auth timing */
+#endif
 #if ME_WEB_AUTH_DIGEST
+    char *dummyDigestPassword;  /**< Fixed hash-format password used to equalize Digest auth timing for an unknown
+                                   username */
     bool trackNonces : 1;       /**< Enable nonce replay protection tracking (disable for testing/benchmarks) */
     RHash *nonces;              /**< Hash table tracking nonces for replay protection */
+    RHash *nonceUsers;          /**< Count of tracked nonces per username */
     REvent nonceCleanupEvent;   /**< Timer event for cleaning up expired nonces */
 #endif
 #endif
 
 #if ME_WEB_UPLOAD
     //  Upload configuration
-    cchar *uploadDir;           /**< Directory path where uploaded files are temporarily stored */
+    char *uploadDir;            /**< Owned directory path where uploaded files are temporarily stored */
     bool removeUploads : 1;     /**< Automatically remove uploaded files when request completes */
 #endif
 
-#if ME_WEB_LIMITS || DOXYGEN
+    uchar etagSalt[16];         /**< Random salt hashed into file ETags so they do not disclose inodes */
+    int hosts;                  /**< JSON id of web.hosts, the accepted Host names, or -1 to accept any */
+    RList *deny;                /**< Filename glob patterns never served, whatever the route */
+
     //  Security and resource limits
     int maxBuffer;              /**< Maximum response buffer size in bytes */
     int maxDigest;              /**< Maximum digest nonces for replay protection */
@@ -437,16 +504,17 @@ typedef struct WebHost {
     int maxSessions;            /**< Maximum number of concurrent user sessions */
     int maxUpload;              /**< Maximum file upload size in bytes */
     int maxUploads;             /**< Maximum number of files per upload request */
+    int maxVars;                /**< Maximum number of request query and form variables */
 
 #if ME_COM_WEBSOCK
     cchar *webSocketsProtocol;  /**< WebSocket application sub-protocol identifier */
+    int webSocketsOrigins;      /**< JSON id of web.webSockets.origins, or -1 for same-origin only */
     int webSocketsMaxMessage;   /**< Maximum WebSocket message size in bytes */
     int webSocketsMaxFrame;     /**< Maximum WebSocket frame size in bytes */
     int webSocketsPingPeriod;   /**< WebSocket ping period in milliseconds */
     bool webSocketsValidateUTF; /**< Validate UTF-8 encoding in WebSocket text frames */
     bool webSocketsEnable;      /**< Enable WebSocket protocol support */
 #endif /* ME_COM_WEBSOCK */
-#endif /* ME_WEB_LIMITS */
 } WebHost;
 
 /**
@@ -498,6 +566,21 @@ PUBLIC WebHost *webAllocHost(Json *config, int flags);
     @stability Evolving
  */
 PUBLIC void webFreeHost(WebHost *host);
+
+/**
+    Get the fiber limit for a web server configuration
+    @description Each connection is served on a fiber held for the whole request, so the fiber limit,
+        not web.limits.connections, bounds the number of connections serviced at once. If limits.fibers
+        is unset or zero, the limit is web.limits.connections plus the reserve. An explicit
+        limits.fibers is returned as given, and an error is logged if it is below that value.
+        Pass the result to rSetFiberLimits.
+    @param config JSON5 configuration object containing the limits.fibers and web.limits.connections
+        properties
+    @param reserve Number of fibers needed beyond the connection limit for the application's own fibers
+    @return The maximum number of fibers
+    @stability Evolving
+ */
+PUBLIC int webGetFiberLimit(Json *config, int reserve);
 
 /**
     Get the web documents directory for a host
@@ -616,6 +699,8 @@ typedef struct Web {
     RBuf *buffer;               /**< Response output buffer for efficient response generation */
 
     Offset chunkRemaining;      /**< Bytes remaining in current HTTP chunk */
+    ssize rxFraming;            /**< Chunk-size, chunk delimiter and trailer bytes received */
+    ssize rxDecoded;            /**< Body bytes at the front of rx with their chunk framing removed */
     ssize rxLen;                /**< Total expected request content length */
     Offset rxRemaining;         /**< Request body bytes remaining to be read */
     ssize headerSize;           /**< Size of the request headers and delimiter */
@@ -626,9 +711,14 @@ typedef struct Web {
 
     uint status : 16;           /**< Request response HTTP status code */
     uint chunked : 4;           /**< Receive transfer chunk encoding state */
+    uint chunkedTx : 1;         /**< Response body is framed with chunked transfer encoding */
     uint authenticated : 1;     /**< User authenticated and roleId defined */
     uint authChecked : 1;       /**< Authentication has been checked */
+    uint bodyRead : 1;          /**< The request body has been read and parsed */
+    uint buffering : 1;         /**< The response body is being buffered (see webBuffer) */
+    uint freeing : 1;           /**< webFree is in progress: a nested call returns */
     uint close : 1;             /**< Should the connection be closed after the request completes */
+    uint connUpgrade : 1;       /**< The request Connection header lists the upgrade option */
     uint exists : 1;            /**< Does the requested resource exist */
     uint finalized : 1;         /**< The response has been finalized */
     uint formBody : 1;          /**< Is the current request a POSTed form */
@@ -636,6 +726,8 @@ typedef struct Web {
     uint jsonBody : 1;          /**< Is the current request a POSTed json request */
     uint moreBody : 1;          /**< More response body to trace */
     uint secure : 1;            /**< Has secure listening endpoint */
+    uint timedOut : 1;          /**< A read deadline expired with a request in flight */
+    uint trimmed : 1;           /**< The route trim prefix was removed from the path */
     uint upgraded : 1;          /**< Is the connection upgraded to a WebSocket */
     uint writingHeaders : 1;    /**< Are headers being created and written */
     uint wroteHeaders : 1;      /**< Have the response headers been written */
@@ -655,13 +747,16 @@ typedef struct Web {
     uint ifRange:1;             /**< If-Range header was present */
 
     WebHost *host;              /**< Owning host object */
-    struct WebSession *session; /**< Session state */
+    char *sessionId;            /**< Session id, re-resolved on each webGetSession call */
+    struct WebSession *session; /**< Session resolved by the last webGetSession call */
     WebRoute *route;            /**< Matching route for this request */
+    WebRoute *policy;           /**< Route a trim rewrite reached. Its gates apply as well as route's */
     WebListen *listen;          /**< Listening endpoint */
     RFiber *fiber;              /**< Current fiber object may change between requests */
 
     Json *vars;                 /**< Parsed request body variables */
     Json *qvars;                /**< Parsed request query string variables */
+    int numVars;                /**< Count of client-supplied variables in vars and qvars */
     RSocket *sock;
 
     Ticks connectionStarted;    /**< Time when the connection started */
@@ -700,7 +795,11 @@ typedef struct Web {
     //  Auth
     char *cookie;               /**< Request cookie string. Multiple cookies are joined and separated by ";" */
     char *username;             /**< Username (allocated) */
-    cchar *role;                /**< Authorized role */
+    char *role;                 /**< Authorized role. OWNED by this Web - always an allocated copy.
+                                     It was previously borrowed from a session cache or the host
+                                     user table, either of which can be freed by the session prune
+                                     timer or the user-management API while a request fiber is
+                                     blocked on I/O. */
     int signature;              /**< Index into host->signatures for this request */
     int64 count;                /**< Keep-alive reuse counter. Origin zero and incremented by one after each request */
     int64 conn;                 /**< Web connection sequence */
@@ -730,19 +829,20 @@ typedef struct Web {
 #endif /* ME_WEB_AUTH_DIGEST */
 #endif /* ME_WEB_HTTP_AUTH */
 
+    RHash *uploads;             /**< Uploaded files by part name - last wins, for lookup. NULL without uploads */
 #if ME_WEB_UPLOAD
-    RHash *uploads;             /**< Table of uploaded files for this request */
+    RList *uploadList;          /**< Owns every WebUpload, including any a duplicate name displaced */             /**<
+                                   Table of uploaded files for this request */
     char *uploadName;           /**< Name of the current uploading file */
     char *uploadContentType;    /**< Content type of the current uploading file */
     WebUpload *upload;          /**< Current uploading file */
     int numUploads;             /**< Count of uploaded files */
+    size_t uploadSize;          /**< Total file bytes written by this request, bounded by web.limits.upload */
     cchar *uploadDir;           /**< Directory to place uploaded files */
     char *boundary;             /**< Upload file boundary */
     size_t boundaryLen;         /**< Length of the boundary */
 #endif
-#if ME_COM_WEBSOCK
-    struct WebSocket *webSocket;/**< Web socket object */
-#endif
+    struct WebSocket *webSocket;/**< Web socket object. NULL without WebSocket support */
 } Web;
 
 /**
@@ -783,14 +883,40 @@ PUBLIC void webAddHeaderStaticString(Web *web, cchar *key, cchar *value);
 PUBLIC void webAddHeaderDynamicString(Web *web, cchar *key, char *value);
 
 /**
-    Add an Access-Control-Allow-Origin response header for the request host name
-    @description Add a CORS (Cross-Origin Resource Sharing) Access-Control-Allow-Origin header
-        using the current request's host name. This enables cross-origin requests from the
-        requesting host while maintaining security.
+    Add a request header field to the Vary response header
+    @description Merge a field into the response's Vary header, adding it only if not already
+        listed, so one Vary names every request header the response depends on. A shared cache
+        keys stored responses on these fields.
+    @param web Web request object
+    @param field Request header field name, such as "Accept-Encoding" or "Cookie"
+    @stability Evolving
+ */
+PUBLIC void webAddVary(Web *web, cchar *field);
+
+/**
+    Add an Access-Control-Allow-Origin response header
+    @description Add a CORS (Cross-Origin Resource Sharing) Access-Control-Allow-Origin header and
+        add Origin to the Vary header. The request Origin is echoed only if it is the same origin as
+        the request or is listed in the "web.cors.origins" configuration array. Otherwise the header
+        names this host, so a browser refuses the cross-origin read. Listing "*" allows every origin
+        to read the response and should only be used for public, unauthenticated data. No
+        Access-Control-Allow-Credentials header is emitted.
     @param web Web request object
     @stability Evolving
  */
 PUBLIC void webAddAccessControlHeader(Web *web);
+
+/**
+    Test whether the request Origin is allowed
+    @description A request without an Origin header is allowed. Otherwise the origin must match an
+        entry in the configuration array identified by originsId ("*" matches any origin) or, when
+        originsId is negative, the scheme and Host of the request.
+    @param web Web request object
+    @param originsId JSON node id of a configured array of origins, or -1 for same-origin only
+    @return True if the origin is allowed
+    @stability Evolving
+ */
+PUBLIC bool webMatchOrigin(Web *web, int originsId);
 
 /**
     Buffer the response body
@@ -809,11 +935,14 @@ PUBLIC void webBuffer(Web *web, size_t size);
     @description Read data from the request stream into an internal buffer until a specific
         pattern is found or a byte limit is reached. The data remains in the buffer for
         subsequent processing and is not consumed by this call. If the pattern is not found
-        before the limit, the buffer will contain the data read up to the limit.
+        before the limit, the buffer will contain the data read up to the limit. Only request
+        body data is scanned: chunk framing is removed as the data arrives and a body of known
+        length is never scanned past its end.
     @param web Web request object
-    @param until Pattern string to search for, or NULL to read only up to the limit
+    @param until Pattern string to search for
     @param limit Maximum number of bytes to buffer
-    @return Number of bytes read into buffer, 0 if pattern not found before limit, negative on errors
+    @return Number of bytes buffered up to and including the pattern, 0 if the pattern is not
+        found before the limit, negative if the body ends before the pattern is seen or on errors
     @stability Evolving
  */
 PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit);
@@ -833,6 +962,20 @@ PUBLIC ssize webBufferUntil(Web *web, cchar *until, size_t limit);
     @stability Evolving
  */
 PUBLIC int webError(Web *web, int status, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+
+/**
+    Log a refused authentication
+    @description Writes one "info" message under the "auth" source:
+        "Refused METHOD from IP on connection N: REASON (route 'MATCH')". The username, password,
+        Authorization header and cookies are never logged. The server calls this when a request that
+        presented credentials or a session cookie is refused by a route. Application login handlers call it
+        for each failed login, with the same reason whatever the cause, so the log does not reveal which
+        usernames exist.
+    @param web Web request object
+    @param reason Short description of the refusal
+    @stability Evolving
+ */
+PUBLIC void webLogAuthFailure(Web *web, cchar *reason);
 
 /**
     Extend the request timeout
@@ -1049,6 +1192,21 @@ PUBLIC ssize webReadUntil(Web *web, cchar *until, char *buf, size_t bufsize);
 PUBLIC void webRedirect(Web *web, int status, cchar *uri);
 
 /**
+    Redirect the client to a path on this server
+    @description Send an HTTP redirect whose Location is the given relative reference (RFC 9110
+        10.2.2). The client resolves it against the URL it requested, so the target keeps the scheme,
+        host and port the client used, whatever proxy sits in front of this server. Prefer this to
+        webRedirect for same-origin redirects: webRedirect builds an absolute URL from this server's
+        own view of its scheme and address.
+    @pre Must only be called from a fiber
+    @param web Web request object
+    @param status HTTP redirect status code (301 for permanent, 302 for temporary)
+    @param path Absolute path beginning with a single "/", with optional query and fragment
+    @stability Evolving
+ */
+PUBLIC void webRedirectLocal(Web *web, int status, cchar *path);
+
+/**
     Remove a request variable
     @description Remove a variable from the request's variable collection. This affects
         variables parsed from form data, query strings, or programmatically set variables.
@@ -1112,15 +1270,13 @@ PUBLIC void webSetVar(Web *web, cchar *name, cchar *value);
 
 /**
     Validate a request body and query with the API signature.
-    The path is used as a JSON property path into the signatures.json5 file. It is typically based
-    upon the request URL path with "/" characters converted to ".".
+    The API signature is selected from the request URL before this routine is called.
     This routine will generate an error response if the signature is not found and strictSignatures is true.
     @param web Web object
-    @param path JSON property path into the signatures.json5 file.
     @return True if the request is valid. Otherwise, return false and generate an error response to the client..
     @stability Internal
  */
-PUBLIC bool webValidateRequest(Web *web, cchar *path);
+PUBLIC bool webValidateRequest(Web *web);
 
 /**
     Low level routine to validate a string body against a signature
@@ -1268,11 +1424,15 @@ PUBLIC ssize webWriteResponse(Web *web, int status, cchar *fmt, ...) PRINTF_ATTR
         call webFinalize(). For SSE streams, you typically do not call webFinalize() until
         the stream is complete. For regular responses, you must call webFinalize() after all
         response content has been written to complete the request.
+        Line breaks (CR, LF or CRLF) in the formatted data are sent as separate data fields,
+        which the client rejoins with newlines.
     @param web Web object
     @param id Event ID
-    @param name Event name
+    @param name Event name. Must not contain CR or LF.
     @param fmt Printf style message string
     @param ... Format arguments.
+    @return The number of bytes written, or a negative error code. R_ERR_BAD_ARGS if the name
+        contains a line break.
     @stability Evolving
  */
 PUBLIC ssize webWriteEvent(Web *web, int64 id, cchar *name, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
@@ -1311,14 +1471,17 @@ PUBLIC ssize webWriteValidatedData(Web *web, cchar *buf, cchar *sigKey);
 PUBLIC void webAddStandardHeaders(Web *web);
 PUBLIC int webAlloc(WebListen *listen, RSocket *sock);
 PUBLIC bool webCheckSignature(Web *web, Json *json, int nid, JsonNode *signature, int depth);
+PUBLIC size_t webBufferedBody(Web *web);
+PUBLIC void webConsumeBody(Web *web, size_t nbytes);
 PUBLIC int webConsumeInput(Web *web);
 PUBLIC int webFileHandler(Web *web);
 PUBLIC void webFree(Web *web);
 PUBLIC void webFreeRanges(Web *web);
 PUBLIC void webClose(Web *web);
-PUBLIC void webParseForm(Web *web);
-PUBLIC void webParseQuery(Web *web);
-PUBLIC void webParseEncoded(Web *web, Json *vars, cchar *str);
+PUBLIC int webAddRequestVar(Web *web, Json *vars, cchar *name, cchar *value);
+PUBLIC int webParseForm(Web *web);
+PUBLIC int webParseQuery(Web *web);
+PUBLIC int webParseEncoded(Web *web, Json *vars, cchar *str);
 PUBLIC Json *webParseJson(Web *web);
 PUBLIC bool webParseHeadersBlock(Web *web, char *headers, size_t headersSize, bool upload);
 PUBLIC int webReadBody(Web *web);
@@ -1392,6 +1555,17 @@ PUBLIC WebSession *webCreateSession(Web *web);
 PUBLIC void webDestroySession(Web *web);
 
 /**
+    Destroy all sessions logged in as a user
+    @description webRemoveUser and a password change by webUpdateUser call this, so a removed user's
+        sessions cannot authenticate a later user of the same name, and a password change ends sessions
+        opened with the old password.
+    @param host WebHost object
+    @param username User name
+    @stability Evolving
+ */
+PUBLIC void webDestroyUserSessions(WebHost *host, cchar *username);
+
+/**
     Get a unique security token.
     @description This will get an existing security token or create a new token if one does not exist.
         If recreate is true, the security token will be recreated.
@@ -1436,7 +1610,7 @@ PUBLIC void webRemoveSessionVar(Web *web, cchar *name);
     @param web Web request object
     @param name Session variable name
     @param value Session variable value
-    @param path Session variable path
+    @param path Cookie path. Defaults to "/". Must not contain control characters or ";"
     @param lifespan Session variable lifespan
     @param flags Flags to override the default cookie settings. Use WEB_COOKIE_OVERRIDE in combination with:
        WEB_COOKIE_HTTP_ONLY, WEB_COOKIE_SECURE, WEB_COOKIE_SAME_SITE.
@@ -1471,6 +1645,17 @@ PUBLIC void webFreeSession(WebSession *sp);
 PUBLIC bool webAuthenticate(Web *web);
 
 /**
+    Authorize a path the request is rewritten to after routing
+    @description A file the handler substitutes (directory index, pre-compressed variant) changes the
+        path after the route gate ran. The route that path matches must authorize the request as well.
+    @param web Web request object
+    @param path Rewritten request path in URL form
+    @return True if the request may proceed. Otherwise an error response has been written.
+    @stability Evolving
+ */
+PUBLIC bool webAuthorizePath(Web *web, cchar *path);
+
+/**
     Test if a user possesses the required role
     @param web Web request object
     @param role Required role.
@@ -1492,7 +1677,9 @@ PUBLIC bool webIsAuthenticated(Web *web);
     @description This creates a login session and defines a session cookie in the response.
     @param web Web request object
     @param username User name
-    @param role Requested role
+    @param role Role or ability the user must hold for the login to succeed. The session records the
+        user's own role, not this argument. For a user without a stored password, whose credentials the
+        application manages, this is the user's current role and replaces any role bound by an earlier login.
     @return True if the login is successful
     @stability Evolving
  */
@@ -1509,7 +1696,9 @@ PUBLIC void webLogout(Web *web);
     Add a user to the authentication database
     @param host WebHost object
     @param username User name
-    @param password Pre-hashed password: H(username:realm:password)
+    @param password Pre-hashed password: H(username:realm:password). NULL or empty for a user without an
+        HTTP credential, such as one authenticated by the application via webLogin. Such a user cannot
+        authenticate by HTTP Basic or Digest.
     @param role Role name
     @return WebUser object or NULL on error
     @stability Evolving
@@ -1533,6 +1722,16 @@ PUBLIC WebUser *webLookupUser(WebHost *host, cchar *username);
     @stability Evolving
  */
 PUBLIC void webInitDigestAuth(WebHost *host);
+#endif
+
+#if ME_WEB_HTTP_AUTH
+/**
+    Initialize the dummy credentials used to equalize authentication timing
+    @description Create dummy credentials so unknown users incur the same password-check cost, including bcrypt rounds.
+    @param host WebHost object
+    @stability Internal
+ */
+PUBLIC void webInitAuthDummy(WebHost *host);
 #endif
 
 /**
@@ -1584,6 +1783,26 @@ PUBLIC char *webHash(cchar *str, cchar *algorithm);
 PUBLIC char *webHashPassword(WebHost *host, cchar *username, cchar *password);
 
 /**
+    Check a plain-text password against a stored password hash
+    @description Use this to verify credentials held in an application's own user store with the same rules
+        the server applies to its configured users. The stored hash may carry an algorithm prefix: "BF1:" (bcrypt),
+        "MD5:" or "SHA256:". Without a prefix, the host's configured algorithm is used. The comparison is constant
+        time.
+        \n\n
+        If the stored value is NULL, as for an unknown user, the password is checked against a fixed decoy
+        bcrypt hash with the default number of rounds and false is returned. This gives an unknown user the
+        same verification cost as a known one.
+    @param host WebHost object. Supplies the realm and default algorithm.
+    @param username User name
+    @param password Plain-text password
+    @param stored Stored password hash of H(username:realm:password), as produced by webHashPassword or the
+        password tool, or NULL for an unknown user
+    @return True if the password matches
+    @stability Evolving
+ */
+PUBLIC bool webCheckPassword(WebHost *host, cchar *username, cchar *password, cchar *stored);
+
+/**
     Verify plain-text password against stored hash
     @param host WebHost object
     @param username User name
@@ -1592,6 +1811,37 @@ PUBLIC char *webHashPassword(WebHost *host, cchar *username, cchar *password);
     @stability Evolving
  */
 PUBLIC bool webVerifyUserPassword(WebHost *host, cchar *username, cchar *password);
+
+/**
+    Test if a user has a stored HTTP credential
+    @description Users defined with a password under web.auth.users have a credential. Users created by
+        webLogin for application-managed accounts do not.
+    @param user WebUser object
+    @return True if the user has a stored password
+    @stability Evolving
+ */
+PUBLIC bool webUserHasCredential(WebUser *user);
+
+/**
+    Test if the client has exceeded the authentication failure limit
+    @description Failures are counted per client IP address over the period web.auth.failurePeriod
+        (default 5 minutes) from the first failure. A client with web.auth.maxFailures (default 10)
+        failures is refused until that period ends. Set web.auth.maxFailures to zero to disable the limit.
+        HTTP Basic and Digest authentication apply this check. Application login handlers should call it
+        before verifying credentials and refuse the request with status 429 if it returns true.
+    @param web Web request object
+    @return True if further authentication attempts from this client must be refused
+    @stability Evolving
+ */
+PUBLIC bool webAuthBlocked(Web *web);
+
+/**
+    Record an authentication failure for the client
+    @description Counts toward the limit tested by webAuthBlocked. Call once per failed login.
+    @param web Web request object
+    @stability Evolving
+ */
+PUBLIC void webAuthFailed(Web *web);
 
 /**
     Decode Base64 string
@@ -1709,6 +1959,18 @@ PUBLIC bool webContentNotModified(Web *web, cchar *currentEtag, time_t mtime);
 PUBLIC char *webDecode(char *str);
 
 /**
+    Decode a URI path in-situ
+    @description Percent-decode a path. Unlike webDecode, "+" is left as a literal plus, which is
+        what RFC 3986 requires for a path - the plus-means-space rule applies only to
+        application/x-www-form-urlencoded query and form data. Decoding a path with the form rule
+        aliases distinct URLs onto one file and evades route policy keyed on the path.
+    @param str String to decode, modified in place
+    @return The decoded string
+    @stability Evolving
+ */
+PUBLIC char *webDecodePath(char *str);
+
+/**
     Encode a URL string
     @description URL-encode a string by converting special characters to percent-encoded
         sequences (e.g., space becomes %20). This creates a new allocated string.
@@ -1717,6 +1979,17 @@ PUBLIC char *webDecode(char *str);
     @stability Evolving
  */
 PUBLIC char *webEncode(cchar *uri);
+
+/**
+    Redact credentials from a header block for logging
+    @description Return a copy of a header block with the values of Authorization,
+        Proxy-Authorization, Cookie and Set-Cookie replaced by "[redacted]". Other lines and the
+        line endings are unchanged. Used by the --show and log.show header dumps.
+    @param headers Header block of "Name: value" lines separated by CRLF or LF
+    @return Newly allocated redacted header block. Caller must free.
+    @stability Evolving
+ */
+PUBLIC char *webRedactHeaders(cchar *headers);
 
 /**
     Escape HTML special characters
@@ -1783,6 +2056,6 @@ PUBLIC int webSecureEndpoint(WebListen *listen);
 #endif /* _h_WEB */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

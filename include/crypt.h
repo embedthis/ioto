@@ -15,10 +15,10 @@
 /********************************** Product ***********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME              "crypt"
+    #define ME_NAME  "crypt"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE             "Crypto library"
+    #define ME_TITLE "Crypto library"
 #endif
 
 /********************************** Includes **********************************/
@@ -28,7 +28,7 @@
 /*********************************** Defines **********************************/
 
 #ifndef ME_COM_CRYPT
-    #define ME_COM_CRYPT          1         /** Enable the Crypt module */
+    #define ME_COM_CRYPT 1                  /** Enable the Crypt module */
 #endif
 
 /*
@@ -49,31 +49,60 @@
     #endif
 #endif
 #ifndef ME_CRYPT_MAX_PASSWORD
-    #define ME_CRYPT_MAX_PASSWORD 64        /** Maximum password length */
+    #define ME_CRYPT_MAX_PASSWORD   64              /** Maximum password length */
+#endif
+#ifndef ME_CRYPT_MAX_ROUNDS
+    #define ME_CRYPT_MAX_ROUNDS     65536           /** Maximum Blowfish rounds accepted when hashing or checking */
+#endif
+#ifndef ME_CRYPT_MAX_ID
+    #define ME_CRYPT_MAX_ID         1024            /** Maximum length of an identifier from cryptID */
+#endif
+#ifndef ME_CRYPT_BASE64
+    #define ME_CRYPT_BASE64         1               /** Enable Base64 encoding support */
 #endif
 #ifndef ME_CRYPT_MD5
-    #define ME_CRYPT_MD5          1         /** Enable MD5 legacy support */
+    #define ME_CRYPT_MD5            1               /** Enable MD5 legacy support */
 #endif
 #ifndef ME_CRYPT_SHA1
-    #define ME_CRYPT_SHA1         1         /** Enable SHA1 hashing support */
+    #define ME_CRYPT_SHA1           1               /** Enable SHA1 hashing support */
 #endif
 #ifndef ME_CRYPT_SHA256
-    #define ME_CRYPT_SHA256       1         /** Enable SHA256 hashing support */
+    #define ME_CRYPT_SHA256         1               /** Enable SHA256 hashing support */
 #endif
 #ifndef ME_CRYPT_SHA512
-    #define ME_CRYPT_SHA512       1         /** Enable SHA512 hashing support */
+    #define ME_CRYPT_SHA512         1               /** Enable SHA512 hashing support */
 #endif
+/*
+    Bcrypt requires Base64; HMAC-SHA256 requires SHA256. Default their primitives on, and reject explicitly
+    incompatible settings.
+ */
 #ifndef ME_CRYPT_BCRYPT
-    #define ME_CRYPT_BCRYPT       1         /** Enable Bcrypt password hashing */
+    #define ME_CRYPT_BCRYPT         ME_CRYPT_BASE64 /** Enable Bcrypt password hashing */
 #endif
 #ifndef ME_CRYPT_HMAC
-    #define ME_CRYPT_HMAC         1         /** Enable HMAC support */
+    #define ME_CRYPT_HMAC           ME_CRYPT_SHA256 /** Enable HMAC support */
 #endif
 #ifndef ME_CRYPT_MBEDTLS
-    #define ME_CRYPT_MBEDTLS      0         /** Enable MbedTLS additional crypto support */
+    #define ME_CRYPT_MBEDTLS        0               /** Enable MbedTLS additional crypto support */
 #endif
-#if ME_CRYPT_BASE64 || ME_CRYPT_BCRYPT
-    #define ME_CRYPT_BASE64       1
+#ifndef ME_CRYPT_GETENTROPY
+/*
+    Use getentropy() as the primary Unix entropy source. It never blocks once the kernel pool is
+    seeded and needs no file descriptor. Platforms without it fall back to /dev/urandom.
+ */
+    #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+        #define ME_CRYPT_GETENTROPY 1
+    #elif defined(__linux__) && defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))
+        #define ME_CRYPT_GETENTROPY 1
+    #else
+        #define ME_CRYPT_GETENTROPY 0       /** Enable getentropy() as the entropy source */
+    #endif
+#endif
+#if ME_CRYPT_BCRYPT && !ME_CRYPT_BASE64
+    #error "ME_CRYPT_BCRYPT requires ME_CRYPT_BASE64. Set ME_CRYPT_BASE64=1 or ME_CRYPT_BCRYPT=0."
+#endif
+#if ME_CRYPT_HMAC && !ME_CRYPT_SHA256
+    #error "ME_CRYPT_HMAC requires ME_CRYPT_SHA256. Set ME_CRYPT_SHA256=1 or ME_CRYPT_HMAC=0."
 #endif
 
 #if ME_COM_MBEDTLS
@@ -84,11 +113,11 @@
     #endif
     #include "mbedtls/ctr_drbg.h"    // mbedtls_ctr_drbg_random, mbedtls_ctr_drbg_context
     #if ME_CRYPT_MBEDTLS
-        #include "mbedtls/pk.h"          // mbedtls_pk_context, mbedtls_pk_setup, mbedtls_pk_sign, etc.
-        #include "mbedtls/rsa.h"         // mbedtls_rsa_gen_key
-        #include "mbedtls/bignum.h"      // MBEDTLS_MPI_MAX_SIZE
-        #include "mbedtls/base64.h"      // mbedtls_base64_encode, mbedtls_base64_decode
-        #include "mbedtls/md.h"          // MBEDTLS_MD_SHA256
+        #include "mbedtls/pk.h"      // mbedtls_pk_context, mbedtls_pk_setup, mbedtls_pk_sign, etc.
+        #include "mbedtls/rsa.h"     // mbedtls_rsa_gen_key
+        #include "mbedtls/bignum.h"  // MBEDTLS_MPI_MAX_SIZE
+        #include "mbedtls/base64.h"  // mbedtls_base64_encode, mbedtls_base64_decode
+        #include "mbedtls/md.h"      // MBEDTLS_MD_SHA256
     #endif
 #endif
 
@@ -99,13 +128,13 @@ extern "C" {
 
 #if ME_CRYPT_BASE64 || DOXYGEN
 
-#define CRYPT_DECODE_TOKEQ 1                 /**< Decode base64 blocks up to a NULL or equals character */
+#define CRYPT_DECODE_TOKEQ 1                 /**< Retained for compatibility. Padding is only valid at the end */
 
 /**
     Encode a string using base64 encoding.
     @description Convert a null-terminated string to Base64 encoded format. This routine is null tolerant.
     @param str Null-terminated string to encode. May be NULL.
-    @return Base64 encoded string. Returns empty string if str is NULL. Caller must free.
+    @return Base64 encoded string. Caller must free. Returns NULL if str is NULL or empty.
     @stability Evolving
     @see cryptEncode64Block
  */
@@ -126,7 +155,9 @@ PUBLIC char *cryptEncode64Block(cuchar *block, size_t len);
     Decode a base64 encoded string.
     @description Convert a Base64 encoded string back to its original form. This routine is null tolerant.
     @param str Base64 encoded string to decode. May be NULL.
-    @return Null-terminated decoded string. Returns empty string if str is NULL. Caller must free.
+    @return Null-terminated decoded string. Caller must free. Returns NULL if str is NULL, empty, not a
+        multiple of four characters, contains characters outside the Base64 alphabet, or has '=' padding
+        anywhere other than the last one or two characters.
     @stability Evolving
     @see cryptEncode64
  */
@@ -137,8 +168,10 @@ PUBLIC char *cryptDecode64(cchar *str);
     @description Convert a Base64 encoded string back to binary data with precise length control.
     @param block Base64 encoded string to decode. Must not be NULL.
     @param len Pointer to receive the length of the decoded block. Must not be NULL.
-    @param flags Decoding flags. Use CRYPT_DECODE_TOKEQ to stop decoding at '=' or end of block.
-    @return Decoded binary data. Caller must free. The length is returned via *len.
+    @param flags Reserved. CRYPT_DECODE_TOKEQ is accepted for compatibility and has no effect.
+    @return Decoded binary data. Caller must free. The length is returned via *len. Returns NULL if block is NULL,
+        empty, not a multiple of four characters, contains characters outside the Base64 alphabet, or has '='
+        padding anywhere other than the last one or two characters.
     @stability Evolving
     @see cryptDecode64, cryptEncode64, cryptEncode64Block
  */
@@ -303,7 +336,9 @@ PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, size_t length, cchar *prefix);
     @stability Evolving
     @see cryptGetSha1
  */
+#if ME_CRYPT_BASE64 || DOXYGEN
 PUBLIC char *cryptGetSha1Base64(cchar *s, size_t length);
+#endif
 
 /**
     Get a SHA1 hash for the contents of a file.
@@ -426,7 +461,9 @@ PUBLIC char *cryptGetSha256(cuchar *block, size_t length);
     @stability Evolving
     @see cryptGetSha256
  */
+#if ME_CRYPT_BASE64 || DOXYGEN
 PUBLIC char *cryptGetSha256Base64(cchar *s, size_t length);
+#endif
 
 /**
     Get a SHA256 hash for the contents of a file.
@@ -549,7 +586,9 @@ PUBLIC char *cryptGetSha512(cuchar *block, size_t length);
     @stability Evolving
     @see cryptGetSha512
  */
+#if ME_CRYPT_BASE64 || DOXYGEN
 PUBLIC char *cryptGetSha512Base64(cchar *s, size_t length);
+#endif
 
 /**
     Get a SHA512 hash for the contents of a file.
@@ -682,7 +721,9 @@ PUBLIC char *cryptGetHmacSha256(cuchar *key, size_t keylen, cuchar *data, size_t
     @stability Evolving
     @see cryptGetHmacSha256, cryptGetHmacSha256Block
  */
+#if ME_CRYPT_BASE64 || DOXYGEN
 PUBLIC char *cryptGetHmacSha256Base64(cuchar *key, size_t keylen, cuchar *data, size_t datalen);
+#endif
 
 /**
     Low level HMAC-SHA256 API to initialize computation with secret key.
@@ -771,7 +812,9 @@ PUBLIC bool cryptMatchHmacSha256(cuchar hmac1[CRYPT_HMAC_SHA256_SIZE], cuchar hm
     @param password Input plain-text password to hash. Must not be NULL.
     @param saltLength Length of random salt to generate. Recommended minimum is 16 bytes.
     @param rounds Number of computation rounds. Default is 128. Higher values are slower but more secure.
-    @return The computed password hash string. Caller must free.
+        Values above ME_CRYPT_MAX_ROUNDS are refused.
+    @return The computed password hash string. Caller must free. Returns NULL if salt, separator, and password exceed
+       CRYPT_BLOWFISH_MAX_KEY bytes.
     @stability Evolving
     @see cryptGetPassword, cryptCheckPassword
  */
@@ -781,8 +824,14 @@ PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds
     Check a plain-text password against a password hash.
     @description Verify a plain-text password against a previously computed Bcrypt hash.
         Uses constant-time comparison to prevent timing attacks.
+        \n\n
+        The hash has the form "BF1:ROUNDS:SALT:HASH" produced by cryptMakePassword. The web server stores
+        user passwords in this form, but hashes the string "username:realm:password", not the password
+        alone, and verifies them with webVerifyUserPassword. To check a web user's password, call
+        webVerifyUserPassword rather than passing the bare password here.
     @param plainTextPassword Input plain-text password to verify. Must not be NULL.
-    @param passwordHash Hash previously computed via cryptMakePassword. Must not be NULL.
+    @param passwordHash Hash previously computed via cryptMakePassword, including its "BF1:" prefix.
+        Must not be NULL.
     @return True if the password matches the hash, false otherwise.
     @stability Evolving
     @see cryptGetPassword, cryptMakePassword
@@ -806,9 +855,9 @@ PUBLIC char *cryptGetPassword(cchar *prompt);
     @description Fill a buffer with cryptographically secure random data from the system's random number generator.
     @param buf Result buffer to hold the random data. Must not be NULL.
     @param length Size of the buffer in bytes. Must be > 0.
-    @param block Set to true to use blocking random generator that guarantees
-        high-entropy random data even when system entropy is low.
-    @return Zero on success, negative on error.
+    @param block Advisory and retained for API compatibility. The source is always non-blocking, as a
+        blocking source would stall the entire single-threaded runtime while the kernel withholds entropy.
+    @return Zero on success, negative on error. The buffer contents are undefined on error.
     @stability Evolving
     @see cryptID
  */
@@ -819,7 +868,7 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block);
     @description Generate a random salt string of specified length.
         Uses cryptographically secure random data for salt generation.
     @param size Size of the salt string to generate. Must be > 0.
-    @return The random salt string. Caller must free.
+    @return The random salt string. Caller must free. Returns NULL if random data cannot be obtained.
     @stability Evolving
     @see cryptGetRandomBytes
  */
@@ -830,8 +879,8 @@ PUBLIC char *cryptMakeSalt(size_t size);
     @description Encode a password using the Blowfish cipher (Bcrypt).
     @param password Input plain-text password to encode. Must not be NULL.
     @param salt Salt to use for encoding. Must not be NULL.
-    @param rounds Number of computation rounds. Must be > 0.
-    @return The encoded password string. Caller must free.
+    @param rounds Number of computation rounds. Must be > 0 and no more than ME_CRYPT_MAX_ROUNDS.
+    @return The encoded password string. Caller must free. Returns NULL if rounds is out of range.
     @stability Evolving
     @see cryptMakePassword
  */
@@ -858,8 +907,10 @@ PUBLIC int cryptVerify(RKey *skey, uchar *sum, size_t sumsize, uchar *signature,
     Generate a random ID.
     @description Generate a random alphanumeric identifier string of specified length.
         Uses cryptographically secure random data for ID generation.
-    @param size Size of the ID string to generate. Must be > 0.
-    @return The random ID string. Caller must free.
+    @param size Size of the ID string to generate. Must be > 0 and no more than ME_CRYPT_MAX_ID.
+    @return The random ID string. Caller must free. Returns NULL if size is out of range or random data
+        cannot be obtained.
+        Callers must treat NULL as fatal for the operation and never substitute a default identifier.
     @stability Evolving
     @see cryptGetRandomBytes
  */
@@ -884,6 +935,6 @@ PUBLIC bool cryptMatch(cchar *a, cchar *b);
 #endif /* _h_CRYPT */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

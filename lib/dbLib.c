@@ -449,12 +449,12 @@ PUBLIC void *rbRemove(RbTree *rbt, RbNode *node, int keep)
             rbt->min = rbNext(rbt, target);                               // deleted, thus min = successor
         }
     } else {
-        target = rbNext(rbt, node);                                       // node->right must not be NIL, thus move down
-        node->data = target->data;                                        // data swapped
         /*
-            if min == node, then min = successor = node (swapped), thus idle
-            if min == target, then min = successor, which is not the minimal, thus impossible
+            The successor is unlinked below and then takes the node's place in the tree, so the
+            caller's node pointer is the only one invalidated by this removal.
+            The node has a left child, so it cannot be the minimum and min needs no update.
          */
+        target = rbNext(rbt, node);                                       // node->right must not be NIL, thus move down
     }
     child = (target->left == RB_NIL(rbt)) ? target->right : target->left; /* child may be NIL */
 
@@ -506,7 +506,30 @@ PUBLIC void *rbRemove(RbTree *rbt, RbNode *node, int keep)
     } else {
         target->parent->right = child;
     }
-    rFree(target);
+    if (target == node) {
+        rFree(target);
+    } else {
+        /*
+            Relink the unlinked successor into the node's position. The successor keeps its own
+            data, so a node pointer held by the caller remains valid unless it is this node.
+         */
+        target->left = node->left;
+        target->right = node->right;
+        target->parent = node->parent;
+        target->color = node->color;
+        if (target->left != RB_NIL(rbt)) {
+            target->left->parent = target;
+        }
+        if (target->right != RB_NIL(rbt)) {
+            target->right->parent = target;
+        }
+        if (node == node->parent->left) {
+            node->parent->left = target;
+        } else {
+            node->parent->right = target;
+        }
+        rFree(node);
+    }
 
     // keep or discard data
     if (keep == 0) {
@@ -711,12 +734,12 @@ typedef struct Env {
     Db *db;                     /* Database handle */
     RbTree *index;              /* Index to use for this query */
     DbItem search;              /* Key item to search for */
-    size_t searchLen;            /* Length of key item */
+    size_t searchLen;           /* Length of key item */
     DbItem next;                /* Next item to search for */
     DbModel *model;             /* Item schema model */
     Json *props;                /* Prepared properties for the query */
     DbParams *params;           /* Supplied API parameters */
-    RList *expiredItems;        /* List of expired items */
+    bool expired;               /* Query met expired items */
     cchar *indexSort;           /* Sort key property name */
     cchar *compare;             /* Compare operation for the query */
     bool mustMatch;             /* Must match properties or where callback */
@@ -727,6 +750,7 @@ typedef struct DbCallback {
     char *model;                /* Target model - if null, then all models */
     void *arg;                  /* Function argument */
     int events;                 /* Events subscribe to: DB_ON_CHANGE | DB_ON_COMMIT */
+    bool removed;               /* Marked for removal - swept once invokeCallbacks is not active */
 } DbCallback;
 
 /**
@@ -736,7 +760,7 @@ typedef struct DbCallback {
 typedef struct DbChange {
     Db *db;
     DbModel *model;
-    DbParams *params;
+    DbParams params;            //  Copy of the API params - the caller's may be transient
     cchar *cmd;
     char *key;
     Time due;                   //  When change is due to be sent
@@ -745,7 +769,20 @@ typedef struct DbChange {
 #define SETUP(db, model, props, params, cmd, env) \
         setup(db, model, props, params ? params : &(DbParams) {}, cmd, env)
 
-#define USER_ALLOC 0x1        /* User allocated json */
+#define USER_ALLOC        0x1 /* User allocated json */
+
+//  Latest numeric date accepted, 9999-12-31T23:59:59.999Z, so stored dates keep a four digit year
+#define DB_MAX_DATE       253402300799999LL
+
+/*
+    Record formats. Version 3 files carry a "DB" magic and little endian lengths. Version 2 files
+    have no magic and native byte order lengths, so one written on a host of the other byte order
+    is read with its lengths swapped.
+ */
+#define DB_LEGACY_VERSION 2
+#define DB_FORMAT_LE      0
+#define DB_FORMAT_NATIVE  1
+#define DB_FORMAT_SWAPPED 2
 
 /************************************ Forwards *********************************/
 
@@ -758,15 +795,24 @@ static DbModel *allocModel(Db *db, cchar *name, cchar *sync, Time delay);
 static int applyChange(Db *db, cchar *cmd, cchar *model, cchar *value);
 static int applyJournal(Db *db);
 static bool checkEnum(DbField *field, cchar *value);
+static int checkRequired(Db *db, DbModel *model, Json *json);
+static int checkUnique(Db *db, DbModel *model, Json *json, cchar *key, bool bypass);
 static void clearItem(DbItem *item);
 static void commitChange(Db *db);
 static int compareItems(cvoid *d1, cvoid *d2, Env *env);
-static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd);
+static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd, cchar *value);
+static char *checkSize(Db *db, cchar *key, Json *json);
 static int dberror(Db *db, int code, cchar *fmt, ...);
+static void freeEnv(Env *env);
+static char *snapshotItem(DbItem *item);
+static void restoreItem(DbItem *item, char *snapshot);
 static void freeChange(Db *db, DbChange *change);
 static void freeField(DbField *field);
+static ssize uidSize(cchar *generate);
 static void freeModel(DbModel *model);
 static void freeItem(Db *db, DbItem *node);
+static void removeExpiredEvent(Db *db);
+static void removeItem(Db *db, RbTree *index, DbModel *model, RbNode *rp, DbParams *params);
 static int flushJournal(Db *db);
 static RbTree *getIndex(Db *db, DbParams *params);
 static cchar *getIndexName(Db *db, DbParams *params);
@@ -774,24 +820,36 @@ static cchar *getIndexHash(Db *db, cchar *index);
 static cchar *getIndexSort(Db *db, cchar *index);
 static void invokeCallbacks(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd,
                             int event);
+static void sweepCallbacks(Db *db);
 static bool matchItem(RbNode *rp, Json *j1, JsonNode *n1, Json *j2, JsonNode *n2, Env *env);
 static int mapTypes(Db *db, DbModel *model, Json *props);
+static bool isNumber(cchar *value);
+static bool isScalarType(cchar *type);
 static int loadData(Db *db, cchar *path);
 static int loadIndexes(Db *db);
 static int loadModels(Db *db, Json *json);
 static int loadSchema(Db *db, cchar *schema);
-static cchar *readBlock(Db *db, FILE *fp, RBuf *buf);
-static size_t readSize(FILE *fp);
-static int readItem(FILE *fp, DbItem **item);
+static int readBlock(Db *db, FILE *fp, RBuf *buf, int format, cchar **block);
+static int readSize(Db *db, FILE *fp, int format, size_t *sizep);
+static int endOfJournal(Db *db, FILE *fp);
+static int readItem(FILE *fp, int format, DbItem **item);
+static int readHeader(Db *db, FILE *fp, cchar *what, int *format);
+static int readLength(FILE *fp, int format, uint32 *length);
+static int writeHeader(FILE *fp);
+static int writeLength(FILE *fp, uint32 length);
+static int openJournal(Db *db, bool append);
 static int recreateJournal(Db *db);
+static bool canAppendJournal(Db *db);
+static int replaceFile(cchar *temp, cchar *path);
 static int saveDb(Db *db);
+static void syncDir(cchar *path);
 static void selectProperties(Db *db, DbModel *model, Json *props, DbParams *params, cchar *cmd);
 static void setDefaults(Db *db, DbModel *model, Json *props);
-static void setTemplates(Db *db, DbModel *model, Json *props);
-static void setTimestamps(DbModel *model, Json *props, cchar *cmd);
+static int setTemplates(Db *db, DbModel *model, Json *props);
+static void setTimestamps(DbModel *model, Json *props, DbParams *params, cchar *cmd);
 static Json *toJson(DbItem *item);
 static int writeBlock(Db *db, cchar *buf);
-static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd);
+static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd, cchar *value);
 static int writeItem(FILE *fp, DbItem *item);
 static int writeSize(Db *db, uint32_t len);
 
@@ -843,15 +901,23 @@ PUBLIC Db *dbOpen(cchar *path, cchar *schema, int flags)
             dbClose(db);
             return 0;
         }
-        if (count > 0) {
-            dbSave(db, NULL);
-        }
-        if (count >= 0 && !(db->flags & DB_READ_ONLY)) {
-            if (recreateJournal(db) < 0) {
+        if (count > 0 && dbSave(db, NULL) < 0) {
+            /*
+                The journal holds the only copy of the recovered changes. Keep it and append,
+                rather than truncating it and losing what was just recovered.
+             */
+            rError("db", "Cannot checkpoint recovered journal: %s", db->error);
+            if (!(db->flags & DB_READ_ONLY) && openJournal(db, 1) < 0) {
                 rError("db", "%s", db->error);
                 dbClose(db);
                 return 0;
             }
+            return db;
+        }
+        if (!(db->flags & DB_READ_ONLY) && openJournal(db, 0) < 0) {
+            rError("db", "%s", db->error);
+            dbClose(db);
+            return 0;
         }
     }
     return db;
@@ -863,23 +929,43 @@ PUBLIC void dbClose(Db *db)
     DbCallback *cb;
     DbChange   *change;
     RName      *np;
-    int        ci;
+    int        ci, saved;
 
     if (!db) {
         return;
     }
+    if (db->expireEvent) {
+        //  Complete the removals deferred by reads so they are saved
+        rStopEvent(db->expireEvent);
+        db->expireEvent = 0;
+        dbRemoveExpired(db, 1);
+        rStopEvent(db->expireEvent);
+    }
     rStopEvent(db->journalEvent);
+    rStopEvent(db->commitEvent);
+    db->journalEvent = 0;
+    db->commitEvent = 0;
 
     if (!(db->flags & DB_READ_ONLY)) {
         //  Perform a complete save of the in-memory database if the journal has data
+        saved = 1;
         if (db->journalSize) {
-            dbSave(db, NULL);
+            saved = dbSave(db, NULL) == 0;
         }
-        //  Clean shutdown removes the journal
         if (db->journal) {
             fclose(db->journal);
             db->journal = 0;
-            unlink(db->journalPath);
+            if (saved) {
+                //  Clean shutdown removes the journal
+                unlink(db->journalPath);
+            } else {
+                /*
+                    The journal is the only record of these changes. Keep it so the next open
+                    can replay them.
+                 */
+                rError("db", "Cannot save database, retaining journal %s for recovery",
+                       db->journalPath);
+            }
         }
     }
     for (ITERATE_NAMES(db->changes, np)) {
@@ -965,6 +1051,8 @@ static int loadSchema(Db *db, cchar *schema)
                 db->schema = 0;
                 return R_ERR_CANT_READ;
             }
+
+            jsonFree(json);
             rFree(path);
         }
         jsonFree(blend);
@@ -1036,7 +1124,7 @@ static int loadModels(Db *db, Json *json)
                 continue;
             }
             if ((field = allocField(db, fp->name, json, fid)) == 0) {
-                return R_ERR_MEMORY;
+                return db->code ? db->code : R_ERR_MEMORY;
             }
             if (!model->expiresField) {
                 model->expiresField = field->ttl ? field->name : NULL;
@@ -1072,8 +1160,9 @@ static int loadIndexes(Db *db)
 static int loadData(Db *db, cchar *path)
 {
     DbItem *item;
-    uint16 version;
     FILE   *fp;
+    char   corrupt[ME_MAX_FNAME];
+    int    format, rc;
 
     if (!db || !path || !*path) {
         return R_ERR_BAD_ARGS;
@@ -1082,17 +1171,23 @@ static int loadData(Db *db, cchar *path)
         if ((fp = fopen(path, "r")) == NULL) {
             return dberror(db, R_ERR_CANT_OPEN, "Cannot open %s", path);
         }
-        if (fread(&version, sizeof(version), 1, fp) != 1) {
+        if ((rc = readHeader(db, fp, "database", &format)) < 0) {
             fclose(fp);
-            return dberror(db, R_ERR_CANT_OPEN, "Cannot read database %s, errno %d", path, errno);
-        }
-        if (version != DB_VERSION) {
-            fclose(fp);
-            return dberror(db, R_ERR_CANT_OPEN, "Incorrect database version %d", version);
+            return rc;
         }
         while (1) {
-            if (readItem(fp, &item) < 0) {
-                break;
+            if ((rc = readItem(fp, format, &item)) < 0) {
+                /* Preserve the corrupt file before the next save replaces it with the readable records. */
+                fclose(fp);
+                sfmtbuf(corrupt, sizeof(corrupt), "%s.corrupt", path);
+                if (rCopyFile(path, corrupt, 0600) < 0) {
+                    return dberror(db, R_ERR_CANT_WRITE, "Corrupt record in database %s and cannot preserve it as %s",
+                                   path, corrupt);
+                }
+                dberror(db, rc, "Corrupt record in database %s, remaining items are lost, original preserved as %s",
+                        path, corrupt);
+                rError("db", "%s", db->error);
+                return 0;
             }
             if (!item) {
                 break;
@@ -1105,15 +1200,16 @@ static int loadData(Db *db, cchar *path)
 }
 
 /*
-    Save the database to persistent store in binary (non-portable) form.
+    Save the database to persistent store in the portable binary form.
  */
 PUBLIC int dbSave(Db *db, cchar *path)
 {
     RbTree *rbt;
     RbNode *rp;
+    DbItem *item;
     char   temp[ME_MAX_FNAME];
-    uint16 version;
     FILE   *fp;
+    int    rc, skipped;
 
     if (!db) {
         return R_ERR_BAD_ARGS;
@@ -1130,42 +1226,100 @@ PUBLIC int dbSave(Db *db, cchar *path)
     /*
         Write to temp and then rename incase of an outage while writing
      */
-    sfmtbuf(temp, sizeof(temp), "%s.save", db->path);
+    sfmtbuf(temp, sizeof(temp), "%s.save", path);
     if ((fp = fopen(temp, "w")) == NULL) {
         return dberror(db, R_ERR_CANT_OPEN, "Cannot open %s", temp);
     }
-    version = DB_VERSION;
-    if (fwrite(&version, sizeof(version), 1, fp) != 1) {
+    if (writeHeader(fp) < 0) {
         fclose(fp);
         return dberror(db, R_ERR_CANT_WRITE, "Cannot write version to database file: %d", errno);
     }
+    skipped = 0;
     for (rp = rbFirst(rbt); rp; rp = rbNext(rbt, rp)) {
-        if (writeItem(fp, rp->data) < 0) {
+        if ((rc = writeItem(fp, rp->data)) < 0) {
+            if (rc == R_ERR_WONT_FIT) {
+                /*
+                    Too large to be read back. Omit it rather than leaving the whole database
+                    unsavable, and name it so the fault is actionable.
+                 */
+                item = rp->data;
+                rError("db", "Item \"%s\" is too large to save and has been omitted", item->key);
+                skipped++;
+                continue;
+            }
             fclose(fp);
             return dberror(db, R_ERR_CANT_WRITE, "Cannot save item");
         }
     }
+    /*
+        The rename below discards the journal's protection, so the new file must be on stable
+        storage first, and the rename itself must be durable before the journal is recreated.
+     */
+    if (rFlushFile(fileno(fp)) < 0) {
+        fclose(fp);
+        return dberror(db, R_ERR_CANT_WRITE, "Cannot sync database file: %d", errno);
+    }
     fclose(fp);
 
-#if ME_WIN_LIKE
-    unlink(path);
-#endif
-    if (rename(temp, path) < 0) {
+    if (replaceFile(temp, path) < 0) {
         return dberror(db, R_ERR_CANT_WRITE, "Cannot rename save temp file");
     }
+    syncDir(path);
     /*
         If the above fails, the journal will still hold a record of all changes.
+        A save to another path is an export and leaves the journal untouched.
      */
-    if (path == db->path && recreateJournal(db) < 0) {
+    if (smatch(path, db->path) && recreateJournal(db) < 0) {
         return dberror(db, R_ERR_CANT_OPEN, "Cannot recreate journal file");
     }
+    if (skipped) {
+        /*
+            The save itself succeeded. Record the omission so it is inspectable, but do not
+            fail the save: an item this large can be neither stored nor journalled, so keeping
+            the journal for it would grow it without bound and never checkpoint.
+         */
+        dberror(db, R_ERR_WONT_FIT, "Omitted %d oversize item(s) from the database", skipped);
+    }
     return 0;
+}
+
+/*
+    Replace atomically so path is never absent.
+ */
+static int replaceFile(cchar *temp, cchar *path)
+{
+#if ME_WIN_LIKE
+    return MoveFileExA(temp, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ? 0 : -1;
+#else
+    return rename(temp, path);
+#endif
 }
 
 static int saveDb(Db *db)
 {
     db->journalEvent = 0;
     return dbSave(db, NULL);
+}
+
+/*
+    Make a rename in the directory holding path durable. Best effort: some file systems
+    cannot open or sync a directory, and the data file itself is already synced.
+ */
+static void syncDir(cchar *path)
+{
+#if !ME_WIN_LIKE
+    char dir[ME_MAX_FNAME];
+    int  fd;
+
+    scopy(dir, sizeof(dir), path);
+    rDirname(dir);
+    if ((fd = open(*dir ? dir : ".", O_RDONLY)) >= 0) {
+        rFlushFile(fd);
+        close(fd);
+    }
+#else
+    (void) path;
+#endif
 }
 
 /*
@@ -1178,6 +1332,10 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     DbField  *field;
     JsonNode *prop;
     char     *cp;
+    cchar    *keyTemplate, *type;
+    RbNode   *existing;
+    ssize    prefixLen;
+    int      rc;
 
     if (!db || !cmd || !env || !params) {
         return R_ERR_BAD_ARGS;
@@ -1185,14 +1343,19 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     memset(env, 0, sizeof(Env));
     rFree(db->error);
     db->error = 0;
-    
+
     if (!props) {
-        props = jsonAlloc();
+        if ((props = jsonAlloc()) == 0) {
+            return dberror(db, R_ERR_MEMORY, "Cannot allocate properties");
+        }
         jsonSetUserFlags(props, USER_ALLOC);
 
     } else if (!(props->userFlags & USER_ALLOC)) {
         //  User provided json so clone because the props will be modified
-        props = jsonClone(props, 0);
+        if ((props = jsonClone(props, 0)) == 0) {
+
+            return dberror(db, R_ERR_BAD_ARGS, "Cannot clone properties");
+        }
         jsonSetUserFlags(props, USER_ALLOC);
     }
     if (!modelName) {
@@ -1204,12 +1367,25 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
     env->index = getIndex(db, params);
     env->indexSort = getIndexSort(db, getIndexName(db, params));
     env->mustMatch = env->params->where ? 1 : 0;
+    keyTemplate = NULL;
+    prefixLen = 0;
 
+    if (!modelName && (smatch(cmd, "create") || smatch(cmd, "update") || smatch(cmd, "remove"))) {
+        //  Reads may span models, but writes require a model even when bypassing sync callbacks.
+        rc = dberror(db, R_ERR_BAD_ARGS, "Missing model");
+        goto fail;
+    }
     if (modelName) {
         if ((model = rLookupName(db->models, modelName)) == 0) {
-            return dberror(db, R_ERR_BAD_ARGS, "Unknown schema model \"%s\"", modelName);
+            rc = dberror(db, R_ERR_BAD_ARGS, "Unknown schema model \"%s\"", modelName);
+            goto fail;
         }
         env->model = model;
+        type = jsonGet(props, 0, db->type, 0);
+        if (type && !smatch(type, model->name)) {
+            rc = dberror(db, R_ERR_BAD_ARGS, "Item type does not match requested model");
+            goto fail;
+        }
         if (model && model->expiresField && !smatch(cmd, "update")) {
             env->mustMatch = 1;
         }
@@ -1229,8 +1405,9 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
             }
             if (field->enums) {
                 if (!checkEnum(field, prop->value)) {
-                    return dberror(db, R_ERR_BAD_ARGS, "Invalid property \"%s\" value \"%s\"",
-                                   prop->name, prop->value);
+                    rc = dberror(db, R_ERR_BAD_ARGS, "Invalid property \"%s\" value \"%s\"",
+                                 prop->name, prop->value);
+                    goto fail;
                 }
             }
             if (!smatch(prop->name, env->indexSort) && !smatch(cmd, "update")) {
@@ -1246,22 +1423,32 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
         }
         if (db->timestamps && smatch(cmd, "create")) {
             // Update timestamps are set after matching
-            setTimestamps(model, props, cmd);
+            setTimestamps(model, props, params, cmd);
         }
 
         //  Compute property values using value templates and all other property values
-        setTemplates(db, model, props);
+        if (!jsonGet(props, 0, env->indexSort, 0) &&
+            (field = rLookupName(model->fields, env->indexSort)) != 0 &&
+            (cp = scontains(field->value, "${")) != 0) {
+            keyTemplate = field->value;
+            prefixLen = cp - keyTemplate;
+        }
+        if (setTemplates(db, model, props) < 0) {
+            rc = R_ERR_BAD_ARGS;
+            goto fail;
+        }
 
         //  Map data types
         if (mapTypes(db, model, props) < 0) {
-            return R_ERR_BAD_ARGS;
+            rc = R_ERR_BAD_ARGS;
+            goto fail;
         }
 
         //  Select the properties required for this API
         selectProperties(db, model, props, params, cmd);
     }
 
-    //  Determine the primary index search key value 
+    //  Determine the primary index search key value
     //  (NOTE: the item.key is the key value, item.value is the record value)
     env->search.key = (char*) jsonGet(env->props, 0, env->indexSort, 0);
 
@@ -1272,38 +1459,60 @@ static int setup(Db *db, cchar *modelName, Json *props, DbParams *params, cchar 
 
     } else if (jsonGet(env->props, 0, env->indexSort, 0) == 0) {
         //  Check we have a key for non-find operations
-        return dberror(db, R_ERR_BAD_ARGS, "Missing sort key in properties\n%s",
-                       jsonString(env->props, JSON_HUMAN));
+        rc = dberror(db, R_ERR_BAD_ARGS, "Missing sort key in properties\n%s",
+                     jsonString(env->props, JSON_HUMAN));
+        goto fail;
     }
 
     /*
-        If doing find or remove with limit, and the value template is unresolved,
-        strip the variables and use a beginsWith search.
-        Note: Unresolved tokens are preserved in the search key.
+        Only a schema-generated key with a nonempty literal prefix may use an unresolved
+        template for a beginsWith search. Caller-supplied keys must never broaden a query.
      */
     if ((cp = scontains(env->search.key, "${")) != 0) {
-        if (smatch(cmd, "find") || (smatch(cmd, "remove") && env->params->limit)) {
+        if (prefixLen > 0 && cp - env->search.key >= prefixLen &&
+            sncmp(env->search.key, keyTemplate, (size_t) prefixLen) == 0 &&
+            (smatch(cmd, "find") || (smatch(cmd, "remove") && env->params->limit))) {
             *cp = '\0';
             env->compare = "begins";
         } else {
-            return dberror(db, R_ERR_BAD_ARGS, "Incomplete sort key in properties: %s\n%s",
-                           env->search.key, jsonString(env->props, JSON_HUMAN));
+            rc = dberror(db, R_ERR_BAD_ARGS, "Incomplete sort key in properties: %s\n%s",
+                         env->search.key, jsonString(env->props, JSON_HUMAN));
+            goto fail;
         }
     }
     //  Must be after find trims templates
     env->searchLen = slen(env->search.key);
-    
+
+    /*
+        A key that readItem would reject must never enter the tree, or the database becomes
+        unsavable.
+     */
+    if (env->searchLen > (DB_MAX_KEY - 1)) {
+        rc = dberror(db, R_ERR_WONT_FIT, "Sort key exceeds the maximum of %d bytes",
+                     DB_MAX_KEY - 1);
+        goto fail;
+    }
+
+    //  Upserts must not replace an existing row belonging to another model.
+    if (env->model && (smatch(cmd, "create") || smatch(cmd, "update")) &&
+        (existing = rbLookup(env->index, &env->search, env)) != 0 &&
+        !smatch(dbField(existing->data, db->type), env->model->name)) {
+        rc = dberror(db, R_ERR_BAD_ARGS, "Stored item belongs to another model");
+        goto fail;
+    }
+
     if (env->params->log) {
         rInfo("db", "Command: \"%s\" Properties:\n%s", cmd, jsonString(env->props, JSON_HUMAN));
     }
     return 0;
+
+fail:
+    freeEnv(env);
+    return rc;
 }
 
 static void freeEnv(Env *env)
 {
-    RbNode *rp;
-    int    next;
-
     if (!env) {
         return;
     }
@@ -1311,15 +1520,18 @@ static void freeEnv(Env *env)
         jsonFree(env->props);
         env->props = 0;
     }
-    if (env->expiredItems) {
-        for (ITERATE_ITEMS(env->expiredItems, rp, next)) {
-            if (env->params->log) {
-                rInfo("db", "Remove expired item:\n%s", jsonString(toJson(rp->data), JSON_HUMAN));
-            }
-            rbRemove(env->index, rp, 0);
-        }
-        rClearList(env->expiredItems);
+    if (env->expired && !env->db->expireEvent) {
+        /*
+            Defer expiry removal so callbacks cannot free an item being returned by a read.
+         */
+        env->db->expireEvent = rStartEvent((REventProc) removeExpiredEvent, env->db, 0);
     }
+}
+
+static void removeExpiredEvent(Db *db)
+{
+    db->expireEvent = 0;
+    dbRemoveExpired(db, 1);
 }
 
 /*
@@ -1328,10 +1540,9 @@ static void freeEnv(Env *env)
  */
 PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *params)
 {
-    Env     env;
-    DbItem  *item;
-    DbField *field;
-    RName   *np;
+    Env    env;
+    DbItem *item;
+    char   *value;
 
     if (!db) {
         return NULL;
@@ -1344,26 +1555,31 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *modelName, Json *props, DbParams *p
         freeEnv(&env);
         return 0;
     }
-    /*
-        Ensure all required properties are provided
-     */
-    for (ITERATE_NAMES(env.model->fields, np)) {
-        field = np->value;
-        if (field->required) {
-            if (jsonGet(env.props, 0, np->name, 0) == 0) {
-                dberror(db, R_ERR_BAD_STATE, "Missing required property \"%s\"", np->name);
-                freeEnv(&env);
-                return 0;
-            }
-        }
+    if (checkRequired(db, env.model, env.props) < 0) {
+        freeEnv(&env);
+        return 0;
     }
-    setTimestamps(env.model, env.props, "create");
+    if (checkUnique(db, env.model, env.props, env.search.key, env.params->bypass) < 0) {
+        freeEnv(&env);
+        return 0;
+    }
+    setTimestamps(env.model, env.props, env.params, "create");
+    if ((value = checkSize(db, env.search.key, env.props)) == 0) {
+        freeEnv(&env);
+        return 0;
+    }
     //  AllocItem will assume ownership of the env.props JSON
     item = allocItem(env.search.key, env.props, 0);
     env.props = 0;
-
+    if (!item) {
+        dberror(db, R_ERR_MEMORY, "Cannot allocate item");
+        rFree(value);
+        freeEnv(&env);
+        return 0;
+    }
     rbInsert(env.index, item);
-    change(db, env.model, item, params, env.params->upsert ? "upsert" : "create");
+    change(db, env.model, item, params, env.params->upsert ? "upsert" : "create", value);
+    rFree(value);
 
     if (env.params->log) {
         rInfo("db", "Create result:\n%s", jsonString(item->json, JSON_HUMAN));
@@ -1392,7 +1608,8 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *modelName, Json *props, DbParams *para
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             if (env.params->log) {
                 dbPrintItem(item);
             }
@@ -1421,7 +1638,8 @@ PUBLIC cchar *dbGetField(Db *db, cchar *modelName, cchar *fieldName, Json *props
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             freeEnv(&env);
             return jsonGet(toJson(item), 0, fieldName, 0);
         }
@@ -1466,19 +1684,25 @@ PUBLIC double dbGetDouble(Db *db, cchar *modelName, cchar *fieldName, Json *prop
 
 PUBLIC int64 dbGetNum(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params, int64 defaultValue)
 {
-    cchar *value;
+    const DbItem *item;
 
-    value = dbGetField(db, modelName, fieldName, props, params);
-    if (value) {
-        return stoi(value);
+    if (!db || !modelName || !fieldName) {
+        return defaultValue;
     }
-    return defaultValue;
+    if ((item = dbGet(db, modelName, props, params)) == 0) {
+        return defaultValue;
+    }
+
+    return jsonGetNum(toJson((DbItem*) item), 0, fieldName, defaultValue);
 }
 
 PUBLIC cchar *dbGetString(Db *db, cchar *modelName, cchar *fieldName, Json *props, DbParams *params,
                           cchar *defaultValue)
 {
-    return dbGetField(db, modelName, fieldName, props, params);
+    cchar *value;
+
+    value = dbGetField(db, modelName, fieldName, props, params);
+    return value ? value : defaultValue;
 }
 
 /*
@@ -1493,6 +1717,7 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     RbNode *rp;
     DbItem *item;
     RList  *list;
+    cchar  *compare;
     int    count, limit;
 
     if (!db) {
@@ -1509,8 +1734,15 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     count = 0;
 
     if (env.params->next) {
-        //  Lookup the exact last item and then step forward and match with the search key
-        if ((rp = rbLookupFirst(env.index, &env.next, &env)) != 0) {
+        /*
+            Lookup the exact last item and then step forward and match with the search key.
+            The pagination token is a complete sort key, so suspend any beginsWith comparison.
+         */
+        compare = env.compare;
+        env.compare = 0;
+        rp = rbLookupFirst(env.index, &env.next, &env);
+        env.compare = compare;
+        if (rp) {
             if (env.search.key) {
                 rp = rbLookupNext(env.index, rp, &env.search, &env);
             } else {
@@ -1524,7 +1756,8 @@ PUBLIC RList *dbFind(Db *db, cchar *modelName, Json *props, DbParams *params)
     }
     while (rp) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             rPushItem(list, item);
             if (++count >= limit) {
                 break;
@@ -1560,7 +1793,8 @@ PUBLIC const DbItem *dbFindOne(Db *db, cchar *modelName, Json *props, DbParams *
     }
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             freeEnv(&env);
             return item;
         }
@@ -1577,9 +1811,11 @@ PUBLIC const DbItem *dbFindOne(Db *db, cchar *modelName, Json *props, DbParams *
 PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
 {
     Env    env;
-    RbNode *next, *rp;
-    DbItem *item, *search;
-    int    count, limit;
+    RbNode *rp;
+    RList  *keys;
+    DbItem *item, *search, lookup;
+    char   *key;
+    int    count, index, limit;
 
     if (!db || !props) {
         return R_ERR_BAD_ARGS;
@@ -1590,17 +1826,32 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
     limit = env.params->limit ? env.params->limit : 1;
     search = &env.search;
 
-    for (count = 0, rp = rbLookupFirst(env.index, search, &env); rp; rp = next) {
-        next = rbLookupNext(env.index, rp, search, &env);
+    /*
+        Collect keys first; removal callbacks can free other index nodes.
+     */
+    keys = rAllocList(0, R_TEMPORAL_VALUE);
+    for (rp = rbLookupFirst(env.index, search, &env); rp; rp = rbLookupNext(env.index, rp, search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
-            change(db, env.model, item, params, "remove");
-            rbRemove(env.index, rp, 0);
-            if (++count >= limit) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
+            rAddItem(keys, item->key);
+            if (rGetListLength(keys) >= limit) {
                 break;
             }
         }
     }
+    /*
+        Look up again because earlier callbacks may have removed the item.
+     */
+    count = 0;
+    for (ITERATE_ITEMS(keys, key, index)) {
+        lookup.key = key;
+        if ((rp = rbLookup(env.index, &lookup, NULL)) != 0) {
+            removeItem(db, env.index, env.model, rp, params);
+            count++;
+        }
+    }
+    rFreeList(keys);
     freeEnv(&env);
     if (count) {
         flushJournal(db);
@@ -1609,7 +1860,7 @@ PUBLIC int dbRemove(Db *db, cchar *modelName, Json *props, DbParams *params)
 }
 
 /*
-    Must be manually invoked by the user to remove expired items.
+    Remove expired items, explicitly or after reads schedule cleanup.
  */
 PUBLIC int dbRemoveExpired(Db *db, bool notify)
 {
@@ -1621,7 +1872,7 @@ PUBLIC int dbRemoveExpired(Db *db, bool notify)
     Json    *json, *allocJson;
     cchar   *expires;
     char    *now;
-    int     count;
+    int     count, rc;
 
     if (!db) {
         return R_ERR_BAD_ARGS;
@@ -1629,11 +1880,12 @@ PUBLIC int dbRemoveExpired(Db *db, bool notify)
     now = rGetIsoDate(rGetTime());
     db->servicing = 1;
     count = 0;
+    rc = 0;
 
     for (ITERATE_NAME_DATA(db->models, np, model)) {
         if (!model->expiresField) continue;
-        if (SETUP(db, model->name, NULL, NULL, "find", &env) < 0) {
-            return 0;
+        if ((rc = SETUP(db, model->name, NULL, NULL, "find", &env)) < 0) {
+            break;
         }
 again:
         for (rp = rbLookupFirst(env.index, &env.search, &env); rp; rp = next) {
@@ -1644,17 +1896,19 @@ again:
             json = item->json ? item->json : (allocJson = jsonParse(item->value, 0));
             expires = jsonGet(json, 0, model->expiresField, 0);
             if (expires && scmp(expires, now) <= 0) {
-                if (notify) {
-                    change(db, model, item, NULL, "remove");
-                }
                 if (rEmitLog("trace", "db")) {
                     rTrace("db", "Remove expired item:\n%s", jsonString(json, JSON_HUMAN));
                 }
-                rbRemove(db->primary, rp, 0);
-                count++;
                 if (allocJson) {
                     jsonFree(allocJson);
                 }
+                if (notify) {
+                    //  Unlink before notifying so a callback cannot reach the item being removed
+                    removeItem(db, db->primary, model, rp, NULL);
+                } else {
+                    rbRemove(db->primary, rp, 0);
+                }
+                count++;
                 goto again;
             }
             if (allocJson) {
@@ -1664,11 +1918,18 @@ again:
         freeEnv(&env);
     }
     db->servicing = 0;
+    rFree(now);
 
+    if (rc < 0) {
+        return rc;
+    }
+    /*
+        A save deferred while servicing is taken now, as flushJournal re-evaluates the same
+        conditions that deferred it.
+     */
     if (flushJournal(db) < 0) {
         return R_ERR_CANT_WRITE;
     }
-    rFree(now);
     return count;
 }
 
@@ -1686,6 +1947,7 @@ PUBLIC void dbCompact(Db *db)
             item->value = jsonToString(item->json, 0, 0, 0);
             item->allocatedValue = 1;
             jsonFree(item->json);
+            item->json = 0;
         }
     }
 }
@@ -1702,6 +1964,7 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
     RbNode *rp;
     DbItem *item;
     Json   *json;
+    char   *str, *snapshot;
 
     if (!db || !modelName || !fieldName) {
         return 0;
@@ -1709,34 +1972,69 @@ PUBLIC const DbItem *dbSetField(Db *db, cchar *modelName, cchar *fieldName, ccha
     if (SETUP(db, modelName, props, params, "update", &env) < 0) {
         return 0;
     }
+    if (smatch(fieldName, db->type) || smatch(fieldName, getIndexSort(db, "primary")) ||
+        smatch(fieldName, getIndexHash(db, "primary"))) {
+        freeEnv(&env);
+        dberror(db, R_ERR_BAD_ARGS, "Cannot set an item's key or type field");
+        return 0;
+    }
     item = 0;
+    snapshot = 0;
 
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             break;
         }
         item = 0;
     }
+    if (item) {
+        //  Modified in place so references into the item stay valid, and undone if too large
+        snapshot = snapshotItem(item);
+        json = toJson(item);
+    } else if (env.params->upsert) {
+        json = env.props;
+    } else {
+        dberror(db, R_ERR_NOT_READY, "Cannot set field, item does not exist");
+        freeEnv(&env);
+        return 0;
+    }
+    if (value == NULL) {
+        jsonRemove(json, 0, fieldName);
+    } else {
+        jsonSet(json, 0, fieldName, value, 0);
+    }
+    if (!item || value) {
+        setTimestamps(env.model, json, env.params, "update");
+    }
+    if (checkRequired(db, env.model, json) < 0 ||
+        checkUnique(db, env.model, json, env.search.key, env.params->bypass) < 0) {
+        if (item) {
+            restoreItem(item, snapshot);
+        }
+        freeEnv(&env);
+        return 0;
+    }
+    if ((str = checkSize(db, env.search.key, json)) == 0) {
+        if (item) {
+            restoreItem(item, snapshot);
+        }
+        freeEnv(&env);
+        return 0;
+    }
+    rFree(snapshot);
     if (!item) {
-        if (env.params->upsert) {
-            setTimestamps(env.model, env.props, "update");
-            item = allocItem(env.search.key, env.props, 0);
-            rbInsert(env.index, item);
-        } else {
-            dberror(db, R_ERR_NOT_READY, "Cannot set field, item does not exist");
+        if ((item = allocItem(env.search.key, env.props, 0)) == 0) {
+            dberror(db, R_ERR_MEMORY, "Cannot allocate item");
+            rFree(str);
             freeEnv(&env);
             return 0;
         }
+        rbInsert(env.index, item);
     }
-    if (value == NULL) {
-        jsonRemove(toJson(item), 0, fieldName);
-    } else {
-        json = toJson(item);
-        setTimestamps(env.model, json, "update");
-        jsonSet(json, 0, fieldName, value, 0);
-    }
-    change(db, env.model, item, params, env.params->upsert ? "upsert" : "update");
+    change(db, env.model, item, params, env.params->upsert ? "upsert" : "update", str);
+    rFree(str);
     freeEnv(&env);
     return item;
 }
@@ -1788,6 +2086,8 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
     Env    env;
     RbNode *rp;
     DbItem *item;
+    Json   *json;
+    char   *value, *snapshot;
 
     if (!db) {
         return NULL;
@@ -1802,21 +2102,54 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
     item = 0;
     for (ITERATE_INDEX(env.index, rp, &env.search, &env)) {
         item = rp->data;
-        if (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env)) {
+        if ((!env.model || smatch(dbField(item, db->type), env.model->name)) &&
+            (!env.mustMatch || matchItem(rp, env.props, 0, toJson(item), 0, &env))) {
             break;
         }
         item = 0;
     }
-    setTimestamps(env.model, env.props, "update");
+    setTimestamps(env.model, env.props, env.params, "update");
 
     if (item) {
         if (env.params->upsert) {
+            if (checkRequired(db, env.model, env.props) < 0 ||
+                checkUnique(db, env.model, env.props, env.search.key, env.params->bypass) < 0) {
+                freeEnv(&env);
+                return 0;
+            }
+            if ((value = checkSize(db, env.search.key, env.props)) == 0) {
+                freeEnv(&env);
+                return 0;
+            }
             env.props->userFlags &= (uchar) ~USER_ALLOC;
             clearItem(item);
             item->json = env.props;
         } else {
-            //  Preserve existing properties that are not being updated
-            jsonBlend(toJson(item), 0, 0, env.props, 0, 0, JSON_REMOVE_UNDEF);
+            /*
+                Preserve existing properties that are not being updated. The blend is in place
+                so that references into the item stay valid, and is undone if the result is
+                too large to store.
+             */
+            snapshot = snapshotItem(item);
+            json = toJson(item);
+            if (jsonBlend(json, 0, 0, env.props, 0, 0, JSON_REMOVE_UNDEF) < 0) {
+                dberror(db, R_ERR_MEMORY, "Cannot update, merged item is too large");
+                restoreItem(item, snapshot);
+                freeEnv(&env);
+                return 0;
+            }
+            if (checkRequired(db, env.model, json) < 0 ||
+                checkUnique(db, env.model, json, env.search.key, env.params->bypass) < 0) {
+                restoreItem(item, snapshot);
+                freeEnv(&env);
+                return 0;
+            }
+            if ((value = checkSize(db, env.search.key, json)) == 0) {
+                restoreItem(item, snapshot);
+                freeEnv(&env);
+                return 0;
+            }
+            rFree(snapshot);
         }
 
     } else {
@@ -1825,11 +2158,21 @@ PUBLIC const DbItem *dbUpdate(Db *db, cchar *modelName, Json *props, DbParams *p
             freeEnv(&env);
             return 0;
         }
+        if (checkRequired(db, env.model, env.props) < 0 ||
+            checkUnique(db, env.model, env.props, env.search.key, env.params->bypass) < 0) {
+            freeEnv(&env);
+            return 0;
+        }
+        if ((value = checkSize(db, env.search.key, env.props)) == 0) {
+            freeEnv(&env);
+            return 0;
+        }
         if ((item = allocItem(env.search.key, env.props, 0)) != 0) {
             rbInsert(env.index, item);
         }
     }
-    change(db, env.model, item, params, env.params->upsert ? "upsert" : "update");
+    change(db, env.model, item, params, env.params->upsert ? "upsert" : "update", value);
+    rFree(value);
     freeEnv(&env);
     return item;
 }
@@ -1849,7 +2192,11 @@ PUBLIC double dbFieldDouble(const DbItem *item, cchar *fieldName)
 
 PUBLIC int64 dbFieldNumber(const DbItem *item, cchar *fieldName)
 {
-    return stoi(dbField(item, fieldName));
+    if (!item || !fieldName) {
+        return 0;
+    }
+
+    return jsonGetNum(toJson((DbItem*) item), 0, fieldName, 0);
 }
 
 PUBLIC bool dbFieldBool(const DbItem *item, cchar *fieldName)
@@ -1885,7 +2232,10 @@ PUBLIC char *dbListToString(RList *items)
         rPutStringToBuf(buf, jsonToString(toJson((DbItem*) item), 0, 0, 0));
         rPutCharToBuf(buf, ',');
     }
-    rAdjustBufEnd(buf, -1);
+    if (index > 0) {
+        //  Drop the trailing comma. An empty list has none to drop.
+        rAdjustBufEnd(buf, -1);
+    }
     rPutCharToBuf(buf, ']');
     return rBufToStringAndFree(buf);
 }
@@ -2012,7 +2362,7 @@ static void setDefaults(Db *db, DbModel *model, Json *props)
     RName   *np;
     DbField *field;
     char    *value;
-    size_t   size;
+    ssize   size;
 
     if (!db || !model || !props) {
         return;
@@ -2034,9 +2384,8 @@ static void setDefaults(Db *db, DbModel *model, Json *props)
                     value = dbGetUID(10);
                     jsonSet(props, 0, np->name, (void*) value, JSON_STRING);
                     rFree(value);
-                } else if (sstarts(field->generate, "uid(")) {
-                    size = (size_t) stoi(&field->generate[4]);
-                    value = dbGetUID(size);
+                } else if ((size = uidSize(field->generate)) > 0) {
+                    value = dbGetUID((size_t) size);
                     jsonSet(props, 0, np->name, (void*) value, JSON_STRING);
                     rFree(value);
                 }
@@ -2045,10 +2394,16 @@ static void setDefaults(Db *db, DbModel *model, Json *props)
     }
 }
 
-static void setTimestamps(DbModel *model, Json *props, cchar *cmd)
+static void setTimestamps(DbModel *model, Json *props, DbParams *params, cchar *cmd)
 {
-    char    *value;
+    char *value;
 
+    if (params && params->bypass) {
+        /*
+            Preserve journal timestamps so replayed removals match their items.
+         */
+        return;
+    }
     value = 0;
 
     if (smatch(cmd, "create")) {
@@ -2074,24 +2429,49 @@ static void setTimestamps(DbModel *model, Json *props, cchar *cmd)
 /*
     Set the value of fields using value templates
  */
-static void setTemplates(Db *db, DbModel *model, Json *props)
+static int setTemplates(Db *db, DbModel *model, Json *props)
 {
     RName   *np;
     DbField *field;
-    char    *value;
+    char    *value, *name;
+    cchar   *supplied, *cp, *end, *part;
+    bool    key;
 
     if (!db || !model || !props) {
-        return;
+        return R_ERR_BAD_ARGS;
     }
     for (ITERATE_NAME_DATA(model->fields, np, field)) {
-        if (field->value) {
-            if (jsonGet(props, 0, np->name, 0) == 0) {
-                value = jsonTemplate(props, field->value, 1);
-                jsonSet(props, 0, np->name, value, 0);
-                rFree(value);
+        if (!field->value) {
+            continue;
+        }
+        key = smatch(np->name, getIndexSort(db, "primary")) ||
+              smatch(np->name, getIndexHash(db, "primary"));
+        supplied = jsonGet(props, 0, np->name, 0);
+        if (key) {
+            //  Do not allow key ingredients to inject hash separators or template expressions.
+            for (cp = field->value; (cp = scontains(cp, "${")) != 0; cp = end + 1) {
+                if ((end = strchr(cp + 2, '}')) == 0) {
+                    return dberror(db, R_ERR_BAD_ARGS, "Invalid key template");
+                }
+                name = snclone(cp + 2, (size_t) (end - cp - 2));
+                part = jsonGet(props, 0, name, 0);
+                rFree(name);
+                if (part && (scontains(part, "${") || (strchr(field->value, '#') && strchr(part, '#')))) {
+                    return dberror(db, R_ERR_BAD_ARGS, "Invalid key template ingredient");
+                }
             }
         }
+        if (key || !supplied) {
+            value = jsonTemplate(props, field->value, 1);
+            if (key && supplied && (scontains(value, "${") || !smatch(supplied, value))) {
+                rFree(value);
+                return dberror(db, R_ERR_BAD_ARGS, "Supplied key does not match schema template");
+            }
+            jsonSet(props, 0, np->name, value, 0);
+            rFree(value);
+        }
     }
+    return 0;
 }
 
 /*
@@ -2102,6 +2482,8 @@ static int mapTypes(Db *db, DbModel *model, Json *props)
     DbField  *field;
     JsonNode *prop;
     cchar    *value;
+    char     *date, *end;
+    Time     when;
 
     if (!db || !model || !props) {
         return R_ERR_BAD_ARGS;
@@ -2118,14 +2500,29 @@ again:
         if (prop->type == JSON_PRIMITIVE && smatch(prop->value, "undefined")) {
             continue;
         }
+        if ((prop->type == JSON_OBJECT || prop->type == JSON_ARRAY) && isScalarType(field->type)) {
+            return dberror(db, R_ERR_BAD_ARGS, "Invalid %s in property \"%s\": not a scalar value",
+                           field->type, prop->name);
+        }
         if (smatch(field->type, "date")) {
             if (sfnumber(prop->value)) {
-                jsonSetNodeValue(prop, rGetIsoDate(stoi(prop->value)), JSON_STRING, JSON_PASS_VALUE);
-
-            } else if (!sends(prop->value, "Z")) {
+                //  Milliseconds since the epoch
+                if (sparseUint(prop->value, 10, DB_MAX_DATE, &end, &when) < 0 || *end) {
+                    return dberror(db, R_ERR_BAD_ARGS, "Invalid date in property \"%s\": %s",
+                                   prop->name, prop->value);
+                }
+            } else if ((when = rParseIsoDate(prop->value)) < 0) {
                 return dberror(db, R_ERR_BAD_ARGS, "Invalid date in property \"%s\": %s",
                                prop->name, prop->value);
             }
+            //  Store the canonical UTC form so date comparisons can be lexicographic
+            date = rGetIsoDate(when);
+            if (rParseIsoDate(date) < 0) {
+                rFree(date);
+                return dberror(db, R_ERR_BAD_ARGS, "Invalid date in property \"%s\": %s",
+                               prop->name, prop->value);
+            }
+            jsonSetNodeValue(prop, date, JSON_STRING, JSON_PASS_VALUE);
 
         } else if (smatch(field->type, "boolean")) {
             if (smatch(prop->value, "true") || smatch(prop->value, "1")) {
@@ -2139,7 +2536,7 @@ again:
             jsonSetNodeValue(prop, value, JSON_PRIMITIVE, 0);
 
         } else if (smatch(field->type, "number")) {
-            if (!sfnumber(prop->value)) {
+            if (!isNumber(prop->value)) {
                 return dberror(db, R_ERR_BAD_ARGS, "Invalid numeric in property \"%s\": %s",
                                prop->name, prop->value);
             }
@@ -2154,6 +2551,28 @@ again:
         }
     }
     return 0;
+}
+
+static bool isScalarType(cchar *type)
+{
+    return smatch(type, "boolean") || smatch(type, "date") || smatch(type, "number") || smatch(type, "string");
+}
+
+/*
+    Validate JSON numbers; reject true, false, and null before parsing.
+ */
+static bool isNumber(cchar *value)
+{
+    Json *json;
+    bool result;
+
+    if (!value || (*value != '-' && !isdigit((uchar) * value))) {
+        return 0;
+    }
+    json = jsonParse(value, JSON_STRICT_PARSE);
+    result = json && jsonGetType(json, 0, NULL) == JSON_PRIMITIVE;
+    jsonFree(json);
+    return result;
 }
 
 /*
@@ -2184,7 +2603,7 @@ static bool matchItem(RbNode *rp, Json *j1, JsonNode *n1, Json *j2, JsonNode *n2
     JsonNode *c1, *c2;
     cchar    *expires;
     char     *now;
-    int      nid, rc;
+    int      index, nid, rc;
 
     if (j2->count == 0) {
         return 0;
@@ -2199,27 +2618,32 @@ static bool matchItem(RbNode *rp, Json *j1, JsonNode *n1, Json *j2, JsonNode *n2
         /*
             Match given properties
          */
+        index = 0;
         for (ITERATE_JSON(j1, n1, c1, cid)) {
-            if (smatch(c1->name, env->indexSort)) {
-                //  Already been done via the lookup
-                continue;
+            if (n1->type == JSON_ARRAY) {
+                //  Array elements are unnamed, so they must be matched by position
+                c2 = jsonGetChildNode(j2, jsonGetNodeId(j2, n2), index++);
+            } else {
+                if (smatch(c1->name, env->indexSort)) {
+                    //  Already been done via the lookup
+                    continue;
+                }
+                c2 = jsonGetNode(j2, jsonGetNodeId(j2, n2), c1->name);
             }
-            c2 = jsonGetNode(j2, jsonGetNodeId(j2, n2), c1->name);
             if (!c2) return 0;
 
             rc = scmp(c1->value, c2->value);
             if (rc != 0) return 0;
 
-            if (c1->type == JSON_OBJECT && c2->type == JSON_OBJECT) {
-                if (!matchItem(rp, j1, c1, j2, c2, env)) {
+            if (c1->type == JSON_OBJECT || c1->type == JSON_ARRAY) {
+                if (c1->type != c2->type || !matchItem(rp, j1, c1, j2, c2, env)) {
                     return 0;
                 }
             }
-            if (c1->type == JSON_ARRAY && c2->type == JSON_ARRAY) {
-                if (!matchItem(rp, j1, c1, j2, c2, env)) {
-                    return 0;
-                }
-            }
+        }
+        if (n1->type == JSON_ARRAY && jsonGetChildNode(j2, jsonGetNodeId(j2, n2), index) != 0) {
+            //  The item's array has more elements than the array being matched
+            return 0;
         }
     }
     /*
@@ -2234,11 +2658,7 @@ static bool matchItem(RbNode *rp, Json *j1, JsonNode *n1, Json *j2, JsonNode *n2
         expires = jsonGet(j2, 0, env->model->expiresField, 0);
         now = rGetIsoDate(rGetTime());
         if (expires && scmp(expires, now) <= 0) {
-            //  Add item to expired list to cleanup in freeEnv
-            if (!env->expiredItems) {
-                env->expiredItems = rAllocList(0, 0);
-            }
-            rAddItem(env->expiredItems, rp);
+            env->expired = 1;
             rc = 0;
         }
         rFree(now);
@@ -2306,10 +2726,21 @@ PUBLIC DbModel *dbGetItemModel(Db *db, CDbItem *item)
  */
 static DbField *allocField(Db *db, cchar *name, Json *json, int fid)
 {
-    DbField *field;
+    DbField  *field;
+    JsonNode *enums, *child;
 
     if (!name || !json || fid < 0) {
         return NULL;
+    }
+    if (jsonGetNode(json, fid, "validate") || jsonGetNode(json, fid, "crypt")) {
+        dberror(db, R_ERR_BAD_ARGS,
+                "Field \"%s\" declares unsupported schema attribute \"%s\"", name,
+                jsonGetNode(json, fid, "validate") ? "validate" : "crypt");
+        return NULL;
+    }
+    if (jsonGetNode(json, fid, "map")) {
+        //  A storage-name mapping for the cloud. Items are stored under their field name here.
+        rInfo("db", "Field \"%s\" schema attribute \"map\" is not supported and is ignored", name);
     }
     if ((field = rAllocType(DbField)) == 0) {
         return 0;
@@ -2318,28 +2749,52 @@ static DbField *allocField(Db *db, cchar *name, Json *json, int fid)
     field->name = sclone(name);
     field->def = jsonGet(json, fid, "default", 0);
     field->generate = jsonGet(json, fid, "generate", 0);
+    if (sstarts(field->generate, "uid(") && uidSize(field->generate) < 0) {
+        dberror(db, R_ERR_BAD_ARGS, "Field \"%s\" has an invalid generate length \"%s\"", name,
+                field->generate);
+        freeField(field);
+        return NULL;
+    }
     field->hidden = jsonGetBool(json, fid, "hidden", smatch(name, "pk") || smatch(name, "sk"));
     field->required = jsonGetBool(json, fid, "required", 0);
     field->type = jsonGet(json, fid, "type", 0);
     field->value = jsonGet(json, fid, "value", 0);
     field->ttl = jsonGetBool(json, fid, "ttl", 0);
-
-    if (jsonGetNode(json, fid, "enum") != 0) {
-        field->enums = jsonToString(json, fid, "enum", 0);
-    }
-#if KEEP
-    field->crypt = jsonGetBool(json, fid, "crypt", 0);
-    field->map = jsonGet(json, fid, "map", 0);
     field->unique = jsonGetBool(json, fid, "unique", 0);
-    field->validate = jsonGet(json, fid, "validate", 0);
-#endif
+
+    if ((enums = jsonGetNode(json, fid, "enum")) != 0) {
+        /*
+            Compare decoded enum values so embedded quotes remain part of the value.
+         */
+        field->enums = rAllocList(0, R_TEMPORAL_VALUE);
+        for (ITERATE_JSON(json, enums, child, cid)) {
+            rAddItem(field->enums, child->value);
+        }
+    }
     return field;
+}
+
+/*
+    Length of a "uid(N)" generator, from 1 to the maximum key length. Negative if malformed.
+ */
+static ssize uidSize(cchar *generate)
+{
+    char  *end;
+    int64 size;
+
+    if (!sstarts(generate, "uid(")) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (sparseUint(&generate[4], 10, DB_MAX_KEY, &end, &size) < 0 || !smatch(end, ")") || size == 0) {
+        return R_ERR_BAD_ARGS;
+    }
+    return (ssize) size;
 }
 
 static void freeField(DbField *field)
 {
     if (field) {
-        rFree(field->enums);
+        rFreeList(field->enums);
         rFree(field->name);
         rFree(field);
     }
@@ -2363,10 +2818,12 @@ static DbItem *allocItem(cchar *key, Json *json, char *value)
             json->userFlags &= (uchar) ~USER_ALLOC;
         } else {
             /*
-                Not allocated as part of the DB_PROPS() API in dbCreate(), so we must clone
-                here as the user owns these props.
+                Clone caller-owned props before storing them; deeply nested trees may fail to clone.
              */
-            json = jsonClone(json, 0);
+            if ((json = jsonClone(json, 0)) == 0) {
+                rFree(item);
+                return 0;
+            }
         }
         item->json = json;
     } else {
@@ -2378,8 +2835,22 @@ static DbItem *allocItem(cchar *key, Json *json, char *value)
     return item;
 }
 
+/*
+    Unlink before notifying, then free after callbacks. change() journals the removal.
+ */
+static void removeItem(Db *db, RbTree *index, DbModel *model, RbNode *rp, DbParams *params)
+{
+    DbItem *item;
+
+    item = rbRemove(index, rp, 1);
+    change(db, model, item, params, "remove", NULL);
+    freeItem(db, item);
+}
+
 static void freeItem(Db *db, DbItem *item)
 {
+    (void) db;
+
     if (!item) return;
 
     if (item->allocatedName) {
@@ -2388,6 +2859,106 @@ static void freeItem(Db *db, DbItem *item)
     }
     clearItem(item);
     rFree(item);
+}
+
+/*
+    Validate required fields in the merged item.
+ */
+static int checkRequired(Db *db, DbModel *model, Json *json)
+{
+    RName   *np;
+    DbField *field;
+
+    if (!model) {
+        return 0;
+    }
+    for (ITERATE_NAMES(model->fields, np)) {
+        field = np->value;
+        if (field->required && jsonGet(json, 0, np->name, 0) == 0) {
+            return dberror(db, R_ERR_BAD_STATE, "Missing required property \"%s\"", np->name);
+        }
+    }
+    return 0;
+}
+
+/*
+    Check unique fields against other items. Trusted journal replay bypasses this check.
+ */
+static int checkUnique(Db *db, DbModel *model, Json *json, cchar *key, bool bypass)
+{
+    RName   *np;
+    DbField *field;
+    RbNode  *rp;
+    DbItem  *item;
+    cchar   *value, *existing;
+
+    if (bypass || !model) {
+        return 0;
+    }
+    for (ITERATE_NAMES(model->fields, np)) {
+        field = np->value;
+        if (!field->unique) {
+            continue;
+        }
+        if ((value = jsonGet(json, 0, np->name, 0)) == 0) {
+            continue;
+        }
+        for (rp = rbFirst(db->primary); rp; rp = rbNext(db->primary, rp)) {
+            item = rp->data;
+            if (smatch(item->key, key) || !smatch(dbField(item, db->type), model->name)) {
+                continue;
+            }
+            existing = dbField(item, np->name);
+            if (smatch(existing, value)) {
+                return dberror(db, R_ERR_CANT_CREATE, "Value \"%s\" for unique field \"%s\" already exists",
+                               value, np->name);
+            }
+        }
+    }
+    return 0;
+}
+
+/*
+    Serialise an item value and refuse one that the store and journal cannot hold.
+    Return the serialised value which the caller must free, or NULL with the error set.
+ */
+static char *checkSize(Db *db, cchar *key, Json *json)
+{
+    char *value;
+
+    value = jsonToString(json, 0, 0, 0);
+    if (slen(value) > DB_MAX_ITEM) {
+        rFree(value);
+        dberror(db, R_ERR_WONT_FIT, "Item \"%s\" exceeds the maximum size of %d bytes", key, DB_MAX_ITEM);
+        return 0;
+    }
+    return value;
+}
+
+/*
+    Take the serialised value of an item before it is modified in place, so that a rejected
+    modification can be undone. The caller frees the snapshot or hands it to restoreItem.
+ */
+static char *snapshotItem(DbItem *item)
+{
+    char *snapshot;
+
+    if (item->json) {
+        return jsonToString(item->json, 0, 0, 0);
+    }
+    //  toJson discards the value when it parses it, so keep it as the snapshot
+    snapshot = item->value;
+    item->json = jsonParse(snapshot, 0);
+    item->value = 0;
+    item->allocatedValue = 0;
+    return snapshot;
+}
+
+static void restoreItem(DbItem *item, char *snapshot)
+{
+    clearItem(item);
+    item->value = snapshot;
+    item->allocatedValue = 1;
 }
 
 static void clearItem(DbItem *item)
@@ -2407,6 +2978,8 @@ static void clearItem(DbItem *item)
  */
 static cchar *getIndexName(Db *db, DbParams *params)
 {
+    (void) db;
+
     return (params && params->index) ? params->index : "primary";
 }
 
@@ -2416,6 +2989,8 @@ static cchar *getIndexName(Db *db, DbParams *params)
  */
 static RbTree *getIndex(Db *db, DbParams *params)
 {
+    (void) params;
+
     return db->primary;
 }
 
@@ -2483,7 +3058,7 @@ PUBLIC Json *dbPropsToJson(cchar *props[])
 /*
     Read an item from the on-disk database store (not the journal)
  */
-static int readItem(FILE *fp, DbItem **item)
+static int readItem(FILE *fp, int format, DbItem **item)
 {
     uint32_t length;
     char     key[DB_MAX_KEY];
@@ -2493,7 +3068,8 @@ static int readItem(FILE *fp, DbItem **item)
         return R_ERR_BAD_ARGS;
     }
     *item = 0;
-    if (fread(&length, sizeof(length), 1, fp) != 1) {
+    if (readLength(fp, format, &length) < 0) {
+        //  EOF
         return 0;
     }
     if (length > (DB_MAX_KEY - 1)) {
@@ -2504,7 +3080,7 @@ static int readItem(FILE *fp, DbItem **item)
     }
     key[length] = '\0';
 
-    if (fread(&length, sizeof(length), 1, fp) != 1) {
+    if (readLength(fp, format, &length) < 0) {
         return R_ERR_CANT_READ;
     }
     if (length > DB_MAX_ITEM) {
@@ -2517,7 +3093,10 @@ static int readItem(FILE *fp, DbItem **item)
         return R_ERR_CANT_READ;
     }
     data[length] = '\0';
-    *item = allocItem(key, 0, data);
+    if ((*item = allocItem(key, 0, data)) == 0) {
+        rFree(data);
+        return R_ERR_MEMORY;
+    }
     return 0;
 }
 
@@ -2527,28 +3106,37 @@ static int readItem(FILE *fp, DbItem **item)
 static int writeItem(FILE *fp, DbItem *item)
 {
     char     *value;
-    uint32_t length;
+    uint32_t keyLen, length;
+    int      rc;
 
-    length = (uint32_t) slen(item->key);
-    if (fwrite(&length, sizeof(length), 1, fp) != 1) {
-        return R_ERR_CANT_WRITE;
-    }
-    if (fwrite(item->key, (size_t) length, 1, fp) != 1) {
-        return R_ERR_CANT_WRITE;
+    /*
+        Refuse to write a record that readItem would reject. Writing one silently truncates the
+        database at that item on the next load. Both lengths are checked before anything is
+        written, because a half written record corrupts the store just as badly.
+     */
+    keyLen = (uint32_t) slen(item->key);
+    if (keyLen == 0 || keyLen > (DB_MAX_KEY - 1)) {
+        return R_ERR_WONT_FIT;
     }
     value = item->json ? jsonToString(item->json, 0, 0, 0) : item->value;
-
     length = (uint32_t) slen(value);
-    if (fwrite(&length, sizeof(length), 1, fp) != 1) {
-        return R_ERR_CANT_WRITE;
+    if (length == 0 || length > DB_MAX_ITEM) {
+        if (value != item->value) {
+            rFree(value);
+        }
+        return R_ERR_WONT_FIT;
     }
-    if (fwrite(value, (size_t) length, 1, fp) != 1) {
-        return R_ERR_CANT_WRITE;
+    rc = 0;
+    if (writeLength(fp, keyLen) < 0 ||
+        fwrite(item->key, (size_t) keyLen, 1, fp) != 1 ||
+        writeLength(fp, length) < 0 ||
+        fwrite(value, (size_t) length, 1, fp) != 1) {
+        rc = R_ERR_CANT_WRITE;
     }
     if (value != item->value) {
         rFree(value);
     }
-    return 0;
+    return rc;
 }
 
 /*
@@ -2557,6 +3145,8 @@ static int writeItem(FILE *fp, DbItem *item)
 static Ticks getDelay(Db *db, DbModel *model, DbParams *params)
 {
     Ticks delay;
+
+    (void) db;
 
     delay = model->delay;
     if (params) {
@@ -2572,13 +3162,26 @@ static Ticks getDelay(Db *db, DbModel *model, DbParams *params)
 /*
     React to a change. This handles persistency to the journal including delayed commits.
  */
-static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd)
+static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar *cmd, cchar *value)
 {
     DbChange *change;
     Ticks    delay, when;
     int      events;
 
+    if (params && params->bypass) {
+        /*
+            Journal replay. The change is already journalled and was notified before the
+            restart, so it must neither be re-journalled via a delayed commit nor re-notified.
+         */
+        return;
+    }
     delay = getDelay(db, model, params);
+    if (delay > 0 && smatch(cmd, "remove")) {
+        /*
+            Journal removals before the caller frees the item.
+         */
+        delay = 0;
+    }
     if (delay > 0) {
         /*
             Create a change record and schedule.
@@ -2607,11 +3210,12 @@ static void change(Db *db, DbModel *model, DbItem *item, DbParams *params, cchar
             /*
                 No delay, write to the journal unless in-mem
              */
-            if (writeChangeToJournal(db, model, item, cmd) == 0) {
-                if (item->delayed) {
-                    rRemoveName(db->changes, item->key);
-                    item->delayed = 0;
+            if (writeChangeToJournal(db, model, item, cmd, value) == 0 && item->delayed) {
+                //  Discard the pending delayed change now that the item has been written
+                if ((change = rLookupName(db->changes, item->key)) != 0) {
+                    freeChange(db, change);
                 }
+                item->delayed = 0;
             }
         }
         events = DB_ON_CHANGE | DB_ON_COMMIT;
@@ -2626,35 +3230,69 @@ static void commitChange(Db *db)
 {
     DbChange *change;
     DbItem   search, *item;
+    DbModel  *model;
+    DbParams params;
     RbNode   *rp;
+    RList    *due;
     RName    *np;
     Time     nextDue, now;
+    cchar    *cmd;
+    char     *key;
+    int      index;
 
     now = rGetTicks();
-    nextDue = MAXINT64;
 
+    /*
+        Collect keys first, then recheck each change because callbacks may alter the pending set.
+     */
+    if ((due = rAllocList(0, R_TEMPORAL_VALUE)) == 0) {
+        return;
+    }
     for (ITERATE_NAME_DATA(db->changes, np, change)) {
         if (change->due <= now) {
-            search.key = change->key;
-            if ((rp = rbLookup(db->primary, &search, NULL)) != 0) {
-                item = rp->data;
-                if (writeChangeToJournal(change->db, change->model, item, change->cmd) != 0) {
-                    // continue
-                }
-                invokeCallbacks(change->db, change->model, item, change->params, change->cmd,
-                                DB_ON_COMMIT);
-                freeChange(db, change);
-            }
-        } else {
-            nextDue = min(nextDue, change->due);
+            rPushItem(due, change->key);
         }
+    }
+    for (ITERATE_ITEMS(due, key, index)) {
+        if ((change = rLookupName(db->changes, key)) == 0 || change->due > now) {
+            continue;
+        }
+        model = change->model;
+        params = change->params;
+        cmd = change->cmd;
+        /*
+            Discard before notifying so callbacks can schedule a new change for the same item.
+         */
+        freeChange(db, change);
+
+        search.key = key;
+        if ((rp = rbLookup(db->primary, &search, NULL)) != 0) {
+            item = rp->data;
+            if (writeChangeToJournal(db, model, item, cmd, NULL) != 0) {
+                // continue
+            }
+            item->delayed = 0;
+            invokeCallbacks(db, model, item, &params, cmd, DB_ON_COMMIT);
+        }
+    }
+    rFreeList(due);
+
+    /*
+        Reschedule from what remains, which must be computed after the callbacks have run.
+        A callback that adds a delayed change cannot schedule its own event, because db->due
+        is still set to this deadline and its change is not earlier. Computing nextDue before
+        the callbacks would strand those changes with no timer.
+     */
+    nextDue = MAXINT64;
+    for (ITERATE_NAME_DATA(db->changes, np, change)) {
+        nextDue = min(nextDue, change->due);
     }
     if (nextDue == MAXINT64) {
         db->due = 0;
         db->commitEvent = 0;
     } else {
         db->due = nextDue;
-        db->commitEvent = rStartEvent((REventProc) commitChange, db, nextDue - now);
+        db->commitEvent = rStartEvent((REventProc) commitChange, db, max(nextDue - now, 0));
     }
 }
 
@@ -2662,9 +3300,9 @@ static void commitChange(Db *db)
     Write a changed item to the journal and handle journal resets
     Errors are handled by low level I/O routines setting db->journalError
  */
-static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd)
+static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd, cchar *value)
 {
-    char *value;
+    char *allocated;
     int  bufsize;
 
     //  Journal will be unset when booting and applying prior journal
@@ -2672,21 +3310,32 @@ static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd
 
     /*
         Compute the size of the change record as three null terminated strings.
-        The string lengths are not read into the buffer.
+        The string lengths are not read into the buffer. The caller may supply the value it has
+        already serialised.
      */
-    value = item->json ? jsonToString(item->json, 0, 0, 0) : item->value;
+    allocated = 0;
+    if (!value) {
+        value = item->json ? (allocated = jsonToString(item->json, 0, 0, 0)) : item->value;
+    }
+
+    /*
+        readSize and readBlock refuse a record or block this large, so journalling one would
+        make the next replay reject the journal as corrupt.
+     */
     bufsize = (int) (slen(cmd) + slen(model->name) + slen(value) + 3);
-    item->delayed = 0;
+    if (slen(value) > DB_MAX_ITEM || slen(item->key) > (DB_MAX_KEY - 1) || bufsize > DB_MAX_RECORD) {
+        rError("db", "Item \"%s\" is too large to journal and has been omitted", item->key);
+        rFree(allocated);
+        return R_ERR_WONT_FIT;
+    }
 
     //  These set journalError on errors - handled below
     writeSize(db, (uint32_t) bufsize);
     writeBlock(db, cmd);
     writeBlock(db, model->name);
     writeBlock(db, value);
+    rFree(allocated);
 
-    if (value != item->value) {
-        rFree(value);
-    }
     if (fflush(db->journal) < 0 || rFlushFile(fileno(db->journal)) < 0) {
         dberror(db, R_ERR_CANT_WRITE, "Cannot flush journal: %d", errno);
         db->journalError = 1;
@@ -2697,13 +3346,12 @@ static int writeChangeToJournal(Db *db, DbModel *model, DbItem *item, cchar *cmd
 static int flushJournal(Db *db)
 {
     /*
-        Save the journal to the database if it is full or if there is an error.
+        Save the journal to the database if it is full or if there is an error. While servicing,
+        the save is deferred to the flushJournal call that ends the service pass.
      */
     if (db->journalError || db->journalSize >= db->maxJournalSize ||
         (rGetTicks() - db->journalCreated) >= db->maxJournalAge) {
-        if (db->servicing) {
-            db->needSave = 1;
-        } else if (dbSave(db, NULL) < 0) {
+        if (!db->servicing && dbSave(db, NULL) < 0) {
             return R_ERR_CANT_WRITE;
         }
 
@@ -2715,7 +3363,7 @@ static int flushJournal(Db *db)
 
 static int writeSize(Db *db, uint32_t len)
 {
-    if (fwrite(&len, sizeof(len), 1, db->journal) != 1) {
+    if (writeLength(db->journal, len) < 0) {
         db->journalError = 1;
         return dberror(db, R_ERR_CANT_WRITE, "Cannot write to db journal file");
     }
@@ -2730,7 +3378,7 @@ static int writeBlock(Db *db, cchar *buf)
     uint32_t len;
 
     len = (uint32_t) (slen(buf) + 1);
-    if (fwrite(&len, sizeof(len), 1, db->journal) != 1) {
+    if (writeLength(db->journal, len) < 0) {
         db->journalError = 1;
         return dberror(db, R_ERR_CANT_WRITE, "Cannot write to db journal file");
     }
@@ -2747,28 +3395,49 @@ static int writeBlock(Db *db, cchar *buf)
  */
 static int recreateJournal(Db *db)
 {
-    uint16 version;
+    return openJournal(db, 0);
+}
+
+/*
+    Open the journal. If append, preserve any existing records and add to them. Otherwise
+    start a fresh journal. Append is used when a checkpoint save has failed and the journal
+    is still the only record of those changes.
+ */
+static int openJournal(Db *db, bool append)
+{
+    struct stat sbuf;
 
     if (db->journal) {
         fclose(db->journal);
+        db->journal = 0;
     }
-    if ((db->journal = fopen(db->journalPath, "w")) == NULL) {
-        return dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d",
-                       db->journalPath, errno);
-    }
-    version = DB_VERSION;
-    if (fwrite(&version, sizeof(version), 1, db->journal) != 1) {
-        return dberror(db, R_ERR_CANT_WRITE, "Cannot write version to db journal file");
+    if (append && stat(db->journalPath, &sbuf) == 0 && sbuf.st_size > 0 && canAppendJournal(db)) {
+        if ((db->journal = fopen(db->journalPath, "a")) == NULL) {
+            return dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d",
+                           db->journalPath, errno);
+        }
+        db->journalSize = (size_t) sbuf.st_size;
+    } else {
+        if ((db->journal = fopen(db->journalPath, "w")) == NULL) {
+            return dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d",
+                           db->journalPath, errno);
+        }
+        if (writeHeader(db->journal) < 0) {
+            return dberror(db, R_ERR_CANT_WRITE, "Cannot write version to db journal file");
+        }
+        db->journalSize = 0;
     }
     db->journalCreated = rGetTicks();
-    db->journalSize = 0;
     db->journalError = 0;
     return 0;
 }
 
 /*
     Apply the journal of changes to the database state
-    Return 1 if journal data was applied, 0 if not, negative for errors.
+    Return the count of applied records, 0 if none, negative for errors.
+    A journal that ends mid record is a torn write from a crash: the readable prefix is applied
+    and the incomplete tail discarded. A record that could never have been written is corruption:
+    the replay stops with an error so the caller does not truncate the journal over unread data.
  */
 static int applyJournal(Db *db)
 {
@@ -2776,9 +3445,8 @@ static int applyJournal(Db *db)
     FILE        *fp;
     RBuf        *buf;
     cchar       *cmd, *model, *value;
-    uint16      version;
     size_t      bufsize;
-    int         rc;
+    int         count, format, rc;
 
     if (stat(db->journalPath, &sbuf) < 0 || sbuf.st_size == 0) {
         return 0;
@@ -2786,71 +3454,200 @@ static int applyJournal(Db *db)
     if ((fp = fopen(db->journalPath, "r")) == NULL) {
         return dberror(db, R_ERR_CANT_OPEN, "Cannot open database journal %s, errno %d", db->journalPath, errno);
     }
-    if (fread(&version, sizeof(version), 1, fp) != 1) {
+    if ((rc = readHeader(db, fp, "database journal", &format)) < 0) {
         fclose(fp);
-        return dberror(db, R_ERR_CANT_OPEN, "Cannot read database journal %s, errno %d", db->journalPath, errno);
-    }
-    if (version != DB_VERSION) {
-        fclose(fp);
-        return dberror(db, R_ERR_CANT_OPEN, "Incorrect database journal version %d", version);
+        return rc;
     }
     buf = rAllocBuf(ME_BUFSIZE);
-    rc = 0;
-    while ((bufsize = readSize(fp)) != 0) {
-        if (rGrowBuf(buf, bufsize) < 0) {
+    count = 0;
+    while ((rc = readSize(db, fp, format, &bufsize)) > 0) {
+        //  The buffer is flushed after each record, so it only needs room for the largest record
+        if (rReserveBufSpace(buf, bufsize) < 0) {
+            rc = dberror(db, R_ERR_MEMORY, "Cannot allocate database journal record of %d bytes",
+                         (int) bufsize);
             break;
         }
-        cmd = readBlock(db, fp, buf);
-        model = readBlock(db, fp, buf);
-        value = readBlock(db, fp, buf);
-        if (!cmd || !model || !value) {
+        if ((rc = readBlock(db, fp, buf, format, &cmd)) <= 0 ||
+            (rc = readBlock(db, fp, buf, format, &model)) <= 0 ||
+            (rc = readBlock(db, fp, buf, format, &value)) <= 0) {
             break;
         }
         if (applyChange(db, cmd, model, value) < 0) {
             rc = R_ERR_CANT_READ;
             break;
         }
-        rc++;
+        count++;
         rFlushBuf(buf);
     }
     rFreeBuf(buf);
     fclose(fp);
-    return rc;
+    return rc < 0 ? rc : count;
 }
 
-static size_t readSize(FILE *fp)
+/*
+    Read the size of the next change record. Return 1 if a record follows, 0 at the end of the
+    journal and a negative status if the size is corrupt.
+ */
+static int readSize(Db *db, FILE *fp, int format, size_t *sizep)
 {
     uint32_t len;
 
-    if (fread(&len, sizeof(len), 1, fp) != 1) {
-        //  EOF
-        return 0;
+    *sizep = 0;
+    if (readLength(fp, format, &len) < 0) {
+        return endOfJournal(db, fp);
     }
-    return (size_t) len;
+    //  writeChangeToJournal cannot write a record of this size, so the journal is corrupt
+    if (len == 0 || len > DB_MAX_RECORD) {
+        return dberror(db, R_ERR_CANT_READ, "Corrupt database journal record size %u", len);
+    }
+    *sizep = (size_t) len;
+    return 1;
 }
 
-static cchar *readBlock(Db *db, FILE *fp, RBuf *buf)
+/*
+    Read one null terminated string block of a change record. Return 1 if a block was read,
+    0 if the journal ends mid record and a negative status if the block is corrupt.
+ */
+static int readBlock(Db *db, FILE *fp, RBuf *buf, int format, cchar **block)
 {
-    cchar    *result;
     uint32_t len;
 
+    *block = 0;
     //  The length includes a trailing null. Don't read the length into the buffer.
-    if (fread(&len, sizeof(len), 1, fp) != 1) {
-        dberror(db, R_ERR_CANT_READ, "Corrupt database journal");
-        return 0;
+    if (readLength(fp, format, &len) < 0) {
+        return endOfJournal(db, fp);
     }
-    if (len > DB_MAX_ITEM) {
-        dberror(db, R_ERR_CANT_READ, "Corrupt database journal");
-        return 0;
+    /*
+        The record size grew the buffer, so a block that does not fit the remaining space is
+        lying about its length. Never read past the buffer.
+     */
+    if (len == 0 || len > DB_MAX_ITEM || (size_t) len > rGetBufSpace(buf)) {
+        return dberror(db, R_ERR_CANT_READ, "Corrupt database journal block length %u", len);
     }
     if (fread(rGetBufStart(buf), (size_t) len, 1, fp) != 1) {
-        dberror(db, R_ERR_CANT_READ, "Corrupt database journal");
-        return 0;
+        return endOfJournal(db, fp);
     }
-    result = rGetBufStart(buf);
+    *block = rGetBufStart(buf);
     rAdjustBufEnd(buf, (ssize) len);
     rAdjustBufStart(buf, (ssize) rGetBufLength(buf));
-    return result;
+    return 1;
+}
+
+/*
+    A short read at the end of the journal is an incomplete record from an unclean shutdown.
+    That change was never committed, so replay stops without error. A read error is reported.
+ */
+static int endOfJournal(Db *db, FILE *fp)
+{
+    if (ferror(fp)) {
+        return dberror(db, R_ERR_CANT_READ, "Cannot read database journal %s, errno %d",
+                       db->journalPath, errno);
+    }
+    return 0;
+}
+
+/*
+    Read a database or journal file header and determine its record format.
+ */
+static int readHeader(Db *db, FILE *fp, cchar *what, int *format)
+{
+    uchar  buf[2];
+    uint16 version;
+
+    *format = DB_FORMAT_NATIVE;
+    if (fread(buf, sizeof(buf), 1, fp) != 1) {
+        return dberror(db, R_ERR_CANT_OPEN, "Cannot read %s header", what);
+    }
+    if (buf[0] == 'D' && buf[1] == 'B') {
+        if (fread(buf, sizeof(buf), 1, fp) != 1) {
+            return dberror(db, R_ERR_CANT_OPEN, "Cannot read %s header", what);
+        }
+        version = (uint16) (buf[0] | (buf[1] << 8));
+        if (version != DB_VERSION) {
+            return dberror(db, R_ERR_CANT_OPEN, "Incorrect %s version %d", what, version);
+        }
+        *format = DB_FORMAT_LE;
+        return 0;
+    }
+    //  No magic. A legacy file holds the version in the byte order of the host that wrote it.
+    memcpy(&version, buf, sizeof(version));
+    if (version == DB_LEGACY_VERSION) {
+        *format = DB_FORMAT_NATIVE;
+    } else if (version == (DB_LEGACY_VERSION << 8)) {
+        *format = DB_FORMAT_SWAPPED;
+    } else {
+        return dberror(db, R_ERR_CANT_OPEN, "Incorrect %s version %d", what, version);
+    }
+    return 0;
+}
+
+static int writeHeader(FILE *fp)
+{
+    uchar buf[4];
+
+    buf[0] = 'D';
+    buf[1] = 'B';
+    buf[2] = DB_VERSION & 0xFF;
+    buf[3] = (DB_VERSION >> 8) & 0xFF;
+    return fwrite(buf, sizeof(buf), 1, fp) == 1 ? 0 : R_ERR_CANT_WRITE;
+}
+
+static int readLength(FILE *fp, int format, uint32 *length)
+{
+    uchar  buf[4];
+    uint32 len;
+
+    if (fread(buf, sizeof(buf), 1, fp) != 1) {
+        return R_ERR_CANT_READ;
+    }
+    if (format == DB_FORMAT_LE) {
+        len = (uint32) buf[0] | ((uint32) buf[1] << 8) | ((uint32) buf[2] << 16) | ((uint32) buf[3] << 24);
+    } else {
+        memcpy(&len, buf, sizeof(len));
+        if (format == DB_FORMAT_SWAPPED) {
+            len = (len << 24) | ((len & 0xFF00) << 8) | ((len >> 8) & 0xFF00) | (len >> 24);
+        }
+    }
+    *length = len;
+    return 0;
+}
+
+static int writeLength(FILE *fp, uint32 length)
+{
+    uchar buf[4];
+
+    buf[0] = length & 0xFF;
+    buf[1] = (length >> 8) & 0xFF;
+    buf[2] = (length >> 16) & 0xFF;
+    buf[3] = (length >> 24) & 0xFF;
+    return fwrite(buf, sizeof(buf), 1, fp) == 1 ? 0 : R_ERR_CANT_WRITE;
+}
+
+/*
+    New records are little endian, so they can only follow records of the same byte order.
+    A legacy journal on a big endian host is recreated instead. Its records were replayed and
+    are in memory, but they have no durable record until the next save succeeds.
+ */
+static bool canAppendJournal(Db *db)
+{
+    FILE   *fp;
+    uint16 native;
+    int    format, rc;
+
+    if ((fp = fopen(db->journalPath, "r")) == NULL) {
+        return 0;
+    }
+    rc = readHeader(db, fp, "database journal", &format);
+    fclose(fp);
+    if (rc < 0) {
+        return 0;
+    }
+    native = 1;
+    if (format == DB_FORMAT_LE || (format == DB_FORMAT_NATIVE && *(uchar*) &native == 1)) {
+        return 1;
+    }
+    rError("db", "Cannot append to the legacy journal %s, recreating it", db->journalPath);
+    return 0;
 }
 
 static int applyChange(Db *db, cchar *cmd, cchar *model, cchar *value)
@@ -2906,10 +3703,15 @@ PUBLIC void dbRemoveCallback(Db *db, DbCallbackProc proc, cchar *model, void *ar
     int        ci;
 
     for (ITERATE_ITEMS(db->callbacks, cb, ci)) {
-        if (cb->proc == proc && cb->arg == arg &&
+        if (!cb->removed && cb->proc == proc && cb->arg == arg &&
             ((model == NULL && cb->model == NULL) || (model && cb->model && smatch(model, cb->model)))) {
-            rFree(cb->model);
-            rRemoveItem(db->callbacks, cb);
+            /*
+                Defer removal until the outermost callback iteration completes.
+             */
+            cb->removed = 1;
+            if (db->callbackDepth == 0) {
+                sweepCallbacks(db);
+            }
             break;
         }
     }
@@ -2921,11 +3723,35 @@ static void invokeCallbacks(Db *db, DbModel *model, DbItem *item, DbParams *para
     DbCallback *cb;
     int        ci;
 
+    db->callbackDepth++;
     for (ITERATE_ITEMS(db->callbacks, cb, ci)) {
+        if (cb->removed) {
+            continue;
+        }
         if (!cb->model || smatch(cb->model, model->name)) {
             if (cb->events & event) {
                 cb->proc(cb->arg, db, model, item, params, cmd, event);
             }
+        }
+    }
+    if (--db->callbackDepth == 0) {
+        sweepCallbacks(db);
+    }
+}
+
+/*
+    Compact removed callbacks only when no invocation is active.
+ */
+static void sweepCallbacks(Db *db)
+{
+    DbCallback *cb;
+    int        ci;
+
+    for (ci = db->callbacks->length - 1; ci >= 0; ci--) {
+        cb = R_GET_ITEM(db->callbacks, ci);
+        if (cb->removed) {
+            rFree(cb->model);
+            rRemoveItemAt(db->callbacks, ci);
         }
     }
 }
@@ -2985,18 +3811,18 @@ PUBLIC cchar *dbGetError(Db *db)
  */
 static bool checkEnum(DbField *field, cchar *value)
 {
-    cchar *cp;
+    cchar *enumValue;
+    int   next;
 
-    if (!field || !value) {
+    if (!field || !field->enums || !value) {
         return 0;
     }
-    if ((cp = scontains(field->enums, value)) == 0) {
-        return 0;
+    for (ITERATE_ITEMS(field->enums, enumValue, next)) {
+        if (smatch(enumValue, value)) {
+            return 1;
+        }
     }
-    if ((cp[-1] != '"' && cp[-1] != '\'') || (cp[slen(value)] != '"' && cp[slen(value)] != '\'')) {
-        return 0;
-    }
-    return 1;
+    return 0;
 }
 
 static cchar *LETTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZZ";
@@ -3059,18 +3885,21 @@ PUBLIC int dbLoadDataItems(Db *db, Json *json, JsonNode *parent)
     Json     *props;
     JsonNode *item, *model;
     char     *str;
+    int      rc;
 
     for (ITERATE_JSON(json, parent, model, mid)) {
         for (ITERATE_JSON(json, model, item, id)) {
             str = jsonToString(json, id, 0, 0);
             props = jsonParse(str, 0);
-            if (!dbFindOne(db, model->name, props, NULL)) {
-                if (dbCreate(db, model->name, props, NULL) == 0) {
-                    return dberror(db, R_ERR_CANT_COMPLETE, "Cannot create item for %s. %s", str, db->error);
-                }
+            rc = 0;
+            if (!dbFindOne(db, model->name, props, NULL) && dbCreate(db, model->name, props, NULL) == 0) {
+                rc = dberror(db, R_ERR_CANT_COMPLETE, "Cannot create item for %s. %s", str, db->error);
             }
             jsonFree(props);
             rFree(str);
+            if (rc < 0) {
+                return rc;
+            }
         }
     }
     return 0;
@@ -3091,6 +3920,8 @@ PUBLIC cchar *dbType(Db *db)
 
 PUBLIC cchar *dbNext(Db *db, RList *list)
 {
+    (void) db;
+
     if (list->length == 0) {
         return 0;
     }
@@ -3107,11 +3938,17 @@ static DbChange *allocChange(Db *db, DbModel *model, DbItem *item, DbParams *par
     }
     change->db = db;
     change->model = model;
-    change->params = params;
+    if (params) {
+        change->params = *params;
+    }
     change->cmd = cmd;
     change->due = due;
+    /*
+        Index by the change's own key. The item may be removed and freed while the change is
+        still pending.
+     */
     change->key = sclone(item->key);
-    rAddName(db->changes, item->key, change, 0);
+    rAddName(db->changes, change->key, change, R_STATIC_NAME);
     return change;
 }
 

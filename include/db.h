@@ -199,7 +199,7 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 
 /********* Start of file src/db.h ************/
 
-/* 
+/*
    db.h - Embedded NoSQL Document Database
 
    High-performance embedded NoSQL document database for ANSI C applications.
@@ -213,24 +213,24 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 #pragma once
 
 #ifndef _h_DB
-#define _h_DB       1
+#define _h_DB 1
 
 /********************************** Includes **********************************/
 
 #ifndef ME_COM_DB
-    #define ME_COM_DB 1
+    #define ME_COM_DB      1
 #endif
 #ifndef ME_COM_JSON
-    #define ME_COM_JSON 1
+    #define ME_COM_JSON    1
 #endif
 #ifndef ME_COM_R
-    #define ME_COM_R 1
+    #define ME_COM_R       1
 #endif
 #ifndef ME_COM_CRYPT
-    #define ME_COM_CRYPT 1
+    #define ME_COM_CRYPT   1
 #endif
 #ifndef ME_COM_SSL
-    #define ME_COM_SSL 1
+    #define ME_COM_SSL     1
 #endif
 #ifndef ME_COM_OPENSSL
     #define ME_COM_OPENSSL 1
@@ -240,10 +240,10 @@ PUBLIC void rbPrint(RbTree *rbt, void (*print_func)(void*));
 #endif
 
 #ifndef ME_NAME
-    #define ME_NAME    "db"
+    #define ME_NAME        "db"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE   ME_NAME
+    #define ME_TITLE       ME_NAME
 #endif
 
 #include "json.h"
@@ -261,7 +261,11 @@ struct DbItem;
 struct DbModel;
 struct DbParams;
 
-#define DB_VERSION          2
+/*
+    On-disk format version. Version 3 files start with a "DB" magic and use little endian lengths
+    so they are portable across hosts. Version 2 files are still read.
+ */
+#define DB_VERSION          3
 
 #ifndef DB_MAX_LOG_AGE
     #define DB_MAX_LOG_AGE  (60 * TPS)                  /**< Maximum age of log file */
@@ -274,6 +278,13 @@ struct DbParams;
 #endif
 #ifndef DB_MAX_ITEM
     #define DB_MAX_ITEM     (256 * 1024)                /**< Maximum database item length */
+#endif
+#ifndef DB_MAX_RECORD
+/*
+    A journal change record holds a command, a model name and an item value, each with a
+    trailing null. A record size beyond this cannot have been written and is corrupt.
+ */
+    #define DB_MAX_RECORD   (DB_MAX_ITEM + DB_MAX_KEY)  /**< Maximum journal record length */
 #endif
 
 #define DB_ON_CHANGE        0x1
@@ -318,19 +329,20 @@ typedef struct Db {
     FILE *journal;          /**< Journal file descriptor */
     int flags;              /**< Database configuration flags (reserved for future use) */
     char *journalPath;      /**< On-disk journal filename */
-    size_t journalSize;      /**< Current size of journal file */
+    size_t journalSize;     /**< Current size of journal file */
     Ticks journalCreated;   /**< When journal file recreated */
-    size_t maxJournalSize;   /**< Maximum size of the journal before saving */
+    size_t maxJournalSize;  /**< Maximum size of the journal before saving */
     Ticks maxJournalAge;    /**< Maximum age of journal file before saving */
     REvent journalEvent;    /**< Timeout for journal save */
     REvent commitEvent;     /**< Timeout for commit event */
+    REvent expireEvent;     /**< Event to remove expired items met by reads */
     RHash *changes;         /**< Hash of pending changes */
     Ticks due;              /**< When delayed commits are due */
     int code;               /**< API error code */
+    int callbackDepth;      /**< Nesting depth of invokeCallbacks, used to defer callback removal */
     bool journalError : 1;  /**< Journal I/O error */
     bool timestamps : 1;    /**< Maintain created/updated timestamps (if in schema) */
     bool servicing : 1;     /**< Servicing database */
-    bool needSave : 1;      /**< Database needs saving */
 } Db;
 
 /*
@@ -343,10 +355,11 @@ typedef struct DbField {
     uint ttl : 1;         /*<< Field is a TTL expiry field */
     uint hidden : 1;      /**< The field is hidden normally (pk, sk, etc) */
     uint required : 1;    /**< The field is required on create */
+    uint unique : 1;      /**< The field value must be unique within the model */
     cchar *def;           /**< Default value */
     cchar *value;         /**< Value template */
     cchar *type;          /**< Expected data type */
-    char *enums;          /**< Set of enumerated valid values for the field */
+    RList *enums;         /**< Decoded set of enumerated valid values for the field */
 } DbField;
 
 /**
@@ -373,10 +386,11 @@ typedef int (*DbWhere)(Json *json, int nid, cvoid *arg);
  */
 typedef struct DbParams {
     bool zero : 1;           /**< Internal: force zero initialization */
-    bool bypass : 1;         /**< Bypass changes */
+    bool bypass : 1;         /**< Internal: journal replay. Apply in memory without journalling or callbacks */
     bool log : 1;            /**< Emit trace information to the log */
     bool mem : 1;            /**< Update in memory only */
-    bool upsert : 1;         /**< Update on create if present. Create on update if missing */
+    bool upsert : 1;         /**< Create the item if missing, otherwise replace it in full with the
+                                given properties. Without upsert, dbUpdate merges the properties */
     int delay;               /**< Delay before commmiting changes (Delay in msec, -1 == nocommit) */
     int limit;               /**< Limit the number of returned or removed items */
     cchar *index;            /**< Index name. Default to "primary". Currently only supports
@@ -391,6 +405,12 @@ typedef struct DbParams {
 
 /**
     Database items stored in RB indexes
+    @description Items, and the strings and JSON returned by the item accessors (dbField, dbGetField,
+        dbGetString, dbJson and dbString), are borrowed references into the database. A borrowed string
+        is valid only until the next database call that touches the item, including another dbString on
+        the same item, and until the item is updated or removed. Do not hold one across a fiber yield,
+        such as a socket write, where another fiber may change the item. Clone the value with sclone,
+        or serialize it, before either.
     @stability Evolving
  */
 typedef struct DbItem {
@@ -455,10 +475,13 @@ PUBLIC void dbClose(Db *db);
        value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
        provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
        Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
-       validated against the model and unknown property names will not be written to the database.
+       validated against the model. Contract: any property not declared as a field of the model is
+       silently dropped and never written to the database. This is intentional mass-assignment
+       protection, not an oversight, so callers must not rely on undeclared properties surviving a
+       create.
     @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
         \n
-        bool upsert : 1;      // Update on create if present. Create on update if missing.
+        bool upsert : 1;      // Create the item if missing, otherwise replace it in full.
         \n
     @return The created database item. The DbItem "name" property is the indexed key value. The
        value "json" property
@@ -475,7 +498,7 @@ PUBLIC const DbItem *dbCreate(Db *db, cchar *model, Json *props, DbParams *param
       Subsequent updates to the item will invalidate the pointer.
     @param item Database item returned from other APIs.
     @param fieldName Name of the field to examine.
-    @return The field value as a string. Caller must not free.
+    @return The field value as a string. Caller must not free. Borrowed, see DbItem for its lifetime.
     @stability Evolving
  */
 PUBLIC cchar *dbField(const DbItem *item, cchar *fieldName);
@@ -614,6 +637,7 @@ PUBLIC const DbItem *dbGet(Db *db, cchar *model, Json *props, DbParams *params);
            supports "primary".
         \n
     @return A string containing the required field in the data item. Caller must not free.
+        Borrowed, see DbItem for its lifetime.
     @stability Evolving
  */
 PUBLIC cchar *dbGetField(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params);
@@ -711,11 +735,30 @@ PUBLIC double dbGetDouble(Db *db, cchar *model, cchar *fieldName, Json *props, D
 PUBLIC int64 dbGetNum(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params, int64 defaultValue);
 
 /**
+   Get a field from a matching item as a string value.
+   @param db Database instance returned via dbOpen.
+   @param model Name of the schema model for matching items.
+   @param fieldName Name of the item field to return.
+   @param props JSON object containing the item properties to match. Use the macro DB_PROP(name,
+      value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
+      provide the properties as a JSON/5 string.
+   @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
+   @param defaultValue Default value to return if the field is not found.
+   @return The field value as a string. This is an internal reference into the item and must not be
+      modified or freed. Borrowed, see DbItem for its lifetime.
+      Returns the default value if the item or field is not found.
+   @stability Evolving
+ */
+PUBLIC cchar *dbGetString(Db *db, cchar *model, cchar *fieldName, Json *props, DbParams *params,
+                          cchar *defaultValue);
+
+/**
     Get JSON object representing a database item
     @description Retrieve the parsed JSON representation of a database item.
     The returned JSON object provides access to all item fields and values.
     @param item Database item returned from dbCreate, dbGet, dbFind or dbUpdate
     @return JSON object containing item data. This is an internal reference - caller must NOT modify or free.
+    Borrowed, see DbItem for its lifetime.
     Returns NULL if item is invalid.
     @stability Evolving
  */
@@ -759,7 +802,8 @@ PUBLIC char *dbListToString(RList *list);
     @param flags Formatting options: JSON_HUMAN (pretty-printed), JSON_JSON (strict JSON),
     JSON_JSON5 (JSON5 format), or other jsonToString flags
     @return JSON string representation. This is an internal reference - caller must not free.
-    Returns NULL if item is invalid.
+    Borrowed, see DbItem for its lifetime. A second dbString call on the same
+    item frees the string returned by the first. Returns NULL if item is invalid.
     @stability Evolving
  */
 PUBLIC cchar *dbString(const DbItem *item, int flags);
@@ -779,7 +823,7 @@ PUBLIC Json *dbPropsToJson(cchar *props[]);
     @return A JSON object containing the supplied property values
     @stability Internal
  */
-PUBLIC Json *dbStringToJson(cchar *fmt, ...);
+PUBLIC Json *dbStringToJson(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Load data from JSON file into database
@@ -957,7 +1001,8 @@ PUBLIC const DbItem *dbSetDouble(Db *db, cchar *model, cchar *fieldName, double 
        value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
        provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
        Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
-       validated against the model.
+       validated against the model. Setting a required field's value to NULL (removing it) fails
+       and leaves the stored item unchanged.
     @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
         \n
         cchar *index;     // Name of the index to use. Defaults to "primary". Currently only
@@ -1027,6 +1072,16 @@ PUBLIC void dbSetJournalParams(Db *db, Ticks delay, size_t size);
     Add a database change trigger callback
     @description When database items are changed, the trigger callbacks are invoked to
         notify regarding the change.
+        \n\n
+        A callback may read and modify the database, including removing other items. The item it
+        is given has already been unlinked from the index and is freed when the callback returns,
+        so the callback must not retain it. A removal performed by a callback may free an item
+        that the call which triggered the callback has already collected into a result, so a
+        DbItem or a field pointer obtained before a change must not be used after it. Copy any
+        value that is needed across a database change, as described for dbField.
+        \n\n
+        Reads do not invoke callbacks. Expired items that a read encounters are omitted from its result
+        and removed from a subsequent event, which invokes the remove callbacks.
     @param db Database instance
     @param proc Database trigger function
     @param model Target model. If null, then match all models.
@@ -1065,7 +1120,8 @@ PUBLIC cchar *dbType(Db *db);
        value, ...) to specify the properties as a list of keyword / value pairs. Use DB_JSON to
        provide the properties as a JSON/5 string. For example: DB_PROP("name", name, "address", "12
        Wishbury lane") or DB_JSON("{role: 'user'}"). If a model is provided, the properties are
-       validated against the model and unknown property names will not be written to the database.
+       validated against the model. Undeclared properties are discarded. Removing or nulling a required field
+       via update, upsert, or #dbSetField fails without changing the stored item.
     @param params List of API parameters. Use the macro DB_PARAMS(key = value, ...) to specify.
         \n
         cchar *index;     // Name of the index to use. Defaults to "primary". Currently only

@@ -109,6 +109,7 @@ typedef struct uctx {
     TaskHandle_t task;
     SemaphoreHandle_t mutex;        // Mutex for synchronization
     SemaphoreHandle_t cond;         // Condition variable for context switching
+    SemaphoreHandle_t exited;       // Posted by the task when it is finished with this context
     uctx_entry entry;               // Fiber entry
     void *args[UCTX_MAX_ARGS];      // Args
     int resumed;                    // Flag to indicate if the thread has started
@@ -725,7 +726,7 @@ typedef struct uctx_t {
 
 
 #ifndef UCTX_MIN_STACK_SIZE
-    #define UCTX_MIN_STACK_SIZE (8 * 1024)        /**< Minimum stack size in bytes */
+    #define UCTX_MIN_STACK_SIZE (8 * 1024)         /**< Minimum stack size in bytes */
 #endif
 
 #ifndef UCTX_MAX_STACK_SIZE
@@ -783,6 +784,12 @@ PUBLIC int uctx_getcontext(uctx_t *ucp);
     When the context is later activated, execution will begin at the specified function.
     @param ucp Pointer to context structure to initialize
     @param fn Entry point function for the new context
+    On FreeRTOS each context with an entry function is a FreeRTOS task. Its stack (the size set by
+    uctx_setstack) and task control block come from the FreeRTOS heap, which on ESP-IDF is internal
+    RAM, and the context holds three semaphores. A context therefore costs approximately
+    stackSize + sizeof(StaticTask_t) + 3 * sizeof(StaticSemaphore_t) plus heap overhead. Bound the
+    number of live contexts against the available heap. Creation fails with -1, leaving nothing
+    allocated, when the heap is exhausted or the stack size does not fit configSTACK_DEPTH_TYPE.
     @param argc Number of integer arguments to pass to the function (currently unused)
     @param ... Variable arguments to pass to the function (currently unused)
     @return 0 on success, -1 on failure
@@ -818,6 +825,15 @@ PUBLIC int uctx_swapcontext(uctx_t *from, uctx_t *to);
     @description Frees any internal resources allocated for the context. Does not free the context
     structure itself or any user-provided stack memory. After calling this function, the context
     should not be used for further operations without reinitialization.
+
+    This call is synchronous on every implementation. On the backends that map a context onto an OS
+    thread or task (pthreads, FreeRTOS), the context is resumed with a termination flag set and this
+    function does not return until that thread or task has finished with the context. The caller may
+    therefore release the memory holding the context as soon as this returns.
+
+    A context that is torn down never runs again: its thread or task exits from wherever it was
+    blocked without returning to the context's code, as on the native backends. Calling this
+    function twice on the same context is harmless.
     @param ucp Pointer to context structure to clean up
     @stability Evolving
  */
@@ -873,7 +889,8 @@ PUBLIC int uctx_init(uctx_t *ucp);
 /**
     Terminate the UCTX subsystem and free resources.
     @description Should be called at application shutdown for proper resource cleanup.
-    Frees any global resources allocated by uctx_init().
+    Frees any global resources allocated by uctx_init(). On Windows, this converts the thread back from a fiber
+    if uctx_init() converted it, so it must be called on the main fiber. The subsystem may be initialized again.
     @stability Evolving
  */
 PUBLIC void uctx_term(void);

@@ -49,7 +49,7 @@
 #endif
 
 #ifndef ME_JSON_MAX_RECURSION
-    #define ME_JSON_MAX_RECURSION    32        /**< Maximum recursion depth for jsonBlend operations */
+    #define ME_JSON_MAX_RECURSION    32        /**< Maximum recursion depth for blending and serialization */
 #endif
 
 #ifndef ME_JSON_DEFAULT_PROPERTY
@@ -57,10 +57,10 @@
 #endif
 
 #ifndef ME_JSON_BUFSIZE
-    /*
-        Most conversions are done for short properties and values, so we use a small buffer size.
-     */
-    #define ME_JSON_BUFSIZE          128       /**< Default bufsize for jsonToString operation */
+/*
+    Most conversions are done for short properties and values, so we use a small buffer size.
+ */
+    #define ME_JSON_BUFSIZE 128                /**< Default bufsize for jsonToString operation */
 #endif
 
 
@@ -73,14 +73,17 @@ static JsonNode *allocNode(Json *json, int type, cchar *name, cchar *value);
 static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int sid, cchar *skey, int flags, int depth);
 static void compactProperties(RBuf *buf, char *sol, int indent);
 static char *copyProperty(Json *json, cchar *key);
-static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags);
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int depth, int flags);
 static void freeNode(JsonNode *node);
 static bool isfnumber(cchar *s, size_t len);
 static int jerror(Json *json, cchar *fmt, ...);
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type);
-static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf);
-static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent);
+static int jquerySetTerm(Json *json, int nid, cchar *property, cchar *rest, int qtype, cchar *value, int type);
+static cchar *nodeValueAsString(JsonNode *node, cchar *defaultValue);
+static int nodeToString(const Json *json, int nid, int indent, int depth, int flags, RBuf *buf);
+static int putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent, int depth);
 static char *parseValue(Json *json, int parent, int type, char *name, char *value, int flags);
+static int replaceFile(cchar *tmp, cchar *path);
 static int sleuthValueType(cchar *value, size_t len, int flags);
 static void spaces(RBuf *buf, int count);
 
@@ -136,10 +139,12 @@ static void freeNode(JsonNode *node)
     }
     if (node->allocatedName) {
         rFree(node->name);
+        node->name = 0;
         node->allocatedName = 0;
     }
     if (node->allocatedValue) {
         rFree(node->value);
+        node->value = 0;
         node->allocatedValue = 0;
     }
 }
@@ -147,6 +152,7 @@ static void freeNode(JsonNode *node)
 static bool growNodes(Json *json, int num)
 {
     void *p;
+    int  size;
 
     if (!json || num <= 0) {
         return 0;
@@ -156,17 +162,18 @@ static bool growNodes(Json *json, int num)
         return 0;
     }
     if ((json->count + num) > json->size) {
-        json->size += max(num, ME_JSON_INC);
-        if (json->size > ME_JSON_MAX_NODES) {
+        size = json->size + max(num, ME_JSON_INC);
+        if (size > ME_JSON_MAX_NODES) {
             jerror(json, "Too many elements in json text");
             return 0;
         }
-        p = rRealloc(json->nodes, sizeof(JsonNode) * (size_t) json->size);
+        p = rRealloc(json->nodes, sizeof(JsonNode) * (size_t) size);
         if (p == 0) {
             jerror(json, "Cannot allocate memory");
             return 0;
         }
         json->nodes = p;
+        json->size = size;
     }
     return 1;
 }
@@ -196,6 +203,7 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
                     cchar *value, int allocatedValue)
 {
     JsonNode *node;
+    char     *copy;
 
     if (!json || nid < 0 || nid >= json->count) {
         return;
@@ -203,41 +211,30 @@ static void setNode(Json *json, int nid, int type, cchar *name, int allocatedNam
     node = &json->nodes[nid];
     node->type = (uint) type;
 
+    /*
+        Clone the new name and value before freeing the old, as the caller may pass a pointer into the old one.
+     */
     if (name != node->name && !smatch(name, node->name)) {
+        copy = (name && allocatedName) ? sclone(name) : (char*) name;
         if (node->allocatedName) {
-            node->allocatedName = 0;
             rFree(node->name);
         }
-        node->name = 0;
-
-        if (name) {
-            node->allocatedName = (uint) allocatedName;
-            if (allocatedName) {
-                name = sclone(name);
-            }
-            node->name = (char*) name;
-        }
+        node->name = copy;
+        node->allocatedName = copy ? (uint) allocatedName : 0;
     }
 
     if (value != node->value && !smatch(value, node->value)) {
 #if JSON_TRIGGER
         if (json->trigger) {
-            (json->trigger)(json->triggerArg, json, node, name, value, node->value);
+            (json->trigger)(json->triggerArg, json, node, node->name, value, node->value);
         }
 #endif
+        copy = (value && allocatedValue) ? sclone(value) : (char*) value;
         if (node->allocatedValue) {
-            node->allocatedValue = 0;
             rFree(node->value);
         }
-        node->value = 0;
-
-        if (value) {
-            node->allocatedValue = (uint) allocatedValue;
-            if (allocatedValue) {
-                value = sclone(value);
-            }
-            node->value = (char*) value;
-        }
+        node->value = copy;
+        node->allocatedValue = copy ? (uint) allocatedValue : 0;
     }
 }
 
@@ -264,7 +261,8 @@ static void copyNodes(Json *dest, int did, Json *src, int sid, int slen)
     JsonNode *dp, *sp;
     int      i;
 
-    if (!dest || !src || did < 0 || did >= dest->count || sid < 0 || sid >= src->count) {
+    if (!dest || !src || did < 0 || did >= dest->count || sid < 0 || sid >= src->count ||
+        slen < 0 || slen > dest->count - did || slen > src->count - sid) {
         return;
     }
     dp = &dest->nodes[did];
@@ -558,24 +556,33 @@ PUBLIC int jsonSave(Json *json, int nid, cchar *key, cchar *path, int mode, int 
         return R_ERR_CANT_OPEN;
     }
     len = slen(text);
-    if (write(fd, text, (uint) len) != (uint) len) {
+    if ((ssize) write(fd, text, (uint) len) != (ssize) len) {
+        close(fd);
+        unlink(tmp);
         rFree(text);
         rFree(tmp);
-        close(fd);
         return R_ERR_CANT_WRITE;
     }
-    close(fd);
     rFree(text);
-
-#if ME_WIN_LIKE
-    unlink(path);
-#endif
-    if (rename(tmp, path) < 0) {
+    if (close(fd) < 0 || replaceFile(tmp, path) < 0) {
+        unlink(tmp);
         rFree(tmp);
         return R_ERR_CANT_WRITE;
     }
     rFree(tmp);
     return 0;
+}
+
+/*
+    Atomically replace path with tmp so path is never absent
+ */
+static int replaceFile(cchar *tmp, cchar *path)
+{
+#if ME_WIN_LIKE
+    return MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ? 0 : -1;
+#else
+    return rename(tmp, path);
+#endif
 }
 
 /*
@@ -613,6 +620,18 @@ static char *parsePrimitive(Json *json)
             return start;
 
         default:
+            if (*next == '+') {
+                /*
+                    A plus belongs to a primitive only as an exponent sign, so that
+                    "1e+5" tokenizes as one number. A leading plus does not, and stays
+                    a parse error as before.
+                 */
+                if (next > start && (next[-1] == 'e' || next[-1] == 'E')) {
+                    break;
+                }
+                json->next = next;
+                return start;
+            }
             if (*next != '_' && *next != '-' && *next != '.' && !isalnum((uchar) * next)) {
                 json->next = next;
                 return start;
@@ -658,13 +677,95 @@ static char *parseRegExp(Json *json)
 }
 
 /*
+    Decode four hex digits at *nextp and advance past them. Return the value, or -1 on error.
+ */
+static int parseHex4(Json *json, char **nextp)
+{
+    char *next;
+    int  d, j, value;
+
+    value = 0;
+    for (j = 0, next = *nextp; j < 4; j++, next++) {
+        if (next >= json->end || !*next) {
+            jerror(json, "Invalid unicode characters");
+            return -1;
+        }
+        d = tolower((uchar) * next);
+        if (isdigit((uchar) d)) {
+            value = (value * 16) + d - '0';
+        } else if (d >= 'a' && d <= 'f') {
+            value = (value * 16) + d - 'a' + 10;
+        } else {
+            jerror(json, "Unexpected hex characters");
+            return -1;
+        }
+    }
+    *nextp = next;
+    return value;
+}
+
+/*
+    Decode the \u escape whose 'u' is at *nextp into UTF-8 at op. A surrogate pair is one code
+    point, and a lone surrogate is an error as it has no UTF-8 form. The escape is at least six
+    characters and its UTF-8 at most four bytes, so it always fits in place. On return *nextp is
+    on the last hex digit consumed. Return the byte count written, or -1 on error.
+ */
+static int parseUnicode(Json *json, char **nextp, char *op)
+{
+    char *next;
+    int  cp, low;
+
+    next = *nextp + 1;
+    if ((cp = parseHex4(json, &next)) < 0) {
+        return -1;
+    }
+    if (cp >= 0xD800 && cp <= 0xDBFF) {
+        if (&next[1] >= json->end || next[0] != '\\' || next[1] != 'u') {
+            jerror(json, "Invalid unicode surrogate");
+            return -1;
+        }
+        next += 2;
+        if ((low = parseHex4(json, &next)) < 0) {
+            return -1;
+        }
+        if (low < 0xDC00 || low > 0xDFFF) {
+            jerror(json, "Invalid unicode surrogate");
+            return -1;
+        }
+        cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+    } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+        jerror(json, "Invalid unicode surrogate");
+        return -1;
+    }
+    *nextp = next - 1;
+    if (cp < 0x80) {
+        op[0] = (char) cp;
+        return 1;
+    } else if (cp < 0x800) {
+        op[0] = (char) (0xC0 | (cp >> 6));
+        op[1] = (char) (0x80 | (cp & 0x3F));
+        return 2;
+    } else if (cp < 0x10000) {
+        op[0] = (char) (0xE0 | (cp >> 12));
+        op[1] = (char) (0x80 | ((cp >> 6) & 0x3F));
+        op[2] = (char) (0x80 | (cp & 0x3F));
+        return 3;
+    }
+    op[0] = (char) (0xF0 | (cp >> 18));
+    op[1] = (char) (0x80 | ((cp >> 12) & 0x3F));
+    op[2] = (char) (0x80 | ((cp >> 6) & 0x3F));
+    op[3] = (char) (0x80 | (cp & 0x3F));
+    return 4;
+}
+
+/*
     Parse a string and advance json->next to the end of the string.
     Quotes are removed. Return with json->next pointing to the character after the closing quote.
  */
 static char *parseString(Json *json)
 {
     char *end, *next, *op, *start, c, quote;
-    int  d, j;
+    int  d;
 
     if (!json || !json->next || !json->end) {
         jerror(json, "Bad args");
@@ -702,22 +803,16 @@ static char *parseString(Json *json)
                 break;
                 break;
             case 'u':
-                for (j = c = 0, next++; j < 4 && next < end && *next; next++, j++) {
-                    d = tolower((uchar) * next);
-                    if (isdigit((uchar) d)) {
-                        c = (c * 16) + d - '0';
-                    } else if (d >= 'a' && d <= 'f') {
-                        c = (c * 16) + d - 'a' + 10;
-                    } else {
-                        jerror(json, "Unexpected hex characters");
-                        return NULL;
-                    }
-                }
-                if (j < 4) {
-                    jerror(json, "Invalid unicode characters");
+                /*
+                    parseUnicode writes the UTF-8 bytes at op and leaves next on the last hex
+                    digit. Step op to the last byte written so the store below and the loop
+                    increment carry on from there.
+                 */
+                if ((d = parseUnicode(json, &next, op)) < 0) {
                     return NULL;
                 }
-                next--;
+                op += d - 1;
+                c = *op;
                 break;
 
             default:
@@ -808,6 +903,14 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             if (flags & JSON_EXPECT_COMMA) {
                 return jerror(json, "Invalid brace/bracket");
             }
+            /*
+                A container in an object position needs a key, exactly as a scalar does.
+                Without this, "{{}}" parsed into an object holding a nameless child, which
+                serialized as the invalid "{null:{}}" and crashed jsonBlend.
+             */
+            if (!name && parent >= 0 && json->nodes[parent].type == JSON_OBJECT) {
+                return jerror(json, "Missing property name");
+            }
             flags &= ~JSON_PARSE_FLAGS;
             type = (c == '{' ? JSON_OBJECT : JSON_ARRAY);
             flags |= type == JSON_OBJECT ? JSON_EXPECT_KEY: JSON_EXPECT_VALUE;
@@ -833,7 +936,13 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             if (name) {
                 return jerror(json, "Missing property value");
             }
-            if (flags & JSON_STRICT_PARSE && flags & (JSON_EXPECT_VALUE | JSON_EXPECT_KEY)) {
+            /*
+                An element is only missing if the container has one. An empty object or
+                array still carries the expectation set when it was opened, and {} and []
+                are both legal.
+             */
+            if (flags & JSON_STRICT_PARSE && flags & (JSON_EXPECT_VALUE | JSON_EXPECT_KEY) &&
+                json->count > parent + 1) {
                 return jerror(json, "Missing value");
             }
             flags &= ~JSON_PARSE_FLAGS;
@@ -864,6 +973,9 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             if (type != JSON_OBJECT && type != JSON_ARRAY) {
                 return jerror(json, "Comma in non-object or array");
             }
+            if (name) {
+                return jerror(json, "Missing property value");
+            }
             if (flags & JSON_STRICT_PARSE && flags & (JSON_EXPECT_VALUE | JSON_EXPECT_KEY)) {
                 return jerror(json, "Invalid comma");
             }
@@ -882,7 +994,15 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             break;
 
         case '/':
-            if (++json->next < json->end && (*json->next == '*' || *json->next == '/')) {
+            /*
+                Terminate any pending primitive token, exactly as white space does.
+                parsePrimitive returns at this '/' without writing a null, and unlike a
+                brace, bracket, colon or comma nothing overwrites it later, so without
+                this the token's value ran on into the comment text. The '/' itself is
+                consumed either way: parseComment and parseRegExp both start after it.
+             */
+            *json->next++ = 0;
+            if (json->next < json->end && (*json->next == '*' || *json->next == '/')) {
                 if (flags & JSON_STRICT_PARSE) {
                     return jerror(json, "Comments are not allowed in JSON mode");
                 }
@@ -890,6 +1010,9 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
                     return R_ERR_BAD_STATE;
                 }
             } else {
+                if (flags & JSON_STRICT_PARSE) {
+                    return jerror(json, "Regular expressions are not allowed in JSON mode");
+                }
                 name = parseValue(json, parent, JSON_REGEXP, name, parseRegExp(json), flags);
             }
             break;
@@ -901,7 +1024,19 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
             }
         // Fall through
         case '"':
+            if (flags & JSON_EXPECT_COMMA) {
+                return jerror(json, "Comma expected");
+            }
             name = parseValue(json, parent, JSON_STRING, name, parseString(json), flags);
+            /*
+                A string used as a value satisfies the pending element expectation, exactly
+                as a primitive does. A string used as a key does not: the colon clears
+                JSON_EXPECT_KEY, so that a missing colon is still caught.
+             */
+            if (!name) {
+                flags |= JSON_EXPECT_COMMA;
+                flags &= ~JSON_EXPECT_VALUE;
+            }
             break;
 
         default:
@@ -942,6 +1077,8 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags)
  */
 static char *parseValue(Json *json, int parent, int type, char *name, char *value, int flags)
 {
+    size_t len;
+
     if (value == NULL || json->error) {
         return NULL;
     }
@@ -959,7 +1096,17 @@ static char *parseValue(Json *json, int parent, int type, char *name, char *valu
         Determine the type of the value.
      */
     if (type == 0) {
-        type = sleuthValueType(value, (size_t) (json->next - value - 1), flags);
+        /*
+            The token runs to json->next. A token terminated by white space has had that
+            terminator overwritten with a null, so exclude it. A token terminated by a
+            brace, bracket, colon or comma keeps its delimiter for the next token and so
+            has no null to discount.
+         */
+        len = (size_t) (json->next - value);
+        if (len > 0 && json->next[-1] == '\0') {
+            len--;
+        }
+        type = sleuthValueType(value, len, flags);
         if (flags & JSON_STRICT_PARSE && type != JSON_PRIMITIVE) {
             jerror(json, "Invalid primitive token");
             return NULL;
@@ -998,11 +1145,14 @@ static int sleuthValueType(cchar *value, size_t len, int flags)
     if (!value) {
         return JSON_PRIMITIVE;
     }
+    /*
+        The length must match exactly, otherwise a keyword prefix such as "nul" would match.
+     */
     c = (uchar) value[0];
-    if ((c == 't' && sncmp(value, "true", len) == 0) ||
-        (c == 'f' && sncmp(value, "false", len) == 0) ||
-        (c == 'n' && sncmp(value, "null", len) == 0) ||
-        ((c == 'u' && sncmp(value, "undefined", len) == 0) && !(flags & JSON_STRICT_PARSE))) {
+    if ((c == 't' && len == 4 && sncmp(value, "true", len) == 0) ||
+        (c == 'f' && len == 5 && sncmp(value, "false", len) == 0) ||
+        (c == 'n' && len == 4 && sncmp(value, "null", len) == 0) ||
+        ((c == 'u' && len == 9 && sncmp(value, "undefined", len) == 0) && !(flags & JSON_STRICT_PARSE))) {
         type = JSON_PRIMITIVE;
 
     } else if (isfnumber(value, len)) {
@@ -1062,24 +1212,37 @@ static char *getNextTerm(char *str, char **rest, int *type)
     end = strpbrk(start, seps);
     if (end != 0) {
         if (*end == '[') {
-            *type = JSON_ARRAY;
+            /*
+                A quoted term inside brackets is a property name, not an index, so the
+                container it selects from is an object. Without this "a['q']" typed the
+                container as an array and the write path built one, losing the name.
+             */
+            *type = (end[1] == '"' || end[1] == '\'') ? JSON_OBJECT : JSON_ARRAY;
             *end++ = '\0';
         } else if (*end == '.') {
             *type = JSON_OBJECT;
             *end++ = '\0';
         } else {
             //  Strip off matching quotes
-            if ((*start == '"' || *start == '\'') && end > start && end[-1] == *start) {
+            //  end > start + 1 so the opening and closing quotes are distinct
+            //  characters. A lone quote before "]" matched itself and left an
+            //  empty term, which set and get then resolved differently.
+            if ((*start == '"' || *start == '\'') && end > start + 1 && end[-1] == *start) {
                 start++;
                 end[-1] = '\0';
             }
             *end++ = '\0';
-            i = strspn(end, seps);
-            end += i;
-            if (*end == '\0') {
-                end = 0;
-            }
             *type = JSON_OBJECT;
+        }
+        /*
+            A remainder of nothing but separators is not another term. Only the
+            bracket-close branch used to normalize this, so a trailing "." or "["
+            left a non-null rest and the caller believed another term followed --
+            which made jsonSet create an empty container instead of setting a value.
+         */
+        end += strspn(end, seps);
+        if (*end == '\0') {
+            end = 0;
         }
     }
     *rest = end;
@@ -1089,7 +1252,7 @@ static char *getNextTerm(char *str, char **rest, int *type)
 static int findProperty(Json *json, int nid, cchar *property)
 {
     JsonNode *node, *np;
-    ssize    index;
+    int64    index;
     int      id;
 
     if (!json || nid < 0 || nid >= json->count) {
@@ -1113,7 +1276,7 @@ static int findProperty(Json *json, int nid, cchar *property)
             return R_ERR_CANT_FIND;
 
         } else {
-            if (index >= SSIZE_MAX || index >= (node->last - nid - 1)) {
+            if (index >= (node->last - nid - 1)) {
                 return R_ERR_CANT_FIND;
             }
             for (id = nid + 1; index-- > 0 && id < node->last; id = np->last) {
@@ -1138,12 +1301,115 @@ static int findProperty(Json *json, int nid, cchar *property)
 }
 
 /*
-    Internal JSON get/set query.
+    Set one property. rest indicates a following path term; qtype selects new container types.
+ */
+static int jquerySetTerm(Json *json, int nid, cchar *property, cchar *rest, int qtype, cchar *value, int type)
+{
+    int64 index;
+    int   cid, count, id, ntype;
+
+    id = findProperty(json, nid, property);
+    /*
+        Array lookup by value is read-only: changing the value would invalidate the lookup key.
+     */
+    if (nid < json->count && json->nodes[nid].type == JSON_ARRAY && !smatch(property, "$") &&
+        !isdigit((uchar) * property)) {
+        return R_ERR_CANT_CREATE;
+    }
+    if (id < 0) {
+        // Property not found
+        if (nid >= json->count) {
+            allocNode(json, JSON_OBJECT, 0, 0);
+        }
+        /*
+            findProperty cannot resolve empty names.
+         */
+        if (*property == '\0') {
+            return R_ERR_CANT_FIND;
+        }
+        /*
+            Convert scalars to objects so findProperty can reach the new child.
+         */
+        if (!(json->nodes[nid].type & (JSON_OBJECT | JSON_ARRAY))) {
+            setNode(json, nid, JSON_OBJECT, json->nodes[nid].name, 1, 0, 0);
+        }
+        /*
+            Fill missing array entries with nulls to preserve the requested index.
+         */
+        if (json->nodes[nid].type == JSON_ARRAY && isdigit((uchar) * property)) {
+            /*
+                Reject indexes beyond the node limit.
+             */
+            index = stoi(property);
+            if (index < 0 || index >= ME_JSON_MAX_NODES) {
+                return R_ERR_CANT_CREATE;
+            }
+            for (count = 0, cid = nid + 1; cid < json->nodes[nid].last; cid = json->nodes[cid].last) {
+                count++;
+            }
+            /*
+                Insert the gap in one operation to avoid quadratic work and partial updates.
+             */
+            if (count < index) {
+                if ((cid = insertNodes(json, json->nodes[nid].last, (int) (index - count), nid)) < 0) {
+                    return R_ERR_CANT_CREATE;
+                }
+                // Use a shared literal to avoid allocating each null separately.
+                while (count < index) {
+                    setNode(json, cid++, JSON_PRIMITIVE, 0, 0, "null", 0);
+                    count++;
+                }
+            }
+        }
+        if ((cid = insertNodes(json, json->nodes[nid].last, 1, nid)) < 0) {
+            return R_ERR_CANT_CREATE;
+        }
+        if (rest) {
+            // Not yet at the leaf node so make intervening array/object
+            setNode(json, cid, qtype, property, 1, 0, 0);
+
+        } else if (json->nodes[nid].type == JSON_ARRAY && smatch(property, "$")) {
+            if (type == JSON_OBJECT || type == JSON_ARRAY) {
+                setNode(json, cid, type, property, 1, 0, 0);
+            } else {
+                setNode(json, cid, type, property, 1, value, 1);
+            }
+
+        } else {
+            setNode(json, cid, type, property, 1, value, 1);
+        }
+        id = cid;
+
+    } else {
+        if (rest) {
+            /*
+                Convert intervening scalars to containers; dot and bracket syntax accept either container type.
+             */
+            ntype = json->nodes[id].type;
+            if (!(ntype & (JSON_OBJECT | JSON_ARRAY))) {
+                setNode(json, id, qtype, property, 1, 0, 0);
+            }
+        } else {
+            /*
+                Store the value before removing a replaced container's subtree, as the value may point into it.
+             */
+            count = (json->nodes[id].type & (JSON_OBJECT | JSON_ARRAY)) ? json->nodes[id].last - id - 1 : 0;
+            setNode(json, id, type, property, 1, value, 1);
+            if (count > 0) {
+                removeNodes(json, id + 1, count);
+            }
+        }
+    }
+    return id;
+}
+
+/*
+    Resolve or create each term in a property path.
  */
 static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 {
     char *property, *rest;
-    int  cid, id, ntype, qtype;
+    int  id, qtype, terms;
 
     if (!json || nid < 0 || nid > json->count) {
         return R_ERR_BAD_ARGS;
@@ -1155,51 +1421,19 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
 
     qtype = 0;
     rest = 0;
+    terms = 0;
 
     for (; (property = getNextTerm(property, &rest, &qtype)) != 0; property = rest, nid = id) {
-        id = findProperty(json, nid, property);
+        terms++;
         if (value) {
-            if (id < 0) {
-                // Property not found
-                if (nid >= json->count) {
-                    allocNode(json, JSON_OBJECT, 0, 0);
-                }
-                if ((cid = insertNodes(json, json->nodes[nid].last, 1, nid)) < 0) {
-                    return R_ERR_CANT_CREATE;
-                }
-                if (rest) {
-                    // Not yet at the leaf node so make intervening array/object
-                    setNode(json, cid, qtype, property, 1, 0, 0);
-
-                } else if (json->nodes[nid].type == JSON_ARRAY && smatch(property, "$")) {
-                    if (type == JSON_OBJECT || type == JSON_ARRAY) {
-                        setNode(json, cid, type, property, 1, 0, 0);
-                    } else {
-                        setNode(json, cid, type, property, 1, value, 1);
-                    }
-
-                } else {
-                    setNode(json, cid, type, property, 1, value, 1);
-                }
-                id = cid;
-
-            } else {
-                if (rest) {
-                    ntype = json->nodes[id].type;
-                    //  Node type mismatch. But allow query type to be an array index even if node is an object
-                    if (ntype != qtype && !(ntype == JSON_OBJECT && qtype == JSON_ARRAY)) {
-                        setNode(json, id, qtype, property, 1, 0, 0);
-                    }
-                } else {
-                    //  Property found. Just update the value
-                    setNode(json, id, type, property, 1, value, 1);
-                }
+            if ((id = jquerySetTerm(json, nid, property, rest, qtype, value, type)) < 0) {
+                return id;
             }
         } else {
             /*
                 Get or remove
              */
-            if (id < 0) {
+            if ((id = findProperty(json, nid, property)) < 0) {
                 return R_ERR_CANT_FIND;
             }
             if (rest == 0) {
@@ -1207,6 +1441,10 @@ static int jquery(Json *json, int nid, cchar *key, cchar *value, int type)
                 break;
             }
         }
+    }
+    if (terms == 0) {
+        //  A key of nothing but separators names no property, as an empty key does
+        return R_ERR_CANT_FIND;
     }
     return nid;
 }
@@ -1290,15 +1528,25 @@ PUBLIC JsonNode *jsonGetChildNode(Json *json, int pid, int nth)
 }
 
 /*
-    Get a property value. The nid provides the index of the base node, and the "name"
-    is search using that index as a starting point. Name can contain "." or "[]".
+    Containers use empty placeholders; null uses defaultValue.
+ */
+static cchar *nodeValueAsString(JsonNode *node, cchar *defaultValue)
+{
+    if (node->type & JSON_OBJECT) {
+        return "{}";
+    } else if (node->type & JSON_ARRAY) {
+        return "[]";
+    } else if (node->type & JSON_PRIMITIVE && smatch(node->value, "null")) {
+        return defaultValue;
+    }
+    return node->value;
+}
 
-    This returns a short-term reference into the JSON tree. It is not stable over updates.
+/*
+    Read a property path relative to nid. The returned reference is invalidated by updates.
  */
 PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue)
 {
-    JsonNode *node;
-
     if (!json || nid < 0 || nid >= json->count) {
         return defaultValue;
     }
@@ -1307,15 +1555,26 @@ PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue)
             return defaultValue;
         }
     }
-    node = &json->nodes[nid];
-    if (node->type & JSON_OBJECT) {
-        return "{}";
-    } else if (node->type & JSON_ARRAY) {
-        return "[]";
-    } else if (node->type & JSON_PRIMITIVE && smatch(json->nodes[nid].value, "null")) {
+    return nodeValueAsString(&json->nodes[nid], defaultValue);
+}
+
+/*
+    Read a direct child by literal name.
+ */
+PUBLIC cchar *jsonGetKey(Json *json, int nid, cchar *key, cchar *defaultValue)
+{
+    int id;
+
+    if (!json || nid < 0 || nid >= json->count) {
         return defaultValue;
     }
-    return json->nodes[nid].value;
+    if (key == 0 || *key == '\0') {
+        return defaultValue;
+    }
+    if ((id = findProperty(json, nid, key)) < 0) {
+        return defaultValue;
+    }
+    return nodeValueAsString(&json->nodes[id], defaultValue);
 }
 
 //  DEPRECATED
@@ -1354,10 +1613,10 @@ PUBLIC bool jsonGetBool(Json *json, int nid, cchar *key, bool defaultValue)
 PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
 {
     cchar *value;
-    char  defbuf[16];
 
-    sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
-    value = jsonGet(json, nid, key, defbuf);
+    if ((value = jsonGet(json, nid, key, 0)) == 0) {
+        return defaultValue;
+    }
     if (snumber(value)) {
         return stoi(value);
     }
@@ -1366,12 +1625,15 @@ PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue)
 
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue)
 {
-    cchar *value;
-    char  defbuf[16];
+    int64 value;
 
-    sfmtbuf(defbuf, sizeof(defbuf), "%d", defaultValue);
-    value = jsonGet(json, nid, key, defbuf);
-    return (int) stoi(value);
+    value = jsonGetNum(json, nid, key, defaultValue);
+    if (value > MAXINT) {
+        return MAXINT;
+    } else if (value < -MAXINT - 1) {
+        return -MAXINT - 1;
+    }
+    return (int) value;
 }
 
 PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key)
@@ -1392,21 +1654,41 @@ PUBLIC ssize jsonGetLength(Json *json, int nid, cchar *key)
 
 PUBLIC int64 jsonGetNum(Json *json, int nid, cchar *key, int64 defaultValue)
 {
-    cchar *value;
-    char  defbuf[16];
+    cchar  *value;
+    char   *end;
+    int64  result;
+    double d;
 
-    sfmtbuf(defbuf, sizeof(defbuf), "%lld", defaultValue);
-    value = jsonGet(json, nid, key, defbuf);
-    return stoi(value);
+    if ((value = jsonGet(json, nid, key, 0)) == 0) {
+        return defaultValue;
+    }
+    end = (char*) value;
+    result = stoix(value, &end, 10);
+    if (*end == '\0') {
+        return result;
+    }
+    /*
+        A fraction, an exponent or a hex literal. Convert through the double path, saturating at
+        the int64 limits, rather than stopping at the first non-digit as stoi does.
+     */
+    d = atof(value);
+    if (d != d) {
+        return 0;
+    } else if (d >= (double) MAXINT64) {
+        return MAXINT64;
+    } else if (d <= -(double) MAXINT64 - 1) {
+        return -MAXINT64 - 1;
+    }
+    return (int64) d;
 }
 
 PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue)
 {
     cchar *value;
-    char  defbuf[16];
 
-    sfmtbuf(defbuf, sizeof(defbuf), "%f", defaultValue);
-    value = jsonGet(json, nid, key, defbuf);
+    if ((value = jsonGet(json, nid, key, 0)) == 0) {
+        return defaultValue;
+    }
     return atof(value);
 }
 
@@ -1419,8 +1701,7 @@ PUBLIC int64 jsonGetValue(Json *json, int nid, cchar *key, cchar *defaultValue)
 }
 
 /*
-    Set a property value. The nid provides the index of the base node, and the "name"
-    is search using that index as a starting point. Name can contain "." or "[]".
+    Set a property path relative to nid, creating missing nodes.
  */
 PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
 {
@@ -1437,6 +1718,29 @@ PUBLIC int jsonSet(Json *json, int nid, cchar *key, cchar *value, int type)
         value = "undefined";
     }
     return jquery(json, nid, key, value, type);
+}
+
+/*
+    Set a direct child by literal name, preserving siblings.
+ */
+PUBLIC int jsonSetKey(Json *json, int nid, cchar *key, cchar *value, int type)
+{
+    if (!json || nid < 0 || nid > json->count) {
+        return R_ERR_BAD_ARGS;
+    }
+    if (json->lock) {
+        return jerror(json, "Cannot set value in a locked JSON object");
+    }
+    if (key == 0 || *key == '\0') {
+        return R_ERR_BAD_ARGS;
+    }
+    if (type <= 0 && value) {
+        type = sleuthValueType(value, slen(value), 0);
+    }
+    if (!value) {
+        value = "undefined";
+    }
+    return jquerySetTerm(json, nid, key, NULL, JSON_OBJECT, value, type);
 }
 
 PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...)
@@ -1522,15 +1826,14 @@ PUBLIC int jsonSetString(Json *json, int nid, cchar *key, cchar *value)
  */
 PUBLIC void jsonSetNodeValue(JsonNode *node, cchar *value, int type, int flags)
 {
-    if (node->allocatedValue) {
+    char *copy;
+
+    //  Take or clone the new value before freeing the old, as it may point into the old one
+    copy = (flags & JSON_PASS_VALUE) ? (char*) value : sclone(value);
+    if (node->allocatedValue && node->value != copy) {
         rFree(node->value);
-        node->allocatedValue = 0;
     }
-    if (flags & JSON_PASS_VALUE) {
-        node->value = (char*) value;
-    } else {
-        node->value = sclone(value);
-    }
+    node->value = copy;
     node->allocatedValue = 1;
     node->type = (uint) type;
 }
@@ -1557,18 +1860,18 @@ PUBLIC int jsonRemove(Json *json, int nid, cchar *key)
 /*
     Convert a JSON value to a string and add to the given buffer.
  */
-static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent)
+static int putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, int indent, int depth)
 {
     cchar *cp;
     char  *end, *key;
-    int   bareFlags, encode, quotes, quoteKeys;
+    int   bareFlags, encode, quotes, quoteKeys, rc;
 
     if (!buf) {
-        return;
+        return 0;
     }
     if (!value) {
         rPutStringToBuf(buf, "null");
-        return;
+        return 0;
     }
     quotes = flags & JSON_DOUBLE_QUOTES ? 2 : 1;
     quoteKeys = (flags & JSON_QUOTE_KEYS) ? 1 : 0;
@@ -1632,10 +1935,11 @@ static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, 
                 if ((end = strchr(cp + 2, '}')) != 0) {
                     key = snclone(cp + 2, (size_t) (end - cp - 2));
                     bareFlags = flags | JSON_BARE;
-                    if (expandValue(json, buf, key, indent, bareFlags) < 0) {
-                        // Nothing to do - ${var} remains
-                    }
+                    rc = expandValue(json, buf, key, indent, depth + 1, bareFlags);
                     rFree(key);
+                    if (rc == R_ERR_WONT_FIT) {
+                        return rc;
+                    }
                     cp = end;
                 }
             } else {
@@ -1646,19 +1950,20 @@ static void putValueToBuf(const Json *json, RBuf *buf, cchar *value, int flags, 
     if (quoteKeys) {
         rPutCharToBuf(buf, quotes == 1 ? '\'' : '\"');
     }
+    return 0;
 }
 
 // Public version without indent
 PUBLIC void jsonPutValueToBuf(RBuf *buf, cchar *value, int flags)
 {
-    putValueToBuf(NULL, buf, value, flags, 0);
+    putValueToBuf(NULL, buf, value, flags, 0, 0);
 }
 
 /*
     Expand a ${path.var} reference described by the key.
     Indent is the textual indentation. Depth is the recursive depth.
  */
-static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int flags)
+static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int depth, int flags)
 {
     int nid;
 
@@ -1669,23 +1974,27 @@ static int expandValue(const Json *json, RBuf *buf, cchar *key, int indent, int 
         return R_ERR_BAD_ARGS;
     }
     if ((nid = jquery((Json*) json, 0, key, 0, 0)) >= 0) {
-        return nodeToString(json, nid, indent, flags | JSON_EXPANDING, buf);
+        return nodeToString(json, nid, indent, depth, flags | JSON_EXPANDING, buf);
     }
     return R_ERR_CANT_FIND;
 }
 
-static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *buf)
+static int nodeToString(const Json *json, int nid, int indent, int depth, int flags, RBuf *buf)
 {
     JsonNode *node;
-    char     *end, *key, *key2, *sol, *start;
+    char     *sol, *start;
     bool     multiline;
-    int      bareFlags, eid;
+    int      rc;
 
     if (!json || !buf || nid < 0 || nid > json->count || indent < 0) {
         return R_ERR_BAD_ARGS;
     }
     if (json->count == 0) {
         return nid;
+    }
+    if (depth > ME_JSON_MAX_RECURSION) {
+        jerror((Json*) json, "Serialization recursion limit exceeded");
+        return R_ERR_WONT_FIT;
     }
     node = &json->nodes[nid];
     multiline = (flags & JSON_MULTILINE) ? 1 : 0;
@@ -1694,17 +2003,40 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
         rPutToBuf(buf, "<%d/%d> ", nid, node->last);
     }
     if (node->type & JSON_PRIMITIVE) {
-        rPutStringToBuf(buf, node->value);
+        /*
+            "undefined" is a JSON5 primitive with no JSON representation. Emitting it
+            verbatim into a JSON document produces text no JSON parser will accept, so
+            render it as null when the caller asked for JSON quoting. JSON5 and JS output
+            keep it, where it is legal.
+         */
+        if ((flags & JSON_DOUBLE_QUOTES) && smatch(node->value, "undefined")) {
+            rPutStringToBuf(buf, "null");
+        } else {
+            rPutStringToBuf(buf, node->value);
+        }
         nid++;
 
     } else if (node->type & JSON_REGEXP) {
-        rPutCharToBuf(buf, '/');
-        rPutStringToBuf(buf, node->value);
-        rPutCharToBuf(buf, '/');
+        /*
+            A regular expression is a JSON6 extension with no JSON representation.
+            Render the pattern as a quoted string when the caller asked for JSON
+            quoting, as "undefined" is rendered as null. JSON5 and JS keep /pattern/.
+         */
+        if (flags & JSON_DOUBLE_QUOTES) {
+            if ((rc = putValueToBuf(json, buf, node->value, flags, indent, depth)) < 0) {
+                return rc;
+            }
+        } else {
+            rPutCharToBuf(buf, '/');
+            rPutStringToBuf(buf, node->value);
+            rPutCharToBuf(buf, '/');
+        }
         nid++;
 
     } else if (node->type == JSON_STRING) {
-        putValueToBuf(json, buf, node->value, flags, indent);
+        if ((rc = putValueToBuf(json, buf, node->value, flags, indent, depth)) < 0) {
+            return rc;
+        }
         nid++;
 
     } else if (node->type == JSON_ARRAY) {
@@ -1720,7 +2052,9 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
                 continue;
             }
             if (multiline) spaces(buf, indent + 1);
-            nid = nodeToString(json, nid, indent + 1, flags, buf);
+            if ((nid = nodeToString(json, nid, indent + 1, depth + 1, flags, buf)) < 0) {
+                return nid;
+            }
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
             }
@@ -1750,26 +2084,14 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
             }
             if (multiline) spaces(buf, indent + 1);
             /*
-                FUTURE: Expand key name if ${path.value} reference instead of calling jsonPutValueToBuf
-                If expanded at the key level ignore the : and value
+                JSON_EXPAND expands ${path.value} references in values only. Keys are
+                rendered as written.
              */
-            key = json->nodes[nid].name;
-            eid = -1;
-            if (flags & JSON_EXPAND && *key == '$' && key[1] == '{') {
-                if ((end = strchr(key + 2, '}')) != 0) {
-                    key2 = snclone(key, (size_t) (end - key));
-                    bareFlags = flags;
-                    if ((eid = expandValue(json, buf, &key[2], indent + 1, bareFlags)) >= 0) {
-                        nid++;
-                    }
-                    rFree(key2);
-                }
-            }
-            if (eid < 0) {
-                jsonPutValueToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
-                rPutCharToBuf(buf, ':');
-                if (multiline) rPutCharToBuf(buf, ' ');
-                nid = nodeToString(json, nid, indent + 1, flags, buf);
+            jsonPutValueToBuf(buf, json->nodes[nid].name, flags | JSON_KEY);
+            rPutCharToBuf(buf, ':');
+            if (multiline) rPutCharToBuf(buf, ' ');
+            if ((nid = nodeToString(json, nid, indent + 1, depth + 1, flags, buf)) < 0) {
+                return nid;
             }
             if (nid < node->last) {
                 rPutCharToBuf(buf, ',');
@@ -1792,35 +2114,57 @@ static int nodeToString(const Json *json, int nid, int indent, int flags, RBuf *
     return nid;
 }
 
+/*
+    Return the position after the quoted string that opens at cp, or end if it is unterminated.
+ */
+static char *skipQuoted(char *cp, char *end)
+{
+    char quote;
+
+    for (quote = *cp++; cp < end; cp++) {
+        if (*cp == '\\' && cp + 1 < end) {
+            cp++;
+        } else if (*cp == quote) {
+            return cp + 1;
+        }
+    }
+    return end;
+}
+
+/*
+    Collapse whitespace outside strings when the line fits maxLength. Append the terminator through rAddNullToBuf.
+ */
 static void compactProperties(RBuf *buf, char *sol, int indent)
 {
-    char *cp, *sp, *dp;
+    char *cp, *dp, *end, *qp;
     int  spaces;
 
-    // Count redundant spaces to see how much the line can be shortened
-    for (spaces = 0, cp = sol; cp < buf->end; cp++) {
-        if (isspace((int) *cp) && isspace((int) *(cp + 1))) {
+    end = buf->end;
+    for (spaces = 0, cp = sol; cp < end; cp++) {
+        if (*cp == '"' || *cp == '\'') {
+            cp = skipQuoted(cp, end) - 1;
+        } else if (isspace((uchar) * cp) && cp + 1 < end && isspace((uchar) cp[1])) {
             spaces++;
         }
     }
-    if (buf->end - sol - spaces + indent * 4 < maxLength) {
-        for (sp = dp = sol; sp < buf->end; sp++) {
-            if (isspace((int) *sp)) {
-                *dp++ = ' ';
-                // Eat all spaces
-                while (++sp < buf->end) {
-                    if (!isspace((int) *sp)) {
-                        break;
-                    }
-                }
-                sp--;
-            } else {
-                *dp++ = *sp;
-            }
-        }
-        *dp = '\0';
-        buf->end = dp;
+    if (end - sol - spaces + indent * 4 >= maxLength) {
+        return;
     }
+    for (cp = dp = sol; cp < end; ) {
+        if (*cp == '"' || *cp == '\'') {
+            for (qp = skipQuoted(cp, end); cp < qp; ) {
+                *dp++ = *cp++;
+            }
+        } else if (isspace((uchar) * cp)) {
+            *dp++ = ' ';
+            while (++cp < end && isspace((uchar) * cp)) {
+            }
+        } else {
+            *dp++ = *cp++;
+        }
+    }
+    buf->end = dp;
+    rAddNullToBuf(buf);
 }
 
 PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags)
@@ -1831,7 +2175,7 @@ PUBLIC int jsonPutToBuf(RBuf *buf, const Json *json, int nid, int flags)
     if (!json) {
         return 0;
     }
-    return nodeToString(json, nid, 0, flags, buf);
+    return nodeToString(json, nid, 0, 0, flags, buf);
 }
 
 /*
@@ -1851,7 +2195,10 @@ PUBLIC char *jsonToString(const Json *json, int nid, cchar *key, int flags)
         rFreeBuf(buf);
         return 0;
     }
-    nodeToString(json, nid, 0, flags, buf);
+    if (nodeToString(json, nid, 0, 0, flags, buf) < 0) {
+        rFreeBuf(buf);
+        return 0;
+    }
     if (flags & JSON_MULTILINE) {
         rPutCharToBuf(buf, '\n');
     }
@@ -1925,8 +2272,11 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
     JsonNode *dp, *sp, *spc, *dpc;
     cchar    *property;
     char     *srcData, *value;
-    int      at, slen, dlen, id, didc, kind, pflags;
+    int      at, slen, dlen, id, didc, kind, pflags, rc;
 
+    if (dest == 0) {
+        return R_ERR_BAD_ARGS;
+    }
     if (depth > ME_JSON_MAX_RECURSION) {
         return jerror(dest, "Blend recursion limit exceeded");
     }
@@ -1935,9 +2285,6 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
     if (dest->lock) {
         return jerror(dest, "Cannot blend into a locked JSON object");
     }
-    if (dest == 0) {
-        return R_ERR_BAD_ARGS;
-    }
     if (src == 0 || src->count == 0) {
         return 0;
     }
@@ -1945,17 +2292,25 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
         allocNode(dest, JSON_OBJECT, 0, 0);
     }
     if (dest == src) {
+        //  jsonParseText parses in-situ and takes ownership of srcData
         srcData = jsonToString(src, sid, 0, 0);
         src = tmpSrc = jsonAlloc();
-        jsonParseText(tmpSrc, srcData, flags);
-        rFree(srcData);
+        jsonParseText(tmpSrc, srcData, 0);
         sid = 0;
     } else {
         tmpSrc = 0;
     }
     if (dkey && *dkey) {
         if ((id = jquery(dest, did, dkey, 0, 0)) < 0) {
-            did = jquery(dest, did, dkey, "", JSON_OBJECT);
+            /*
+                Creating the destination key can fail -- an array parent cannot take a
+                named property, and the node array can hit its limit. The result was
+                used as an index without checking, so a failure indexed out of bounds.
+             */
+            if ((did = jquery(dest, did, dkey, "", JSON_OBJECT)) < 0) {
+                jsonFree(tmpSrc);
+                return R_ERR_CANT_CREATE;
+            }
         } else {
             did = id;
         }
@@ -1985,7 +2340,9 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
         for (ITERATE_JSON(src, sp, spc, sidc)) {
             property = src->nodes[sidc].name;
             pflags = flags;
-            if (flags & JSON_COMBINE) {
+            //  A null name has no combine prefix to decode. Belt and braces: the parser
+            //  no longer creates one, but the node API can still set one.
+            if (flags & JSON_COMBINE && property) {
                 kind = property[0];
                 if (kind == '+') {
                     pflags = JSON_APPEND | (flags & JSON_COMBINE);
@@ -2007,13 +2364,16 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
                 // Absent in destination, copy node and children
                 if (!(pflags & JSON_REPLACE)) {
                     at = dp->last;
-                    insertNodes(dest, at, 1, did);
+                    if (insertNodes(dest, at, 1, did) < 0) {
+                        jsonFree(tmpSrc);
+                        return R_ERR_MEMORY;
+                    }
                     dp = &dest->nodes[did];
                     if (spc->type & (JSON_ARRAY | JSON_OBJECT)) {
                         setNode(dest, at, spc->type, property, 1, 0, 0);
-                        if (blendRecurse(dest, at, 0, src, sidc, 0, pflags & ~JSON_CCREATE, depth + 1) < 0) {
+                        if ((rc = blendRecurse(dest, at, 0, src, sidc, 0, pflags & ~JSON_CCREATE, depth + 1)) < 0) {
                             jsonFree(tmpSrc);
-                            return R_ERR_BAD_ARGS;
+                            return rc;
                         }
                         dp = &dest->nodes[did];
                     } else {
@@ -2029,15 +2389,16 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
                     removeNodes(dest, didc, dpc->last - didc - 1);
                     setNode(dest, didc, JSON_OBJECT, property, 1, 0, 0);
                 }
-                if (blendRecurse(dest, didc, 0, src, sidc, 0, pflags, depth + 1) < 0) {
+                if ((rc = blendRecurse(dest, didc, 0, src, sidc, 0, pflags, depth + 1)) < 0) {
                     jsonFree(tmpSrc);
-                    return R_ERR_BAD_ARGS;
+                    return rc;
                 }
+                /*
+                    A JSON_REPLACE that empties a property leaves it in place with an empty
+                    value. Pruning the property instead would be a behaviour change, so it is
+                    not done here.
+                 */
                 dp = &dest->nodes[did];
-                if (pflags & JSON_REPLACE && !(sp->type & (JSON_OBJECT | JSON_ARRAY)) && sspace(dpc->value)) {
-                    removeNodes(dest, didc, dpc->last - didc);
-                    dp = &dest->nodes[did];
-                }
             }
         }
     } else if (sp->type & JSON_ARRAY) {
@@ -2060,8 +2421,13 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
         } else if (flags & JSON_APPEND) {
             at = dp->last;
             slen = (int) (sp->last - sid - 1);
-            insertNodes(dest, at, (int) slen, did);
-            copyNodes(dest, at, src, sid + 1, slen);
+            if (slen > 0) {
+                if (insertNodes(dest, at, slen, did) < 0) {
+                    jsonFree(tmpSrc);
+                    return R_ERR_MEMORY;
+                }
+                copyNodes(dest, at, src, sid + 1, slen);
+            }
 
         } else {
             // Default is to JSON_OVERWRITE
@@ -2069,9 +2435,16 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
             dlen = (int) (dp->last - did);
             if (dlen > slen) {
                 removeNodes(dest, did + 1, dlen - slen);
-            } else if (dlen < slen) {
-                insertNodes(dest, did + 1, slen - dlen, did);
+            } else if (dlen < slen && insertNodes(dest, did + 1, slen - dlen, did) < 0) {
+                jsonFree(tmpSrc);
+                return R_ERR_MEMORY;
             }
+            /*
+                insertNodes may have grown the node array, which reallocates it and
+                invalidates every JsonNode pointer into this tree. Node IDs survive;
+                pointers do not.
+             */
+            dp = &dest->nodes[did];
             if (--slen > 0) {
                 // Keep the existing array and just copy the elements
                 copyNodes(dest, did + 1, src, sid + 1, slen);
@@ -2084,8 +2457,10 @@ static int blendRecurse(Json *dest, int did, cchar *dkey, const Json *csrc, int 
         }
     } else {
         if (flags & JSON_APPEND) {
+            //  Build the joined value before releasing the old one, as JSON_REPLACE does
+            value = sjoin(dp->value, " ", sp->value, NULL);
             freeNode(dp);
-            dp->value = sjoin(dp->value, " ", sp->value, NULL);
+            dp->value = value;
             dp->allocatedValue = 1;
             dp->type = JSON_STRING;
 
@@ -2118,9 +2493,12 @@ PUBLIC Json *jsonClone(const Json *csrc, int flags)
 {
     Json *dest;
 
+    (void) flags;
+
     dest = jsonAlloc();
-    if (csrc) {
-        jsonBlend(dest, 0, 0, csrc, 0, 0, 0);
+    if (csrc && jsonBlend(dest, 0, 0, csrc, 0, 0, 0) < 0) {
+        jsonFree(dest);
+        return NULL;
     }
     return dest;
 }
@@ -2159,16 +2537,16 @@ PUBLIC void jsonSetIndent(int indent)
 }
 
 /*
-    Expand ${token} references in a path or string.
-    Unexpanded tokens are left as is if keep is true, otherise removed.
-    Return clone of the string if passed NULL or empty string or json not defined.
-    Unterminated tokens are an error and return NULL.
+    Expand scalar and JSON container references. keep preserves unresolved tokens.
+    Return a clone for empty input or missing json; return NULL for unterminated tokens.
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
 {
-    RBuf  *buf;
-    cchar *value;
-    char  *src, *cp, *start, *tok;
+    RBuf     *buf;
+    JsonNode *node;
+    cchar    *value;
+    char     *src, *cp, *start, *tok, *rendered;
+    int      nid;
 
     if (!str || schr(str, '$') == 0 || !json) {
         return sclone(str);
@@ -2179,11 +2557,19 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
             for (cp = start = src + 2; *cp && *cp != '}'; cp++) {
             }
             if (*cp == '\0') {
-                // Unterminated token
+                // Unterminated token. The buffer was allocated before the loop.
+                rFreeBuf(buf);
                 return NULL;
             }
             tok = snclone(start, (size_t) (cp - start));
+            rendered = NULL;
             value = jsonGet(json, 0, tok, 0);
+            if (*tok && value && (nid = jsonGetId(json, 0, tok)) >= 0) {
+                node = &json->nodes[nid];
+                if (node->type & (JSON_OBJECT | JSON_ARRAY)) {
+                    value = rendered = jsonToString(json, nid, 0, JSON_JSON);
+                }
+            }
             if (*tok && value) {
                 rPutStringToBuf(buf, value);
             } else if (keep) {
@@ -2191,6 +2577,7 @@ PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep)
                 rPutStringToBuf(buf, tok);
                 rPutCharToBuf(buf, '}');
             }
+            rFree(rendered);
             src = (*cp == '}') ? cp : cp - 1;
             rFree(tok);
         } else {
@@ -2209,33 +2596,54 @@ PUBLIC int jsonCheckIteration(struct Json *json, int count, int nid)
     return nid;
 }
 
+/*
+    Test whether a token is a JSON number, per the RFC 7159 grammar:
+
+        [ '-' ] ( '0' | [1-9] *digit ) [ '.' 1*digit ] [ ('e'|'E') [ '+'|'-' ] 1*digit ]
+
+    This is a grammar, not a character-set test. Anything else -- "01", "1.", "1e",
+    "-", "1-2", "12x" -- is a string, and quoting it is what keeps JSON output valid.
+ */
 static bool isfnumber(cchar *s, size_t len)
 {
-    cchar *cp;
-    int   dots;
+    cchar *cp, *end;
 
-    if (!s || !*s) {
+    if (!s || !*s || len == 0) {
         return 0;
     }
-    if (schr("+-1234567890", *s) == 0) {
+    cp = s;
+    end = s + len;
+
+    if (*cp == '-') {
+        cp++;
+    }
+    if (cp == end || !isdigit((uchar) * cp)) {
         return 0;
     }
-    for (cp = s; cp < s + len; cp++) {
-        if (schr("1234567890.+-eE", *cp) == 0) {
+    if (*cp == '0') {
+        //  A leading zero may not be followed by more digits
+        cp++;
+    } else {
+        while (cp < end && isdigit((uchar) * cp)) cp++;
+    }
+    if (cp < end && *cp == '.') {
+        cp++;
+        if (cp == end || !isdigit((uchar) * cp)) {
             return 0;
         }
+        while (cp < end && isdigit((uchar) * cp)) cp++;
     }
-    /*
-        Some extra checks
-     */
-    for (cp = s, dots = 0; cp < s + len; cp++) {
-        if (*cp == '.') {
-            if (dots++ > 0) {
-                return 0;
-            }
+    if (cp < end && (*cp == 'e' || *cp == 'E')) {
+        cp++;
+        if (cp < end && (*cp == '+' || *cp == '-')) {
+            cp++;
         }
+        if (cp == end || !isdigit((uchar) * cp)) {
+            return 0;
+        }
+        while (cp < end && isdigit((uchar) * cp)) cp++;
     }
-    return 1;
+    return cp == end;
 }
 
 PUBLIC cchar *jsonGetError(Json *json)

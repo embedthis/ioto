@@ -58,32 +58,32 @@
 #include "osdep.h"
 
 #ifndef ME_NAME
-    #define ME_NAME    "r"
+    #define ME_NAME  "r"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE   ME_NAME
+    #define ME_TITLE ME_NAME
 #endif
 
 /*
     Components
  */
 #ifndef ME_COM_MBEDTLS
-    #define ME_COM_MBEDTLS 0
+    #define ME_COM_MBEDTLS        0
 #endif
 #ifndef ME_COM_OPENSSL
-    #define ME_COM_OPENSSL 1
+    #define ME_COM_OPENSSL        1
 #endif
 #ifndef ME_COM_OSDEP
-    #define ME_COM_OSDEP   1
+    #define ME_COM_OSDEP          1
 #endif
 #ifndef ME_COM_R
-    #define ME_COM_R       1
+    #define ME_COM_R              1
 #endif
 #ifndef ME_COM_SSL
-    #define ME_COM_SSL     1
+    #define ME_COM_SSL            1
 #endif
 #ifndef ME_COM_UCTX
-    #define ME_COM_UCTX    1
+    #define ME_COM_UCTX           1
 #endif
 
 #ifndef R_USE_FILE
@@ -160,24 +160,44 @@
     #endif
 #endif
 
-//  Pattern-based guard pad only when growable stacks not available
+/* Check guard pads when inline fiber stacks yield. Growable stacks use guard pages instead. */
 #ifndef ME_FIBER_GUARD_PAD
-    #if ME_DEBUG && !ME_FIBER_GROWABLE_STACK
+    #if !ME_FIBER_VM_STACK && !ME_FIBER_GROWABLE_STACK
         #define ME_FIBER_GUARD_PAD 1
     #else
         #define ME_FIBER_GUARD_PAD 0
     #endif
 #endif
 
+//  Stack usage measurement (rCheckFiber, rGetStackUsage) is a debug aid that needs the pad
+#ifndef ME_FIBER_STACK_USAGE
+    #define ME_FIBER_STACK_USAGE (ME_DEBUG && ME_FIBER_GUARD_PAD)
+#endif
+
+/*
+    Default stack for spawned fibers, in bytes. Standard printf alone can use 8k on Linux/MacOS/Windows.
+    This is deliberately not CONFIG_ESP_MAIN_TASK_STACK_SIZE: that sizes the ESP-IDF main task, whereas a
+    fiber must carry the TLS handshake and request parse path, which needs at least 14k.
+ */
 #ifndef ME_FIBER_DEFAULT_STACK
-// Standard printf alone can use 8k on Linux/MacOS/Windows.
-    #if defined(CONFIG_ESP_MAIN_TASK_STACK_SIZE)
-// ESP32: Use the FreeRTOS main task stack size from sdkconfig.
-        #define ME_FIBER_DEFAULT_STACK ((size_t) CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+    #if ESP32 || FREERTOS
+        #define ME_FIBER_DEFAULT_STACK ((size_t) (16 * 1024))
     #elif ME_64
         #define ME_FIBER_DEFAULT_STACK ((size_t) (64 * 1024))
     #else
         #define ME_FIBER_DEFAULT_STACK ((size_t) (32 * 1024))
+    #endif
+#endif
+
+/*
+    Extent of the stack the main fiber runs on, in bytes. This is the thread or task stack supplied by the
+    platform, not an allocation of ours, so it must describe what the platform actually gave us.
+ */
+#ifndef ME_MAIN_STACK
+    #if defined(CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+        #define ME_MAIN_STACK ((size_t) CONFIG_ESP_MAIN_TASK_STACK_SIZE)
+    #else
+        #define ME_MAIN_STACK ME_FIBER_DEFAULT_STACK
     #endif
 #endif
 
@@ -371,7 +391,7 @@ struct Rtls;
     @description Set to R_INITIALIZED, R_READY, R_STOPPING or R_STOPPED.
     @stability Evolving
  */
-PUBLIC_DATA int rState;
+PUBLIC_DATA volatile sig_atomic_t rState;
 
 /**
     Gracefully stop the app
@@ -492,7 +512,8 @@ PUBLIC void *rAlloc(size_t size);
     @description This releases a block of memory allocated via rAllocMem. This function is null-tolerant
                  and safe to call with NULL pointers. This function is THREAD SAFE.
     @param ptr Pointer to the block. If ptr is NULL, the call is safely skipped.
-    @remarks The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.
+    @remarks The rFree routine is a macro over rFreeMem and evaluates its argument exactly once, so
+                 rFree(fn()) is safe. Do not mix calls to rFreeMem and free.
     @stability Evolving
  */
 PUBLIC void rFree(void *ptr);
@@ -510,10 +531,10 @@ PUBLIC void rFree(void *ptr);
 PUBLIC void *rRealloc(void *ptr, size_t size);
 
 #else
-    #define rFree(mem)          if (mem) { rFreeMem(mem); } else
+    #define rFree(mem)          rFreeMem(mem)
     #define rAlloc(size)        rAllocMem(size)
     #define rRealloc(mem, size) rReallocMem(mem, size)
-    #define rAllocType(type)    memset(rAlloc(sizeof(type)), 0, sizeof(type))
+    #define rAllocType(type)    rAllocZero(sizeof(type))
 #endif
 
 /**
@@ -522,6 +543,32 @@ PUBLIC void *rRealloc(void *ptr, size_t size);
     @param size The size of the failing block allocation
  */
 typedef void (*RMemProc)(int cause, size_t size);
+
+/**
+    Custom allocator callbacks
+    @description Installed together via rSetAllocator to route every runtime allocation through a custom heap.
+    @param size Size of the block to allocate in bytes. Always a positive multiple of 8.
+    @return Pointer to the block, or NULL if the allocation cannot be satisfied.
+    @stability Evolving
+ */
+typedef void*(*RAllocProc)(size_t size);
+
+/**
+    Custom reallocator callback
+    @param ptr Block to resize, or NULL to allocate a new block.
+    @param size New size of the block in bytes. Always a positive multiple of 8.
+    @return Pointer to the resized block, or NULL if the request cannot be satisfied. On NULL the original block
+       must remain valid, as with realloc.
+    @stability Evolving
+ */
+typedef void*(*RReallocProc)(void *ptr, size_t size);
+
+/**
+    Custom free callback
+    @param ptr Block to release. Never NULL.
+    @stability Evolving
+ */
+typedef void (*RFreeProc)(void *ptr);
 
 //  Private - Internal memory management functions used by macros
 /**
@@ -532,6 +579,15 @@ typedef void (*RMemProc)(int cause, size_t size);
     @stability Internal
  */
 PUBLIC void *rAllocMem(size_t size);
+
+/**
+    Allocate a zeroed memory block - internal implementation
+    @description Low-level zeroing allocator used internally by the rAllocType macro. Do not call directly.
+    @param size Size of memory block to allocate in bytes
+    @return Pointer to the zeroed block, or NULL if the allocation failed and a memory handler returned.
+    @stability Internal
+ */
+PUBLIC void *rAllocZero(size_t size);
 
 /**
     Reallocate memory block - internal implementation
@@ -658,6 +714,20 @@ PUBLIC void *rMemdup(cvoid *ptr, size_t size);
     @stability Evolving.
  */
 PUBLIC void rSetMemHandler(RMemProc handler);
+
+/**
+    Install a custom allocator
+    @description Route rAlloc, rRealloc and rFree through the supplied functions instead of the C library heap.
+        All three are installed together so that a block allocated by one is always released by its partner.
+        Pass NULL for all three to restore the default heap. The allocator must not be changed while any block it
+        allocated is still live. A NULL return from the allocator is reported through the memory exhaustion handler
+        exactly as a failing malloc is.
+    @param allocProc Allocation function
+    @param reallocProc Reallocation function
+    @param freeProc Release function
+    @stability Evolving
+ */
+PUBLIC void rSetAllocator(RAllocProc allocProc, RReallocProc reallocProc, RFreeProc freeProc);
 
 /************************************ Fiber ************************************/
 
@@ -887,7 +957,7 @@ PUBLIC bool rIsMain(void);
  */
 PUBLIC bool rIsForeignThread(void);
 
-#if ME_FIBER_GUARD_PAD
+#if ME_FIBER_STACK_USAGE
 /**
     CHECK fiber stack usage
     @description This will log peak fiber stack use to the log file
@@ -1065,7 +1135,7 @@ PUBLIC uint64 rGetHiResTicks(void);
     @description R replacement for ctime.
     @param format Time format string. See rFormatUniversalTime for time formats.
     @param time Time to format. Use rGetTime to retrieve the current time.
-    @return The formatting time string. Caller msut free.
+    @return The formatted time string, or NULL if the time cannot be represented. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rFormatLocalTime(cchar *format, Time time);
@@ -1184,7 +1254,7 @@ PUBLIC char *rFormatLocalTime(cchar *format, Time time);
         RFC3399: "%FT%TZ" "1985-04-12T23:20:50.52Z" which is April 12 1985, 23:20.50 and 52 msec
    \n\n
     @param time Time to format. Use rGetTime to retrieve the current time.
-    @return The formatting time string. Caller must free.
+    @return The formatted time string, or NULL if the time cannot be represented. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
@@ -1194,7 +1264,7 @@ PUBLIC char *rFormatUniversalTime(cchar *format, Time time);
     @description Get the current date/time as a string according to the given format.
     @param format Date formatting string. See strftime for acceptable date format specifiers.
         If null, then this routine uses the R_DEFAULT_DATE format.
-    @return A date string. Caller must free.
+    @return A date string, or NULL if the time cannot be represented. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rGetDate(cchar *format);
@@ -1211,7 +1281,7 @@ PUBLIC Ticks rGetElapsedTicks(Ticks mark);
     Get an ISO Date string representation of the given date/time
     @description Get the date/time as an ISO string. This is a RFC 3339 date string: "2025-11-10T21:28:28.000Z"
     @param time Given time to convert.
-    @return A date string. Caller must free.
+    @return A date string, or NULL if the time cannot be represented. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rGetIsoDate(Time time);
@@ -1266,6 +1336,15 @@ PUBLIC Time rGetTime(void);
     @stability Evolving
  */
 PUBLIC Time rMakeTime(struct tm *tp);
+
+/**
+    Get the time elapsed since a mark
+    @param mark A time previously returned by rGetTime
+    @return The milliseconds elapsed since mark. Negative if mark is in the future.
+    @stability Evolving
+ */
+PUBLIC Time rGetElapsedTime(Time mark);
+
 /**
     Make a universal time from a struct tm
     @param tp Pointer to a struct tm
@@ -1283,6 +1362,9 @@ PUBLIC Time rParseIsoDate(cchar *when);
 
 /**
     Parse an HTTP date string
+    @description Parses the RFC 9110 IMF-fixdate form, such as "Sun, 06 Nov 1994 08:49:37 GMT". The fields are
+        validated, so a date that does not exist, or that is before 1970, is invalid. The parser has no dependency on
+        the C library time functions or the local time zone, and is the same on every platform.
     @param value HTTP date string
     @return The time in milliseconds since Jan 1, 1970. If the string is invalid, return 0.
     @stability Evolving
@@ -1386,6 +1468,20 @@ PUBLIC REvent rAllocEvent(RFiber *fiber, REventProc proc, void *data, Ticks dela
     @stability Evolving
  */
 PUBLIC REvent rStartEvent(REventProc proc, void *data, Ticks delay);
+
+/**
+    Start a fast callback event
+    @description This schedules an event to run once directly on the main fiber rather than on a
+        fiber of its own. The callback must not block or yield, as doing so stalls the event loop.
+    This routine is THREAD SAFE.
+    This API is a wrapper for rAllocEvent with R_EVENT_FAST.
+    @param proc Callback procedure function. Signature is: void (*fn)(void *data, int id)
+    @param data Data reference to pass to the callback
+    @param delay Delay in milliseconds in which to run the callback
+    @return A positive integer event ID
+    @stability Evolving
+ */
+PUBLIC REvent rStartFastEvent(REventProc proc, void *data, Ticks delay);
 
 /**
     Stop an event
@@ -1492,12 +1588,15 @@ typedef void (*RWaitProc)(cvoid *data, int mask);
  */
 typedef struct RWait {
     RWaitProc handler;      /**< Handler function to invoke as the entrypoint in the fiber coroute */
-    RFiber *fiber;          /**< Current fiber for rWaitForIO */
+    RFiber *fiber;          /**< Fiber waiting for rWaitForIO on any mask other than R_WRITABLE */
+    RFiber *writeFiber;     /**< Fiber waiting for rWaitForIO on R_WRITABLE */
     cvoid *arg;             /**< Argument to pass to the handler */
-    Ticks deadline;         /**< System deadline time to wait until */
-    int mask;               /**< Current event mask */
+    Ticks deadline;         /**< System deadline time to wait until, for the handler and the fiber */
+    Ticks writeDeadline;    /**< System deadline time for the writeFiber */
+    int mask;               /**< Current event mask. The union of all waiters and the handler */
     int eventMask;          /**< I/O events received */
     int flags;              /**< Wait handler flags (R_WAIT_MAIN_FIBER) */
+    uint seqno;             /**< Registration sequence, to discard events for a closed and reused fd */
     Socket fd;              /**< File descriptor to wait upon */
 } RWait;
 
@@ -1557,8 +1656,8 @@ PUBLIC void rSetWaitHandler(RWait *wp, RWaitProc handler, cvoid *arg, int64 mask
 
 /**
     Update the wait mask for a wait handler.
-    @description The wait mask is persistent and remains active across multiple events. If the mask and deadline
-        are unchanged from the current values, no kernel syscall is made.
+    @description The wait mask is persistent and remains active across multiple events. The deadline is always
+        updated, but if the mask is unchanged from the current value, no kernel syscall is made.
     @param wp RWait object
     @param mask Set to R_READABLE or R_WRITABLE or both. Set to 0 to disable the wait.
     @param deadline System time in ticks to wait until. Set to zero for no deadline.
@@ -1586,6 +1685,11 @@ PUBLIC int rWait(Ticks timeout);
     Wait for an IO event on a wait object
     @description Wait for an IO event by yielding the current coroutine fiber until the IO event arrives.
     When the IO event occurs, the wait handler will be invoked on the fiber.
+    \n\n
+    A wait object has one waiter for writing (a mask of exactly R_WRITABLE) and one for all other masks, each with
+    its own deadline. A fiber reading a socket and a second fiber writing to it can therefore wait at the same time
+    without disturbing one another. If a fiber is already waiting on the same side, the call fails immediately with
+    zero. A pure writable event is delivered to the writer if there is one.
     @param wp RWait object
     @param mask Set to R_READABLE or R_WRITABLE or both.
     @param deadline System time in ticks to wait until.  Set to zero for no deadline.
@@ -1599,6 +1703,39 @@ PUBLIC int rWaitForIO(RWait *wp, int mask, Ticks deadline);
     @stability Internal
  */
 PUBLIC void rWakeup(void);
+
+/**
+    Mark a socket as not inheritable by child processes
+    @description On Unix this sets close-on-exec. On Windows it clears the handle inheritance flag. The runtime applies
+        this to every socket it creates, so a command started with #rRun does not receive them.
+    @param fd Socket descriptor
+    @stability Internal
+ */
+PUBLIC void rSetSocketCloseOnExec(Socket fd);
+
+/**
+    Accept a connection from one expected peer
+    @description Accept connections on a listening socket until one arrives from the given address and port.
+        A connection from any other endpoint is closed. At most 16 other connections are discarded before the call
+        fails, so a flood of local connections cannot hold the caller.
+    @param listener Listening socket
+    @param peer Expected peer address and port, as reported by getsockname on the connecting socket
+    @return The accepted socket, or INVALID_SOCKET
+    @stability Internal
+ */
+PUBLIC Socket rAcceptFromPeer(Socket listener, struct sockaddr_in *peer);
+
+/**
+    Create a connected pair of loopback sockets
+    @description The runtime uses this for the event loop wakeup on platforms without a pipe that can be waited on
+        (Windows, VxWorks, ESP32 and FreeRTOS). Other processes can reach the temporary listener, so the accepted end
+        is verified to be the connecting socket and a connection from anything else is refused. Both sockets are
+        non-blocking and not inherited by child processes.
+    @param pair Returns the two connected sockets. Both are INVALID_SOCKET on failure.
+    @return Zero if successful, otherwise a negative R_ERR code
+    @stability Internal
+ */
+PUBLIC int rCreateSocketPair(Socket pair[2]);
 
 #endif /* R_USE_WAIT */
 
@@ -1616,6 +1753,13 @@ PUBLIC void rWakeup(void);
     - Some advanced format specifiers may not be supported
     - Optimized for embedded systems with limited resources
  */
+
+#ifndef ME_R_MAX_PRINTF_WIDTH
+    #define ME_R_MAX_PRINTF_WIDTH     (8 * 1024) /**< Maximum field width for a printf %*d or literal width */
+#endif
+#ifndef ME_R_MAX_PRINTF_PRECISION
+    #define ME_R_MAX_PRINTF_PRECISION (4 * 1024) /**< Maximum precision for a printf %.*f or literal precision */
+#endif
 
 /**
     Format a string into a buffer.
@@ -1662,7 +1806,7 @@ PUBLIC ssize rVsaprintf(char **buf, size_t maxsize, cchar *fmt, va_list args);
         limited by maxsize.
     @stability Evolving
  */
-PUBLIC ssize rSnprintf(char *buf, size_t maxsize, cchar *fmt, ...);
+PUBLIC ssize rSnprintf(char *buf, size_t maxsize, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /**
     Formatted print. This is a secure verion of printf that can handle null args.
@@ -1672,7 +1816,7 @@ PUBLIC ssize rSnprintf(char *buf, size_t maxsize, cchar *fmt, ...);
     @return Returns the number of bytes written
     @stability Evolving
  */
-PUBLIC ssize rPrintf(cchar *fmt, ...);
+PUBLIC ssize rPrintf(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Formatted print to the standard error channel.
@@ -1683,7 +1827,7 @@ PUBLIC ssize rPrintf(cchar *fmt, ...);
     @return Returns the number of bytes written
     @stability Evolving
  */
-PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...);
+PUBLIC ssize rFprintf(FILE *fp, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /********************************** R Strings ******************************/
 #if R_USE_STRING
@@ -1735,8 +1879,10 @@ PUBLIC char *sitosx(int64 value, int radix);
     @param buf Pointer to the buffer that will hold the string.
     @param size Size of the buffer. Must be at least 2 characters long.
     @param value Integer value to conver
-    @param radix The base radix to use when encoding the number. Supports 10 and 16.
-    @return Returns a reference to the string.
+    @param radix The base radix to use when encoding the number. Supports radix 2 to 36 inclusive.
+        A radix outside that range returns NULL.
+    @return Returns a reference to the string. Returns NULL if the buffer is too small or the radix
+        is out of range.
     @stability Evolving
  */
 PUBLIC char *sitosbuf(char *buf, size_t size, int64 value, int radix);
@@ -1942,7 +2088,7 @@ PUBLIC uint shashlower(cchar *str, size_t len);
     @return Returns an allocated string.
     @stability Evolving
  */
-PUBLIC char *sjoin(cchar *str, ...);
+PUBLIC char *sjoin(cchar *str, ...);   /*  Not printf-style: a NULL-terminated string list */
 
 /**
     Catenate strings.
@@ -1963,7 +2109,7 @@ PUBLIC char *sjoinv(cchar *str, va_list args);
     @return Returns an allocated string.
     @stability Evolving
  */
-PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...);
+PUBLIC char *sjoinfmt(cchar *str, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Join an array of strings
@@ -2029,10 +2175,10 @@ PUBLIC int sncaselesscmp(cchar *s1, cchar *s2, size_t len);
 
 /**
     Clone a substring.
-    @description Copy a substring into a newly allocated block.
+    @description Copy at most len bytes, stopping at the first NUL. The result is null terminated.
     @param str Pointer to the block to duplicate.
-    @param len Number of bytes to copy. The actual length copied is the minimum of the given length and the length of
-        the supplied string. The result is null terminated.
+    @param len Number of bytes to copy. The actual length copied is the minimum of the given length and the offset
+        of the first NUL byte within that length. The result is null terminated.
     @return Returns a newly allocated string.
     @stability Evolving
  */
@@ -2162,7 +2308,7 @@ PUBLIC char *srchr(cchar *str, int c);
     @return Returns an allocated string.
     @stability Evolving
  */
-PUBLIC char *srejoin(char *buf, ...);
+PUBLIC char *srejoin(char *buf, ...);  /*  Not printf-style: a NULL-terminated string list */
 
 /**
     Append strings to an existing string and reallocate as required.
@@ -2231,7 +2377,8 @@ PUBLIC bool sstarts(cchar *str, cchar *prefix);
 
 /**
     Replace template tokens in a string with values from a lookup table. Tokens are ${variable} references.
-    @param str String to expand
+    @param str String to expand. An unterminated ${ (no closing brace before the end of the string)
+        is copied to the output literally.
     @param tokens Hash table of token values to use
     @return An expanded string. May return the original string if no "$" references are present.
     @stability Evolving
@@ -2275,6 +2422,29 @@ PUBLIC int64 stoi(cchar *str);
     @return Returns the integer equivalent value of the string.
  */
 PUBLIC int64 stoix(cchar *str, char **end, int radix);
+
+/**
+    Parse a non-negative integer strictly
+    @description Parse a run of digits in the given radix with no leading sign, no leading
+        whitespace and no silent saturation. Unlike stoix, this reports failure rather than
+        returning a clamped value: a string that is not a plain run of digits, or whose value
+        exceeds "max", is rejected.
+        \n\n
+        Wire formats need this. strtol-family conversions skip whitespace, accept a sign and
+        saturate at the type limit while setting errno, and callers that ignore errno accept
+        out-of-range input as though it were valid - which for a length prefix is a framing
+        divergence from any peer that parses it correctly.
+    @param str String to parse
+    @param radix Numeric radix, 10 or 16
+    @param max Largest acceptable value, inclusive
+    @param end If non-null, set to the first character not consumed. The caller decides whether
+        a non-empty remainder is acceptable
+    @param value Receives the parsed value on success
+    @return Zero on success, or a negative R_ERR code if the string is not a run of digits in
+        the given radix, or the value exceeds max
+    @stability Evolving
+ */
+PUBLIC int sparseUint(cchar *str, int radix, int64 max, char **end, int64 *value);
 
 /**
     Tokenize a string
@@ -2397,6 +2567,11 @@ PUBLIC int svaluei(cchar *value);
 
 /********************************* Buffering **********************************/
 #if R_USE_BUF
+
+#ifndef ME_R_MAX_BUF
+    #define ME_R_MAX_BUF (8 * 1024 * 1024) /**< Maximum size a buffer may grow to */
+#endif
+
 /**
     Dynamic Buffer Module
     @description RBuf is a flexible, dynamic growable buffer structure. It has start and end pointers to the
@@ -2464,7 +2639,9 @@ PUBLIC void rFreeBuf(RBuf *buf);
     Add a null character to the buffer contents.
     @description Add a null byte but do not change the buffer content lengths. The null is added outside the
         "official" content length. This is useful when calling #rGetBufStart and using the returned pointer
-        as a "C" string pointer.
+        as a "C" string pointer. If the buffer is full, consumed space is reclaimed or the buffer grows. A buffer
+        at ME_R_MAX_BUF gains one byte beyond that ceiling to hold the terminator, so the contents are always a valid
+        C string and no data is discarded.
     @param buf Buffer created via rAllocBuf
     @stability Evolving
  */
@@ -2745,7 +2922,7 @@ PUBLIC void rResetBufIfEmpty(RBuf *buf);
 #define rGetBufLength(bp) ((bp) ? (size_t) ((bp)->end - (bp)->start) : 0)
 #define rGetBufSize(bp)   ((bp) ? (size_t) ((bp)->buflen) : 0)
 #define rGetBufSpace(bp)  ((bp) ? (size_t) ((bp)->endbuf - (bp)->end) : 0)
-#define rGetBuf(bp)       ((bp) ? (bp)->data : 0)
+#define rGetBuf(bp)       ((bp) ? (bp)->buf : 0)
 #define rGetBufStart(bp)  ((bp) ? (bp)->start : 0)
 #define rGetBufEnd(bp)    ((bp) ? (bp)->end : 0)
 
@@ -2809,8 +2986,8 @@ PUBLIC void rFreeList(RList *list);
         rAllocList. The list will grow as required to store the item
     @param list List pointer returned from rAllocList
     @param item Pointer to item to store
-    @return Returns a positive list index for the insered item. If the item cannot be insered due
-        to a memory allocation failure, -1 is returned
+    @return Returns a positive list index for the inserted item. If the list cannot grow, a negative RT error
+        code is returned: R_ERR_MEMORY for an allocation failure or a size that would overflow.
     @stability Evolving
  */
 PUBLIC int rAddItem(RList *list, cvoid *item);
@@ -2820,8 +2997,8 @@ PUBLIC int rAddItem(RList *list, cvoid *item);
     @description Add a null item to the list. This item does not count in the length returned by #rGetListLength
     and will not be visible when iterating using #rGetNextItem.
     @param list List pointer returned from rAllocList.
-    @return Returns a list index for the null item. If the item cannot be added due to a memory allocation failure,
-        a negative RT error code is returned.
+    @return Returns a list index for the null item. If the list cannot grow, a negative RT error code is
+        returned: R_ERR_MEMORY for an allocation failure or a size that would overflow.
     @stability Evolving
  */
 PUBLIC int rAddNullItem(RList *list);
@@ -2872,8 +3049,8 @@ PUBLIC void *rGetNextItem(RList *list, int *lastIndex);
     @param list List pointer returned from rAllocList
     @param index Location at which to store the item. The previous item at this index is moved to make room.
     @param item Pointer to item to store
-    @return Returns the position index (positive integer) if successful. If the item cannot be insered due
-        to a memory allocation failure, -1 is returned
+    @return Returns the position index (positive integer) if successful. If the list cannot grow, a negative RT
+        error code is returned: R_ERR_MEMORY for an allocation failure or a size that would overflow.
     @stability Evolving
  */
 PUBLIC int rInsertItemAt(RList *list, int index, cvoid *item);
@@ -3133,18 +3310,41 @@ PUBLIC void rDefaultLogHandler(cchar *type, cchar *source, cchar *msg);
 
 /**
     Backup a log
-    @description This will backup the current log file if it is greater than ME_R_LOG_SIZE
-        in size (defaults to 2MB). This call will rename the current log filename to a filename
-        with the extension trimmed and "-COUNT.EXT" appended where COUNT is the backup number
-        and EXT is the original file extension. This call will keep up to ME_R_LOG_COUNT backups
-        (defaults to 5). After backing up the log file, a new (empty) file will be opened.
+    @description The default log handler calls this as it writes, so a log file never grows much beyond its size
+        limit. It can also be called directly. If the current log file has reached the size limit (ME_R_LOG_SIZE,
+        2MB by default, or the limit set by #rSetLogRotation), it is renamed to a filename with the extension
+        trimmed and "-COUNT.EXT" appended where COUNT is the backup number and EXT is the original file extension.
+        This keeps up to ME_R_LOG_COUNT backups (defaults to 5, or the count set by #rSetLogRotation). After
+        backing up the log file, a new (empty) file is opened. The call does nothing if the log is not a file.
     @stability Evolving
  */
 PUBLIC void rBackupLog(void);
 
 /**
+    Set the log rotation limits
+    @description The default log handler rotates the log file when it reaches the maximum size, keeping the given
+        number of backups, so the log files together never use much more than (count + 1) times the maximum size.
+        The limits default to ME_R_LOG_SIZE and ME_R_LOG_COUNT. They are reset to these defaults by #rTermLog.
+    @param maxSize Size in bytes at which to rotate the log file. Set to zero to disable rotation.
+    @param count Number of backup log files to keep. Values less than one are treated as one.
+    @stability Evolving
+ */
+PUBLIC void rSetLogRotation(ssize maxSize, int count);
+
+/**
+    Request that all log types and sources be enabled
+    @description This is safe to call from a signal handler. It only records the request. The filter is changed by
+        the next log call, in normal context. The runtime calls this on SIGUSR2.
+    @stability Evolving
+ */
+PUBLIC void rRequestLogAll(void);
+
+/**
     Format a log message into a buffer
-    @description This formats the log message according to the current log format string.
+    @description This formats the log message according to the current log format string. Control and escape bytes
+        in the message (0x00-0x1f except newline, tab and a carriage return that ends a line, and 0x7f) are
+        written as \\xNN so that message text from a network peer cannot inject terminal sequences or forge log
+        lines. This applies to the "raw" type as well. All other bytes are copied unchanged.
     @param buf RBuf instance
     @param type Log message type string
     @param source Log message source
@@ -3184,8 +3384,7 @@ PUBLIC RLogHandler rSetLogHandler(RLogHandler handler);
         \n\n
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
-        Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING.
+        Logging is enabled in both debug and release builds.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -3221,8 +3420,7 @@ PUBLIC void rAssert(cchar *loc, cchar *msg);
         \n\n
         Log messages should be a single text line to facilitate machine processing of log files.
         \n\n
-        Log typically is enabled in both debug and release builds and may be controlled via the build define
-        ME_R_LOGGING.
+        Logging is enabled in both debug and release builds.
         \n\n
     @param type Message type
     @param source Module emitting the log message
@@ -3246,7 +3444,7 @@ PUBLIC void rLogv(cchar *type, cchar *source, cchar *fmt, va_list args);
     @param ... Variable arg list from va_list.
     @stability Evolving
  */
-PUBLIC void rDebug(cchar *source, cchar *fmt, ...);
+PUBLIC void rDebug(cchar *source, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Emit an error message to the log
@@ -3255,7 +3453,7 @@ PUBLIC void rDebug(cchar *source, cchar *fmt, ...);
     @param ... Variable arg list from va_list.
     @stability Evolving
  */
-PUBLIC void rError(cchar *source, cchar *fmt, ...);
+PUBLIC void rError(cchar *source, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Emit an informational message to the log
@@ -3264,7 +3462,7 @@ PUBLIC void rError(cchar *source, cchar *fmt, ...);
     @param ... Variable arg list from va_list.
     @stability Evolving
  */
-PUBLIC void rInfo(cchar *source, cchar *fmt, ...);
+PUBLIC void rInfo(cchar *source, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Emit a log message to the log
@@ -3273,7 +3471,7 @@ PUBLIC void rInfo(cchar *source, cchar *fmt, ...);
     @param ... Variable arg list from va_list.
     @stability Evolving
  */
-PUBLIC void rLog(cchar *source, cchar *fmt, ...);
+PUBLIC void rLog(cchar *source, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 #else
     #if ME_R_DEBUG_LOGGING
@@ -3304,7 +3502,9 @@ PUBLIC void rLog(cchar *source, cchar *fmt, ...);
     @param ... Arguments for values format string
     @stability Evolving
  */
-PUBLIC void rMetrics(cchar *message, cchar *space, cchar *dimensions, cchar *values, ...);
+PUBLIC void rMetrics(cchar *message, cchar *space, cchar *dimensions, cchar *values, ...);  /*  Not printf-style:
+                                                                                               key/type/value triplets
+                                                                                             */
 
 /**
     Define a filter for log messages
@@ -3338,7 +3538,7 @@ PUBLIC int rGetLogFile(void);
     @param ... Variable number of arguments for printf data
     @stability Internal
  */
-PUBLIC void print(cchar *fmt, ...);
+PUBLIC void print(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Dump the message and data block in hex to stdout
@@ -3507,6 +3707,19 @@ PUBLIC RName *rAddNameSubstring(RHash *hash, cchar *name, size_t nameSize, char 
 PUBLIC RName *rAddIntName(RHash *hash, cchar *name, int64 value);
 
 /**
+    Increment a counter stored in the hash.
+    @description Adds "value" to the counter held under "name", creating it at that value if the
+        name is not yet present. The counter is stored in the value pointer itself, so the entry
+        must not be read with rLookupName as a string.
+    @param hash Hash table returned via rAllocHash
+    @param name String name of the counter.
+    @param value Amount to add. May be negative.
+    @return The counter value before the increment. Zero if the name was not present.
+    @stability Evolving
+ */
+PUBLIC ssize rIncName(RHash *hash, cchar *name, int64 value);
+
+/**
     Add a name and formatted string value into the hash table
     @description Associate an arbitrary value with a string name and inser into the hash table.
     @param hash Hash table returned via rAllocHash
@@ -3636,6 +3849,8 @@ PUBLIC void rTermFile(void);
 
 /**
     Test if a file can be accessed with the given mode (F_OK, R_OK, W_OK, X_OK)
+    @description On ESP32 and VxWorks, which have no users or groups, the mode is checked against the owner permission
+        bits of the file.
     @param path Filename to read.
     @param mode Set to F_OK, R_OK, W_OK, or X_OK
     @return Zero if successful, otherwise a negative value.
@@ -3676,15 +3891,31 @@ PUBLIC cchar *rGetFileExt(cchar *path);
     @description Expand any "@directory" prefix in the path that have been defined via
         the rAddDirectories. Do not use this function with user input. It permits ".." in paths.
     @param path Source file path
-    @return The expanded path. Caller must free.
+    @return The expanded path. Caller must free. Returns NULL if the path is NULL or the "@directory" name is
+        longer than ME_MAX_FNAME.
     @stability Evolving
  */
 PUBLIC char *rGetFilePath(cchar *path);
 
 /**
+    Create and open a temp file
+    @description Create an exclusive temporary file with mode 0600 and return it open to avoid a
+        race when reopening by path.
+    @param dir Directory to contain the temporary file. If null, use system default temp directory (/tmp).
+    @param prefix Optional filename prefix.
+    @param path Output parameter to receive the allocated file path. Set to NULL on error. Caller must
+        free with rFree(). May be NULL if the path is not required.
+    @return The open file descriptor, or a negative R_ERR_* code on error.
+    @stability Evolving
+ */
+PUBLIC int rOpenTempFile(cchar *dir, cchar *prefix, char **path);
+
+/**
     Get a temp filename
     @description Create a temp file name in the given directory with the specified prefix.
-    Windows ignores dir and prefix.
+    Windows ignores dir and prefix. Implemented on top of rOpenTempFile: the file is opened exclusively
+    and closed before the path is returned. Callers that will write to the file should use
+    rOpenTempFile instead, to avoid reopening the path by name.
     @param dir Directory to contain the temporary file. If null, use system default temp directory (/tmp).
     @param prefix Optional filename prefix.
     @return An allocated string containing the file name. Caller must free.
@@ -3913,11 +4144,20 @@ PUBLIC bool rFileExists(cchar *path);
         and spaces, and the ::$DATA stream suffix. Code that makes a security decision from a
         requested path must compare it against the resolved name.
         \n\n
+        The result is the stored name on APFS, HFS+ and NTFS, but not on every file system. On macOS FAT
+        and exFAT, and on Linux vfat, exfat and casefold directories, it is the spelling of the lookup
+        that first cached the entry, which may come from another caller. There, prove the stored spelling
+        another way, such as with readdir.
+        \n\n
         Resolving from the descriptor closes the time-of-check to time-of-use window that a
         path-based realpath() leaves open, because the descriptor already refers to the object.
         \n\n
         Callers must fail closed on error. Some platforms (VxWorks, some RTOS libcs) provide no
         such call and always return an error.
+        \n\n
+        The result is an absolute path in the same form as rGetRealPath returns, so the two may
+        be compared directly. On Windows that is the plain DOS form, without the extended-length
+        "\\?\" prefix.
     @param fd Open file descriptor
     @param buf Buffer to hold the resolved path
     @param bufsize Size of buf
@@ -3929,12 +4169,25 @@ PUBLIC ssize rGetFdPath(int fd, char *buf, size_t bufsize);
 /**
     Get the canonical absolute path of an existing file or directory
     @description Resolve symbolic links and relative segments to an absolute path. The file
-        must exist.
+        must exist. On Windows the path is resolved from an open handle, so the result carries the on-disk
+        case and long names, junctions are followed and there is no trailing separator, exactly as rGetFdPath
+        reports for a descriptor opened on the same file.
     @param path Path to resolve
     @return An allocated canonical path, or NULL if it cannot be resolved. Caller must free.
     @stability Evolving
  */
 PUBLIC char *rGetRealPath(cchar *path);
+
+/**
+    Reduce a Windows extended-length path to the plain DOS form
+    @description Remove the "\\?\" prefix of "\\?\C:\dir\file" and turn "\\?\UNC\server\share" into
+        "\\server\share", in place. A path without the prefix is unchanged. This is the transformation applied to
+        the names Windows returns for a handle. It has no platform dependency, so it may be used on any path.
+    @param path Path to modify
+    @return The length of the resulting path, or a negative R_ERR code if path is null
+    @stability Evolving
+ */
+PUBLIC ssize rStripExtendedPrefix(char *path);
 #endif /* R_USE_FILE */
 
 /************************************ R *************************************/
@@ -3953,6 +4206,9 @@ PUBLIC void rTermOs(void);
 
 /**
     For the current process and run as a daemon
+    @description The parent exits and the child continues in a new session with standard input closed (redirected
+        from the null device). Standard output and error are left unchanged. Call this before rInit on platforms
+        where the event notifier does not survive fork, such as macOS.
     @stability Evolving
  */
 PUBLIC int rDaemonize(void);
@@ -3980,6 +4236,15 @@ PUBLIC cchar *rGetError(int error);
     @stability Evolving
  */
 PUBLIC int rGetOsError(void);
+
+/**
+    Return the raw, unmapped O/S error code.
+    @description Returns the error code exactly as the operating system reported it. Unlike
+        rGetOsError, Windows codes are not mapped onto their Posix equivalents.
+    @return The raw O/S error code.
+    @stability Evolving
+ */
+PUBLIC int rGetRawOsError(void);
 
 /**
     Get the application server name string
@@ -4030,8 +4295,22 @@ PUBLIC void rSetTimeouts(bool on);
 PUBLIC void rSleep(Ticks ticks);
 
 /**
-    Write the current process pid to /var/run
-    @return Zero on success, otherwise a negative status code.
+    Set the path of the pid file written by rWritePid
+    @description The default path is /var/run/runtime.pid, which is only written when running as root. A path set
+        here is written regardless of the effective user.
+    @param path Path of the pid file. The string is referenced, not copied, and must outlive its use. Pass NULL to
+        restore the default.
+    @stability Evolving
+ */
+PUBLIC void rSetPidPath(cchar *path);
+
+/**
+    Write the current process pid to the pid file
+    @description Writes the pid to the path set via rSetPidPath, or to /var/run/runtime.pid when running as root.
+        If the file names a process that is still running, the write is refused.
+    @return Zero on success. R_ERR_ALREADY_EXISTS if the pid file names a live process, R_ERR_CANT_WRITE if the
+        default path is in use and the process is not root, R_ERR_CANT_OPEN if the file cannot be written.
+    @stability Evolving
  */
 PUBLIC int rWritePid(void);
 
@@ -4130,6 +4409,7 @@ PUBLIC void rTermEvents(void);
 #define R_SOCKET_SERVER          0x8      /**< Socket is on the server-side */
 #define R_SOCKET_FAST_CONNECT    0x10     /**< Fast connect mode */
 #define R_SOCKET_FAST_CLOSE      0x20     /**< Fast close mode */
+#define R_SOCKET_FREEING         0x40     /**< Socket is being freed - reject reentrant frees */
 
 #ifndef ME_R_SSL_CACHE
     #define ME_R_SSL_CACHE       512
@@ -4186,6 +4466,7 @@ typedef struct RSocket {
     uint mask : 4;
     uint hasCert : 1;                       /**< TLS certificate defined */
     int linger;                             /**< Linger timeout in seconds. -1 means no linger. */
+    uint burst;                             /**< Bytes read since the fiber last waited or yielded */
     RSocketProc handler;
     void *arg;
     char *error;
@@ -4276,6 +4557,19 @@ PUBLIC void rSetSocketLimit(int limit);
 PUBLIC int rGetSocketAddr(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port);
 
 /**
+    Get the IP address and port of the connected peer of a socket
+    @description For an accepted server socket this is the client's address. IPv4-mapped IPv6 addresses
+        are returned in IPv4 dotted form.
+    @param sp Socket object returned from rAllocSocket
+    @param ipbuf Buffer to receive the numeric IP address.
+    @param ipbufLen Size of the ipbuf.
+    @param port Address of an integer to receive the port number.
+    @return Zero if successful. R_ERR_CANT_COMPLETE if the socket is not connected.
+    @stability Evolving
+ */
+PUBLIC int rGetSocketPeer(RSocket *sp, char *ipbuf, size_t ipbufLen, int *port);
+
+/**
     Get the custom socket configuration callback
     @return The custom socket callback
     @stability Evolving
@@ -4364,7 +4658,8 @@ PUBLIC int rListenSocket(RSocket *sp, cchar *host, int port, RSocketProc handler
     Read from a socket until a deadline is reached.
     @description Read data from a socket until a deadline is reached. The read will return with whatever bytes are
         available. If none is available, this call will yield the current fiber and resume the main fiber. When data
-        is available, the fiber will resume.
+        is available, the fiber will resume. After a fiber has read 64K without waiting (ME_SOCKET_BURST), the read
+        yields once so that a fast peer cannot keep the other fibers and the event loop from running.
     @pre Must be called from a fiber.
     @param sp Socket object returned from rAllocSocket
     @param buf Pointer to a buffer to hold the read data.
@@ -4407,7 +4702,10 @@ PUBLIC void rResetSocket(RSocket *sp);
 
 /**
     Configure the socket TLS certificates.
-    @description This call is a wrapper over rSetTLSCerts.
+    @description This call is a wrapper over rSetTLSCerts. On a listening socket, the authority is the only trust
+        anchor for client certificates: it is never taken from the process defaults or the platform trust store.
+        A listener that verifies clients (see #rSetSocketVerify) and has no authority refuses to start. On a
+        socket that is already configured, a change takes effect on the next connection.
     @param sp Socket object returned from rAllocSocket
     @param ca Certificate authority to use when verifying peer connections
     @param key Private key for the certificate
@@ -4468,7 +4766,7 @@ PUBLIC void rSetSocketDefaultCiphers(cchar *ciphers);
     @param ... Args for fmt
     @stability Evolving
  */
-PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...);
+PUBLIC int rSetSocketError(RSocket *sp, cchar *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
     Set the socket linger timeout
@@ -4494,7 +4792,9 @@ PUBLIC void rSetSocketNoDelay(RSocket *sp, int enable);
 
 /**
     Set the socket TLS verification parameters
-    @description This call is a wrapper over rSetTlsCerts.
+    @description This call is a wrapper over rSetTlsVerify. A socket with no explicit setting inherits the process
+        default (see #rSetSocketDefaultVerify) when connecting out, and does not verify client certificates when
+        listening. A change on a socket that is already configured takes effect on the next connection.
     @param sp Socket object returned from rAllocSocket
     @param verifyPeer Set to true to verify peer certificates
     @param verifyIssuer Set to true to verify the issuer of the peer certificate
@@ -4555,22 +4855,24 @@ PUBLIC ssize rWriteSocket(RSocket *sp, cvoid *buf, size_t bufsize, Ticks deadlin
  */
 PUBLIC ssize rWriteSocketSync(RSocket *sp, cvoid *buf, size_t len);
 
-#if ME_HAS_SENDFILE
 /**
-    Send a file over a socket using zero-copy sendfile.
-    @description This function uses the kernel sendfile() system call to transfer data
-        directly from a file to a socket without copying through user space. This is
-        only available for non-TLS connections on supported platforms (Linux, macOS, FreeBSD).
+    Send a file over a socket.
+    @description Where the platform provides a kernel sendfile() call (Linux, macOS, FreeBSD) the
+        data is transferred directly from the file to the socket without copying through user
+        space. Elsewhere the same transfer is made by a read and write loop, so callers have one
+        API on every platform. Test ME_HAS_SENDFILE to learn whether the transfer is zero-copy.
+        Zero-copy is used only for non-TLS connections.
     @param sock RSocket pointer. Uses sock->wait if present for efficient I/O waiting.
     @param fd File descriptor of the file to send.
     @param offset File offset to start sending from.
     @param len Number of bytes to send.
+    @param deadline Time in ticks by which the transfer must complete. Use rGetTicks() + timeout.
+        Use zero for no deadline, but note a peer that stops reading will then block the fiber
+        indefinitely.
     @return The number of bytes sent, or a negative error code on failure.
-        Returns -1 with errno set to ENOSYS on unsupported platforms.
     @stability Evolving
  */
-PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len);
-#endif
+PUBLIC ssize rSendFile(RSocket *sock, int fd, Offset offset, size_t len, Ticks deadline);
 
 #endif /* R_USE_SOCKET */
 
@@ -4752,19 +5054,26 @@ PUBLIC RThread rGetMainThread(void);
 #if R_USE_RUN
 
 #ifndef R_RUN_ARGS_MAX
-    #define R_RUN_ARGS_MAX   1024        /* Max args to parse */
+    #define R_RUN_ARGS_MAX   1024          /* Max args to parse */
 #endif
 
 #ifndef R_RUN_MAX_OUTPUT
-    #define R_RUN_MAX_OUTPUT 1024 * 1024 /* Max output to return */
+    #define R_RUN_MAX_OUTPUT (1024 * 1024) /* Max output to return */
 #endif
 
 /**
     Run a command
-    @description SECURITY: must only call with fully sanitized command input.
+    @description SECURITY: must only call with fully sanitized command input. On Unix a command without a slash is
+        located by searching PATH, and the command inherits the process environment. Use an absolute path, and
+        control PATH and the environment before calling, when the command must not be redirected by them.
     @param command Command to invoke
-    @param output Returns the command output. Caller must free.
-    @return The command exit status or a negative error code.
+    @param output Returns the command output, standard output and standard error together. Caller must free. May be
+        null if the output is not required, in which case it is read and discarded. The output is returned only for a
+        command that exits with status zero. It is not returned for a failed command or one that is killed.
+    @return Zero for success, the command exit status if it is not zero, or a negative error code. A command that
+        writes more than R_RUN_MAX_OUTPUT bytes is killed and R_ERR_WONT_FIT is returned. A command that ends on a
+        signal (Unix) or a fatal exception (Windows) returns R_ERR_BAD_STATE. On Windows the command is started with
+        only its standard handles inherited, and its standard input is the null device.
     @stability Evolving.
  */
 PUBLIC int rRun(cchar *command, char **output);
@@ -4777,7 +5086,10 @@ PUBLIC ssize rMakeArgs(cchar *command, char ***argvp, bool argsOnly);
 /************************************** TLS **************************************/
 #if R_USE_TLS
 
-/* Internal */
+/*
+    Internal TLS interface: OpenSSL >=3.0 or MbedTLS >=3.6.7. Handshakes use rUpgradeTls deadlines; listener ALPN
+    preference wins among shared protocols.
+ */
 PUBLIC int rInitTls(void);
 PUBLIC void rTermTls(void);
 PUBLIC struct Rtls *rAllocTls(RSocket *sock);
@@ -4852,6 +5164,9 @@ PUBLIC cchar *rGetIP(void);
 
 /**
     Initialize the Flash filesystem
+    @description A partition that cannot be mounted is not formatted, as that would erase the stored state. Define
+        R_ESP32_FORMAT_ON_MOUNT_FAILURE as 1 when building to format a partition that holds no file system, such as
+        on a device flashed without a file system image.
     @param path Mount point for the file system
     @param storage Name of the LittleFS partition
     @return Zero if successful, otherwise a negative error code

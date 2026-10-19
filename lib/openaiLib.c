@@ -31,7 +31,7 @@ static OpenAI *openai;
 /*********************************** Defines **********************************/
 
 static char *makeOutputText(Json *response);
-static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg);
+static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg, int *budget);
 
 /************************************ Code ************************************/
 
@@ -49,6 +49,14 @@ PUBLIC int openaiInit(cchar *endpoint, cchar *key, Json *config, int flags)
     openai->endpoint = sclone(endpoint);
     openai->headers = sfmt("Authorization: Bearer %s\r\nContent-Type: application/json\r\n", key);
     openai->flags = flags;
+    openai->maxTurns = (int) jsonGetNum(config, 0, "ai.maxTurns", ME_OPENAI_MAX_TURNS);
+    if (openai->maxTurns <= 0) {
+        openai->maxTurns = ME_OPENAI_MAX_TURNS;
+    }
+    openai->maxToolCalls = (int) jsonGetNum(config, 0, "ai.maxToolCalls", ME_OPENAI_MAX_TOOL_CALLS);
+    if (openai->maxToolCalls <= 0) {
+        openai->maxToolCalls = ME_OPENAI_MAX_TOOL_CALLS;
+    }
     return 0;
 }
 
@@ -115,21 +123,32 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
     Json *next, *request, *response;
     Url  *up;
     char *data, *text, *url;
+    int  budget, turns;
 
     if (!openai || !props || props->count == 0) {
         return NULL;
     }
-    request = props ? jsonClone(props, 0) : jsonAlloc();
+    if ((request = jsonClone(props, 0)) == NULL) {
+        return NULL;
+    }
     if (!jsonGet(request, 0, "model", 0)) {
         jsonSet(request, 0, "model", "gpt-4o-mini", JSON_STRING);
     }
     if (!jsonGet(request, 0, "truncation", 0)) {
         jsonSet(request, 0, "truncation", "auto", JSON_STRING);
     }
-    /*
-        Submit the request using the authentication headers
-     */
-    do {
+    /* Limit tool turns and calls to prevent an unbounded callback loop. */
+    response = NULL;
+    budget = openai->maxToolCalls;
+    for (turns = 0; request; turns++) {
+        if (turns >= openai->maxTurns) {
+            rTrace("openai", "Agent tool loop exceeded the maximum of %d turns", openai->maxTurns);
+            jsonSet(response, 0, "error.type", "openai_max_turns", JSON_STRING);
+            jsonSet(response, 0, "error.message", "Agent tool loop exceeded the maximum number of turns",
+                    JSON_STRING);
+            jsonFree(request);
+            break;
+        }
         data = jsonToString(request, 0, NULL, JSON_JSON);
         if (openai->flags & AI_SHOW_REQ) {
             rInfo("openai", "Request: %s", jsonString(request, JSON_HUMAN));
@@ -140,6 +159,7 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
         rFree(url);
         rFree(data);
 
+        jsonFree(response);
         response = urlGetResponse(up) ? jsonParse(urlGetResponse(up), 0) : NULL;
         if (!response) {
             rTrace("openai", "Failed to submit request to OpenAI: %s", urlGetError(up));
@@ -153,10 +173,19 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
             break;
         }
 
-        next = processResponse(request, response, agent, arg);
+        next = processResponse(request, response, agent, arg, &budget);
+        if (budget < 0) {
+            rTrace("openai", "Agent tool calls exceeded the maximum of %d", openai->maxToolCalls);
+            jsonSet(response, 0, "error.type", "openai_max_tool_calls", JSON_STRING);
+            jsonSet(response, 0, "error.message", "Agent tool calls exceeded the maximum number of calls",
+                    JSON_STRING);
+            jsonFree(next);
+            jsonFree(request);
+            break;
+        }
         jsonFree(request);
         request = next;
-    } while (request != NULL);
+    }
 
     text = makeOutputText(response);
     if (openai->flags & AI_SHOW_RESP) {
@@ -170,7 +199,7 @@ PUBLIC Json *openaiResponses(Json *props, OpenAIAgent agent, void *arg)
 /*
     Process the OpenAI response and invoke the agents/tools as required
  */
-static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg)
+static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, void *arg, int *budget)
 {
     JsonNode *item;
     cchar    *name, *toolId, *type;
@@ -201,6 +230,10 @@ static Json *processResponse(Json *request, Json *response, OpenAIAgent agent, v
         if (name == NULL || toolId == NULL) {
             rTrace("openai", "Agent call from response is missing name or call_id");
             continue;
+        }
+        if (--(*budget) < 0) {
+            count = 0;
+            break;
         }
         /*
             Invoke the agent/tool to process and get a result
@@ -278,7 +311,10 @@ PUBLIC Url *openaiStream(Json *props, UrlSseProc callback, void *arg)
         urlFree(up);
         return NULL;
     }
-    urlSseRun(up, callback, arg, up->rx, 0);
+    if (urlSseRun(up, callback, arg, up->rx, 0) == R_ERR_DELETED) {
+        //  The callback released the Url
+        return NULL;
+    }
     return up;
 }
 
@@ -359,7 +395,7 @@ void dummyOpenAI(void)
 #endif /* ME_COM_OPENAI */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */
 

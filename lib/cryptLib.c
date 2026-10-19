@@ -27,6 +27,10 @@
 /********************************** Includes **********************************/
 
 
+#if ME_CRYPT_GETENTROPY && (defined(__linux__) || defined(__APPLE__))
+    #include <sys/random.h>
+#endif
+
 /******************************* Base 64 Data *********************************/
 #if ME_CRYPT_BASE64
 
@@ -115,6 +119,7 @@ PUBLIC char *cryptDecode64Block(cchar *input, size_t *outputLen, int flags)
     uint32 a, b, c, d, combined;
     int    pad;
 
+    (void) flags;
     if (input == NULL) {
         return NULL;
     }
@@ -126,51 +131,45 @@ PUBLIC char *cryptDecode64Block(cchar *input, size_t *outputLen, int flags)
         //  Sanity check length
         return NULL;
     }
-    if (len % 4 != 0) {
+    if (len == 0 || len % 4 != 0) {
+        /*
+            Reject the empty string here. With len == 0 the modulo test passes and the padding
+            probes below read input[-1] and input[-2] - two bytes before the allocation - and the
+            output size then underflows. Reachable pre-authentication: an "Authorization: Basic "
+            header with nothing after the scheme hands this an empty string.
+         */
         return NULL;
     }
+    //  Padding is valid only as the last one or two characters: "xx==" or "xxx="
     pad = 0;
-    if (input[len - 1] == '=') pad++;
-    if (input[len - 2] == '=') pad++;
-
-    // Calculate the output length
+    if (input[len - 1] == '=') {
+        pad = (input[len - 2] == '=') ? 2 : 1;
+    }
     size = len / 4 * 3 - (size_t) pad;
 
     if ((decoded = rAlloc(size + 1)) == NULL) {
         return NULL;
     }
-    for (i = 0, j = 0; i < len;) {
-        a = decodeMap[(uchar) input[i++]];
-        b = decodeMap[(uchar) input[i++]];
-        c = decodeMap[(uchar) input[i++]];
-        d = decodeMap[(uchar) input[i++]];
+    for (i = 0, j = 0; i < len; i += 4) {
+        a = decodeMap[(uchar) input[i]];
+        b = decodeMap[(uchar) input[i + 1]];
+        c = (i + 4 == len && pad == 2) ? 0 : decodeMap[(uchar) input[i + 2]];
+        d = (i + 4 == len && pad >= 1) ? 0 : decodeMap[(uchar) input[i + 3]];
 
-        // Check for invalid characters
-        if (a == 0x80 || b == 0x80 || c == 0x80 || d == 0x80) {
-            if (input[i - 2] == '=' && input[i - 1] == '=') {
-                c = d = 0;
-            }  else if (input[i - 1] == '=') {
-                d = 0;
-            } else {
-                rFree(decoded);
-                return NULL;
-            }
+        //  Any other '=' or non-alphabet character maps to 0x80 and fails the decode
+        if ((a | b | c | d) & 0x80) {
+            rFree(decoded);
+            return NULL;
         }
         combined = (a << 18) | (b << 12) | (c << 6) | d;
 
-        if (j < size) decoded[j++] = (char) (combined >> 16) & 0xFF;
-        if (j < size) decoded[j++] = (char) (combined >> 8) & 0xFF;
+        decoded[j++] = (char) ((combined >> 16) & 0xFF);
+        if (j < size) decoded[j++] = (char) ((combined >> 8) & 0xFF);
         if (j < size) decoded[j++] = (char) (combined & 0xFF);
-
-        if (flags & CRYPT_DECODE_TOKEQ) {
-            if (input[i] == '=' && (input[i + 1] == '=' || input[i + 1] == '\0')) {
-                break;
-            }
-        }
     }
     decoded[j] = '\0';
     if (outputLen) {
-        *outputLen = size;
+        *outputLen = j;
     }
     return decoded;
 }
@@ -182,6 +181,9 @@ PUBLIC char *cryptDecode64Block(cchar *input, size_t *outputLen, int flags)
     SECURITY Acceptable: - MD5 is provided for backwards compatibility and legacy systems.
     It is not recommended for new applications and not used by any of our products.
     Do not flag this legacy code as a security issue.
+
+    Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm (RFC 1321 reference
+    implementation). See LICENSE.md for the RSA notice, which must be retained.
  */
 #if ME_CRYPT_MD5
 /*
@@ -509,6 +511,10 @@ PUBLIC char *cryptGetFileMd5(cchar *path)
 #endif /* ME_CRYPT_MD5 */
 
 /************************************* Sha1 **********************************/
+/*
+    Derived from the SHA-1 sample code in RFC 3174, Copyright (C) The Internet Society (2001).
+    See LICENSE.md.
+ */
 #if ME_CRYPT_SHA1
 
 #define sha1Shift(bits, word) (((word) << (bits)) | ((word) >> (32 - (bits))))
@@ -518,6 +524,7 @@ PUBLIC char *cryptGetSha1(cuchar *s, size_t ilen)
     return cryptGetSha1WithPrefix(s, ilen, NULL);
 }
 
+#if ME_CRYPT_BASE64
 PUBLIC char *cryptGetSha1Base64(cchar *s, size_t ilen)
 {
     CryptSha1 sha;
@@ -532,6 +539,7 @@ PUBLIC char *cryptGetSha1Base64(cchar *s, size_t ilen)
     hash[CRYPT_SHA1_SIZE] = '\0';
     return cryptEncode64Block((cuchar*) hash, CRYPT_SHA1_SIZE);
 }
+#endif
 
 PUBLIC char *cryptGetSha1WithPrefix(cuchar *buf, size_t length, cchar *prefix)
 {
@@ -709,6 +717,10 @@ PUBLIC void cryptSha1Finalize(CryptSha1 *sha, uchar *digest)
 #endif /* ME_CRYPT_SHA1 */
 
 /************************************ SHA256 **********************************/
+/*
+    SHA-256 (FIPS 180-4). The GET/PUT macros and the round structure follow the XySSL/PolarSSL
+    sha2.c implementation by Christophe Devine. See LICENSE.md.
+ */
 #if ME_CRYPT_SHA256
 
 #define GET(n, b, i) \
@@ -919,6 +931,7 @@ PUBLIC char *cryptGetSha256(cuchar *input, size_t ilen)
     return cryptSha256HashToString(output);
 }
 
+#if ME_CRYPT_BASE64
 PUBLIC char *cryptGetSha256Base64(cchar *s, size_t ilen)
 {
     char *hash, *result;
@@ -931,6 +944,7 @@ PUBLIC char *cryptGetSha256Base64(cchar *s, size_t ilen)
     rFree(hash);
     return result;
 }
+#endif
 
 
 PUBLIC char *cryptGetFileSha256(cchar *path)
@@ -1216,6 +1230,7 @@ PUBLIC char *cryptGetSha512(cuchar *input, size_t ilen)
     return cryptSha512HashToString(output);
 }
 
+#if ME_CRYPT_BASE64
 PUBLIC char *cryptGetSha512Base64(cchar *s, size_t ilen)
 {
     char *hash, *result;
@@ -1228,6 +1243,7 @@ PUBLIC char *cryptGetSha512Base64(cchar *s, size_t ilen)
     rFree(hash);
     return result;
 }
+#endif
 
 PUBLIC char *cryptGetFileSha512(cchar *path)
 {
@@ -1437,6 +1453,7 @@ PUBLIC char *cryptGetHmacSha256(cuchar *key, size_t keylen, cuchar *data, size_t
     return result;
 }
 
+#if ME_CRYPT_BASE64
 PUBLIC char *cryptGetHmacSha256Base64(cuchar *key, size_t keylen, cuchar *data, size_t datalen)
 {
     uchar hash[CRYPT_HMAC_SHA256_SIZE];
@@ -1450,10 +1467,16 @@ PUBLIC char *cryptGetHmacSha256Base64(cuchar *key, size_t keylen, cuchar *data, 
     memset(hash, 0, CRYPT_HMAC_SHA256_SIZE);
     return result;
 }
+#endif
 
 #endif /* ME_CRYPT_HMAC */
 
 /************************************ Blowfish *******************************/
+/*
+    Blowfish cipher designed by Bruce Schneier. The cipher routines and the ORIG_P / ORIG_S tables
+    follow the layout of Paul Kocher's reference blowfish.c. The bcrypt password scheme is by
+    Niels Provos and David Mazieres. See LICENSE.md.
+ */
 
 #if ME_CRYPT_BCRYPT
 
@@ -1863,6 +1886,12 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, size_t rounds)
     if (slen(password) > ME_CRYPT_MAX_PASSWORD) {
         return 0;
     }
+    /*
+        Bound work for rounds read from an untrusted stored hash.
+     */
+    if (rounds == 0 || rounds > ME_CRYPT_MAX_ROUNDS) {
+        return 0;
+    }
     key = sfmt("%s:%s", salt, password);
 
     /*
@@ -1894,6 +1923,9 @@ PUBLIC char *cryptEncodePassword(cchar *password, cchar *salt, size_t rounds)
     result = cryptEncode64Block((cuchar*) text, len);
     memset(&bf, 0, sizeof(bf));
     memset(text, 0, len);
+    rFree(text);
+    memset(key, 0, slen(key));
+    rFree(key);
     return result;
 }
 
@@ -1904,10 +1936,16 @@ PUBLIC char *cryptMakeSalt(size_t size)
     char   *rp, *result;
     size_t clen, i;
 
+    if (size == 0) {
+        return 0;
+    }
     size = (size + sizeof(int) - 1) & ~(sizeof(int) - 1);
     random = rAlloc(size + 1);
     result = rAlloc(size + 1);
     if (cryptGetRandomBytes(random, size, 1) < 0) {
+        rError("crypt", "Cannot get random bytes - refusing to generate a salt");
+        rFree(random);
+        rFree(result);
         return 0;
     }
     clen = slen(chars);
@@ -1915,6 +1953,8 @@ PUBLIC char *cryptMakeSalt(size_t size)
         *rp++ = chars[(random[i] & 0x7F) % clen];
     }
     *rp = '\0';
+    memset(random, 0, size + 1);
+    rFree(random);
     return result;
 }
 
@@ -1925,8 +1965,7 @@ PUBLIC char *cryptMakeSalt(size_t size)
  */
 PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds)
 {
-    cchar *salt;
-    char  *hash, *result;
+    char *hash, *result, *salt;
 
     if (slen(password) > ME_CRYPT_MAX_PASSWORD) {
         return 0;
@@ -1942,9 +1981,11 @@ PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds
     }
     if ((hash = cryptEncodePassword(password, salt, rounds)) == 0) {
         //  Key too long for the Blowfish schedule, or no entropy available
+        rFree(salt);
         return 0;
     }
     result = sfmt("%s:%05d:%s:%s", CRYPT_BLOWFISH, (int) rounds, salt, hash);
+    rFree(salt);
     rFree(hash);
     return result;
 }
@@ -1952,7 +1993,7 @@ PUBLIC char *cryptMakePassword(cchar *password, size_t saltLength, size_t rounds
 PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
 {
     cchar *algorithm, *rounds, *salt;
-    char  *given, *tok, *hash;
+    char  *copy, *given, *tok, *hash;
     bool  result;
 
     if (!passwordHash || !plainTextPassword) {
@@ -1961,21 +2002,18 @@ PUBLIC bool cryptCheckPassword(cchar *plainTextPassword, cchar *passwordHash)
     if (slen(plainTextPassword) > ME_CRYPT_MAX_PASSWORD) {
         return 0;
     }
-    algorithm = stok(sclone(passwordHash), ":", &tok);
-    if (!smatch(algorithm, CRYPT_BLOWFISH)) {
-        return 0;
-    }
+    result = 0;
+    copy = sclone(passwordHash);
+    algorithm = stok(copy, ":", &tok);
     rounds = stok(NULL, ":", &tok);
     salt = stok(NULL, ":", &tok);
     hash = stok(NULL, ":", &tok);
-    if (!rounds || !salt || !hash) {
-        return 0;
-    }
-    given = cryptEncodePassword(plainTextPassword, salt, (size_t) atoi(rounds));
-    result = cryptMatch(given, hash);
-    if (given) {
+    if (smatch(algorithm, CRYPT_BLOWFISH) && rounds && salt && hash) {
+        given = cryptEncodePassword(plainTextPassword, salt, (size_t) atoi(rounds));
+        result = cryptMatch(given, hash);
         rFree(given);
     }
+    rFree(copy);
     return result;
 }
 #endif /* BCRYPT */
@@ -2059,6 +2097,10 @@ PUBLIC RKey *cryptParsePubKey(RKey *skey, cchar *buf, size_t buflen)
     }
     /* buflen must count the null - Ugh! */
     if (mbedtls_pk_parse_public_key(key, (uchar*) buf, buflen + 1) < 0) {
+        mbedtls_pk_free(key);
+        if (!skey) {
+            rFree(key);
+        }
         return 0;
     }
     return (RKey*) key;
@@ -2107,7 +2149,10 @@ PUBLIC ssize rBase64Decode(cchar *buf, size_t bufsize, uchar *dest, size_t destL
 /************************************ Password Utils ****************************/
 /*
     Get random bytes from the system.
-    If block is true, use /dev/random, otherwise use /dev/urandom.
+    The source is always non-blocking: getentropy() where available, otherwise /dev/urandom. Once the
+    kernel pool has been seeded /dev/urandom is as strong as /dev/random and, unlike /dev/random, cannot
+    stall the single-threaded runtime while the kernel withholds entropy. The block argument is advisory
+    and retained for API compatibility.
     If the system does not have a secure random number generator, return -1.
     SECURITY Acceptable: it is the callers responsibility to ensure that the random number generator is secure
     and to manage the risk of using non-blocking random number generators that may have insufficient entropy.
@@ -2115,27 +2160,47 @@ PUBLIC ssize rBase64Decode(cchar *buf, size_t bufsize, uchar *dest, size_t destL
 PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
 {
 #if ME_UNIX_LIKE
+#if ME_CRYPT_GETENTROPY
+    size_t chunk;
+#endif
     size_t sofar;
     ssize  rc;
     int    fd;
 
-    if (!buf || length <= 0) {
+    if (!buf || length == 0) {
         return R_ERR_BAD_ARGS;
     }
-    if ((fd = open((block) ? "/dev/random" : "/dev/urandom", O_RDONLY, 0666)) < 0) {
-        return -1;
-    }
-    sofar = 0;
-    do {
-        rc = read(fd, &buf[sofar], length);
-        if (rc < 0) {
-            assert(0);
-            close(fd);
-            return -1;
+#if ME_CRYPT_GETENTROPY
+    //  getentropy accepts at most 256 bytes per call
+    for (sofar = 0; sofar < length; sofar += chunk) {
+        chunk = min(length - sofar, 256);
+        if (getentropy(&buf[sofar], chunk) < 0) {
+            break;
         }
-        length -= (size_t) rc;
-        sofar += (size_t) rc;
-    } while (length > 0);
+    }
+    if (sofar >= length) {
+        return 0;
+    }
+#endif
+    if ((fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC)) < 0) {
+        return R_ERR_CANT_OPEN;
+    }
+    for (sofar = 0; sofar < length; sofar += (size_t) rc) {
+        rc = read(fd, &buf[sofar], length - sofar);
+        if (rc < 0) {
+            if (errno == EINTR) {
+                rc = 0;
+                continue;
+            }
+            close(fd);
+            return R_ERR_CANT_READ;
+        }
+        if (rc == 0) {
+            //  EOF. Not a short read to retry, so fail rather than spin
+            close(fd);
+            return R_ERR_CANT_READ;
+        }
+    }
     close(fd);
 
 #elif ME_WIN_LIKE
@@ -2153,7 +2218,10 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
         rc = -1;
     }
     CryptReleaseContext(prov, 0);
-    return rc;
+    if (rc < 0) {
+        return -1;
+    }
+    //  Falls through to the shared success return, as the other backends do
 
 #elif ME_COM_MBEDTLS
     /*
@@ -2169,12 +2237,18 @@ PUBLIC int cryptGetRandomBytes(uchar *buf, size_t length, bool block)
     }
 #else
     static int once = 0;
+    (void) block;
     if (once++ == 0) {
         rError("security", "No secure random number generator available");
     }
     return -1;
 #endif
+#if ME_UNIX_LIKE || ME_WIN_LIKE || ME_COM_MBEDTLS
+    //  Every backend arm falls through to here on success. Guarded because the no-RNG arm above
+    //  always returns, which would otherwise make this unreachable.
+    (void) block;
     return 0;
+#endif
 }
 
 PUBLIC char *cryptGetPassword(cchar *prompt)
@@ -2262,7 +2336,7 @@ PUBLIC char *cryptID(size_t size)
     size_t i;
     int    index, lettersLen;
 
-    if (size <= 0) {
+    if (size == 0 || size > ME_CRYPT_MAX_ID) {
         return NULL;
     }
     if ((bytes = rAlloc(size + 1)) == 0) {
@@ -2270,6 +2344,8 @@ PUBLIC char *cryptID(size_t size)
     }
     lettersLen = (int) slen(LETTERS) - 1;
     if (cryptGetRandomBytes((uchar*) bytes, size, 1) < 0) {
+        rError("crypt", "Cannot get random bytes - refusing to generate an ID");
+        rFree(bytes);
         return 0;
     }
     for (i = 0; i < size; i++) {
@@ -2311,8 +2387,9 @@ PUBLIC bool cryptMatch(cchar *s1, cchar *s2)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
+    The MD5, SHA-1, SHA-256 and Blowfish portions are derived from third-party work: see LICENSE.md.
  */
 
 #else

@@ -1,3 +1,7 @@
+/*
+	uctxAssembly.S
+ */
+
 #include "uctx-os.h"
 
 
@@ -8,6 +12,14 @@
 #define MCONTEXT_GREGS	(32)
 #define VFP_MAGIC_OFFSET (232)
 #define VFP_D8_OFFSET (304)
+
+/*
+    Preserve d8-d15 whenever hardware floating point is enabled.
+    Contexts built with makecontext alone lack the runtime VFP marker.
+ */
+#if defined(__ARM_FP) && !defined(FORCE_HARD_FLOAT) && !defined(FORCE_SOFT_FLOAT)
+#define FORCE_HARD_FLOAT 1
+#endif
 
 #define TYPE(__proc)	.type	__proc, %function;
 
@@ -127,13 +139,24 @@ ALIAS(swapcontext, uctx_swapcontext)
 ALIAS(__swapcontext, uctx_swapcontext)
 
 FUNC(uctx_swapcontext)
+	/*
+	    Save caller registers before using scratch registers.
+	 */
+	add	r2, r0, #REG_OFFSET(1)
+	stmia	r2, {r1-r12}
+	str	r13, [r0, #REG_OFFSET(13)]
+	str	r14, [r0, #REG_OFFSET(15)]
+	/* the resumed context returns 0 in r0 to indicate success */
+	mov	r2, #0
+	str	r2, [r0, #REG_OFFSET(0)]
+
 #ifndef FORCE_SOFT_FLOAT
 #ifndef FORCE_HARD_FLOAT
 	/* test for vfp magic number, copy to other ucontext */
 	ldr	r3, [r1, #VFP_MAGIC_OFFSET]
-	ldr	r4, =#0x56465001
+	ldr	r2, =#0x56465001
 	str	r3, [r0, #VFP_MAGIC_OFFSET]
-	cmp	r3, r4
+	cmp	r3, r2
 	bne	1f
 #endif
 	/* if vfp in use, save and restore d8-d15 */
@@ -141,20 +164,12 @@ FUNC(uctx_swapcontext)
 	add	r2, r0, #VFP_D8_OFFSET
 	vstmia	r2, {d8-d15}
 
-	add	r14, r1, #VFP_D8_OFFSET
-	vldmia	r14, {d8-d15}
+	add	r2, r1, #VFP_D8_OFFSET
+	vldmia	r2, {d8-d15}
 	.fpu	softvfp
 1:
 #endif
 
- 	/* copy all of the current registers into the ucontext structure */
- 	str	r13, [r0,#REG_OFFSET(13)]
- 	str	r14, [r0,#REG_OFFSET(15)]
-	add	r2, r0, #REG_OFFSET(0)
-	/* copy r0 with value 0 to indicate success (return value 0) */
-	mov r0, #0
-	stmia	r2, {r0-r12}
-	
 	/* load new registers from the second ucontext structure */
 	add	r14, r1, #REG_OFFSET(0)
 	ldmia	r14, {r0-r12}
@@ -165,8 +180,6 @@ END(uctx_swapcontext)
 
 
 #endif // ARM
-
-
 
 #if UCTX_ARCH == UCTX_ARM64
 #ifndef __ARCH_AARCH64_DEFS_H
@@ -387,16 +400,12 @@ END(uctx_swapcontext)
 
 #endif // ARM64
 
-
-
 #if UCTX_ARCH == UCTX_FREERTOS
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
 
 
 #endif // FREERTOS
-
-
 
 #if UCTX_ARCH == UCTX_LOONGARCH64
 #ifndef __ARCH_LOONGARCH64_DEFS_H
@@ -820,8 +829,6 @@ END(uctx_swapcontext)
 
 #endif // LOONGARCH64
 
-
-
 #if UCTX_ARCH == UCTX_M68K
 #ifndef __ARCH_M68K_DEFS_H
 #define __ARCH_M68K_DEFS_H
@@ -961,8 +968,6 @@ END(uctx_swapcontext)
 
 
 #endif // M68K
-
-
 
 #if UCTX_ARCH == UCTX_MIPS
 #ifndef __ARCH_MIPS64_DEFS_H
@@ -1378,8 +1383,6 @@ END(uctx_swapcontext)
 
 
 #endif // MIPS
-
-
 
 #if UCTX_ARCH == UCTX_MIPS64
 #ifndef __ARCH_MIPS64_DEFS_H
@@ -1809,8 +1812,6 @@ END(uctx_swapcontext)
 
 #endif // MIPS64
 
-
-
 #if UCTX_ARCH == UCTX_OR1K
 #ifndef __ARCH_OR1K_DEFS_H
 #define __ARCH_OR1K_DEFS_H
@@ -1993,8 +1994,6 @@ END(uctx_swapcontext)
 
 #endif // OR1K
 
-
-
 #if UCTX_ARCH == UCTX_PPC
 #ifndef __ARCH_PPC_DEFS_H
 #define __ARCH_PPC_DEFS_H
@@ -2169,8 +2168,6 @@ END(__uctx_swapcontext)
 
 
 #endif // PPC
-
-
 
 #if UCTX_ARCH == UCTX_PPC64
 #ifndef __ARCH_PPC_DEFS_H
@@ -2370,16 +2367,12 @@ END(__uctx_swapcontext)
 
 #endif // PPC64
 
-
-
 #if UCTX_ARCH == UCTX_PTHREADS
 #ifndef __ARCH_PTHREADS_DEFS_H
 #endif
 
 
 #endif // PTHREADS
-
-
 
 #if UCTX_ARCH == UCTX_RISCV
 #ifndef __ARCH_RISCV_DEFS_H
@@ -2624,8 +2617,6 @@ END(uctx_swapcontext)
 
 #endif // RISCV
 
-
-
 #if UCTX_ARCH == UCTX_RISCV64
 #ifndef __ARCH_RISCV64_DEFS_H
 #define __ARCH_RISCV64_DEFS_H
@@ -2869,8 +2860,6 @@ END(uctx_swapcontext)
 
 #endif // RISCV64
 
-
-
 #if UCTX_ARCH == UCTX_S390X
 #ifndef __ARCH_S390X_DEFS_H
 #define __ARCH_S390X_DEFS_H
@@ -3003,8 +2992,6 @@ END(uctx_swapcontext)
 
 
 #endif // S390X
-
-
 
 #if UCTX_ARCH == UCTX_SH
 #ifndef __ARCH_SH4_DEFS_H
@@ -3242,13 +3229,9 @@ END(uctx_swapcontext)
 
 #endif // SH
 
-
-
 #if UCTX_ARCH == UCTX_WINDOWS
 
 #endif // WINDOWS
-
-
 
 #if UCTX_ARCH == UCTX_X64
 #ifndef __ARCH_X86_64_DEFS_H
@@ -3530,8 +3513,6 @@ END(uctx_swapcontext)
 
 #endif // X64
 
-
-
 #if UCTX_ARCH == UCTX_X86
 #ifndef __ARCH_X86_DEFS_H
 #define __ARCH_X86_DEFS_H
@@ -3770,8 +3751,6 @@ END(uctx_swapcontext)
 
 #endif // X86
 
-
-
 #if UCTX_ARCH == UCTX_XTENSA
 #ifndef PROC_NAME
 # ifdef __MACH__
@@ -3993,6 +3972,9 @@ END(uctx_swapcontext)
 
 #endif // XTENSA
 
-#if defined(__ELF__) && !defined(__APPLE__)
-    .section .note.GNU-stack,"",@progbits
+/*
+    Mark ELF stacks non-executable. Use %progbits because @ starts ARM comments.
+ */
+#if defined(__ELF__)
+    .section .note.GNU-stack,"",%progbits
 #endif

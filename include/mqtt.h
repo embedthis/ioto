@@ -15,10 +15,10 @@
 /********************************** Product ***********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME              "mqtt"
+    #define ME_NAME  "mqtt"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE             ME_NAME
+    #define ME_TITLE ME_NAME
 #endif
 
 /********************************** Includes **********************************/
@@ -29,13 +29,13 @@
     Components
  */
 #ifndef ME_COM_MQTT
-    #define ME_COM_MQTT    1
+    #define ME_COM_MQTT  1
 #endif
 #ifndef ME_COM_CRYPT
-    #define ME_COM_CRYPT   1
+    #define ME_COM_CRYPT 1
 #endif
 #ifndef ME_COM_JSON
-    #define ME_COM_JSON    1
+    #define ME_COM_JSON  1
 #endif
 
 /*********************************** Defines **********************************/
@@ -308,6 +308,7 @@ typedef struct Mqtt {
     int msgTimeout;         /**< Message timeout for retransmit */
     size_t maxMessage;      /**< Maximum message size */
     int fiberCount;         /**< Number of fibers waiting for a message */
+    int holds;              /**< Callers running application code, which may free this instance */
     Ticks keepAlive;        /**< Server side keep alive duration in seconds */
     Ticks timeout;          /**< Inactivity timeout for on-demand connections */
     Ticks lastActivity;     /**< Time of last I/O activity */
@@ -316,6 +317,7 @@ typedef struct Mqtt {
     uint connected : 1;     /**< Mqtt is currently connected flag */
     uint processing : 1;    /**< ProcessMqtt is running */
     uint destroyed : 1;     /**< Mqtt instance is destroyed - just for debugging */
+    uint freeing : 1;       /**< mqttFree was called while held, the last holder frees it */
 
     Ticks throttle;         /**< Throttle delay in msec */
     Ticks throttleLastPub;  /**< Time of last publish or throttle */
@@ -369,6 +371,8 @@ PUBLIC int mqttDisconnect(Mqtt *mq);
     Free an MQTT client instance.
     @description Release all resources associated with the MQTT instance. This will automatically
     disconnect from the broker if still connected and free all subscriptions and queued messages.
+    It may be called from a message or event callback. The instance then stops processing at once,
+    delivers no further messages, and is freed when the callback returns.
     @param mq Mqtt instance allocated via mqttAlloc. Pass NULL to ignore.
     @stability Evolving
  */
@@ -405,6 +409,16 @@ PUBLIC Ticks mqttGetLastActivity(Mqtt *mq);
 PUBLIC int mqttMsgsToSend(Mqtt *mq);
 
 /**
+    Get the number of messages in the transmission queue.
+    @description Returns the count of all queued messages, whether unsent or awaiting an
+    acknowledgement from the broker.
+    @param mq The MQTT object.
+    @return The number of messages in the queue.
+    @stability Evolving
+ */
+PUBLIC int mqttGetQueueCount(Mqtt *mq);
+
+/**
     Send a ping request to the broker.
     @description Send a PINGREQ packet to the broker to test connectivity and reset
     the keep-alive timer. The broker will respond with a PINGRESP packet.
@@ -430,7 +444,8 @@ PUBLIC int mqttPing(Mqtt *mq);
     @return Zero if successful, negative on error.
     @stability Evolving
  */
-PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, size_t size, int qos, MqttWaitFlags waitFlags, cchar *topic, ...);
+PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, size_t size, int qos, MqttWaitFlags waitFlags, cchar *topic,
+                       ...) PRINTF_ATTRIBUTE(6, 7);
 
 /**
     Publish a retained message to the MQTT broker.
@@ -449,7 +464,7 @@ PUBLIC int mqttPublish(Mqtt *mq, cvoid *msg, size_t size, int qos, MqttWaitFlags
     @stability Evolving
  */
 PUBLIC int mqttPublishRetained(Mqtt *mq, cvoid *msg, size_t size, int qos,
-                               MqttWaitFlags waitFlags, cchar *topic, ...);
+                               MqttWaitFlags waitFlags, cchar *topic, ...) PRINTF_ATTRIBUTE(6, 7);
 
 /**
     Set authentication credentials for broker connection.
@@ -507,7 +522,7 @@ PUBLIC int mqttSetWill(Mqtt *mq, cchar *topic, cvoid *msg, size_t length);
     @stability Evolving
  */
 PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos,
-                         MqttWaitFlags waitFlags, cchar *topic, ...);
+                         MqttWaitFlags waitFlags, cchar *topic, ...) PRINTF_ATTRIBUTE(5, 6);
 
 /**
     Establish a master subscription for efficient topic management.
@@ -526,7 +541,7 @@ PUBLIC int mqttSubscribe(Mqtt *mq, MqttCallback callback, int maxQos,
     @return Zero if successful, negative on error.
     @stability Evolving
  */
-PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cchar *topic, ...);
+PUBLIC int mqttSubscribeMaster(Mqtt *mq, int maxQos, MqttWaitFlags waitFlags, cchar *topic, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Unsubscribe from a topic.
@@ -614,6 +629,6 @@ PUBLIC bool mqttCheckQueue(Mqtt *mq);
 #endif /* ME_COM_MQTT */
 #endif
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

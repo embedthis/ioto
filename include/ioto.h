@@ -132,6 +132,14 @@ extern "C" {
 #define IO_LOCAL_FILE     "@config/local.json5"    /**< Development overrides */
 #define IO_PROVISION_FILE "@config/provision.json5"/**< Name of the device provisioning state file */
 #define IO_WEB_FILE       "@config/web.json5"      /**< Name of the web server config file */
+
+/*
+    Fibers held by the agent's own background work - timer events, MQTT keep-alive and inbound,
+    database save and sync, ioInit - which draw on the same pool the web server does. Reserved on
+    top of the connection limit so web traffic cannot starve them.
+ */
+#define IO_FIBER_RESERVE  8                        /**< Fibers reserved for background subsystems */
+#define IO_FIBER_DEFAULT  16                       /**< Fiber ceiling when no web server is built in */
 #define IO_CERTIFICATE    "@certs/ioto.crt"        /**< Name of the AWS thing certificate file */
 #define IO_KEY            "@certs/ioto.key"        /**< Name of the AWS thing key file */
 #define IO_SHADOW_FILE    "@db/shadow.json5"       /**< Name of the persisted AWS shadow state file */
@@ -142,6 +150,9 @@ extern "C" {
 #endif
 #define IO_MESSAGE_SIZE   128 * 1024 * 1024        /**< Maximum AWS MQTT message size (reduced) */
 #define IO_REPROVISION    (3600)                   /**< Time to wait before reprovisioning after blocked connection*/
+#ifndef IO_TIME_SYNC_TIMEOUT
+    #define IO_TIME_SYNC_TIMEOUT (30 * TPS)        /**< Maximum wait for SNTP in ioSetTime(1) */
+#endif
 
 struct IotoLog;
 
@@ -370,9 +381,10 @@ PUBLIC void ioRestartDb(void);
     Restart the web server service.
     @description Stops and restarts the web server service. This will close all client connections
         and reinitialize the web server subsystem.
+    @return Zero if the web server restarted, otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC void ioRestartWeb(void);
+PUBLIC int ioRestartWeb(void);
 #endif
 
 /********************************* Web Extensions *****************************/
@@ -384,7 +396,9 @@ PUBLIC void ioRestartWeb(void);
 
 /**
     Write a database item
-    @description This routine serialize a database item into JSON. It will NOT call webFinalize.
+    @description This routine serializes a database item into JSON. It will NOT call webFinalize.
+        The item is serialized into private memory before writing, so the item need not remain valid
+        if the write yields. The item is written in full: it is not validated against a signature.
     @param web Web object
     @param item Database item
     @return The number of bytes written.
@@ -395,6 +409,8 @@ PUBLIC ssize webWriteItem(Web *web, const DbItem *item);
 /**
     Write a grid of database items as part of a web response
     @description This routine serializes a database grid into JSON. It will NOT call webFinalize.
+        The whole grid is serialized into private memory before a single write, so the items need not
+        remain valid if the write yields.
     @param web Web object
     @param items Grid of database items
     @return The number of bytes written.
@@ -426,10 +442,22 @@ PUBLIC ssize webWriteValidatedItems(Web *web, RList *items, cchar *sigKey);
 
 /**
     Login action routine
-    @description Use the "username" and "password" web vars to validate against a user item stored in the database
-        using the LocalUser model. If the user authenticates, the client will be redirected to "/" with a
-        HTTP 302 status.  If the user fails to authenticate, a HTTP 401 response will be returned.
-        This routine should be installed using: webAddAction(host, "/api/public/login", webLoginUser, NULL);
+    @description Use the "username" and "password" web vars to validate against an item of the database "User"
+        model, which has "username", "password" and "role" fields. The password is a hash made by the
+        "password" utility (bcrypt over username:realm:password) and is verified with webCheckPassword.
+        If the user authenticates, the client is redirected to "/" with a HTTP 302 status.
+        \n\n
+        Every failure returns the same HTTP 401 response "Invalid username or password" after the same password
+        work, whether the username is unknown or the password is wrong, and is logged by webLogAuthFailure as
+        "login failed". The login is also refused when the username belongs to a user defined with a password
+        in web.json5, or when the password is the published default "demo". A client with web.auth.maxFailures
+        failures within web.auth.failurePeriod receives HTTP 429 until the period ends. This limit is shared
+        with HTTP Basic and Digest authentication.
+        \n\n
+        The agent installs this routine at web.auth.login. It then also watches the User table: when a user's
+        role changes or the user is removed, the cached user and all its sessions are dropped, so the change
+        takes effect immediately and the next login carries the role the database holds.
+        To install it yourself, use: webAddAction(host, "/api/public/login", webLoginUser, NULL);
     @param web Web object
     @stability Evolving
  */
@@ -438,6 +466,7 @@ PUBLIC void webLoginUser(Web *web);
 /**
     Logout action routine
     @description Log out a logged in user. This call will generate a redirect response to "/" with a 302 HTTP status.
+        Only POST is accepted; other methods receive a 405 response and the session is kept.
         This routine should be installed using: webAddAction(host, "/api/public/logout", webLogoutUser, NULL);
     @param web Web object
     @stability Evolving
@@ -519,8 +548,12 @@ PUBLIC int ioStorage(cchar *path, cchar *storage);
 
 /**
     Start the SNTP time service
-    @param wait Set to true to wait for the time to be established.
-    @return Zero if successful, otherwise a negative error code.
+    @description TLS verifies peer certificate validity dates against the system clock, so call this
+        with wait set to true before any TLS connection that verifies a peer.
+    @param wait Set to true to wait for the time to be established. The wait is bounded by
+        IO_TIME_SYNC_TIMEOUT (30 seconds by default).
+    @return Zero if successful, otherwise a negative error code. Returns R_ERR_TIMEOUT if the time
+        could not be established within IO_TIME_SYNC_TIMEOUT.
     @stability Evolving
  */
 PUBLIC int ioSetTime(bool wait);
@@ -532,6 +565,6 @@ PUBLIC int ioSetTime(bool wait);
 #endif /* _h_IOTO_H */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

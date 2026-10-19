@@ -43,10 +43,10 @@
 /********************************** Includes **********************************/
 
 #ifndef ME_NAME
-    #define ME_NAME    "json"
+    #define ME_NAME  "json"
 #endif
 #ifndef ME_TITLE
-    #define ME_TITLE   ME_NAME
+    #define ME_TITLE ME_NAME
 #endif
 
 /*
@@ -440,7 +440,8 @@ PUBLIC int jsonBlend(Json *dest, int did, cchar *dkey, const Json *src, int sid,
     Clone a json object
     @param src Input json object
     @param flags Reserved, set to zero.
-    @return The copied JSON tree. Caller must free with #jsonFree.
+    @return The copied JSON tree, or NULL if cloning fails (including exceeding the blend recursion limit).
+        Caller must free the copied tree with #jsonFree.
     @stability Evolving
  */
 PUBLIC Json *jsonClone(const Json *src, int flags);
@@ -485,6 +486,8 @@ PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
         Only use the result of this API while no other changes are made to the JSON object.
         Use jsonGet if you need to retain the queried value. If a key value is NULL or undefined,
         then the defaultValue will be returned.
+        Keys are paths split on ".", "[", and "]". Validate external names or use
+ #jsonGetKey for a literal child name.
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -494,6 +497,20 @@ PUBLIC cchar *jsonGetRef(Json *json, int nid, cchar *key, cchar *defaultValue);
     @stability Evolving
  */
 PUBLIC cchar *jsonGet(Json *json, int nid, cchar *key, cchar *defaultValue);
+
+/**
+    Get a json node value as a string using a literal, unparsed property name
+    @description Match one child name literally, including ".", "[", and "]". Use for externally supplied names.
+        The returned reference has the same lifetime as jsonGet.
+    @param json Source json
+    @param nid Base node ID whose direct child is being read. Set to zero for the top level.
+    @param key Literal property name of a direct child of nid. Never interpreted as a path.
+    @param defaultValue If the key is not defined, return the defaultValue.
+    @return The key value as a string or defaultValue if not defined. This is a reference into the
+        JSON store. Caller must NOT free.
+    @stability Evolving
+ */
+PUBLIC cchar *jsonGetKey(Json *json, int nid, cchar *key, cchar *defaultValue);
 
 /**
     Get a json node value as a boolean
@@ -523,7 +540,8 @@ PUBLIC double jsonGetDouble(Json *json, int nid, cchar *key, double defaultValue
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
     @param defaultValue If the key is not defined, return the defaultValue.
-    @return The key value as an integer or defaultValue if not defined
+    @return The key value as an integer or defaultValue if not defined. Values outside the int range
+        saturate at MAXINT or -MAXINT - 1.
     @stability Evolving
  */
 PUBLIC int jsonGetInt(Json *json, int nid, cchar *key, int defaultValue);
@@ -541,6 +559,9 @@ PUBLIC Time jsonGetDate(Json *json, int nid, cchar *key, int64 defaultValue);
 
 /**
     Get a json node value as a 64-bit integer
+    @description A plain decimal integer converts exactly. A fraction, an exponent or a hex literal
+        converts through a double and truncates, saturating at the int64 limits, so 1e3 reads as
+        1000 and 0x10 as 16. A value that is not a number reads as 0.
     @param json Source json
     @param nid Base node ID from which to examine. Set to zero for the top level.
     @param key Property name to search for. This may include ".". For example: "settings.mode".
@@ -679,7 +700,7 @@ PUBLIC int jsonParseText(Json *json, char *text, int flags);
     @return A string. Returns NULL if the text will not parse. Caller must free.
     @stability Evolving
  */
-PUBLIC char *jsonConvert(cchar *fmt, ...);
+PUBLIC char *jsonConvert(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 #if DEPRECATED || 1
 #define jsonFmtToString jsonConvert
@@ -694,7 +715,7 @@ PUBLIC char *jsonConvert(cchar *fmt, ...);
     @return The reference to the buffer
     @stability Evolving
  */
-PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
+PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
 
 /*
     Convenience macro for converting a format and string into a strict json string in a buffer.
@@ -715,7 +736,7 @@ PUBLIC cchar *jsonConvertBuf(char *buf, size_t size, cchar *fmt, ...);
     @return A json object. Caller must free via jsonFree().
     @stability Evolving
  */
-PUBLIC Json *jsonParseFmt(cchar *fmt, ...);
+PUBLIC Json *jsonParseFmt(cchar *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
     Load a JSON object from a filename
@@ -775,10 +796,12 @@ PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int f
 
 /**
     Update a key/value in the JSON object with a string value
-    @description This call takes a multipart Property name and will operate at any level of depth in the JSON object.
+    @description Resolve or create each path component, split on ".", "[", and "]". This may replace
+        scalars or subtrees and allocate nodes. Validate external names or use #jsonSetKey for a literal child name.
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value Character string value.
     @param type Set to JSON_ARRAY, JSON_OBJECT, JSON_PRIMITIVE or JSON_STRING.
     @return Positive node id if updated successfully. Otherwise a negative error code.
@@ -787,16 +810,31 @@ PUBLIC int jsonSave(Json *obj, int nid, cchar *key, cchar *path, int mode, int f
 PUBLIC int jsonSet(Json *obj, int nid, cchar *key, cchar *value, int type);
 
 /**
+    Update a direct child of the JSON object using a literal, unparsed property name
+    @description Set one child by its literal name, including ".", "[", and "]". Use for externally supplied
+        names. Only the named child is replaced; siblings are unchanged.
+    @param obj Parsed JSON object returned by jsonParse
+    @param nid Base node ID whose direct child is being set. Set to zero for the top level.
+    @param key Literal property name of a direct child of nid. Never interpreted as a path.
+    @param value Character string value.
+    @param type Set to JSON_ARRAY, JSON_OBJECT, JSON_PRIMITIVE or JSON_STRING.
+    @return Positive node id if updated successfully. Otherwise a negative error code.
+    @stability Evolving
+ */
+PUBLIC int jsonSetKey(Json *obj, int nid, cchar *key, cchar *value, int type);
+
+/**
     Update a key in the JSON object with a JSON object value passed as a JSON5 string
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param fmt JSON string.
     @param ... Args for format
     @return Zero if updated successfully. Otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...);
+PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Update a property in the JSON object with a boolean value.
@@ -804,6 +842,7 @@ PUBLIC int jsonSetJsonFmt(Json *json, int nid, cchar *key, cchar *fmt, ...);
     @param obj Parsed JSON object returned by jsonParse.
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value Boolean string value.
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
@@ -816,6 +855,7 @@ PUBLIC int jsonSetBool(Json *obj, int nid, cchar *key, bool value);
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value Double floating point value.
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
@@ -828,6 +868,7 @@ PUBLIC int jsonSetDouble(Json *json, int nid, cchar *key, double value);
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value Date value expressed as a Time (Elapsed milliseconds since Jan 1, 1970).
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
@@ -841,12 +882,13 @@ PUBLIC int jsonSetDate(Json *json, int nid, cchar *key, Time value);
     @param obj Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param fmt Printf style format string
     @param ... Args for format
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
  */
-PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...);
+PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...) PRINTF_ATTRIBUTE(4, 5);
 
 /**
     Update a property in the JSON object with a numeric value
@@ -854,6 +896,7 @@ PUBLIC int jsonSetFmt(Json *obj, int nid, cchar *key, cchar *fmt, ...);
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value Number to update.
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
@@ -865,6 +908,7 @@ PUBLIC int jsonSetNumber(Json *json, int nid, cchar *key, int64 value);
     @param json Parsed JSON object returned by jsonParse
     @param nid Base node ID from which to start search for key. Set to zero for the top level.
     @param key Property name to add/update. This may include ".". For example: "settings.mode".
+        Use jsonSetKey for literal external names.
     @param value String value.
     @return Positive node id if updated successfully. Otherwise a negative error code.
     @stability Evolving
@@ -953,7 +997,8 @@ PUBLIC void jsonPrint(Json *json);
     @param json Json object
     @param str String template to expand
     @param keep If true, unexpanded references are retained as ${token}, otherwise removed.
-    @return An allocated expanded string. Caller must free.
+    @return An allocated expanded string. Caller must free. Objects and arrays render as compact JSON; scalars and null
+       render as in jsonGet.
     @stability Evolving
  */
 PUBLIC char *jsonTemplate(Json *json, cchar *str, bool keep);
