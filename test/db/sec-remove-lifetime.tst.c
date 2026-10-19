@@ -1,5 +1,5 @@
 /*
-    sec-remove-lifetime.tst.c - Regression for db#10020 and db#10021
+    sec-remove-lifetime.tst.c - Remove callbacks cannot free items still in use
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

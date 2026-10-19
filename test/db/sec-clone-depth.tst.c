@@ -1,5 +1,5 @@
 /*
-    sec-clone-depth.tst.c - Regression for db#10019
+    sec-clone-depth.tst.c - Props nested deeper than the clone limit are refused, not dereferenced
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

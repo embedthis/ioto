@@ -1,5 +1,5 @@
 /*
-    sec-enum-quoted.tst.c - Regression for db#10026
+    sec-enum-quoted.tst.c - Enum checks decode escapes in the enum list
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

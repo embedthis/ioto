@@ -1,5 +1,5 @@
 /*
-    sec-schema-leak.tst.c - Regression for db#10028
+    sec-schema-leak.tst.c - Blended schema includes are not leaked
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

@@ -1,5 +1,5 @@
 /*
-    sec-number-getters.tst.c - Regression for db#10027
+    sec-number-getters.tst.c - Numeric getters parse exponents and fractions
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

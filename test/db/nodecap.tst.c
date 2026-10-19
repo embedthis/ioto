@@ -1,5 +1,5 @@
 /*
-    nodecap.tst.c - Regression for db#10029
+    nodecap.tst.c - A failed update merge is refused, not stored unmerged
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

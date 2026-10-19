@@ -1,5 +1,5 @@
 /*
-    sec-read-expiry.tst.c - Regression for db#10025
+    sec-read-expiry.tst.c - Returned items survive callbacks during the same call
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

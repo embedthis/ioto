@@ -1,5 +1,5 @@
 /*
-    sec-journal-replay.tst.c - Regression for db#10022 and db#10023
+    sec-journal-replay.tst.c - Journal replay of many records and of removes
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */

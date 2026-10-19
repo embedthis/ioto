@@ -1,7 +1,7 @@
 /*
     sec-regress.json5 - Schema for the security regression tests
 
-    One model covers the defects in db#10019 to db#10028: deep props, expiry removal lifetime,
+    One model covers the regression cases: deep props, expiry removal lifetime,
     journal replay, enum escapes and the numeric getters.
  */
 {

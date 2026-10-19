@@ -1,5 +1,5 @@
 /*
-    nodecap.json5 - Schema for the node cap update test (db#10029)
+    nodecap.json5 - Schema for the node cap update test
  */
 {
     version: '1',

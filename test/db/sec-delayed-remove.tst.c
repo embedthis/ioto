@@ -1,5 +1,5 @@
 /*
-    sec-delayed-remove.tst.c - Regression for db#10024
+    sec-delayed-remove.tst.c - A delayed remove is journalled and survives a crash
 
     Copyright (c) All Rights Reserved. See details at the end of the file.
  */
