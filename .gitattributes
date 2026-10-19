@@ -1,8 +1,8 @@
-*.key filter=git-crypt diff=git-crypt
-*.password filter=git-crypt diff=git-crypt
-*.tfstate filter=git-crypt diff=git-crypt
-*/CONFIG/* filter=git-crypt diff=git-crypt
-terraform/keys.* filter=git-crypt diff=git-crypt
-override.tf filter=git-crypt diff=git-crypt
-# Ensure test data files maintain LF line endings on all platforms
-test/data/*.dat binary
+#
+#   Test fixtures whose byte count or bytes are asserted must check out identically on every
+#   platform. Without this git translates LF to CRLF on Windows and a 29-byte fixture arrives as
+#   30, which is how test/r/data/file.dat failed there. The owning modules carry the same rule,
+#   but .gitattributes is repository configuration and is not vendored with the test trees.
+#
+test/*/data/*.dat binary
+test/*/site/**  -text
