@@ -44,12 +44,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/debug_macosx
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_DEBUG=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=1
 INCLUDES += -I../../../../include -I/opt/homebrew/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
 LIBS += -lioto -lssl -lcrypto -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/opt/homebrew/lib -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/opt/homebrew/lib -g -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
 
 else ifeq ($(config),debug_linux)
 ifeq ($(origin CC), default)
@@ -63,12 +63,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/debug_linux
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_DEBUG=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
 INCLUDES += -I../../../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -pie -fPIE
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -pie -fPIE
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
 LIBS += -lioto -lssl -lcrypto -lrt -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -g -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 
 else ifeq ($(config),debug_freebsd)
 ifeq ($(origin CC), default)
@@ -82,12 +82,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/debug_freebsd
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1 -DME_DEBUG=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
 INCLUDES += -I../../../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
 LIBS += -lioto -lssl -lcrypto -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -g -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack
 
 else ifeq ($(config),release_macosx)
 ifeq ($(origin CC), default)
@@ -101,12 +101,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/release_macosx
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=0
 INCLUDES += -I../../../../include -I/opt/homebrew/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
 LIBS += -lioto -lssl -lcrypto -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/opt/homebrew/lib -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/opt/homebrew/lib -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/ -Wl,-x
 
 else ifeq ($(config),release_linux)
 ifeq ($(origin CC), default)
@@ -120,12 +120,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/release_linux
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=0
 INCLUDES += -I../../../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -pie -fPIE
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion -pie -fPIE
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 LIBS += -lioto -lssl -lcrypto -lrt -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -s -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -s -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 
 else ifeq ($(config),release_freebsd)
 ifeq ($(origin CC), default)
@@ -139,12 +139,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/release_freebsd
-DEFINES += -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_SSL=1
+DEFINES += -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=0
 INCLUDES += -I../../../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O3 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -Wsign-conversion
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
 LIBS += -lioto -lssl -lcrypto -ldl -lpthread -lm
-ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -s
+ALL_LDFLAGS += $(LDFLAGS) -L../../../../build/bin -L/usr/lib -s -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack
 
 endif
 

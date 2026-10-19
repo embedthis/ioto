@@ -12,14 +12,14 @@
 void app_main(void)
 {
     /*
-        Initialize the runtime and setup the ESP32 file system, WIFI and time daemon.
-        If your app does these steps independently, just omit the relevant call here.
+        Initialize runtime, filesystem, Wi-Fi and time as needed. Wait for the clock before TLS certificate date
+        checks.
      */
     if (ioStartRuntime(IOTO_VERBOSE) < 0) {
         return;
     }
-    if (ioStorage("/state", "storage") < 0 || 
-            ioWIFI(WIFI_SSID, WIFI_PASSWORD, HOSTNAME) < 0 || ioSetTime(0) < 0) {
+    if (ioStorage("/state", "storage") < 0 ||
+            ioWIFI(WIFI_SSID, WIFI_PASSWORD, HOSTNAME) < 0 || ioSetTime(1) < 0) {
         ioStopRuntime();
         return;
     }
@@ -32,6 +32,6 @@ void app_main(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -3,8 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="data:;base64,=" />
+        <link rel="icon" href="/public/favicon.ico" />
         <link href="/public/style.css" rel="stylesheet" type="text/css" />
+        <script src="/public/auth.js" defer></script>
         <title>index.html</title>
     </head>
     <body>
@@ -21,25 +22,9 @@
         <div class="main">
             <h1>Log Out</h1>
             <p id="notes"></p>
-            <a href="/api/public/logout"><button>Log Out</button></a>
+            <form method="post" action="/api/public/logout">
+                <button type="submit">Log Out</button>
+            </form>
         </div>
     </body>
 </html>
-
-<script async>
-    async function getAuth() {
-        let response = await fetch('/api/public/getAuth')
-        let auth = await response.json()
-        let el = document.getElementById('username')
-        if (auth && auth.username) {
-            el.innerHTML = auth.username
-            el.href = '/public/logout.html'
-            document.getElementById('notes').innerHTML = `Logged in as "${auth.username}"`
-        } else {
-            el.innerHTML = 'Login'
-            el.href = '/public/login.html'
-            document.getElementById('notes').innerHTML = `Not logged in`
-        }
-    }
-    getAuth()
-</script>

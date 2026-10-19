@@ -10,7 +10,6 @@
                     log: '.',
                     state: 'state',
                 },
-                optimize: 'debug',
                 log: {
                     path: 'stdout',
                     format: '%S: %M',
@@ -18,13 +17,17 @@
                     sources: 'all,!mbedtls',
                     show: '',
                 },
+                // Development credentials; provision a separate pair for production.
+                tls: {
+                    certificate: '@certs/test.crt',
+                    key: '@certs/test.key',
+                },
             },
             prod: {
                 directories: {
                     log: '/var/log',
                     state: '/var/lib/ioto',
                 },
-                optimize: 'release',
             },
         },
     },
@@ -60,7 +63,5 @@
     },
     tls: {
         authority: '@certs/roots.crt',
-        certificate: '@certs/test.crt',
-        key: '@certs/test.key',
     },
 }

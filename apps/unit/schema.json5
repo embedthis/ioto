@@ -6,10 +6,30 @@
     description: 'Default database schema for local managememt',
     blend: [
         '../../schemas/parts/OneTable.json5',
+        '../../schemas/parts/LocalSchema.json5',
         '../../schemas/parts/CloudSchema.json5'
     ],
-    process: { },
-    models: { }
+    process: {
+        Churn: {enable: 'device', show: false},
+        Blob: {enable: 'device', show: false},
+    },
+    models: {
+        /*
+            Scratch model the scenario tests write and read through the agent, so a soak can see
+            the database and its journal churn under load
+         */
+        Churn: {
+            sk:         {type: 'string', value: 'churn#${key}', hidden: true},
+            key:        {type: 'string', required: true},
+            value:      {type: 'number'},
+        },
+        /*
+            Large items force writes to yield during item-lifetime tests.
+         */
+        Blob: {
+            sk:         {type: 'string', value: 'blob#${key}', hidden: true},
+            key:        {type: 'string', required: true},
+            data:       {type: 'string'},
+        },
+    }
 }
-
-

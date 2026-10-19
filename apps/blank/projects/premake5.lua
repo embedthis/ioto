@@ -41,7 +41,6 @@ tlsProvider = _OPTIONS["tls"] or "openssl"
 workspace "ioto-blank"
     configurations { "debug", "release" }
     language       "C"
-    staticruntime  "On"
     warnings       "Extra"
 
     if isVS then
@@ -73,36 +72,5 @@ project "ioto-blank"
     files { "../src/blank.c" }
     links { "ioto" }
 
-    --
-    --  TLS and system libraries, per target platform. The OpenSSL prefix differs by platform, so
-    --  these cannot share one filter. See projects/openssl-paths.lua.
-    --
-    local systemLibs = {
-        macosx  = { "dl", "pthread", "m" },
-        freebsd = { "dl", "pthread", "m" },
-        linux   = { "rt", "dl", "pthread", "m" },
-        windows = {},
-    }
-
-    for _, platform in ipairs(platformList) do
-        filter("platforms:" .. platform)
-            if tlsProvider ~= "openssl" then
-                libdirs { mbedtlsPath .. "/lib", mbedtlsPath .. "/library" }
-                links   { "mbedtls", "mbedcrypto", "mbedx509" }
-            elseif platform == "windows" then
-                local p = opensslPathFor("windows")
-                libdirs {
-                    p .. "/lib",
-                    p .. "/lib/VC/x64/MTd",
-                    p .. "/lib/VC/x64/MT",
-                    p .. "/lib/VC/x64/MDd",
-                    p .. "/lib/VC/x64/MD",
-                }
-                links { "libssl", "libcrypto" }
-            else
-                libdirs { opensslPathFor(platform) .. "/lib" }
-                links   { "ssl", "crypto" }
-            end
-            links(systemLibs[platform])
-    end
-    filter {}
+    -- TLS and system libraries (projects/ioto-config.lua)
+    iotoLinks()

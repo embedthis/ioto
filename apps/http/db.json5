@@ -1,21 +1,32 @@
+/*
+    db.json5 - Seed data loaded on first run, when the User table is empty
+
+    THIS FILE DELIBERATELY DEFINES NO USERS.
+
+    It used to seed three accounts - admin, guest and super - all with the password "demo", and all
+    three hashes were published in the source distribution. An integrator who followed every
+    documented pre-deployment step still shipped a device with a known administrative password, and
+    the "super" account, which holds the highest role in the hierarchy, was not mentioned in the
+    README at all, so it was the one least likely to be noticed and removed.
+
+    Create your own account instead. From the top of the Ioto source tree, after make, the password
+    utility generates the BF1 hash. The hash covers the username and the realm ('web' unless
+    web.json5 sets auth.realm or name):
+
+        build/bin/password --cipher blowfish --realm web --password 'your-password' admin
+
+    then add the record it prints here, or into your provisioning step:
+
+        User: [
+            {
+                username: 'admin',
+                password: 'BF1:...the hash bin/password printed...',
+                role: 'admin',
+            },
+        ]
+
+    The roles this app defines are in web.json5 under auth.roles.
+ */
 {
-    //  Passwords generated via the "pass" utility
-    //  Passwords: "demo"
-    User: [
-        {
-            username: 'admin',
-            password: 'BF1:00128:4oMqal5QuyBIslkR:9tvve3CPB8LoINq2ce6SWZLsdX5tQoLy',
-            role: 'admin',
-        },
-        {
-            username: 'guest',
-            password: 'BF1:00016:9bK672CWJNqRGK7T:vOcsA3B5PIz5eQoxZJ7kXlxbuvl3IVXJ',
-            role: 'user',
-        },
-        {
-            username: 'super',
-            password: 'BF1:00016:BYVWyfEQCG0Ypdwf:Pgqz3q1hIqRIu7R63Egx6V6zadINvwZk',
-            role: 'super',
-        },
-    ],
+    User: [],
 }

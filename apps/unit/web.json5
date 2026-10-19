@@ -42,7 +42,6 @@
         tls: '1 day',
     },
     upload: {
-        dir: 'tmp',
         remove: true,
     },
     webSockets: {

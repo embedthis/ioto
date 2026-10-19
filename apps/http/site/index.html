@@ -3,8 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="icon" href="data:;base64,=" />
+        <link rel="icon" href="/public/favicon.ico" />
         <link href="/public/style.css" rel="stylesheet" type="text/css" />
+        <script src="/public/auth.js" defer></script>
         <title>index.html</title>
     </head>
     <body>
@@ -26,37 +27,9 @@
                 When logged in, you will have access to various portions of the site depending on the access role. If not logged in,
                 you only have access to the home page, public page and login page.
             </p>
-            <p>Login as "admin" or "guest" with a password of "demo".</p>
+            <p>This app ships with no accounts. See README.md to create one.</p>
             <h2 id="notes"></h2>
             <a id="log"><button id="logbutton"></button></a>
         </div>
     </body>
 </html>
-
-<script async>
-    async function getAuth() {
-        let response = await fetch('/api/public/getAuth')
-        let notes = document.getElementById('notes')
-        if (response.status != 200) {
-            notes.innerHTML = `ERROR: App not built correctly.`
-            document.getElementById('log').style.display = 'none'
-        } else {
-            let auth = await response.json()
-            let el = document.getElementById('username')
-            if (auth && auth.username) {
-                el.innerHTML = auth.username
-                el.href = '/public/logout.html'
-                notes.innerHTML = `You are logged in as "${auth.username}"`
-                document.getElementById('logbutton').innerHTML = 'Log Out'
-                document.getElementById('log').href = '/api/public/logout'
-            } else {
-                el.innerHTML = 'Login'
-                el.href = '/public/login.html'
-                notes.innerHTML = `You are not logged in`
-                document.getElementById('logbutton').innerHTML = 'Log In'
-                document.getElementById('log').href = '/public/login.html'
-            }
-        }
-    }
-    getAuth()
-</script>

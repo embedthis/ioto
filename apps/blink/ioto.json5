@@ -5,10 +5,13 @@
     conditional: {
         profile: {
             dev: {
-                optimize: 'debug',
+                // Development credentials; provision a separate pair for production.
+                tls: {
+                    certificate: '@certs/test.crt',
+                    key: '@certs/test.key',
+                },
             },
             prod: {
-                optimize: 'release',
             },
         },
     },
@@ -34,7 +37,7 @@
         reprovision: 5,
     },
     log: {
-        path: 'stdout:all:all,!mbedtls',
+        path: 'stdout',
         format: '%S: %M',
         types: 'error,info',
         sources: 'all,!mbedtls',
@@ -61,8 +64,6 @@
     },
     tls: {
         authority: '@certs/roots.crt',
-        certificate: '@certs/test.crt',
-        key: '@certs/test.key',
     },
     update: {
         enable: false,

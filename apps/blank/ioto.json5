@@ -10,7 +10,6 @@
                     log: '.',
                     state: 'state',
                 },
-                optimize: 'debug',
                 log: {
                     path: 'stdout',
                     format: '%S: %M',
@@ -24,7 +23,6 @@
                     log: '/var/log',
                     state: '/var/lib/ioto',
                 },
-                optimize: 'release',
             },
         },
     },
@@ -38,7 +36,16 @@
     },
     limits: {
         reprovision: 5,
-        _fiberStack: '64k'
+        _fiberStack: '64k',
+        /*
+            fibers - the ceiling on concurrently serviced connections, and the one that actually
+            binds. The web server holds one fiber per connection for the whole request, so this is
+            the real limit, not web.limits.connections. Left unset it is derived from
+            web.limits.connections with headroom for the agent's background work, which is what you
+            want. Set it only to cap a constrained device, and expect fewer connections than
+            web.limits.connections advertises if you set it lower.
+         */
+        _fibers: 108,
     },
     log: {
         path: 'stdout',

@@ -17,13 +17,14 @@
          material and must never reach production.
       2. Give every route an explicit "role" unless it is genuinely public. An unrecognised key is
          ignored with a warning - a mistyped "role" leaves the route unauthenticated.
-      3. Review the limits and timeouts below against your device's real capacity.
+      3. Remove or replace any seeded accounts in db.json5. Credentials that ship in a template
+         ship in every device built from it, and a published hash is a published password.
+      4. Review the limits and timeouts below against your device's real capacity.
 */
 {
     documents: 'site',
     listen: ['http://127.0.0.1:8080'],
     routes: [
-        {match: '/ai/', handler: 'action', methods: ['GET', 'POST']},
         {match: '', handler: 'file', methods: ['GET']},
     ],
     headers: {
@@ -37,7 +38,18 @@
         sessions: '100',
     },
     timeouts: {
+        /*
+            parse    - the header block must arrive within this, on every request, not just the
+                       first one on a connection.
+            receive  - the whole of a buffered request body must arrive within this, measured from
+                       the start of the request and never refreshed. It is what stops a peer that
+                       dribbles one byte at a time from holding a connection - and so one of the
+                       fiber pool's slots - for the full request timeout. Streamed routes, uploads
+                       and PUT are not covered: they read at the peer's pace by design.
+            inactivity, request - the outer bounds once the request is in hand.
+         */
         parse: '5 secs',
+        receive: '30 secs',
         inactivity: '60 secs',
         request: '120 secs',
     },

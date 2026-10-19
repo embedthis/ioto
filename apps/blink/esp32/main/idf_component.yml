@@ -1,11 +1,12 @@
 ## IDF Component Manager Manifest File
 description: Ioto is compact device agent for local and cloud-based management for micro-controllers and embedded systems.
-version: 2.4.0
+version: 3.3.0
 url: https://admin.embedthis.com
 license: LICENSE.md
 readme: README.md
 dependencies:
+  # Require ESP-IDF with MbedTLS 3.6.7+ in the 3.6 series. Exclude incompatible releases individually; the manager lacks OR.
   idf:
-    version: '>=4.3'
+    version: '>=5.2.8,<6,!=5.3.0,!=5.3.1,!=5.3.2,!=5.3.3,!=5.3.4,!=5.3.5,!=5.4,!=5.5.0,!=5.5.1,!=5.5.2,!=5.5.3,!=5.5.4,!=5.5.5'
   joltwallet/littlefs: "~=1.20.3"
   espressif/led_strip: "~=2.5.0"

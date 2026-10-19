@@ -17,7 +17,9 @@
          must never reach production.
       2. Give every route an explicit "role" unless it is genuinely public. An unrecognised key is
          ignored with a warning - a mistyped "role" leaves the route unauthenticated.
-      3. Review the limits and timeouts below against your device's real capacity.
+      3. Remove or replace any seeded accounts in db.json5. Credentials that ship in a template
+         ship in every device built from it, and a published hash is a published password.
+      4. Review the limits and timeouts below against your device's real capacity.
 */
 {
     auth: {
@@ -63,13 +65,11 @@
     timeouts: {
         inactivity: '300 secs',
         parse: '10 secs',
+        //  The whole of a buffered request body, from the start of the request and never
+        //  refreshed. Bounds how long a dribbling peer can hold a fiber. See apps/blank/web.json5.
+        receive: '30 secs',
         request: '10 mins',
         session: '30 mins',
-        tls: '1 day',
-    },
-    upload: {
-        dir: 'tmp',
-        remove: true,
     },
     webSockets: {
         ping: 'never',
