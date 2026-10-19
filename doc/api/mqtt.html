@@ -12,20 +12,21 @@
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1a33611971f4c2de4c3969186d1c17c5c6" class="nameRef">mqttFree</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free an MQTT client instance.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#mqtt_8h_1ad67f561a4505d4cd2f16dcdaab7afee3" class="nameRef">mqttGetError</a>(struct Mqtt *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the last error message for the MQTT instance.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a></td><td><a href="#mqtt_8h_1a7056699c3f09cd6564936b53430cb9c7" class="nameRef">mqttGetLastActivity</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the time of last I/O activity.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a623f27ae0e96018a8296165ed989b3c2" class="nameRef">mqttGetQueueCount</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the number of messages in the transmission queue.</td></tr>
 <tr class="apiDef"><td class="apiType">bool</td><td><a href="#mqtt_8h_1a57c930f41498273b1c402aa27785d5ed" class="nameRef">mqttIsConnected</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if the MQTT instance is connected to a broker.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a8a2d03432b642595445655cbcf1f331f" class="nameRef">mqttMsgsToSend</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the number of messages pending transmission.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a562b37074ee9fc3d2af85ae301b4d343" class="nameRef">mqttPing</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a ping request to the broker.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1ade5ce726bb50af75e1dfed7d60a6c5bc" class="nameRef">mqttPublish</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Publish an application message to the MQTT broker.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1aafea5a82fb239be7a6a29af065174ad5" class="nameRef">mqttPublishRetained</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Publish a retained message to the MQTT broker.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a00b3a4e29941baef88255459dd874822" class="nameRef">mqttSetCredentials</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set authentication credentials for broker connection.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1ac0d175edfe92e6cac26cfb0b0058a85e" class="nameRef">mqttPublish</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...) PRINTF_ATTRIBUTE(6</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Publish an application message to the MQTT broker.</td></tr>
+<tr class="apiDef"><td class="apiType">int int</td><td><a href="#mqtt_8h_1acd7b0221c6b811921199d138083e70d1" class="nameRef">mqttPublishRetained</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...) PRINTF_ATTRIBUTE(6</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Publish a retained message to the MQTT broker.</td></tr>
+<tr class="apiDef"><td class="apiType">int int int</td><td><a href="#mqtt_8h_1ad07f6d4fbc2602cdfc93e7dea987ab1b" class="nameRef">mqttSetCredentials</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set authentication credentials for broker connection.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1a7da70a246f4c34f6a7b116bffb9973b7" class="nameRef">mqttSetKeepAlive</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> keepAlive)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the keep-alive timeout interval.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1ad51d9838a932a47e2122acbb7f9098c3" class="nameRef">mqttSetMessageSize</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the maximum message size for this MQTT instance.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1a7c03c9e152affc9023cc35d5d85f1105" class="nameRef">mqttSetTimeout</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the idle connection timeout.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a98665b8ed759cbded7307c8b1fea2b9a" class="nameRef">mqttSetWill</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> length)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the last will and testament message.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1afe7f248d11137df9cd7235c030dc584b" class="nameRef">mqttSubscribe</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="#mqtt_8h_1a92519298b6fc34ed3c5ed7f5043b0730" class="ref">MqttCallback</a> callback, int maxQos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Subscribe to a topic pattern.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a6a37a939078d2a8302d8b33d89340412" class="nameRef">mqttSubscribeMaster</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, int maxQos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Establish a master subscription for efficient topic management.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1aa0e0c6fc715ea269c20463023026bffe" class="nameRef">mqttSubscribe</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="#mqtt_8h_1a92519298b6fc34ed3c5ed7f5043b0730" class="ref">MqttCallback</a> callback, int maxQos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...) PRINTF_ATTRIBUTE(5</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Subscribe to a topic pattern.</td></tr>
+<tr class="apiDef"><td class="apiType">int int</td><td><a href="#mqtt_8h_1abc5ab171f310cc0a1f998c78f8a51e42" class="nameRef">mqttSubscribeMaster</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, int maxQos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...) PRINTF_ATTRIBUTE(4</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Establish a master subscription for efficient topic management.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#mqtt_8h_1a15f7ea25109a4a30bd8dcbc250d40031" class="nameRef">mqttThrottle</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Enable transmission throttling.</td></tr>
-<tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1ac7003ac2fc6d66c544eafd14814e8b2a" class="nameRef">mqttUnsubscribe</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> wait)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Unsubscribe from a topic.</td></tr>
+<tr class="apiDef"><td class="apiType">int int int</td><td><a href="#mqtt_8h_1aeefc487de157366f4e145db3d3f403e3" class="nameRef">mqttUnsubscribe</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> wait)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Unsubscribe from a topic.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#mqtt_8h_1a990034ae41debe859745364381b20788" class="nameRef">mqttUnsubscribeMaster</a>(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> wait)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Unsubscribe from a master topic.</td></tr>
 </table>
 <a name="Typedefs"></a>
@@ -237,8 +238,14 @@ I/O read buffer.
 <tr><td class="param">int</td><td>fiberCount</td><td>
 Number of fibers waiting for a message.
 </td></tr>
+<tr><td class="param">uint</td><td>freeing</td><td>
+mqttFree was called while held, the last holder frees it.
+</td></tr>
 <tr><td class="param"><a class="ref" href="#struct_mqtt_msg">MqttMsg</a></td><td>head</td><td>
 Head of message queue.
+</td></tr>
+<tr><td class="param">int</td><td>holds</td><td>
+Callers running application code, which may free this instance.
 </td></tr>
 <tr><td class="param">char *</td><td>id</td><td>
 Client ID.
@@ -457,7 +464,7 @@ Size of topic.
   </div>
   <div class="apiDetail">
 <p>Free an MQTT client instance.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Release all resources associated with the MQTT instance. This will automatically disconnect from the broker if still connected and free all subscriptions and queued messages.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Release all resources associated with the MQTT instance. This will automatically disconnect from the broker if still connected and free all subscriptions and queued messages. It may be called from a message or event callback. The instance then stops processing at once, delivers no further messages, and is freed when the callback returns.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">mq</td><td><a class="ref" href="#struct_mqtt">Mqtt</a> instance allocated via mqttAlloc. Pass NULL to ignore.</td></tr>
@@ -498,6 +505,24 @@ Size of topic.
     <tr><td class="param">mq</td><td>The <a class="ref" href="#struct_mqtt">Mqtt</a> object.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>The time in Ticks of the last I/O activity.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="mqtt_8h_1a623f27ae0e96018a8296165ed989b3c2"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    mqttGetQueueCount
+(<a href="#struct_mqtt" class="ref">Mqtt</a> *mq)
+  </div>
+  <div class="apiDetail">
+<p>Get the number of messages in the transmission queue.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Returns the count of all queued messages, whether unsent or awaiting an acknowledgement from the broker.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">mq</td><td>The MQTT object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of messages in the queue.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -555,7 +580,7 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1ade5ce726bb50af75e1dfed7d60a6c5bc"></a>
+<a name="mqtt_8h_1ac0d175edfe92e6cac26cfb0b0058a85e"></a>
 <div class="api">
   <div class="prototype">
     int
@@ -579,10 +604,10 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1aafea5a82fb239be7a6a29af065174ad5"></a>
+<a name="mqtt_8h_1acd7b0221c6b811921199d138083e70d1"></a>
 <div class="api">
   <div class="prototype">
-    int
+    int int
     mqttPublishRetained
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *msg, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size, int qos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)
   </div>
@@ -603,10 +628,10 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1a00b3a4e29941baef88255459dd874822"></a>
+<a name="mqtt_8h_1ad07f6d4fbc2602cdfc93e7dea987ab1b"></a>
 <div class="api">
   <div class="prototype">
-    int
+    int int int
     mqttSetCredentials
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password)
   </div>
@@ -698,7 +723,7 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1afe7f248d11137df9cd7235c030dc584b"></a>
+<a name="mqtt_8h_1aa0e0c6fc715ea269c20463023026bffe"></a>
 <div class="api">
   <div class="prototype">
     int
@@ -721,10 +746,10 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1a6a37a939078d2a8302d8b33d89340412"></a>
+<a name="mqtt_8h_1abc5ab171f310cc0a1f998c78f8a51e42"></a>
 <div class="api">
   <div class="prototype">
-    int
+    int int
     mqttSubscribeMaster
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, int maxQos, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> waitFlags, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, ...)
   </div>
@@ -760,10 +785,10 @@ Size of topic.
     <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
   </div>
 </div>
-<a name="mqtt_8h_1ac7003ac2fc6d66c544eafd14814e8b2a"></a>
+<a name="mqtt_8h_1aeefc487de157366f4e145db3d3f403e3"></a>
 <div class="api">
   <div class="prototype">
-    int
+    int int int
     mqttUnsubscribe
 (<a href="#struct_mqtt" class="ref">Mqtt</a> *mq, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *topic, <a href="#mqtt_8h_1a7ff8dc031da5077de2044b5f4b80fdce" class="ref">MqttWaitFlags</a> wait)
   </div>

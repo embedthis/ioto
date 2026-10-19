@@ -59,7 +59,7 @@
 <tr class="apiDef">
 <td>#define</td><td><a href="#websock_8h_1a35087a7601f174731cb65556a6d9a5f5" class="nameRef">WS_EVENT_MESSAGE</a>&nbsp;&nbsp;&nbsp;1</td>
 </tr>
-<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> full (or last part of) message is received.</td></tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Final frame of a message is received, carrying that frame only.</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#websock_8h_1a0654979870fc6c16c3620c730ffd206e" class="nameRef">WS_EVENT_OPEN</a>&nbsp;&nbsp;&nbsp;0</td>
 </tr>
@@ -67,7 +67,7 @@
 <tr class="apiDef">
 <td>#define</td><td><a href="#websock_8h_1ab5d26ac47d6546f539607cfcf754f1dd" class="nameRef">WS_EVENT_PARTIAL_MESSAGE</a>&nbsp;&nbsp;&nbsp;2</td>
 </tr>
-<tr class="apiBrief"><td>&nbsp;</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> partial message is received.</td></tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>A frame of a message that has more frames to follow.</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#websock_8h_1aaf01d5d211e32f4978e1a9e66bb09b3e" class="nameRef">WS_MAX_CONTROL</a>&nbsp;&nbsp;&nbsp;125</td>
 </tr>
@@ -205,12 +205,13 @@
   </div>
   <div class="apiDetail">
 <p><a class="ref" href="#struct_web_socket">WebSocket</a> callback procedure invoked when a message is received or the connection is first opened.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Frames are delivered as they arrive and are not reassembled. A message sent in one frame arrives as a single WS_EVENT_MESSAGE. A fragmented message arrives as one WS_EVENT_PARTIAL_MESSAGE per frame followed by a WS_EVENT_MESSAGE for the last, and buf holds only that frame&apos;s own bytes each time, not the message so far. An application that needs the whole message must accumulate the frames itself, bounded by the maxMessage set with webSocketSetLimits. webSocketGetMessageLength returns the total received so far across the frames, and the message type is available as the <a class="ref" href="#struct_web_socket">WebSocket</a>&apos;s type field, which a continuation frame does not carry.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">webSocket</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
     <tr><td class="param">event</td><td>Event type.</td></tr>
-    <tr><td class="param">buf</td><td>Message buffer holding the message data. On open and close, the buffer is NULL and the length is 0.</td></tr>
-    <tr><td class="param">len</td><td>Length of the message.</td></tr>
+    <tr><td class="param">buf</td><td>Buffer holding this frame&apos;s data. On open and close, the buffer is NULL and the length is 0.</td></tr>
+    <tr><td class="param">len</td><td>Length of this frame&apos;s data.</td></tr>
     <tr><td class="param">arg</td><td>User argument.</td></tr>
     </table></dd></dl>
   </div>
@@ -292,9 +293,6 @@ Opcode of current received message.
 <tr><td class="param">void *</td><td>parent</td><td>
 User-defined parent object reference.
 </td></tr>
-<tr><td class="param">int</td><td>partialUTF</td><td>
-Last frame contained partial UTF-8 sequence.
-</td></tr>
 <tr><td class="param">Time</td><td>pingPeriod</td><td>
 Interval for sending ping frames.
 </td></tr>
@@ -318,6 +316,9 @@ Outgoing packet sequence number (debug).
 </td></tr>
 <tr><td class="param">int</td><td>type</td><td>
 Accumulated message type for multi-frame messages.
+</td></tr>
+<tr><td class="param">uint</td><td>utfState</td><td>
+UTF-8 decoder state carried across message frames.
 </td></tr>
 <tr><td class="param">int</td><td>validate</td><td>
 Enable UTF-8 validation for text messages.
@@ -534,14 +535,14 @@ Enable UTF-8 validation for text messages.
   </div>
   <div class="apiDetail">
 <p>Run the <a class="ref" href="#struct_web_socket">WebSocket</a> event loop until the connection closes.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This function runs the <a class="ref" href="#struct_web_socket">WebSocket</a> event loop that handles reading, processing messages, and sending pings. It blocks until the connection is closed or the the timeout expires.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This function runs the <a class="ref" href="#struct_web_socket">WebSocket</a> event loop that handles reading, processing messages, and sending pings. It blocks until the connection is closed or no I/O completes within the timeout.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
     <tr><td class="param">callback</td><td>Callback function to handle <a class="ref" href="#struct_web_socket">WebSocket</a> events.</td></tr>
     <tr><td class="param">arg</td><td>User argument passed to the callback function.</td></tr>
     <tr><td class="param">buf</td><td>Buffer containing pre-read data from HTTP upgrade (may be NULL).</td></tr>
-    <tr><td class="param">timeout</td><td>Timeout for I/O operations (use 0 for no timeout).</td></tr>
+    <tr><td class="param">timeout</td><td>Inactivity timeout in milliseconds for I/O operations. Zero means no inactivity limit.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>0 on orderly close, &lt; 0 on error.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
@@ -713,12 +714,13 @@ This API may split the message into frames such that no frame is larger than the
   </div>
   <div class="apiDetail">
 <p>Set the maximum frame size and message size.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Set the maximum frame size and message size for the <a class="ref" href="#struct_web_socket">WebSocket</a> object.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Set the maximum frame size and message size for the <a class="ref" href="#struct_web_socket">WebSocket</a> object. A whole frame is buffered before it is delivered, so maxFrame cannot exceed what a buffer can hold and is clamped to ME_R_MAX_BUF less the null the parser adds for the callback. A message is not buffered whole, being delivered a frame at a time, so maxMessage may be any size. A frame beyond the limit is refused with WS_STATUS_MESSAGE_TOO_LARGE from its header, before the payload is buffered. <br/><br/>
+ Zero means no limit for either: maxFrame becomes the largest frame a buffer can hold and maxMessage becomes unbounded.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">ws</td><td><a class="ref" href="#struct_web_socket">WebSocket</a> object.</td></tr>
-    <tr><td class="param">maxFrame</td><td>Maximum frame size.</td></tr>
-    <tr><td class="param">maxMessage</td><td>Maximum message size.</td></tr>
+    <tr><td class="param">maxFrame</td><td>Maximum frame size, or zero for the largest a buffer can hold.</td></tr>
+    <tr><td class="param">maxMessage</td><td>Maximum message size, or zero for no limit.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>

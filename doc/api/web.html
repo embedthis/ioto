@@ -5,34 +5,42 @@
 
 <h2>Function Index</h2>
   <table class="apiIndex" title="Function Index">
-<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1abeea8c8679c4f58e978843c823ef69f6" class="nameRef">webAddAccessControlHeader</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add an Access-Control-Allow-Origin response header for the request host name.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1abeea8c8679c4f58e978843c823ef69f6" class="nameRef">webAddAccessControlHeader</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add an Access-Control-Allow-Origin response header.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a1c5908d6beaa0511e51288b0298a4210" class="nameRef">webAddAction</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix, <a href="#web_8h_1a6692799902b2e85966e1021aa3cb1540" class="ref">WebProc</a> fn, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add an action callback for a URL prefix.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a1da6fe812b086ea4c6e95ab0a776277b" class="nameRef">webAddHeader</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...) PRINTF_ATTRIBUTE(3</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a header to the request response.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a444ae9b1c2e6043ac9f13bdebf8e8646" class="nameRef">webAddHeaderDynamicString</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, char *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a dynamic string header to the request response.</td></tr>
 <tr class="apiDef"><td class="apiType">void void</td><td><a href="#web_8h_1a25356b9e4e3e754c6886edfc53ad57ae" class="nameRef">webAddHeaderStaticString</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a static string header to the request response.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1ab26c87f45ad856833654a5706160a761" class="nameRef">webAddSecurityToken</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a> recreate)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add the security token to the response.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_user" class="ref">WebUser</a> *</td><td><a href="#web_8h_1a1ed997ee33ef0da68ecf09c975e441ac" class="nameRef">webAddUser</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a user to the authentication database.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a9251c385b706ebd77843e09a68518ec1" class="nameRef">webAddVary</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *field)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a request header field to the Vary response header.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_host" class="ref">WebHost</a> *</td><td><a href="#web_8h_1a1aa440a9a510c3a85ab5eda6c21a0b16" class="nameRef">webAllocHost</a>(<a href="json.html#struct_json" class="ref">Json</a> *config, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a new host object.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a8ee4a615715b590ac28e980b196ccbab" class="nameRef">webAuthBlocked</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if the client has exceeded the authentication failure limit.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1aff22475bc30a1cffdc0592ee75b0c8ad" class="nameRef">webAuthFailed</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Record an authentication failure for the client.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a30cef128e3f9ac294e2fe73448c12f3c" class="nameRef">webAuthenticate</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Authenticate a user.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ab9a32e8755debbf5b96cdc80ea79cd27" class="nameRef">webAuthorizePath</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Authorize a path the request is rewritten to after routing.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a1a6a3f21dfd1c8ed1d61b2b49fc76417" class="nameRef">webBuffer</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Buffer the response body.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a06c9bffb9ba948b512a8af98baa399ab" class="nameRef">webBufferUntil</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *until, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> limit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read data and buffer until a given pattern or limit is reached.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a7375b943fda9de7b738f234bd519bd88" class="nameRef">webCan</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if a user possesses the required role.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ae5b7fff01cd67eccb88e3a10b896805d" class="nameRef">webCheckPassword</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *stored)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check a plain-text password against a stored password hash.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a2591e86544f90a5dd26f7e92b2e57440" class="nameRef">webCheckSecurityToken</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check an XSRF security token.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a10051a064f5afde32f906a8975baf6ef" class="nameRef">webContentNotModified</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *currentEtag, <a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> mtime)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Determine if 304 Not Modified should be returned.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_session" class="ref">WebSession</a> *</td><td><a href="#web_8h_1a743cca220b556ccae4fdf9dbcc7ab053" class="nameRef">webCreateSession</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create a login session.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1af90a8913f046551477e9e554e585d5cb" class="nameRef">webDecode</a>(char *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode a URL-encoded string.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a7b633a9d97904ae283f62183a4a46821" class="nameRef">webDecode64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode Base64 string.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a7be0610a74e5f2766d945e5cb7078459" class="nameRef">webDecodePath</a>(char *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Decode a URI path in-situ.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a164c57396ff5e8d6bd4dc7331847a9be" class="nameRef">webDestroySession</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Destroy the web session object.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a4de7c09c660cf8247434be83a38da9ab" class="nameRef">webDestroyUserSessions</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Destroy all sessions logged in as a user.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a5720e0a292e64b4643d881771d4b4090" class="nameRef">webEncode</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Encode a URL string.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a2b66cca387a33302abc170bc6b94825d" class="nameRef">webEncode64</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Encode string as Base64.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1ab06000c64e2c87dbfefd5daef8714316" class="nameRef">webError</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...) PRINTF_ATTRIBUTE(3</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Respond to the request with an error.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1abd4dd38951f6b2f9ce4572ff14f542e5" class="nameRef">webEscapeHtml</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *html)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Escape HTML special characters.</td></tr>
-<tr class="apiDef"><td class="apiType">int void</td><td><a href="#web_8h_1a80ef3da909da0af1c31ade7f0fa21039" class="nameRef">webExtendTimeout</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Extend the request timeout.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1aa1b625ec1407586d184636914f284dfe" class="nameRef">webExtendTimeout</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Extend the request timeout.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1aa603bc03bcd704412efe9316559f5069" class="nameRef">webFinalize</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Finalize response output.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a78eaf50db0c75414b91844080fad5248" class="nameRef">webFreeHost</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a host object.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1aa73bf8667a0f2767fe62edd2cc2ad8de" class="nameRef">webFreeUser</a>(<a href="#struct_web_user" class="ref">WebUser</a> *user)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Free a user structure.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a1944e2abf35364ac4cd9968cc28351e9" class="nameRef">webGetCookie</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a request cookie value.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#web_8h_1acc080985d189d13226b45738062fc65d" class="nameRef">webGetDocs</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the web documents directory for a host.</td></tr>
+<tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1add7c0c39a81f76ed3554b311db740b3a" class="nameRef">webGetFiberLimit</a>(<a href="json.html#struct_json" class="ref">Json</a> *config, int reserve)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the fiber limit for a web server configuration.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *</td><td><a href="#web_8h_1a559672caa8e491bc5d54cc8363f447fd" class="nameRef">webGetHeader</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a request header value.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a066498ab1f954a009451c9118a8fa77b" class="nameRef">webGetHostName</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the host name of the endpoint serving the request.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1aa322b8a3032209177c4da2046a230de1" class="nameRef">webGetNextHeader</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **pkey, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> **pvalue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the next request header in sequence.</td></tr>
@@ -48,11 +56,13 @@
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1ab39c5676dfbffc91b17d89cc0245b51b" class="nameRef">webHttpDate</a>(<a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> when)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a time to an HTTP date string.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1a2ae8a93ddb8024d3bb2c1180eec793da" class="nameRef">webInit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the web module.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ae37fec0fc0eebea040f900f67e77a206" class="nameRef">webIsAuthenticated</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if the user has been authenticated.</td></tr>
+<tr class="apiDef"><td class="apiType">int void</td><td><a href="#web_8h_1a97c5b1995f4ab24904ef29dcbea70cbb" class="nameRef">webLogAuthFailure</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *reason)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Log a refused authentication.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a6d153144eddd26485b974529adf88455" class="nameRef">webLogin</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Login a user.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a85313a553af93814d35f794ac9eace84" class="nameRef">webLogout</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Logout a user and remove the user login session.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="#struct_web_user" class="ref">WebUser</a> *</td><td><a href="#web_8h_1ae7227a33c126a1c314119c93f9bae38b" class="nameRef">webLookupUser</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Lookup a user by username.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ada669ffff2f6b0f63919eab50c795592" class="nameRef">webMatchEtag</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *currentEtag)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if currentEtag matches any ETag in If-Match or If-None-Match list.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a78c431b6fbf2cd47b5a3c9d4fadedf96" class="nameRef">webMatchModified</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="r.html#r_8h_1aec517130c026730881898750d76e596f" class="ref">time_t</a> mtime)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if resource was modified based on If-Modified-Since or If-Unmodified-Since.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a235ea009f020f8b3b8017ca3502af41c" class="nameRef">webMatchOrigin</a>(<a href="#struct_web" class="ref">Web</a> *web, int originsId)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test whether the request Origin is allowed.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1a0b18192f5262655c22b6ad25133d8739" class="nameRef">webNetError</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *msg, ...) PRINTF_ATTRIBUTE(2</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Close the current request and issue no response.</td></tr>
 <tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a558b562f4e90a80cf27415c5c9f43235" class="nameRef">webNormalizePath</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Normalize a URL path.</td></tr>
 <tr class="apiDef"><td class="apiType">int char *</td><td><a href="#web_8h_1a7e8ddfc1b03d2462f2f7b2ee80676d4a" class="nameRef">webParseCookie</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a cookie header string and return a cookie value.</td></tr>
@@ -60,7 +70,9 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a37d85c751e8464fd0eb22598b3b95cbf" class="nameRef">webRead</a>(<a href="#struct_web" class="ref">Web</a> *web, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a3ca00e725844efbd0e47f26d0550e8fe" class="nameRef">webReadDirect</a>(<a href="#struct_web" class="ref">Web</a> *web, char **dataPtr, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> desiredSize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data directly from the rx buffer (zero-copy).</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a3595488c261d3836bd3e064d33584dea" class="nameRef">webReadUntil</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *until, char *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Read request body data until a given pattern is reached.</td></tr>
+<tr class="apiDef"><td class="apiType">char *</td><td><a href="#web_8h_1a60f0c758057b0c529fa1d6768f575b0f" class="nameRef">webRedactHeaders</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Redact credentials from a header block for logging.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1ab55db6243c532ea20fb1980a280a148b" class="nameRef">webRedirect</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Redirect the client to a new URL.</td></tr>
+<tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1af3b63a8a46ddbb464fb0ca6788fb479a" class="nameRef">webRedirectLocal</a>(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Redirect the client to a path on this server.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1a7bdc8213f0b18c58c38d6a255359ad76" class="nameRef">webRemoveSessionVar</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a session variable.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a58b6af65fde61354bac5807fda193d9e" class="nameRef">webRemoveUser</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a user from the authentication database.</td></tr>
 <tr class="apiDef"><td class="apiType">void</td><td><a href="#web_8h_1aa251b71a7b0db2d405ac6a9fa4a32166" class="nameRef">webRemoveVar</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Remove a request variable.</td></tr>
@@ -78,11 +90,12 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1aec87b37dcc4617c27b04c3b7fcd26068" class="nameRef">webUpdateUser</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *role)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Update user password and/or role.</td></tr>
 <tr class="apiDef"><td class="apiType">int</td><td><a href="#web_8h_1a1c91fcb27d3a088c8fa3351512739ec8" class="nameRef">webUpgradeSocket</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Upgrade a HTTP connection connection to use WebSockets.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a82ad9d3b5c3ff29fec92dec08672a3db" class="nameRef">webUserCan</a>(<a href="#struct_web_user" class="ref">WebUser</a> *user, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ability)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Check if user has required ability.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1aa1bdeab01594478dd7fe8f82919c202c" class="nameRef">webUserHasCredential</a>(<a href="#struct_web_user" class="ref">WebUser</a> *user)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if a user has a stored HTTP credential.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1acbaa7bde7b77b0e23b92bf4e2278d529" class="nameRef">webValidateControllerAction</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *controller, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *action)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a controller/action against the API signatures.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ada9afa80f70a9a33a22421d5c989595d" class="nameRef">webValidateData</a>(<a href="#struct_web" class="ref">Web</a> *web, RBuf *buf, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *data, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *sigKey, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *tag)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Low level routine to validate a string body against a signature.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a9c8d52dfe39f7d86ebc132fdb87496d2" class="nameRef">webValidateJson</a>(<a href="#struct_web" class="ref">Web</a> *web, RBuf *buf, const Json *cjson, int jid, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *sigKey, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *tag)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a JSON object against the API signature.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1af704f9f6fba7634a8dc9b9463b5d6f6a" class="nameRef">webValidatePath</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *uri)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a URL.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a764bbba992817fa6164fbd9d448460f4" class="nameRef">webValidateRequest</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a request body and query with the API signature.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a0b5870e56a868d114f695884e37a660a" class="nameRef">webValidateRequest</a>(<a href="#struct_web" class="ref">Web</a> *web)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a request body and query with the API signature.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1a89968745e9936d0ae920a36c90963b9b" class="nameRef">webValidateSignature</a>(<a href="#struct_web" class="ref">Web</a> *web, RBuf *buf, const Json *cjson, int jid, int sid, int depth, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *tag)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Validate a JSON object against the API signature and write the validated JSON to a buffer.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a></td><td><a href="#web_8h_1ac486a58bc4f32776ad58dc7d411b46a3" class="nameRef">webVerifyUserPassword</a>(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Verify plain-text password against stored hash.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1a7d08ccc1e981eb4d5a238641ac4ccfc1" class="ref">ssize</a></td><td><a href="#web_8h_1a3b2871ea140f0b36021837b961876ee2" class="nameRef">webWrite</a>(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *buf, <a href="r.html#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write response data.</td></tr>
@@ -167,6 +180,9 @@
 <tr><td class="param">RList *</td><td>actions</td><td>
 Ordered list of <a class="ref" href="#struct_web_action">WebAction</a> objects for URL-to-function bindings.
 </td></tr>
+<tr><td class="param">RHash *</td><td>authFailures</td><td>
+Authentication failure counts indexed by client IP address.
+</td></tr>
 <tr><td class="param">char *</td><td>canonicalDocs</td><td>
 Canonical (realpath) document root used for containment checks.
 </td></tr>
@@ -179,11 +195,26 @@ Current count of active client connections.
 <tr><td class="param">int64</td><td>connSequence</td><td>
 Connection sequence number for per-host connection tracking.
 </td></tr>
+<tr><td class="param">int</td><td>corsOrigins</td><td>
+JSON id of web.cors.origins, or -1 for same-origin only.
+</td></tr>
+<tr><td class="param">RList *</td><td>deny</td><td>
+Filename glob patterns never served, whatever the route.
+</td></tr>
 <tr><td class="param">char *</td><td>docs</td><td>
 Document root directory path for serving static files.
 </td></tr>
+<tr><td class="param">uchar</td><td>etagSalt[16]</td><td>
+Random salt hashed into file ETags so they do not disclose inodes.
+</td></tr>
+<tr><td class="param">Ticks</td><td>failurePeriod</td><td>
+Period over which authentication failures are counted (ticks).
+</td></tr>
 <tr><td class="param">int</td><td>flags</td><td>
 Host control flags for debugging and operation modes.
+</td></tr>
+<tr><td class="param">bool</td><td>foldCase</td><td>
+The documents filesystem folds case, so route matching must too.
 </td></tr>
 <tr><td class="param">bool</td><td>freeConfig</td><td>
 True if config object was allocated and must be freed.
@@ -193,6 +224,9 @@ Base ID for headers in config.
 </td></tr>
 <tr><td class="param">WebHook</td><td>hook</td><td>
 Event notification callback function.
+</td></tr>
+<tr><td class="param">int</td><td>hosts</td><td>
+JSON id of web.hosts, the accepted Host names, or -1 to accept any.
 </td></tr>
 <tr><td class="param">bool</td><td>httpOnly</td><td>
 Default HttpOnly flag for session cookies.
@@ -221,6 +255,9 @@ Maximum number of simultaneous connections.
 <tr><td class="param">int</td><td>maxDigest</td><td>
 Maximum digest nonces for replay protection.
 </td></tr>
+<tr><td class="param">int</td><td>maxFailures</td><td>
+Authentication failures per client per period before refusing (0 for no limit).
+</td></tr>
 <tr><td class="param">int</td><td>maxHeader</td><td>
 Maximum HTTP header size in bytes.
 </td></tr>
@@ -236,6 +273,9 @@ Maximum file upload size in bytes.
 <tr><td class="param">int</td><td>maxUploads</td><td>
 Maximum number of files per upload request.
 </td></tr>
+<tr><td class="param">int</td><td>maxVars</td><td>
+Maximum number of request query and form variables.
+</td></tr>
 <tr><td class="param">RHash *</td><td>methods</td><td>
 Supported HTTP method verbs (GET, POST, PUT, DELETE, etc.).
 </td></tr>
@@ -247,6 +287,9 @@ Host name for canonical redirects and URL generation.
 </td></tr>
 <tr><td class="param">Ticks</td><td>parseTimeout</td><td>
 Maximum time allowed for parsing HTTP request headers (ticks).
+</td></tr>
+<tr><td class="param">Ticks</td><td>receiveTimeout</td><td>
+Maximum time to receive a buffered request body (ticks).
 </td></tr>
 <tr><td class="param">RList *</td><td>redirects</td><td>
 Ordered list of <a class="ref" href="#struct_web_redirect">WebRedirect</a> objects for URL redirections.
@@ -295,6 +338,9 @@ Maximum WebSocket frame size in bytes.
 </td></tr>
 <tr><td class="param">int</td><td>webSocketsMaxMessage</td><td>
 Maximum WebSocket message size in bytes.
+</td></tr>
+<tr><td class="param">int</td><td>webSocketsOrigins</td><td>
+JSON id of web.webSockets.origins, or -1 for same-origin only.
 </td></tr>
 <tr><td class="param">int</td><td>webSocketsPingPeriod</td><td>
 WebSocket ping period in milliseconds.
@@ -372,7 +418,8 @@ Total size of uploaded file in bytes.
 Computed abilities hash expanded from role inheritance.
 </td></tr>
 <tr><td class="param">char *</td><td>password</td><td>
-Encrypted password hash: H(username:realm:password).
+Encrypted password hash: H(username:realm:password). 
+NULL if none.
 </td></tr>
 <tr><td class="param">char *</td><td>role</td><td>
 Single role name assigned to this user.
@@ -402,8 +449,7 @@ Client cache max-age in seconds (0 = no max-age).
 Serve pre-compressed files (.gz, .br).
 </td></tr>
 <tr><td class="param">bool</td><td>exact</td><td>
-Exact match vs prefix match. 
-If trailing &quot;/&quot; in route.
+Segment match (no trailing &quot;/&quot;): the path and its subtree.
 </td></tr>
 <tr><td class="param">RHash *</td><td>extensions</td><td>
 File extensions to cache (NULL = match all).
@@ -429,8 +475,8 @@ Stream request body.
 <tr><td class="param">cchar *</td><td>trim</td><td>
 Portion to trim from path.
 </td></tr>
-<tr><td class="param">bool</td><td>validate</td><td>
-Validate request.
+<tr><td class="param">int</td><td>validate</td><td>
+Validate requests: WEB_VALIDATE_*.
 </td></tr>
 <tr><td class="param">bool</td><td>xsrf</td><td>
 Use XSRF tokens.
@@ -501,11 +547,20 @@ User authenticated and roleId defined.
 <tr><td class="param">RBuf *</td><td>body</td><td>
 Parsed request body data (POST/PUT content).
 </td></tr>
+<tr><td class="param">uint</td><td>bodyRead</td><td>
+The request body has been read and parsed.
+</td></tr>
 <tr><td class="param">RBuf *</td><td>buffer</td><td>
 Response output buffer for efficient response generation.
 </td></tr>
+<tr><td class="param">uint</td><td>buffering</td><td>
+The response body is being buffered (see webBuffer).
+</td></tr>
 <tr><td class="param">uint</td><td>chunked</td><td>
 Receive transfer chunk encoding state.
+</td></tr>
+<tr><td class="param">uint</td><td>chunkedTx</td><td>
+Response body is framed with chunked transfer encoding.
 </td></tr>
 <tr><td class="param">Offset</td><td>chunkRemaining</td><td>
 Bytes remaining in current HTTP chunk.
@@ -518,6 +573,9 @@ Should the connection be closed after the request completes.
 </td></tr>
 <tr><td class="param">Ticks</td><td>connectionStarted</td><td>
 Time when the connection started.
+</td></tr>
+<tr><td class="param">uint</td><td>connUpgrade</td><td>
+The request Connection header lists the upgrade option.
 </td></tr>
 <tr><td class="param">cchar *</td><td>contentDisposition</td><td>
 Receive content disposition header value.
@@ -562,6 +620,9 @@ The response has been finalized.
 </td></tr>
 <tr><td class="param">uint</td><td>formBody</td><td>
 Is the current request a POSTed form.
+</td></tr>
+<tr><td class="param">uint</td><td>freeing</td><td>
+webFree is in progress: a nested call returns.
 </td></tr>
 <tr><td class="param">uint</td><td>get</td><td>
 Is the current request a GET request.
@@ -617,6 +678,9 @@ Request mime type based on the extension.
 <tr><td class="param">uint</td><td>moreBody</td><td>
 More response body to trace.
 </td></tr>
+<tr><td class="param">int</td><td>numVars</td><td>
+Count of client-supplied variables in vars and qvars.
+</td></tr>
 <tr><td class="param">uint</td><td>options</td><td>
 Is the current request an OPTIONS request.
 </td></tr>
@@ -625,6 +689,10 @@ Request origin header.
 </td></tr>
 <tr><td class="param">char *</td><td>path</td><td>
 URL path portion without query string or fragment.
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_web_route">WebRoute</a> *</td><td>policy</td><td>
+Route a trim rewrite reached. 
+Its gates apply as well as route&apos;s.
 </td></tr>
 <tr><td class="param">uint</td><td>post</td><td>
 Is the current request a POST request.
@@ -655,14 +723,21 @@ Used to set the Location header.
 <tr><td class="param">char *</td><td>rmime</td><td>
 Ranged request mime type based on the extension.
 </td></tr>
-<tr><td class="param">cchar *</td><td>role</td><td>
-Authorized role.
+<tr><td class="param">char *</td><td>role</td><td>
+Authorized role. 
+OWNED by this <a class="ref" href="#struct_web">Web</a> - always an allocated copy. It was previously borrowed from a session cache or the host user table, either of which can be freed by the session prune timer or the user-management API while a request fiber is blocked on I/O.
 </td></tr>
 <tr><td class="param"><a class="ref" href="#struct_web_route">WebRoute</a> *</td><td>route</td><td>
 Matching route for this request.
 </td></tr>
 <tr><td class="param">RBuf *</td><td>rx</td><td>
 Raw incoming data buffer for request parsing.
+</td></tr>
+<tr><td class="param">ssize</td><td>rxDecoded</td><td>
+Body bytes at the front of rx with their chunk framing removed.
+</td></tr>
+<tr><td class="param">ssize</td><td>rxFraming</td><td>
+Chunk-size, chunk delimiter and trailer bytes received.
 </td></tr>
 <tr><td class="param">RBuf *</td><td>rxHeaders</td><td>
 Request received headers.
@@ -687,7 +762,10 @@ Has secure listening endpoint.
 Request security token.
 </td></tr>
 <tr><td class="param">struct WebSession *</td><td>session</td><td>
-Session state.
+Session resolved by the last webGetSession call.
+</td></tr>
+<tr><td class="param">char *</td><td>sessionId</td><td>
+Session id, re-resolved on each webGetSession call.
 </td></tr>
 <tr><td class="param">int</td><td>signature</td><td>
 Index into host-&gt;signatures for this request.
@@ -701,8 +779,14 @@ Time when the request started.
 <tr><td class="param">uint</td><td>status</td><td>
 Request response HTTP status code.
 </td></tr>
+<tr><td class="param">uint</td><td>timedOut</td><td>
+A read deadline expired with a request in flight.
+</td></tr>
 <tr><td class="param">uint</td><td>trace</td><td>
 Is the current request a TRACE request.
+</td></tr>
+<tr><td class="param">uint</td><td>trimmed</td><td>
+The route trim prefix was removed from the path.
 </td></tr>
 <tr><td class="param">RHash *</td><td>txHeaders</td><td>
 Output headers.
@@ -722,6 +806,10 @@ Request upgrade to websockets.
 <tr><td class="param">uint</td><td>upgraded</td><td>
 Is the connection upgraded to a WebSocket.
 </td></tr>
+<tr><td class="param">RHash *</td><td>uploads</td><td>
+Uploaded files by part name - last wins, for lookup. 
+NULL without uploads.
+</td></tr>
 <tr><td class="param">char *</td><td>url</td><td>
 Complete request URL including query string.
 </td></tr>
@@ -735,7 +823,8 @@ Username (allocated).
 Parsed request body variables.
 </td></tr>
 <tr><td class="param">struct WebSocket *</td><td>webSocket</td><td>
-<a class="ref" href="#struct_web">Web</a> socket object.
+<a class="ref" href="#struct_web">Web</a> socket object. 
+NULL without WebSocket support.
 </td></tr>
 <tr><td class="param">uint</td><td>writingHeaders</td><td>
 Are headers being created and written.
@@ -756,8 +845,8 @@ Have the response headers been written.
 (<a href="#struct_web" class="ref">Web</a> *web)
   </div>
   <div class="apiDetail">
-<p>Add an Access-Control-Allow-Origin response header for the request host name.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Add a CORS (Cross-Origin Resource Sharing) Access-Control-Allow-Origin header using the current request&apos;s host name. This enables cross-origin requests from the requesting host while maintaining security.</dd></dl>
+<p>Add an Access-Control-Allow-Origin response header.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Add a CORS (Cross-Origin Resource Sharing) Access-Control-Allow-Origin header and add Origin to the Vary header. The request Origin is echoed only if it is the same origin as the request or is listed in the &quot;web.cors.origins&quot; configuration array. Otherwise the header names this host, so a browser refuses the cross-origin read. Listing &quot;*&quot; allows every origin to read the response and should only be used for public, unauthenticated data. No Access-Control-Allow-Credentials header is emitted.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
@@ -874,10 +963,28 @@ Have the response headers been written.
     <table class="parameters" title="Parameters">
     <tr><td class="param">host</td><td><a class="ref" href="#struct_web_host">WebHost</a> object.</td></tr>
     <tr><td class="param">username</td><td>User name.</td></tr>
-    <tr><td class="param">password</td><td>Pre-hashed password: H(username:realm:password).</td></tr>
+    <tr><td class="param">password</td><td>Pre-hashed password: H(username:realm:password). NULL or empty for a user without an HTTP credential, such as one authenticated by the application via webLogin. Such a user cannot authenticate by HTTP Basic or Digest.</td></tr>
     <tr><td class="param">role</td><td>Role name.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd><a class="ref" href="#struct_web_user">WebUser</a> object or NULL on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1a9251c385b706ebd77843e09a68518ec1"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webAddVary
+(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *field)
+  </div>
+  <div class="apiDetail">
+<p>Add a request header field to the Vary response header.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Merge a field into the response&apos;s Vary header, adding it only if not already listed, so one Vary names every request header the response depends on. A shared cache keys stored responses on these fields.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">field</td><td>Request header field name, such as &quot;Accept-Encoding&quot; or &quot;Cookie&quot;.</td></tr>
+    </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -900,6 +1007,24 @@ Have the response headers been written.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1a8ee4a615715b590ac28e980b196ccbab"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webAuthBlocked
+(<a href="#struct_web" class="ref">Web</a> *web)
+  </div>
+  <div class="apiDetail">
+<p>Test if the client has exceeded the authentication failure limit.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Failures are counted per client IP address over the period web.auth.failurePeriod (default 5 minutes) from the first failure. A client with web.auth.maxFailures (default 10) failures is refused until that period ends. Set web.auth.maxFailures to zero to disable the limit. HTTP Basic and Digest authentication apply this check. Application login handlers should call it before verifying credentials and refuse the request with status 429 if it returns true.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if further authentication attempts from this client must be refused.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1a30cef128e3f9ac294e2fe73448c12f3c"></a>
 <div class="api">
   <div class="prototype">
@@ -915,6 +1040,42 @@ Have the response headers been written.
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>True if the route does not require authentication or the user is authenticated successfully.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1aff22475bc30a1cffdc0592ee75b0c8ad"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webAuthFailed
+(<a href="#struct_web" class="ref">Web</a> *web)
+  </div>
+  <div class="apiDetail">
+<p>Record an authentication failure for the client.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Counts toward the limit tested by webAuthBlocked. Call once per failed login.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1ab9a32e8755debbf5b96cdc80ea79cd27"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webAuthorizePath
+(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Authorize a path the request is rewritten to after routing.</p>
+    <dl><dt><b>Description</b>:</dt><dd>A file the handler substitutes (directory index, pre-compressed variant) changes the path after the route gate ran. The route that path matches must authorize the request as well.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">path</td><td>Rewritten request path in URL form.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the request may proceed. Otherwise an error response has been written.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -945,14 +1106,14 @@ Have the response headers been written.
   </div>
   <div class="apiDetail">
 <p>Read data and buffer until a given pattern or limit is reached.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Read data from the request stream into an internal buffer until a specific pattern is found or a byte limit is reached. The data remains in the buffer for subsequent processing and is not consumed by this call. If the pattern is not found before the limit, the buffer will contain the data read up to the limit.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Read data from the request stream into an internal buffer until a specific pattern is found or a byte limit is reached. The data remains in the buffer for subsequent processing and is not consumed by this call. If the pattern is not found before the limit, the buffer will contain the data read up to the limit. Only request body data is scanned: chunk framing is removed as the data arrives and a body of known length is never scanned past its end.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
-    <tr><td class="param">until</td><td>Pattern string to search for, or NULL to read only up to the limit.</td></tr>
+    <tr><td class="param">until</td><td>Pattern string to search for.</td></tr>
     <tr><td class="param">limit</td><td>Maximum number of bytes to buffer.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Number of bytes read into buffer, 0 if pattern not found before limit, negative on errors.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Number of bytes buffered up to and including the pattern, 0 if the pattern is not found before the limit, negative if the body ends before the pattern is seen or on errors.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -971,6 +1132,28 @@ Have the response headers been written.
     <tr><td class="param">role</td><td>Required role.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>True if the user has the required role.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1ae5b7fff01cd67eccb88e3a10b896805d"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webCheckPassword
+(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *password, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *stored)
+  </div>
+  <div class="apiDetail">
+<p>Check a plain-text password against a stored password hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Use this to verify credentials held in an application&apos;s own user store with the same rules the server applies to its configured users. The stored hash may carry an algorithm prefix: &quot;BF1:&quot; (bcrypt), &quot;MD5:&quot; or &quot;SHA256:&quot;. Without a prefix, the host&apos;s configured algorithm is used. The comparison is constant time. <br/><br/>
+ If the stored value is NULL, as for an unknown user, the password is checked against a fixed decoy bcrypt hash with the default number of rounds and false is returned. This gives an unknown user the same verification cost as a known one.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">host</td><td><a class="ref" href="#struct_web_host">WebHost</a> object. Supplies the realm and default algorithm.</td></tr>
+    <tr><td class="param">username</td><td>User name.</td></tr>
+    <tr><td class="param">password</td><td>Plain-text password.</td></tr>
+    <tr><td class="param">stored</td><td>Stored password hash of H(username:realm:password), as produced by webHashPassword or the password tool, or NULL for an unknown user.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the password matches.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1064,6 +1247,24 @@ Have the response headers been written.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1a7be0610a74e5f2766d945e5cb7078459"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    webDecodePath
+(char *str)
+  </div>
+  <div class="apiDetail">
+<p>Decode a URI path in-situ.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Percent-decode a path. Unlike webDecode, &quot;+&quot; is left as a literal plus, which is what RFC 3986 requires for a path - the plus-means-space rule applies only to application/x-www-form-urlencoded query and form data. Decoding a path with the form rule aliases distinct URLs onto one file and evades route policy keyed on the path.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">str</td><td>String to decode, modified in place.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The decoded string.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1a164c57396ff5e8d6bd4dc7331847a9be"></a>
 <div class="api">
   <div class="prototype">
@@ -1077,6 +1278,24 @@ Have the response headers been written.
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1a4de7c09c660cf8247434be83a38da9ab"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webDestroyUserSessions
+(<a href="#struct_web_host" class="ref">WebHost</a> *host, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *username)
+  </div>
+  <div class="apiDetail">
+<p>Destroy all sessions logged in as a user.</p>
+    <dl><dt><b>Description</b>:</dt><dd>WebRemoveUser and a password change by webUpdateUser call this, so a removed user&apos;s sessions cannot authenticate a later user of the same name, and a password change ends sessions opened with the old password.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">host</td><td><a class="ref" href="#struct_web_host">WebHost</a> object.</td></tr>
+    <tr><td class="param">username</td><td>User name.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
@@ -1155,10 +1374,10 @@ Have the response headers been written.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="web_8h_1a80ef3da909da0af1c31ade7f0fa21039"></a>
+<a name="web_8h_1aa1b625ec1407586d184636914f284dfe"></a>
 <div class="api">
   <div class="prototype">
-    int void
+    void
     webExtendTimeout
 (<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)
   </div>
@@ -1259,6 +1478,25 @@ Have the response headers been written.
     <tr><td class="param">host</td><td><a class="ref" href="#struct_web">Web</a> host object.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Document root directory path, or NULL if not configured.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1add7c0c39a81f76ed3554b311db740b3a"></a>
+<div class="api">
+  <div class="prototype">
+    int
+    webGetFiberLimit
+(<a href="json.html#struct_json" class="ref">Json</a> *config, int reserve)
+  </div>
+  <div class="apiDetail">
+<p>Get the fiber limit for a web server configuration.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Each connection is served on a fiber held for the whole request, so the fiber limit, not web.limits.connections, bounds the number of connections serviced at once. If limits.fibers is unset or zero, the limit is web.limits.connections plus the reserve. An explicit limits.fibers is returned as given, and an error is logged if it is below that value. Pass the result to rSetFiberLimits.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">config</td><td>JSON5 configuration object containing the limits.fibers and web.limits.connections properties.</td></tr>
+    <tr><td class="param">reserve</td><td>Number of fibers needed beyond the connection limit for the application&apos;s own fibers.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The maximum number of fibers.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1536,6 +1774,24 @@ Have the response headers been written.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1a97c5b1995f4ab24904ef29dcbea70cbb"></a>
+<div class="api">
+  <div class="prototype">
+    int void
+    webLogAuthFailure
+(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *reason)
+  </div>
+  <div class="apiDetail">
+<p>Log a refused authentication.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Writes one &quot;info&quot; message under the &quot;auth&quot; source: &quot;Refused METHOD from IP on connection N: REASON (route &apos;MATCH&apos;)&quot;. The username, password, Authorization header and cookies are never logged. The server calls this when a request that presented credentials or a session cookie is refused by a route. Application login handlers call it for each failed login, with the same reason whatever the cause, so the log does not reveal which usernames exist.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">reason</td><td>Short description of the refusal.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1a6d153144eddd26485b974529adf88455"></a>
 <div class="api">
   <div class="prototype">
@@ -1551,7 +1807,7 @@ Assumes the caller has already authenticated and authorized the user
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
     <tr><td class="param">username</td><td>User name.</td></tr>
-    <tr><td class="param">role</td><td>Requested role.</td></tr>
+    <tr><td class="param">role</td><td>Role or ability the user must hold for the login to succeed. The session records the user&apos;s own role, not this argument. For a user without a stored password, whose credentials the application manages, this is the user&apos;s current role and replaces any role bound by an earlier login.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>True if the login is successful.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
@@ -1626,6 +1882,25 @@ Assumes the caller has already authenticated and authorized the user
     <tr><td class="param">mtime</td><td>Modification time of the resource.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>True if the condition evaluates to true per RFC 7232.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1a235ea009f020f8b3b8017ca3502af41c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webMatchOrigin
+(<a href="#struct_web" class="ref">Web</a> *web, int originsId)
+  </div>
+  <div class="apiDetail">
+<p>Test whether the request Origin is allowed.</p>
+    <dl><dt><b>Description</b>:</dt><dd>A request without an Origin header is allowed. Otherwise the origin must match an entry in the configuration array identified by originsId (&quot;*&quot; matches any origin) or, when originsId is negative, the scheme and Host of the request.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">originsId</td><td>JSON node id of a configured array of origins, or -1 for same-origin only.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the origin is allowed.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1774,6 +2049,24 @@ Assumes the caller has already authenticated and authorized the user
     <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1a60f0c758057b0c529fa1d6768f575b0f"></a>
+<div class="api">
+  <div class="prototype">
+    char *
+    webRedactHeaders
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *headers)
+  </div>
+  <div class="apiDetail">
+<p>Redact credentials from a header block for logging.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Return a copy of a header block with the values of Authorization, Proxy-Authorization, Cookie and Set-Cookie replaced by &quot;[redacted]&quot;. Other lines and the line endings are unchanged. Used by the <ndash/>show and log.show header dumps.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">headers</td><td>Header block of &quot;Name: value&quot; lines separated by CRLF or LF.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Newly allocated redacted header block. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1ab55db6243c532ea20fb1980a280a148b"></a>
 <div class="api">
   <div class="prototype">
@@ -1790,6 +2083,26 @@ Assumes the caller has already authenticated and authorized the user
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
     <tr><td class="param">status</td><td>HTTP redirect status code (301 for permanent, 302 for temporary).</td></tr>
     <tr><td class="param">uri</td><td>Target URL for the redirect.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="web_8h_1af3b63a8a46ddbb464fb0ca6788fb479a"></a>
+<div class="api">
+  <div class="prototype">
+    void
+    webRedirectLocal
+(<a href="#struct_web" class="ref">Web</a> *web, int status, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Redirect the client to a path on this server.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Send an HTTP redirect whose Location is the given relative reference (RFC 9110 10.2.2). The client resolves it against the URL it requested, so the target keeps the scheme, host and port the client used, whatever proxy sits in front of this server. Prefer this to webRedirect for same-origin redirects: webRedirect builds an absolute URL from this server&apos;s own view of its scheme and address.</dd></dl>
+    <dl><dt></dt><dd>Must only be called from a fiber.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
+    <tr><td class="param">status</td><td>HTTP redirect status code (301 for permanent, 302 for temporary).</td></tr>
+    <tr><td class="param">path</td><td>Absolute path beginning with a single &quot;/&quot;, with optional query and fragment.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
@@ -1902,7 +2215,7 @@ Assumes the caller has already authenticated and authorized the user
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> request object.</td></tr>
     <tr><td class="param">name</td><td>Session variable name.</td></tr>
     <tr><td class="param">value</td><td>Session variable value.</td></tr>
-    <tr><td class="param">path</td><td>Session variable path.</td></tr>
+    <tr><td class="param">path</td><td>Cookie path. Defaults to &quot;/&quot;. Must not contain control characters or &quot;;&quot;.</td></tr>
     <tr><td class="param">lifespan</td><td>Session variable lifespan.</td></tr>
     <tr><td class="param">flags</td><td>Flags to override the default cookie settings. Use WEB_COOKIE_OVERRIDE in combination with: WEB_COOKIE_HTTP_ONLY, WEB_COOKIE_SECURE, WEB_COOKIE_SAME_SITE.</td></tr>
     </table></dd></dl>
@@ -2109,6 +2422,24 @@ Assumes the caller has already authenticated and authorized the user
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="web_8h_1aa1bdeab01594478dd7fe8f82919c202c"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
+    webUserHasCredential
+(<a href="#struct_web_user" class="ref">WebUser</a> *user)
+  </div>
+  <div class="apiDetail">
+<p>Test if a user has a stored HTTP credential.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Users defined with a password under web.auth.users have a credential. Users created by webLogin for application-managed accounts do not.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">user</td><td><a class="ref" href="#struct_web_user">WebUser</a> object.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>True if the user has a stored password.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="web_8h_1acbaa7bde7b77b0e23b92bf4e2278d529"></a>
 <div class="api">
   <div class="prototype">
@@ -2192,20 +2523,19 @@ Assumes the caller has already authenticated and authorized the user
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="web_8h_1a764bbba992817fa6164fbd9d448460f4"></a>
+<a name="web_8h_1a0b5870e56a868d114f695884e37a660a"></a>
 <div class="api">
   <div class="prototype">
     <a href="osdep.html#osdep_8h_1ad5c9d4ba3dc37783a528b0925dc981a0" class="ref">bool</a>
     webValidateRequest
-(<a href="#struct_web" class="ref">Web</a> *web, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+(<a href="#struct_web" class="ref">Web</a> *web)
   </div>
   <div class="apiDetail">
 <p>Validate a request body and query with the API signature.</p>
-The path is used as a JSON property path into the signatures.json5 file. It is typically based upon the request URL path with &quot;/&quot; characters converted to &quot;.&quot;. This routine will generate an error response if the signature is not found and strictSignatures is true
+The API signature is selected from the request URL before this routine is called. This routine will generate an error response if the signature is not found and strictSignatures is true
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> object.</td></tr>
-    <tr><td class="param">path</td><td>JSON property path into the signatures.json5 file.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>True if the request is valid. Otherwise, return false and generate an error response to the client.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
@@ -2283,15 +2613,16 @@ The path is used as a JSON property path into the signatures.json5 file. It is t
   </div>
   <div class="apiDetail">
 <p>Write an SSE event to the client.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Write a Server-Sent Events (SSE) event to the client. This function does NOT call webFinalize(). For SSE streams, you typically do not call webFinalize() until the stream is complete. For regular responses, you must call webFinalize() after all response content has been written to complete the request.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Write a Server-Sent Events (SSE) event to the client. This function does NOT call webFinalize(). For SSE streams, you typically do not call webFinalize() until the stream is complete. For regular responses, you must call webFinalize() after all response content has been written to complete the request. Line breaks (CR, LF or CRLF) in the formatted data are sent as separate data fields, which the client rejoins with newlines.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web">Web</a> object.</td></tr>
     <tr><td class="param">id</td><td>Event ID.</td></tr>
-    <tr><td class="param">name</td><td>Event name.</td></tr>
+    <tr><td class="param">name</td><td>Event name. Must not contain CR or LF.</td></tr>
     <tr><td class="param">fmt</td><td>Printf style message string.</td></tr>
     <tr><td class="param">...</td><td>Format arguments.</td></tr>
     </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes written, or a negative error code. R_ERR_BAD_ARGS if the name contains a line break.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>

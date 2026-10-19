@@ -12,7 +12,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a44f1dbb4232bd4b449345ff0dc593460" class="nameRef">ioGetConfigInt</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, int defaultValue)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a configuration value as an integer.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a839f36c85c26bdb0f07727c14afa40eb" class="nameRef">ioInit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> Device Agent.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1ad7791410ce7158b7d3bf95acac34681e" class="nameRef">ioRestartDb</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Restart the database service.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#ioto_8h_1a0798556330ef0bc2c0efc460eee7ef46" class="nameRef">ioRestartWeb</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Restart the web server service.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a0c97b29cc401f926815da9f7fa63a701" class="nameRef">ioRestartWeb</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Restart the web server service.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a79158ab16d6d7364211f0eb206869b17" class="nameRef">ioRun</a>(void *fn)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start <a class="ref" href="#struct_ioto">Ioto</a> services.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a8925dcc7a74a8045a40a17c2cf303d7d" class="nameRef">ioStart</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>User start entry point.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#ioto_8h_1a667674bc6ae2480f2295c791f555988a" class="nameRef">ioStartRuntime</a>(int verbose)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the <a class="ref" href="#struct_ioto">Ioto</a> runtime.</td></tr>
@@ -49,6 +49,14 @@
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Name of the device identification config file.</td></tr>
 <tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1a13fb02ef2a53aa6bd764443a3dec7864" class="nameRef">IO_FIBER_DEFAULT</a>&nbsp;&nbsp;&nbsp;16</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Fiber ceiling when no web server is built in.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1aad3b37c530a976dde2af5eaf8592a459" class="nameRef">IO_FIBER_RESERVE</a>&nbsp;&nbsp;&nbsp;8</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Fibers reserved for background subsystems.</td></tr>
+<tr class="apiDef">
 <td>#define</td><td><a href="#ioto_8h_1a2379b5675f95d4d8c7e0a273b4d6f07c" class="nameRef">IO_KEY</a>&nbsp;&nbsp;&nbsp;&quot;@certs/ioto.key&quot;</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Name of the AWS thing key file.</td></tr>
@@ -84,6 +92,10 @@
 <td>#define</td><td><a href="#ioto_8h_1a46c3e74cbf11b858464b60cf89c9c42c" class="nameRef">IO_STATE_DIR</a>&nbsp;&nbsp;&nbsp;&quot;state&quot;</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>State directory.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#ioto_8h_1ad0e575c655f71d312b1c4cee919409a4" class="nameRef">IO_TIME_SYNC_TIMEOUT</a>&nbsp;&nbsp;&nbsp;(30 * TPS)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum wait for SNTP in ioSetTime(1).</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#ioto_8h_1a9c53f6db77e8e6975766b28403f806fc" class="nameRef">IO_WEB_FILE</a>&nbsp;&nbsp;&nbsp;&quot;@config/web.json5&quot;</td>
 </tr>
@@ -429,16 +441,17 @@ Update service.
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
-<a name="ioto_8h_1a0798556330ef0bc2c0efc460eee7ef46"></a>
+<a name="ioto_8h_1a0c97b29cc401f926815da9f7fa63a701"></a>
 <div class="api">
   <div class="prototype">
-    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
     ioRestartWeb
 (void )
   </div>
   <div class="apiDetail">
 <p>Restart the web server service.</p>
     <dl><dt><b>Description</b>:</dt><dd>Stops and restarts the web server service. This will close all client connections and reinitialize the web server subsystem.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if the web server restarted, otherwise a negative error code.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -538,7 +551,9 @@ Update service.
   </div>
   <div class="apiDetail">
 <p>Login action routine.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Use the &quot;username&quot; and &quot;password&quot; web vars to validate against a user item stored in the database using the LocalUser model. If the user authenticates, the client will be redirected to &quot;/&quot; with a HTTP 302 status. If the user fails to authenticate, a HTTP 401 response will be returned. This routine should be installed using: webAddAction(host, &quot;/api/public/login&quot;, webLoginUser, NULL);.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Use the &quot;username&quot; and &quot;password&quot; web vars to validate against an item of the database &quot;User&quot; model, which has &quot;username&quot;, &quot;password&quot; and &quot;role&quot; fields. The password is a hash made by the &quot;password&quot; utility (bcrypt over username:realm:password) and is verified with webCheckPassword. If the user authenticates, the client is redirected to &quot;/&quot; with a HTTP 302 status. <br/><br/>
+ Every failure returns the same HTTP 401 response &quot;Invalid username or password&quot; after the same password work, whether the username is unknown or the password is wrong, and is logged by webLogAuthFailure as &quot;login failed&quot;. The login is also refused when the username belongs to a user defined with a password in web.json5, or when the password is the published default &quot;demo&quot;. A client with web.auth.maxFailures failures within web.auth.failurePeriod receives HTTP 429 until the period ends. This limit is shared with HTTP Basic and Digest authentication. <br/><br/>
+ The agent installs this routine at web.auth.login. It then also watches the User table: when a user&apos;s role changes or the user is removed, the cached user and all its sessions are dropped, so the change takes effect immediately and the next login carries the role the database holds. To install it yourself, use: webAddAction(host, &quot;/api/public/login&quot;, webLoginUser, NULL);.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web" >Web</a> object.</td></tr>
@@ -555,7 +570,7 @@ Update service.
   </div>
   <div class="apiDetail">
 <p>Logout action routine.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Log out a logged in user. This call will generate a redirect response to &quot;/&quot; with a 302 HTTP status. This routine should be installed using: webAddAction(host, &quot;/api/public/logout&quot;, webLogoutUser, NULL);.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Log out a logged in user. This call will generate a redirect response to &quot;/&quot; with a 302 HTTP status. Only POST is accepted; other methods receive a 405 response and the session is kept. This routine should be installed using: webAddAction(host, &quot;/api/public/logout&quot;, webLogoutUser, NULL);.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web" >Web</a> object.</td></tr>
@@ -572,7 +587,7 @@ Update service.
   </div>
   <div class="apiDetail">
 <p>Write a database item.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This routine serialize a database item into JSON. It will NOT call webFinalize.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This routine serializes a database item into JSON. It will NOT call webFinalize. The item is serialized into private memory before writing, so the item need not remain valid if the write yields. The item is written in full: it is not validated against a signature.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web" >Web</a> object.</td></tr>
@@ -591,7 +606,7 @@ Update service.
   </div>
   <div class="apiDetail">
 <p>Write a grid of database items as part of a web response.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This routine serializes a database grid into JSON. It will NOT call webFinalize.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This routine serializes a database grid into JSON. It will NOT call webFinalize. The whole grid is serialized into private memory before a single write, so the items need not remain valid if the write yields.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">web</td><td><a class="ref" href="#struct_web" >Web</a> object.</td></tr>

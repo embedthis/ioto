@@ -12,6 +12,8 @@ Full documentation for the Ioto Agent, the Builder, Device Apps and Ioto service
 
 Ioto has been tested on the esp32-s3 and esp32-c6 devices.
 
+Ioto uses the MbedTLS that ESP-IDF bundles, and requires MbedTLS 3.6.7 or later in the 3.6 LTS line. The ESP-IDF releases that bundle it are **v5.2.8**, **v5.3.6** and **v5.5.6** or later on those branches. No v5.4 release bundles it yet, and ESP-IDF v6 bundles MbedTLS 4.x, which Ioto does not support. The apps' **idf_component.yml** files enforce this range.
+
 ## Step 1: Install Prerequisites
 
 **Ubuntu/Debian:**
@@ -30,7 +32,7 @@ brew install cmake ninja dfu-util python3
 Clone and install ESP-IDF:
 
 ```bash
-git clone --recursive https://github.com/espressif/esp-idf.git
+git clone -b v5.5.6 --recursive https://github.com/espressif/esp-idf.git
 cd esp-idf
 ./install.sh esp32    # or esp32s3, esp32c3, esp32c6, etc.
 ```
@@ -95,7 +97,7 @@ This will perform the following steps:
 * Create the file system partitions.csv
 * Create the app sdkconfig.defaults
 * Initialize the components/ioto for the app
-* Create some test certificates that may be required by the app
+* Install the TLS trust anchors, and for a dev build the published test certificate and key (see [Device Certificates](#device-certificates))
 
 The **components/ioto/apps** contains master copies of the Ioto apps. When you select an app, the code
 and configuration for the app are copied to the **./main** and **./state/config** directories.
@@ -114,7 +116,7 @@ Edit your **sdkconfig.defaults** to match your board.
 
 Key | Value | Description
 -|-|-
-CONFIG_ESP_MAIN_TASK_STACK_SIZE | 8192 | Main task stack size (in words)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE | 16384 | Main task stack size (in bytes)
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ | 240 | CPU frequency (fastest for S3)
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240 | y | CPU frequency alias
 CONFIG_ESPTOOLPY_FLASHSIZE | 8MB | Flash memory size
@@ -124,9 +126,19 @@ CONFIG_ESPTOOLPY_FLASHSIZE_8MB | y | Flash size alias
 
 Key | Value | Description
 -|-|-
-CONFIG_ESP_MAIN_TASK_STACK_SIZE | 8192 | Main task stack size (in words)
+CONFIG_ESP_MAIN_TASK_STACK_SIZE | 16384 | Main task stack size (in bytes)
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ | 160 | CPU frequency (fastest for C6)
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_160 | y | CPU frequency alias
+
+### Required for all boards
+
+Key | Value | Description
+-|-|-
+CONFIG_MBEDTLS_HAVE_TIME_DATE | y | Check certificate validity dates (ESP-IDF defaults this to n)
+
+With this option off, MbedTLS ignores certificate validity dates, so an expired or not-yet-valid certificate would be accepted. The runtime refuses to build without it. Both shipped apps set it in their **sdkconfig.defaults**; keep it if you replace that file.
+
+Certificate dates are checked against the system clock, which starts at 1970 on boot. An app that makes TLS connections must synchronize the time before its first handshake by calling `ioSetTime(1)`, as the http app's **main/main.c** does. The call waits for SNTP for up to 30 seconds (`IO_TIME_SYNC_TIMEOUT`) and returns an error if the time cannot be set, for example when the device is offline.
 
 The full list of settings is in **components/ioto/apps/NAME/sdkconfig.defaults**.
 
@@ -173,6 +185,15 @@ To build for ESP32, run:
 
 This invokes `idf.py build` internally.
 
+### Device Certificates
+
+The whole **state/** directory, including **state/certs/**, is packed into the storage partition and flashed to the device. What goes into **state/certs/** depends on the build profile, which is the app's `profile` setting in **ioto.json5** unless you override it with `make PROFILE=NAME`.
+
+* **dev**: installs the published test certificate and key, `certs/test.crt` and `certs/test.key`. That key is public, so anyone can impersonate a device that uses it. Use it for development only and never ship it.
+* **Any other profile** (for example **prod**): installs no test certificate or key. You must provision a per-device certificate and key in **state/certs/** and name them in the profile's `tls` settings in the app's **ioto.json5**, for example `conditional.profile.prod.tls: {certificate: '@certs/device.crt', key: '@certs/device.key'}`. The build stops with a message if they are missing or are the published test pair.
+
+The shipped apps name the test pair only in their `dev` profile, so a non-dev configuration never uses it by accident.
+
 ## Step 10: Flash the Device
 
 To update your device board with the built application:
@@ -210,7 +231,8 @@ myproject/
 ├── Makefile
 ├── main/
 │   └── main.c                    # Your application code
-├── state/
+├── state/                        # Flashed to the storage partition
+│   ├── certs/                    # Trust anchors; the test pair only for dev builds
 │   └── config/                   # Runtime configuration
 │       ├── ioto.json5
 │       ├── web.json5
@@ -220,13 +242,16 @@ myproject/
         ├── lib/                  # Ioto source files
         ├── include/              # Ioto headers
         ├── apps/                 # App templates (blink, http)
-        └── certs/                # Test certificates
+        └── certs/                # Trust anchors and the published development-only test pair
 ```
 
 ## Tech Notes
 
-The stack size is configured to be 32K for the main app task and for spawned fiber tasks. Observationally, the minimum 
-stack for the core Ioto is ~14K.
+Two stack sizes matter, and they are separate settings. `CONFIG_ESP_MAIN_TASK_STACK_SIZE` sizes the ESP-IDF main task, in bytes, and is set to 16384 by the supplied apps. Spawned fibers get `ME_FIBER_DEFAULT_STACK`, which defaults to 16K on ESP32 and is set at runtime by `limits.fiberStack` in **ioto.json5**. Observationally, the minimum stack for the core Ioto is ~14K, so neither should be lowered below 16K.
+
+The supplied apps set `CONFIG_COMPILER_STACK_CHECK_MODE_STRONG=y`, so the whole firmware, including ESP-IDF, lwIP and MbedTLS, is compiled with `-fstack-protector-strong` and a smashed stack frame stops the device instead of running on. The canaries cost a few bytes in each protected frame. Keep the setting if you replace **sdkconfig.defaults**.
+
+Each fiber is a FreeRTOS task. Its stack, task control block and three semaphores come from internal RAM, which WiFi and lwIP also need, so a fiber costs roughly 17K with the default 16K stack. The agent caps the number of fibers at the smaller of `web.limits.connections` (in **web.json5**) and `CONFIG_LWIP_MAX_SOCKETS`, plus 8 for its own background work, and logs the ceiling and the per-fiber cost at startup. With the ESP-IDF default of 10 sockets the ceiling is 18 fibers, about 300K at the ceiling. Before raising `CONFIG_LWIP_MAX_SOCKETS`, check that the free internal heap (`heap_caps_get_free_size(MALLOC_CAP_INTERNAL)`) covers the logged total with room to spare. Setting `limits.fibers` in **ioto.json5** replaces the derived ceiling.
 
 Ioto uses its own optimized printf implementation which uses less stack (<1K) and is more secure, being tolerant of 
 errant NULL arguments.

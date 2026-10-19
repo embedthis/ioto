@@ -23,6 +23,14 @@
 
 <h2>Defines</h2>
 <table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#openai_8h_1a8478f7191e71a4fe06845d8c2c7651db" class="nameRef">ME_OPENAI_MAX_TOOL_CALLS</a>&nbsp;&nbsp;&nbsp;64</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default limit on agent tool invocations per openaiResponses call.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#openai_8h_1a6621cbb08a993f31bd76af19f67b66a2" class="nameRef">ME_OPENAI_MAX_TURNS</a>&nbsp;&nbsp;&nbsp;16</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Default limit on agent tool-invocation turns per request.</td></tr>
   </table>
 <h2>Typedefs</h2>
 <a name="openai_8h_1aea687c6ebc87a7388ebcabef7a528b8b"></a>
@@ -61,6 +69,12 @@ Configuration flags controlling tracing and behavior.
 <tr><td class="param">char *</td><td>headers</td><td>
 HTTP headers including authorization bearer token.
 </td></tr>
+<tr><td class="param">int</td><td>maxToolCalls</td><td>
+Maximum agent tool invocations per openaiResponses call.
+</td></tr>
+<tr><td class="param">int</td><td>maxTurns</td><td>
+Maximum agent tool-invocation turns for openaiResponses.
+</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
@@ -98,7 +112,7 @@ HTTP headers including authorization bearer token.
     <table class="parameters" title="Parameters">
     <tr><td class="param">endpoint</td><td><a class="ref" href="#struct_open_a_i">OpenAI</a> API base endpoint URL. Use NULL for default &quot;https://api.openai.com/v1&quot;.</td></tr>
     <tr><td class="param">key</td><td><a class="ref" href="#struct_open_a_i">OpenAI</a> API key for authentication. Must be a valid API key starting with &quot;sk-&quot;.</td></tr>
-    <tr><td class="param">config</td><td>JSON object containing additional configuration parameters. May be NULL for defaults. Optional fields include timeout settings and custom headers.</td></tr>
+    <tr><td class="param">config</td><td>JSON object containing additional configuration parameters. May be NULL for defaults. The &quot;ai.maxTurns&quot; property bounds the number of agent tool-invocation turns openaiResponses will run for a single request (default ME_OPENAI_MAX_TURNS). The &quot;ai.maxToolCalls&quot; property bounds the total number of agent tool invocations for a single request (default ME_OPENAI_MAX_TOOL_CALLS). The config is only read during this call and is not retained.</td></tr>
     <tr><td class="param">flags</td><td>Bitmask of AI_SHOW_* flags controlling debug output and tracing behavior.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Returns 0 on successful initialization. Returns negative error code on failure.</dd></dl>
@@ -128,7 +142,7 @@ HTTP headers including authorization bearer token.
   </div>
   <div class="apiDetail">
 <p>Submit a request to <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API with agent callbacks.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Submit a request to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API which supports agent-based interactions. The API automatically sets default values: model=&apos;gpt-4o-mini&apos;, truncation=&apos;auto&apos;. Response text is aggregated into &quot;output_text&quot; field for convenient access. Agent callbacks are invoked for processing structured responses.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Submit a request to the <a class="ref" href="#struct_open_a_i">OpenAI</a> Responses API which supports agent-based interactions. The API automatically sets default values: model=&apos;gpt-4o-mini&apos;, truncation=&apos;auto&apos;. Response text is aggregated into &quot;output_text&quot; field for convenient access. Agent callbacks are invoked for processing structured responses. The tool-invocation loop is bounded by the &quot;ai.maxTurns&quot; configuration so that an endpoint which keeps requesting tools cannot drive the loop indefinitely. The total number of tool invocations across all turns is bounded by the &quot;ai.maxToolCalls&quot; configuration, since a single response may request any number of tools. When either bound is reached, no further tools are invoked and the last response is returned with an &quot;error&quot; property describing the limit.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">props</td><td>JSON object containing Response API parameters. Required fields depend on the specific API endpoint. Common fields include &apos;messages&apos;, &apos;model&apos;, &apos;max_tokens&apos;, &apos;temperature&apos;.</td></tr>
@@ -153,9 +167,9 @@ HTTP headers including authorization bearer token.
     <table class="parameters" title="Parameters">
     <tr><td class="param">props</td><td>JSON object containing Response API parameters. Must include required fields for the target endpoint.</td></tr>
     <tr><td class="param">callback</td><td>SSE callback function invoked for each streaming chunk. Cannot be NULL.</td></tr>
-    <tr><td class="param">arg</td><td>User-defined argument passed to the callback function. May be NULL.</td></tr>
+    <tr><td class="param">arg</td><td>User-defined argument passed to the callback function. May be NULL. The callback may stop the stream by calling urlFree on the Url, in which case the Url is released when the stream exits and openaiStream returns NULL.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Url object representing the active streaming connection on success. Returns NULL on failure. Use urlClose to terminate the stream when finished.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Url object for the completed stream on success. Caller must free using urlFree. Returns NULL on failure, or if the callback freed the Url.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>

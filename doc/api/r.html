@@ -7,6 +7,7 @@
   <table class="apiIndex" title="Function Index">
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a5b4b64403d8306e632101ffcd0591d57" class="nameRef">assert</a>(bool cond)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Assert that a condition is true.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a17091619f189860370d18544461ba225" class="nameRef">rAbortFiber</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Abort the current fiber immediately.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Socket</td><td><a href="#r_8h_1a27219fac905dc93559f1059073edd5a2" class="nameRef">rAcceptFromPeer</a>(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> listener, struct sockaddr_in *peer)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Accept a connection from one expected peer.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1ae946650c77cedb046464eecdf0357879" class="nameRef">rAccessFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, int mode)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Test if a file can be accessed with the given mode (F_OK, R_OK, W_OK, X_OK).</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a5fc554ab9581e5ca9ae420277ae2b234" class="nameRef">rAddDirectory</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a directory to the directory lookup hash.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RName,*</td><td><a href="#r_8h_1ac692f04aac507d78848250b5209db2ff" class="nameRef">rAddDuplicateName</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, void *ptr, int flags)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Add a non-unique name and value into the hash table.</td></tr>
@@ -25,6 +26,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1ada56b90bf48c8445872e097c3d33cc09" class="nameRef">rAllocType</a>(<a href="#r_8h_1a4d5d80eb50dbe31bd1c45a7607a222f6" class="ref">RType</a> type)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate an object of a given type.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a45588f5221820d8e128232aab9cb9fa0" class="nameRef">rAllocVirt</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate virtual memory.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RWait,*</td><td><a href="#r_8h_1a931768414565f22a2bc748a45ed41f41" class="nameRef">rAllocWait</a>(int fd)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a wait object for a file descriptor.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a5c0943636df404f0adc23af09e500947" class="nameRef">rAllocZero</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Allocate a zeroed memory block - internal implementation.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a716ee6d70922510d433663743637fbea" class="nameRef">rBackupFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, int count)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Backup the given file.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1ab393b25f1ef0cf0c5f5a726e703b8311" class="nameRef">rBasename</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the basename (filename) portion of a filename.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a1ee5682992282644ea9f86d2b6fd0ac0" class="nameRef">rBreakpoint</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Trigger a breakpoint.</td></tr>
@@ -32,6 +34,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a2840dcc80c3c9da4c051da6206dfb182" class="nameRef">rCloseSocket</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Close a socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1adb1137a3aadc487a50c8715a179e874a" class="nameRef">rConnectSocket</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *host, int port, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Connect a client socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a04274fb3eda752a88c5df5d0896b8810" class="nameRef">rCopyFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *from, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *to, int mode)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Copy a file.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a767ed9e63fca66847c065178585e37e9" class="nameRef">rCreateSocketPair</a>(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> pair[2])</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create a connected pair of loopback sockets.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a0c3a47b424de519ffd6cbd8025e04f1b" class="nameRef">rCreateThread</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, void *proc, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create an O/S thread.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a8a257ecb7db62931d0c93cc45cab746c" class="nameRef">rDaemonize</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>For the current process and run as a daemon.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1aabf9e67e1d6c74c7878b7c6d4c803b9b" class="nameRef">rDirname</a>(char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the directory name portion of a filename.</td></tr>
@@ -58,6 +61,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1aaa77a684bf6fb0354620de1b0995978b" class="nameRef">rGetCwd</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current application working directory.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1ad4d6b94a18ce3f54b733e0dc05f69a92" class="nameRef">rGetDate</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *format)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a string representation of the current date/time.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ticks</td><td><a href="#r_8h_1a21aa129982dcedfa8de399059f9d39c7" class="nameRef">rGetElapsedTicks</a>(<a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> mark)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the elapsed time since a ticks mark.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Time</td><td><a href="#r_8h_1a48c67d19509577d19917bbf7fa20d143" class="nameRef">rGetElapsedTime</a>(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> mark)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the time elapsed since a mark.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1adadee860b5fcbc7b04fabd3198994125" class="nameRef">rGetError</a>(int error)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return a string representation of an R error code.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1adb4e271520af67b74083aa77988f9921" class="nameRef">rGetFdPath</a>(int fd, char *buf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the fully resolved path of an open file descriptor.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RFiber,*</td><td><a href="#r_8h_1a3384070f5fe40122b170616f91b3ddba" class="nameRef">rGetFiber</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current fiber object.</td></tr>
@@ -78,6 +82,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Time</td><td><a href="#r_8h_1a71c29c22420b86e9fc85676c881dc6ef" class="nameRef">rGetNextDueEvent</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the time of the next due event.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RName,*</td><td><a href="#r_8h_1ae615bc42de5954bf4e2a2f5d638e4374" class="nameRef">rGetNextName</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, <a href="#struct_r_name" class="ref">RName</a> *next)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the next symbol in a symbol entry.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a6c976fbb9c1038e02d41c618593c21b6" class="nameRef">rGetOsError</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the native O/S error code.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1ad47106d9c6722142775aac3ce602c90d" class="nameRef">rGetRawOsError</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the raw, unmapped O/S error code.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1af2be41f852a9a5ae0812306b9007552e" class="nameRef">rGetRealPath</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the canonical absolute path of an existing file or directory.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ticks</td><td><a href="#r_8h_1a5dc330a4d9c78f414c3289dfc6be6341" class="nameRef">rGetRemainingTicks</a>(<a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> mark, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> timeout)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Return the time remaining until a timeout has elapsed.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1a31f6d78e38c882abf5bebe26b5dbd27e" class="nameRef">rGetServerName</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the application server name string.</td></tr>
@@ -86,6 +91,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> cchar,*</td><td><a href="#r_8h_1a0b5572a4f8519a0b6bda62dea357c2bd" class="nameRef">rGetSocketError</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket error.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Socket</td><td><a href="#r_8h_1ab4b12fff7f437c19e7ccc0837c8de773" class="nameRef">rGetSocketHandle</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket file descriptor.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a088281233efef6173ff28884e28e6551" class="nameRef">rGetSocketLimit</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the maximum number of active sockets allowed.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a912c9f955984318472d32aebaad74ea3" class="nameRef">rGetSocketPeer</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, char *ipbuf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> ipbufLen, int *port)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the IP address and port of the connected peer of a socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RWait,*</td><td><a href="#r_8h_1a919a9e748ca82402c8b12e70ea49f56c" class="nameRef">rGetSocketWait</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the socket wait handler.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a4bba5d382cad512b94fb175f3795acab" class="nameRef">rGetState</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get the current R state.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a11ceff807560578401d8b762f5d178a3" class="nameRef">rGetTempFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dir, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Get a temp filename.</td></tr>
@@ -101,6 +107,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1adfcc48a12b3c528352000415c44e4cc2" class="nameRef">rHashToJson</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, int pretty)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a hash into JSON.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> RBuf,*</td><td><a href="#r_8h_1a77021f75a76409c010b5c9e6cdb71460" class="nameRef">rHashToJsonBuf</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, RBuf *buf, int pretty)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a hash into JSON in the given buffer.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a44c1fa77825dad15374d08546d9b000b" class="nameRef">rHashToString</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *join)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Convert a hash of strings to a single string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a0dab60ecb55e997e13da540b0e4ac015" class="nameRef">rIncName</a>(<a href="#struct_r_hash" class="ref">RHash</a> *hash, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Increment a counter stored in the hash.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a72d8a24b6d30a9377ff2f5d6904b6b4d" class="nameRef">rInit</a>(<a href="#r_8h_1acd4039811a4e67c7ef110876b509b8be" class="ref">RFiberProc</a> fn, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the runtime.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1adacd2bfa5d2451a383dcdccf4988dd9d" class="nameRef">rInitFibers</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Initialize the fiber coroutine module.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a2731bbc45d5ac17d65c28c6d9439a81d" class="nameRef">rInitFile</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and initialze the file subsystem.</td></tr>
@@ -129,6 +136,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> size_t</td><td><a href="#r_8h_1a7f06f9012bc66a84c238c0f85643e6bc" class="nameRef">rMemcpy</a>(void *dest, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> destMax, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *src, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> nbytes)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Copy a block of memory.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a397f3f5e1a2378e7b520b98abc1f58af" class="nameRef">rMemdup</a>(<a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *ptr, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Duplicate a block of memory.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a9fd35853f606784a53b3250d34ba0214" class="nameRef">rMemoryBarrier</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Perform a memory barrier where all queued writes are flushed to memory.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a599f46bda949bc93bce9800633834720" class="nameRef">rOpenTempFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dir, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix, char **path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Create and open a temp file.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Time</td><td><a href="#r_8h_1a471d03f1ff42f20f9305bccc79896239" class="nameRef">rParseHttpDate</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse an HTTP date string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Time</td><td><a href="#r_8h_1aef8dcc86e5a69f95e2d9abc166449a67" class="nameRef">rParseIsoDate</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *when)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse an ISO date string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a05696ebdfae9c35c2d082b5dcd2c4bbc" class="nameRef">rPrintf</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *fmt, ...)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Formatted print.</td></tr>
@@ -144,15 +152,19 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a5e42e6adc2f62ceb60f396843ecddbeb" class="nameRef">rRun</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *command, char **output)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run a command.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1aae25e39b5db210d02a5e1cb1e1e1508b" class="nameRef">rRunEvent</a>(<a href="#r_8h_1a1149ec39f6cdb2f2d68612836de380b5" class="ref">REvent</a> id)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run an event now.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Ticks</td><td><a href="#r_8h_1a562d0c21d142ca29cc7cee26fc21b450" class="nameRef">rRunEvents</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Run due events.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a68038aee7c78c5df1e4361477b7de8a0" class="nameRef">rSendFile</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sock, int fd, <a href="osdep.html#osdep_8h_1a7bac74916a564105339bcd5a9323c366" class="ref">Offset</a> offset, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Send a file over a socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a1e7ecc44de09a8c42918273b3fb89b30" class="nameRef">rServiceEvents</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Service events.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a8851c399548e10c3df2075efcf045f31" class="nameRef">rSetAllocator</a>(<a href="#r_8h_1a8bb9f1e7837e4615eb0147cf38871053" class="ref">RAllocProc</a> allocProc, <a href="#r_8h_1a80bdf0a4def604af6ab01ec134667d7d" class="ref">RReallocProc</a> reallocProc, <a href="#r_8h_1a5544e874b6300d7b8ef379b822ee6121" class="ref">RFreeProc</a> freeProc)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Install a custom allocator.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a59b35c5883ebf4a1f6f4636c38662edb" class="nameRef">rSetFiberLimits</a>(int maxFibers, int poolMin, int poolMax)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set fiber limits.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1adf5510d7ca6775426de79bb09750503b" class="nameRef">rSetFiberStackLimits</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> initialSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> maxSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> growSize, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> resetLimit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure fiber stack limits.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a92e9b7055e05ba617f7f17539d5f0583" class="nameRef">rSetFiberStackSize</a>(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the initial fiber stack size.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a8c789489ea07a942b46dcb1c6a0d18c5" class="nameRef">rSetMemHandler</a>(<a href="#r_8h_1a3e2bc18aa2db34222ff8e68c993bb1d4" class="ref">RMemProc</a> handler)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Define a global memory exhaustion handler.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1af84ad013fcfa0dc3867dc6df1e4e7581" class="nameRef">rSetOsError</a>(int error)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the O/S error code.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a6cf3b7c86dcd4810804e6e4d902f2769" class="nameRef">rSetPidPath</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the path of the pid file written by rWritePid.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a817d093be54881d3fc2b3a72e07271be" class="nameRef">rSetSocketBlocking</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, bool on)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set a socket into blocking I/O mode.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a51da5f9e6aa06364b6a113df86b90919" class="nameRef">rSetSocketCerts</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ca, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *cert, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *revoke)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure the socket TLS certificates.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a9c25522e398b3719fec8e5028ff10c37" class="nameRef">rSetSocketCiphers</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ciphers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the ciphers to use for communications.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a274b9aa8f7cf860459cf9c6dbb954a77" class="nameRef">rSetSocketCloseOnExec</a>(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> fd)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Mark a socket as not inheritable by child processes.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a963cb23843a1eb455700968d3c26219f" class="nameRef">rSetSocketCustom</a>(<a href="#r_8h_1ad35b7744a9c4133f0cdbafa907442360" class="ref">RSocketCustom</a> custom)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the socket custom configuration callback.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ad9a50905e9c936a356c7e416f3c9374b" class="nameRef">rSetSocketDefaultCerts</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ca, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *key, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *cert, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *revoke)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Configure the default TLS certificates.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1ad93f99ff7fd597026f970502a173f8b1" class="nameRef">rSetSocketDefaultCiphers</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *ciphers)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Set the default TLS ciphers to use for communications.</td></tr>
@@ -175,10 +187,12 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a55596c8b86569e8600ddb07cc694be65" class="nameRef">rSpawnFiber</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="#r_8h_1acd4039811a4e67c7ef110876b509b8be" class="ref">RFiberProc</a> fn, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Spawn a fiber coroutine.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a34e2cfa9a420b03452be1e9eccfd6f62" class="nameRef">rSpawnThread</a>(<a href="#r_8h_1a3da0c3abfa79a3c73d2c0920f395b210" class="ref">RThreadProc</a> fn, void *arg)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Spawn an O/S thread and wait until it completes.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> REvent</td><td><a href="#r_8h_1adada457cdac6b212a648e7630a137d00" class="nameRef">rStartEvent</a>(<a href="#r_8h_1a02fa8ee37c08629cb92622c0f8dc1135" class="ref">REventProc</a> proc, void *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a callback event.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> REvent</td><td><a href="#r_8h_1a7a30dda5e76cb1ee98820134c63b2509" class="nameRef">rStartFastEvent</a>(<a href="#r_8h_1a02fa8ee37c08629cb92622c0f8dc1135" class="ref">REventProc</a> proc, void *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fast callback event.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1af095d5a60dd353712a4c24bd5a489d23" class="nameRef">rStartFiber</a>(<a href="#struct_r_fiber" class="ref">RFiber</a> *fiber, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fiber coroutine.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1adef7b7fe7629ab4d3338b205634e1376" class="nameRef">rStartFiberBlock</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Start a fiber block.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a979b9dbe371c8ee5a00022747757e3ef" class="nameRef">rStop</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Immediately stop the app.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a28f58bf28e186b9a27975385310c5af1" class="nameRef">rStopEvent</a>(<a href="#r_8h_1a1149ec39f6cdb2f2d68612836de380b5" class="ref">REvent</a> id)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Stop an event.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a5afcbcc64ae1e7a9d93357da7d144d7a" class="nameRef">rStripExtendedPrefix</a>(char *path)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Reduce a Windows extended-length path to the plain DOS form.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a0a54d92e2877d58e7d2593f25e5cd5d2" class="nameRef">rTermFibers</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate the fiber coroutine module.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a4405ca1ec0867822b1170f970b76231c" class="nameRef">rTermFile</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Stop the file subsystem.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a2e0e2e889ef1f3b7d9663258d30ec304" class="nameRef">rTermLock</a>(<a href="#struct_r_lock" class="ref">RLock</a> *mutex)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Terminate a statically allocated lock object.</td></tr>
@@ -195,7 +209,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1aa619d657767c66c8cd9da82aff32aaaf" class="nameRef">rWatch</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> proc, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Watch for a named event to happen.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void</td><td><a href="#r_8h_1a44ab13da7c96cdd3b296218f162c7889" class="nameRef">rWatchOff</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="#r_8h_1a20f2b4a832a556bf6f00c51b9e19179c" class="ref">RWatchProc</a> proc, void *data)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Stop watching for a named event to happen.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a1670e70cf4e2d2080ed90816e375627a" class="nameRef">rWriteFile</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *buf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len, int mode)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write data to a file.</td></tr>
-<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a4b2398683f3cf0b8ec13055e1107cc4f" class="nameRef">rWritePid</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write the current process pid to /var/run.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a4b2398683f3cf0b8ec13055e1107cc4f" class="nameRef">rWritePid</a>(void)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write the current process pid to the pid file.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1ab3b1cf3d54c41bd3895631d0b1cf134c" class="nameRef">rWriteSocket</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *buf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> bufsize, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write to a socket until a deadline is reached.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1ad7bb397f0f184b6545fc1fcaa94a91fe" class="nameRef">rWriteSocketSync</a>(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, <a href="osdep.html#osdep_8h_1a5272042f7e0f5c53e2fd4b49ff47d92d" class="ref">cvoid</a> *buf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Write to a socket.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*</td><td><a href="#r_8h_1a6b9d3bcad8bf23dd62c1aa211589490a" class="nameRef">rYieldFiber</a>(void *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Yield a fiber back to the main fiber.</td></tr>
@@ -236,6 +250,7 @@
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a4d438db1d517204f37f4f7d71c845cbf" class="nameRef">sncmp</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s1, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *s2, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Compare strings.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a4d5be7e3a811cefa7650e828b033968e" class="nameRef">sncontains</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *pattern, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> limit)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Find a pattern in a string with a limit.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize</td><td><a href="#r_8h_1a56a342100fa6a0a34d2002f426b36efd" class="nameRef">sncopy</a>(char *dest, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> destMax, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *src, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Copy characters from a string.</td></tr>
+<tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int</td><td><a href="#r_8h_1a660463ef72fe285fb99ddd29a471a83a" class="nameRef">sparseUint</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, int radix, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> max, char **end, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> *value)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Parse a non-negative integer strictly.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a89b328a2cfa77367d4007ee4981fd955" class="nameRef">spbrk</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *set)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Locate the a character from a set in a string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1a9b6834136f1f65692cdea4b84b1a4060" class="nameRef">sptok</a>(char *str, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *pattern, char **nextp)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Tokenize a string.</td></tr>
 <tr class="apiDef"><td class="apiType"><a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> char,*</td><td><a href="#r_8h_1ab5635445d903757540e7955d7c9b7ed8" class="nameRef">srchr</a>(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, int c)</td></tr><tr class="apiBrief"><td>&nbsp;</td><td>Find a character in a string by searching backwards.</td></tr>
@@ -262,16 +277,19 @@
 
 <h2>Typedef Index</h2>
 <table class="apiIndex" title="typedefs">
+<tr class="apiDef"><td class="apiName"><a href="#r_8h_1a8bb9f1e7837e4615eb0147cf38871053" class="nameRef">RAllocProc</a></td><td class="apiBrief">Custom allocator callbacks.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a1149ec39f6cdb2f2d68612836de380b5" class="nameRef">REvent</a></td><td class="apiBrief">Event Subsystem.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a02fa8ee37c08629cb92622c0f8dc1135" class="nameRef">REventProc</a></td><td class="apiBrief">Callback function for events.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_fiber" class="nameRef">RFiber</a></td><td class="apiBrief">Fiber state.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1acd4039811a4e67c7ef110876b509b8be" class="nameRef">RFiberProc</a></td><td class="apiBrief">Fiber entry point function.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_file" class="nameRef">RFile</a></td><td class="apiBrief">R File Module.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#r_8h_1a5544e874b6300d7b8ef379b822ee6121" class="nameRef">RFreeProc</a></td><td class="apiBrief">Custom free callback.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_hash" class="nameRef">RHash</a></td><td class="apiBrief">Hash table structure.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1ad83d24de94df3a069ccd3f562ef34982" class="nameRef">RHashProc</a></td><td class="apiBrief">Hashing function to use for the table.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_lock" class="nameRef">RLock</a></td><td class="apiBrief">Multithreading lock control structure.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1a3e2bc18aa2db34222ff8e68c993bb1d4" class="nameRef">RMemProc</a></td><td class="apiBrief">Memory exhaustion callback procedure.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_name" class="nameRef">RName</a></td><td class="apiBrief">Per item structure.</td></tr>
+<tr class="apiDef"><td class="apiName"><a href="#r_8h_1a80bdf0a4def604af6ab01ec134667d7d" class="nameRef">RReallocProc</a></td><td class="apiBrief">Custom reallocator callback.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1ad35b7744a9c4133f0cdbafa907442360" class="nameRef">RSocketCustom</a></td><td class="apiBrief">Custom socket configuration callback function.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#r_8h_1af324bdc33c3c712ac5c73c295cd6b79c" class="nameRef">RSocketProc</a></td><td class="apiBrief">Socket handler callback function.</td></tr>
 <tr class="apiDef"><td class="apiName"><a href="#struct_r_string" class="nameRef">RString</a></td><td class="apiBrief">R String Module.</td></tr>
@@ -288,6 +306,14 @@
 
 <h2>Defines</h2>
 <table class="apiIndex" title="Defines">
+<tr class="apiDef">
+<td>#define</td><td><a href="#r_8h_1a31be5b78091acebd9197eb1d014bb054" class="nameRef">ME_R_MAX_PRINTF_PRECISION</a>&nbsp;&nbsp;&nbsp;(4 * 1024)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum precision for a printf %.</td></tr>
+<tr class="apiDef">
+<td>#define</td><td><a href="#r_8h_1a95ee6172b580ce7580158317ecd80c92" class="nameRef">ME_R_MAX_PRINTF_WIDTH</a>&nbsp;&nbsp;&nbsp;(8 * 1024)</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Maximum field width for a printf %*d or literal width.</td></tr>
 <tr class="apiDef">
 <td>#define</td><td><a href="#r_8h_1a12d5739d7d612bd4ea546a051f938405" class="nameRef">ME_R_TLS_MAX_DEPTH</a>&nbsp;&nbsp;&nbsp;8</td>
 </tr>
@@ -385,6 +411,10 @@
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>Fast connect mode.</td></tr>
 <tr class="apiDef">
+<td>#define</td><td><a href="#r_8h_1a05782929fb4805b082740f57b1652df7" class="nameRef">R_SOCKET_FREEING</a>&nbsp;&nbsp;&nbsp;0x40</td>
+</tr>
+<tr class="apiBrief"><td>&nbsp;</td><td>Socket is being freed - reject reentrant frees.</td></tr>
+<tr class="apiDef">
 <td>#define</td><td><a href="#r_8h_1a3574dfecf12525916285939d7f68e2c1" class="nameRef">R_SOCKET_LISTENER</a>&nbsp;&nbsp;&nbsp;0x4</td>
 </tr>
 <tr class="apiBrief"><td>&nbsp;</td><td>RSocket is server listener.</td></tr>
@@ -462,6 +492,22 @@
 <tr class="apiBrief"><td>&nbsp;</td><td>Wait mask for writable events.</td></tr>
   </table>
 <h2>Typedefs</h2>
+<a name="r_8h_1a8bb9f1e7837e4615eb0147cf38871053"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void *(* RAllocProc) (size_t size)
+  </div>
+  <div class="apiDetail">
+<p>Custom allocator callbacks.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Installed together via rSetAllocator to route every runtime allocation through a custom heap.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">size</td><td>Size of the block to allocate in bytes. Always a positive multiple of 8.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Pointer to the block, or NULL if the allocation cannot be satisfied.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a1149ec39f6cdb2f2d68612836de380b5"></a>
 <div class="api">
   <div class="prototype">
@@ -501,6 +547,20 @@
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a5544e874b6300d7b8ef379b822ee6121"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void(* RFreeProc) (void *ptr)
+  </div>
+  <div class="apiDetail">
+<p>Custom free callback.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ptr</td><td>Block to release. Never NULL.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1ad83d24de94df3a069ccd3f562ef34982"></a>
 <div class="api">
   <div class="prototype">
@@ -529,6 +589,22 @@
     <tr><td class="param">cause</td><td>The cause of the memory failure.</td></tr>
     <tr><td class="param">size</td><td>The size of the failing block allocation.</td></tr>
     </table></dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a80bdf0a4def604af6ab01ec134667d7d"></a>
+<div class="api">
+  <div class="prototype">
+    typedef void *(* RReallocProc) (void *ptr, size_t size)
+  </div>
+  <div class="apiDetail">
+<p>Custom reallocator callback.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">ptr</td><td>Block to resize, or NULL to allocate a new block.</td></tr>
+    <tr><td class="param">size</td><td>New size of the block in bytes. Always a positive multiple of 8.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Pointer to the resized block, or NULL if the request cannot be satisfied. On NULL the original block must remain valid, as with realloc.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
 <a name="r_8h_1ad35b7744a9c4133f0cdbafa907442360"></a>
@@ -780,7 +856,7 @@ Pointer to data.
 Argument to pass to the handler.
 </td></tr>
 <tr><td class="param">Ticks</td><td>deadline</td><td>
-System deadline time to wait until.
+System deadline time to wait until, for the handler and the fiber.
 </td></tr>
 <tr><td class="param">int</td><td>eventMask</td><td>
 I/O events received.
@@ -789,7 +865,7 @@ I/O events received.
 File descriptor to wait upon.
 </td></tr>
 <tr><td class="param"><a class="ref" href="#struct_r_fiber">RFiber</a> *</td><td>fiber</td><td>
-Current fiber for rWaitForIO.
+Fiber waiting for rWaitForIO on any mask other than R_WRITABLE.
 </td></tr>
 <tr><td class="param">int</td><td>flags</td><td>
 Wait handler flags (R_WAIT_MAIN_FIBER).
@@ -798,7 +874,17 @@ Wait handler flags (R_WAIT_MAIN_FIBER).
 Handler function to invoke as the entrypoint in the fiber coroute.
 </td></tr>
 <tr><td class="param">int</td><td>mask</td><td>
-Current event mask.
+Current event mask. 
+The union of all waiters and the handler.
+</td></tr>
+<tr><td class="param">uint</td><td>seqno</td><td>
+Registration sequence, to discard events for a closed and reused fd.
+</td></tr>
+<tr><td class="param">Ticks</td><td>writeDeadline</td><td>
+System deadline time for the writeFiber.
+</td></tr>
+<tr><td class="param"><a class="ref" href="#struct_r_fiber">RFiber</a> *</td><td>writeFiber</td><td>
+Fiber waiting for rWaitForIO on R_WRITABLE.
 </td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
@@ -836,6 +922,25 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a27219fac905dc93559f1059073edd5a2"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Socket
+    rAcceptFromPeer
+(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> listener, struct sockaddr_in *peer)
+  </div>
+  <div class="apiDetail">
+<p>Accept a connection from one expected peer.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Accept connections on a listening socket until one arrives from the given address and port. A connection from any other endpoint is closed. At most 16 other connections are discarded before the call fails, so a flood of local connections cannot hold the caller.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">listener</td><td>Listening socket.</td></tr>
+    <tr><td class="param">peer</td><td>Expected peer address and port, as reported by getsockname on the connecting socket.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The accepted socket, or INVALID_SOCKET.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1ae946650c77cedb046464eecdf0357879"></a>
 <div class="api">
   <div class="prototype">
@@ -845,6 +950,7 @@ Does not return
   </div>
   <div class="apiDetail">
 <p>Test if a file can be accessed with the given mode (F_OK, R_OK, W_OK, X_OK).</p>
+    <dl><dt><b>Description</b>:</dt><dd>On ESP32 and VxWorks, which have no users or groups, the mode is checked against the owner permission bits of the file.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">path</td><td>Filename to read.</td></tr>
@@ -1173,6 +1279,24 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a5c0943636df404f0adc23af09e500947"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void,*
+    rAllocZero
+(<a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> size)
+  </div>
+  <div class="apiDetail">
+<p>Allocate a zeroed memory block - internal implementation.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Low-level zeroing allocator used internally by the rAllocType macro. Do not call directly.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">size</td><td>Size of memory block to allocate in bytes.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Pointer to the zeroed block, or NULL if the allocation failed and a memory handler returned.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a1d8ceeece44bf21437f0abe15f539a25"></a>
 <div class="api">
   <div class="prototype">
@@ -1314,6 +1438,24 @@ Does not return
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a767ed9e63fca66847c065178585e37e9"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rCreateSocketPair
+(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> pair)
+  </div>
+  <div class="apiDetail">
+<p>Create a connected pair of loopback sockets.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The runtime uses this for the event loop wakeup on platforms without a pipe that can be waited on (Windows, VxWorks, ESP32 and FreeRTOS). Other processes can reach the temporary listener, so the accepted end is verified to be the connecting socket and a connection from anything else is refused. Both sockets are non-blocking and not inherited by child processes.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">pair</td><td>Returns the two connected sockets. Both are INVALID_SOCKET on failure.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful, otherwise a negative R_ERR code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a0c3a47b424de519ffd6cbd8025e04f1b"></a>
 <div class="api">
   <div class="prototype">
@@ -1341,6 +1483,7 @@ Does not return
   </div>
   <div class="apiDetail">
 <p>For the current process and run as a daemon.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The parent exits and the child continues in a new session with standard input closed (redirected from the null device). Standard output and error are left unchanged. Call this before rInit on platforms where the event notifier does not survive fork, such as macOS.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1460,7 +1603,7 @@ Does not return
     <tr><td class="param">format</td><td>Time format string. See rFormatUniversalTime for time formats.</td></tr>
     <tr><td class="param">time</td><td>Time to format. Use rGetTime to retrieve the current time.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The formatting time string. Caller msut free.</dd></dl>
+    <dl><dt>Returns:</dt><dd>The formatted time string, or NULL if the time cannot be represented. Caller must free.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1532,7 +1675,7 @@ Does not return
      RFC3399: &quot;FTTZ&quot; &quot;1985-04-12T23:20:50.52Z" which is April 12 1985, 23:20.50 and 52 msec <br/><br/></td></tr>
     <tr><td class="param">time</td><td>Time to format. Use rGetTime to retrieve the current time.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The formatting time string. Caller must free.</dd></dl>
+    <dl><dt>Returns:</dt><dd>The formatted time string, or NULL if the time cannot be represented. Caller must free.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1570,7 +1713,7 @@ Does not return
     <table class="parameters" title="Parameters">
     <tr><td class="param">ptr</td><td>Pointer to the block. If ptr is NULL, the call is safely skipped.</td></tr>
     </table></dd></dl>
-    <dl><dt>Remarks:</dt><dd>The rFree routine is a macro over rFreeMem. Do not mix calls to rFreeMem and free.</dd></dl>
+    <dl><dt>Remarks:</dt><dd>The rFree routine is a macro over rFreeMem and evaluates its argument exactly once, so rFree(fn()) is safe. Do not mix calls to rFreeMem and free.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1771,7 +1914,7 @@ Does not return
     <table class="parameters" title="Parameters">
     <tr><td class="param">format</td><td>Date formatting string. See strftime for acceptable date format specifiers. If null, then this routine uses the R_DEFAULT_DATE format.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>A date string. Caller must free.</dd></dl>
+    <dl><dt>Returns:</dt><dd>A date string, or NULL if the time cannot be represented. Caller must free.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1790,6 +1933,23 @@ Create the ticks mark with rGetTicks()
     <tr><td class="param">mark</td><td>Staring time stamp.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>The time elapsed since the mark was taken.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a48c67d19509577d19917bbf7fa20d143"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> Time
+    rGetElapsedTime
+(<a href="osdep.html#osdep_8h_1ade1c8a9958f9e5394c2e78269e654872" class="ref">Time</a> mark)
+  </div>
+  <div class="apiDetail">
+<p>Get the time elapsed since a mark.</p>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">mark</td><td>A time previously returned by rGetTime.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The milliseconds elapsed since mark. Negative if mark is in the future.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -1820,8 +1980,10 @@ Create the ticks mark with rGetTicks()
   <div class="apiDetail">
 <p>Get the fully resolved path of an open file descriptor.</p>
     <dl><dt><b>Description</b>:</dt><dd>Return the name the file system actually resolved a descriptor to, which may differ from the name that was passed to open(). Case-folding file systems (APFS, HFS+, NTFS, vfat, exfat) and Unicode-normalizing file systems (APFS, HFS+) accept many spellings of one name, and Windows additionally accepts 8.3 short names, trailing dots and spaces, and the ::$DATA stream suffix. Code that makes a security decision from a requested path must compare it against the resolved name. <br/><br/>
+ The result is the stored name on APFS, HFS+ and NTFS, but not on every file system. On macOS FAT and exFAT, and on Linux vfat, exfat and casefold directories, it is the spelling of the lookup that first cached the entry, which may come from another caller. There, prove the stored spelling another way, such as with readdir. <br/><br/>
  Resolving from the descriptor closes the time-of-check to time-of-use window that a path-based realpath() leaves open, because the descriptor already refers to the object. <br/><br/>
- Callers must fail closed on error. Some platforms (VxWorks, some RTOS libcs) provide no such call and always return an error.</dd></dl>
+ Callers must fail closed on error. Some platforms (VxWorks, some RTOS libcs) provide no such call and always return an error. <br/><br/>
+ The result is an absolute path in the same form as rGetRealPath returns, so the two may be compared directly. On Windows that is the plain DOS form, without the extended-length &quot;\\?\&quot; prefix.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">fd</td><td>Open file descriptor.</td></tr>
@@ -1946,7 +2108,7 @@ Create the ticks mark with rGetTicks()
     <table class="parameters" title="Parameters">
     <tr><td class="param">path</td><td>Source file path.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The expanded path. Caller must free.</dd></dl>
+    <dl><dt>Returns:</dt><dd>The expanded path. Caller must free. Returns NULL if the path is NULL or the &quot;@directory&quot; name is longer than ME_MAX_FNAME.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -2075,7 +2237,7 @@ This call adds the files to the supplied results list
     <table class="parameters" title="Parameters">
     <tr><td class="param">time</td><td>Given time to convert.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>A date string. Caller must free.</dd></dl>
+    <dl><dt>Returns:</dt><dd>A date string, or NULL if the time cannot be represented. Caller must free.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -2139,6 +2301,20 @@ This call adds the files to the supplied results list
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1ad47106d9c6722142775aac3ce602c90d"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rGetRawOsError
+(void )
+  </div>
+  <div class="apiDetail">
+<p>Return the raw, unmapped O/S error code.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Returns the error code exactly as the operating system reported it. Unlike rGetOsError, Windows codes are not mapped onto their Posix equivalents.</dd></dl>
+    <dl><dt>Returns:</dt><dd>The raw O/S error code.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1af2be41f852a9a5ae0812306b9007552e"></a>
 <div class="api">
   <div class="prototype">
@@ -2148,7 +2324,7 @@ This call adds the files to the supplied results list
   </div>
   <div class="apiDetail">
 <p>Get the canonical absolute path of an existing file or directory.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Resolve symbolic links and relative segments to an absolute path. The file must exist.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Resolve symbolic links and relative segments to an absolute path. The file must exist. On Windows the path is resolved from an open handle, so the result carries the on-disk case and long names, junctions are followed and there is no trailing separator, exactly as rGetFdPath reports for a descriptor opened on the same file.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">path</td><td>Path to resolve.</td></tr>
@@ -2270,6 +2446,27 @@ This call adds the files to the supplied results list
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a912c9f955984318472d32aebaad74ea3"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rGetSocketPeer
+(<a href="#struct_r_socket" class="ref">RSocket</a> *sp, char *ipbuf, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> ipbufLen, int *port)
+  </div>
+  <div class="apiDetail">
+<p>Get the IP address and port of the connected peer of a socket.</p>
+    <dl><dt><b>Description</b>:</dt><dd>For an accepted server socket this is the client&apos;s address. IPv4-mapped IPv6 addresses are returned in IPv4 dotted form.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">sp</td><td>Socket object returned from rAllocSocket.</td></tr>
+    <tr><td class="param">ipbuf</td><td>Buffer to receive the numeric IP address.</td></tr>
+    <tr><td class="param">ipbufLen</td><td>Size of the ipbuf.</td></tr>
+    <tr><td class="param">port</td><td>Address of an integer to receive the port number.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero if successful. R_ERR_CANT_COMPLETE if the socket is not connected.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a919a9e748ca82402c8b12e70ea49f56c"></a>
 <div class="api">
   <div class="prototype">
@@ -2306,7 +2503,7 @@ This call adds the files to the supplied results list
   </div>
   <div class="apiDetail">
 <p>Get a temp filename.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Create a temp file name in the given directory with the specified prefix. Windows ignores dir and prefix.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Create a temp file name in the given directory with the specified prefix. Windows ignores dir and prefix. Implemented on top of rOpenTempFile: the file is opened exclusively and closed before the path is returned. Callers that will write to the file should use rOpenTempFile instead, to avoid reopening the path by name.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">dir</td><td>Directory to contain the temporary file. If null, use system default temp directory (/tmp).</td></tr>
@@ -2497,6 +2694,26 @@ This call adds the files to the supplied results list
     <tr><td class="param">join</td><td>String to use as the element join string.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>String consisting of the joined hash values. Caller must free.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a0dab60ecb55e997e13da540b0e4ac015"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize
+    rIncName
+(<a href="#struct_r_hash" class="ref">RHash</a> *hash, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *name, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> value)
+  </div>
+  <div class="apiDetail">
+<p>Increment a counter stored in the hash.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Adds &quot;value&quot; to the counter held under &quot;name&quot;, creating it at that value if the name is not yet present. The counter is stored in the value pointer itself, so the entry must not be read with rLookupName as a string.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">hash</td><td>Hash table returned via rAllocHash.</td></tr>
+    <tr><td class="param">name</td><td>String name of the counter.</td></tr>
+    <tr><td class="param">value</td><td>Amount to add. May be negative.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The counter value before the increment. Zero if the name was not present.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -2982,6 +3199,26 @@ If the pattern is absolute.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a599f46bda949bc93bce9800633834720"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    rOpenTempFile
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *dir, <a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *prefix, char **path)
+  </div>
+  <div class="apiDetail">
+<p>Create and open a temp file.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Create an exclusive temporary file with mode 0600 and return it open to avoid a race when reopening by path.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">dir</td><td>Directory to contain the temporary file. If null, use system default temp directory (/tmp).</td></tr>
+    <tr><td class="param">prefix</td><td>Optional filename prefix.</td></tr>
+    <tr><td class="param">path</td><td>Output parameter to receive the allocated file path. Set to NULL on error. Caller must free with rFree(). May be NULL if the path is not required.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The open file descriptor, or a negative R_ERR_* code on error.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a471d03f1ff42f20f9305bccc79896239"></a>
 <div class="api">
   <div class="prototype">
@@ -2991,6 +3228,7 @@ If the pattern is absolute.</dd></dl>
   </div>
   <div class="apiDetail">
 <p>Parse an HTTP date string.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Parses the RFC 9110 IMF-fixdate form, such as &quot;Sun, 06 Nov 1994 08:49:37 GMT&quot;. The fields are validated, so a date that does not exist, or that is before 1970, is invalid. The parser has no dependency on the C library time functions or the local time zone, and is the same on every platform.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">value</td><td>HTTP date string.</td></tr>
@@ -3060,7 +3298,7 @@ This is a secure verion of printf that can handle null args
   </div>
   <div class="apiDetail">
 <p>Read from a socket until a deadline is reached.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Read data from a socket until a deadline is reached. The read will return with whatever bytes are available. If none is available, this call will yield the current fiber and resume the main fiber. When data is available, the fiber will resume.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Read data from a socket until a deadline is reached. The read will return with whatever bytes are available. If none is available, this call will yield the current fiber and resume the main fiber. When data is available, the fiber will resume. After a fiber has read 64K without waiting (ME_SOCKET_BURST), the read yields once so that a fast peer cannot keep the other fibers and the event loop from running.</dd></dl>
     <dl><dt></dt><dd>Must be called from a fiber.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
@@ -3216,13 +3454,13 @@ This is a secure verion of printf that can handle null args
   </div>
   <div class="apiDetail">
 <p>Run a command.</p>
-    <dl><dt><b>Description</b>:</dt><dd>SECURITY: must only call with fully sanitized command input.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>SECURITY: must only call with fully sanitized command input. On Unix a command without a slash is located by searching PATH, and the command inherits the process environment. Use an absolute path, and control PATH and the environment before calling, when the command must not be redirected by them.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">command</td><td>Command to invoke.</td></tr>
-    <tr><td class="param">output</td><td>Returns the command output. Caller must free.</td></tr>
+    <tr><td class="param">output</td><td>Returns the command output, standard output and standard error together. Caller must free. May be null if the output is not required, in which case it is read and discarded. The output is returned only for a command that exits with status zero. It is not returned for a failed command or one that is killed.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>The command exit status or a negative error code.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero for success, the command exit status if it is not zero, or a negative error code. A command that writes more than R_RUN_MAX_OUTPUT bytes is killed and R_ERR_WONT_FIT is returned. A command that ends on a signal (Unix) or a fatal exception (Windows) returns R_ERR_BAD_STATE. On Windows the command is started with only its standard handles inherited, and its standard input is the null device.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -3257,6 +3495,28 @@ This is a secure verion of printf that can handle null args
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a68038aee7c78c5df1e4361477b7de8a0"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize
+    rSendFile
+(<a href="#struct_r_socket" class="ref">RSocket</a> *sock, int fd, <a href="osdep.html#osdep_8h_1a7bac74916a564105339bcd5a9323c366" class="ref">Offset</a> offset, <a href="#r_8h_1a1600235df88b3821764244933b5024f5" class="ref">size_t</a> len, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> deadline)
+  </div>
+  <div class="apiDetail">
+<p>Send a file over a socket.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Where the platform provides a kernel sendfile() call (Linux, macOS, FreeBSD) the data is transferred directly from the file to the socket without copying through user space. Elsewhere the same transfer is made by a read and write loop, so callers have one API on every platform. Test ME_HAS_SENDFILE to learn whether the transfer is zero-copy. Zero-copy is used only for non-TLS connections.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">sock</td><td>RSocket pointer. Uses sock-&gt;wait if present for efficient I/O waiting.</td></tr>
+    <tr><td class="param">fd</td><td>File descriptor of the file to send.</td></tr>
+    <tr><td class="param">offset</td><td>File offset to start sending from.</td></tr>
+    <tr><td class="param">len</td><td>Number of bytes to send.</td></tr>
+    <tr><td class="param">deadline</td><td>Time in ticks by which the transfer must complete. Use rGetTicks() + timeout. Use zero for no deadline, but note a peer that stops reading will then block the fiber indefinitely.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The number of bytes sent, or a negative error code on failure.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a1e7ecc44de09a8c42918273b3fb89b30"></a>
 <div class="api">
   <div class="prototype">
@@ -3268,6 +3528,25 @@ This is a secure verion of printf that can handle null args
 <p>Service events.</p>
     <dl><dt><b>Description</b>:</dt><dd>This call blocks and continually services events on the event loop until the app is instructed to exit via $rStop. An app should call rServiceEvents from the main program.</dd></dl>
     <dl><dt>Returns:</dt><dd>The current R state.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a8851c399548e10c3df2075efcf045f31"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rSetAllocator
+(<a href="#r_8h_1a8bb9f1e7837e4615eb0147cf38871053" class="ref">RAllocProc</a> allocProc, <a href="#r_8h_1a80bdf0a4def604af6ab01ec134667d7d" class="ref">RReallocProc</a> reallocProc, <a href="#r_8h_1a5544e874b6300d7b8ef379b822ee6121" class="ref">RFreeProc</a> freeProc)
+  </div>
+  <div class="apiDetail">
+<p>Install a custom allocator.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Route rAlloc, rRealloc and rFree through the supplied functions instead of the C library heap. All three are installed together so that a block allocated by one is always released by its partner. Pass NULL for all three to restore the default heap. The allocator must not be changed while any block it allocated is still live. A NULL return from the allocator is reported through the memory exhaustion handler exactly as a failing malloc is.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">allocProc</td><td>Allocation function.</td></tr>
+    <tr><td class="param">reallocProc</td><td>Reallocation function.</td></tr>
+    <tr><td class="param">freeProc</td><td>Release function.</td></tr>
+    </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -3359,6 +3638,23 @@ This is a secure verion of printf that can handle null args
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a6cf3b7c86dcd4810804e6e4d902f2769"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rSetPidPath
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *path)
+  </div>
+  <div class="apiDetail">
+<p>Set the path of the pid file written by rWritePid.</p>
+    <dl><dt><b>Description</b>:</dt><dd>The default path is /var/run/runtime.pid, which is only written when running as root. A path set here is written regardless of the effective user.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Path of the pid file. The string is referenced, not copied, and must outlive its use. Pass NULL to restore the default.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1a817d093be54881d3fc2b3a72e07271be"></a>
 <div class="api">
   <div class="prototype">
@@ -3387,7 +3683,7 @@ from a socket
   </div>
   <div class="apiDetail">
 <p>Configure the socket TLS certificates.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This call is a wrapper over rSetTLSCerts.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This call is a wrapper over rSetTLSCerts. On a listening socket, the authority is the only trust anchor for client certificates: it is never taken from the process defaults or the platform trust store. A listener that verifies clients (see rSetSocketVerify) and has no authority refuses to start. On a socket that is already configured, a change takes effect on the next connection.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">sp</td><td>Socket object returned from rAllocSocket.</td></tr>
@@ -3414,6 +3710,23 @@ from a socket
     <tr><td class="param">ciphers</td><td>String of suitable ciphers.</td></tr>
     </table></dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a274b9aa8f7cf860459cf9c6dbb954a77"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> void
+    rSetSocketCloseOnExec
+(<a href="#r_8h_1af9381320a2640ea84038579d8f143c01" class="ref">Socket</a> fd)
+  </div>
+  <div class="apiDetail">
+<p>Mark a socket as not inheritable by child processes.</p>
+    <dl><dt><b>Description</b>:</dt><dd>On Unix this sets close-on-exec. On Windows it clears the handle inheritance flag. The runtime applies this to every socket it creates, so a command started with rRun does not receive them.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">fd</td><td>Socket descriptor.</td></tr>
+    </table></dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Internal.</dd></dl>
   </div>
 </div>
 <a name="r_8h_1a963cb23843a1eb455700968d3c26219f"></a>
@@ -3567,7 +3880,7 @@ from a socket
   </div>
   <div class="apiDetail">
 <p>Set the socket TLS verification parameters.</p>
-    <dl><dt><b>Description</b>:</dt><dd>This call is a wrapper over rSetTlsCerts.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>This call is a wrapper over rSetTlsVerify. A socket with no explicit setting inherits the process default (see rSetSocketDefaultVerify) when connecting out, and does not verify client certificates when listening. A change on a socket that is already configured takes effect on the next connection.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">sp</td><td>Socket object returned from rAllocSocket.</td></tr>
@@ -3677,7 +3990,7 @@ from a socket
   </div>
   <div class="apiDetail">
 <p>Update the wait mask for a wait handler.</p>
-    <dl><dt><b>Description</b>:</dt><dd>The wait mask is persistent and remains active across multiple events. If the mask and deadline are unchanged from the current values, no kernel syscall is made.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>The wait mask is persistent and remains active across multiple events. The deadline is always updated, but if the mask is unchanged from the current value, no kernel syscall is made.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">wp</td><td><a class="ref" href="#struct_r_wait">RWait</a> object.</td></tr>
@@ -3820,6 +4133,26 @@ from a socket
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
+<a name="r_8h_1a7a30dda5e76cb1ee98820134c63b2509"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> REvent
+    rStartFastEvent
+(<a href="#r_8h_1a02fa8ee37c08629cb92622c0f8dc1135" class="ref">REventProc</a> proc, void *data, <a href="osdep.html#osdep_8h_1a06650984137cfde185bac06dd2a4f355" class="ref">Ticks</a> delay)
+  </div>
+  <div class="apiDetail">
+<p>Start a fast callback event.</p>
+    <dl><dt><b>Description</b>:</dt><dd>This schedules an event to run once directly on the main fiber rather than on a fiber of its own. The callback must not block or yield, as doing so stalls the event loop. This routine is THREAD SAFE. This API is a wrapper for rAllocEvent with R_EVENT_FAST.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">proc</td><td>Callback procedure function. Signature is: void (*fn)(void *data, int id).</td></tr>
+    <tr><td class="param">data</td><td>Data reference to pass to the callback.</td></tr>
+    <tr><td class="param">delay</td><td>Delay in milliseconds in which to run the callback.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>A positive integer event ID.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
 <a name="r_8h_1af095d5a60dd353712a4c24bd5a489d23"></a>
 <div class="api">
   <div class="prototype">
@@ -3878,6 +4211,25 @@ from a socket
     <tr><td class="param">id</td><td>Event id allocated by rStartEvent.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Integer handle index. Otherwise return -1 on allocation errors.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a5afcbcc64ae1e7a9d93357da7d144d7a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> ssize
+    rStripExtendedPrefix
+(char *path)
+  </div>
+  <div class="apiDetail">
+<p>Reduce a Windows extended-length path to the plain DOS form.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Remove the &quot;\\?\&quot; prefix of &quot;\?\C:\dir\file&quot; and turn &quot;\?\UNC\server\share&quot; into
+    &quot;\server\share", in place. A path without the prefix is unchanged. This is the transformation applied to the names Windows returns for a handle. It has no platform dependency, so it may be used on any path.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">path</td><td>Path to modify.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>The length of the resulting path, or a negative R_ERR code if path is null.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -4046,7 +4398,8 @@ from a socket
   </div>
   <div class="apiDetail">
 <p>Wait for an IO event on a wait object.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Wait for an IO event by yielding the current coroutine fiber until the IO event arrives. When the IO event occurs, the wait handler will be invoked on the fiber.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Wait for an IO event by yielding the current coroutine fiber until the IO event arrives. When the IO event occurs, the wait handler will be invoked on the fiber. <br/><br/>
+A wait object has one waiter for writing (a mask of exactly R_WRITABLE) and one for all other masks, each with its own deadline. A fiber reading a socket and a second fiber writing to it can therefore wait at the same time without disturbing one another. If a fiber is already waiting on the same side, the call fails immediately with zero. A pure writable event is delivered to the writer if there is one.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">wp</td><td><a class="ref" href="#struct_r_wait">RWait</a> object.</td></tr>
@@ -4156,8 +4509,10 @@ This will remove the watch for a previous rWatch call with exactly the same proc
 (void )
   </div>
   <div class="apiDetail">
-<p>Write the current process pid to /var/run.</p>
-    <dl><dt>Returns:</dt><dd>Zero on success, otherwise a negative status code.</dd></dl>
+<p>Write the current process pid to the pid file.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Writes the pid to the path set via rSetPidPath, or to /var/run/runtime.pid when running as root. If the file names a process that is still running, the write is refused.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success. R_ERR_ALREADY_EXISTS if the pid file names a live process, R_ERR_CANT_WRITE if the default path is in use and the process is not root, R_ERR_CANT_OPEN if the file cannot be written.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
 <a name="r_8h_1ab3b1cf3d54c41bd3895631d0b1cf134c"></a>
@@ -4578,9 +4933,9 @@ This is a secure verion of printf that can handle null args
     <tr><td class="param">buf</td><td>Pointer to the buffer that will hold the string.</td></tr>
     <tr><td class="param">size</td><td>Size of the buffer. Must be at least 2 characters long.</td></tr>
     <tr><td class="param">value</td><td>Integer value to conver.</td></tr>
-    <tr><td class="param">radix</td><td>The base radix to use when encoding the number. Supports 10 and 16.</td></tr>
+    <tr><td class="param">radix</td><td>The base radix to use when encoding the number. Supports radix 2 to 36 inclusive. A radix outside that range returns NULL.</td></tr>
     </table></dd></dl>
-    <dl><dt>Returns:</dt><dd>Returns a reference to the string.</dd></dl>
+    <dl><dt>Returns:</dt><dd>Returns a reference to the string. Returns NULL if the buffer is too small or the radix is out of range.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -4842,11 +5197,11 @@ This is a secure verion of printf that can handle null args
   </div>
   <div class="apiDetail">
 <p>Clone a substring.</p>
-    <dl><dt><b>Description</b>:</dt><dd>Copy a substring into a newly allocated block.</dd></dl>
+    <dl><dt><b>Description</b>:</dt><dd>Copy at most len bytes, stopping at the first NUL. The result is null terminated.</dd></dl>
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
     <tr><td class="param">str</td><td>Pointer to the block to duplicate.</td></tr>
-    <tr><td class="param">len</td><td>Number of bytes to copy. The actual length copied is the minimum of the given length and the length of the supplied string. The result is null terminated.</td></tr>
+    <tr><td class="param">len</td><td>Number of bytes to copy. The actual length copied is the minimum of the given length and the offset of the first NUL byte within that length. The result is null terminated.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Returns a newly allocated string.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
@@ -4910,6 +5265,29 @@ This is a secure verion of printf that can handle null args
     <tr><td class="param">len</td><td>Maximum count of characters to copy.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>Returns a reference to the destination if successful or NULL if the string won&apos;t fit.</dd></dl>
+    <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
+  </div>
+</div>
+<a name="r_8h_1a660463ef72fe285fb99ddd29a471a83a"></a>
+<div class="api">
+  <div class="prototype">
+    <a href="osdep.html#osdep_8h_1ad17d551e31d1828c68acf40684849b7e" class="ref">PUBLIC</a> int
+    sparseUint
+(<a href="osdep.html#osdep_8h_1a0f128c3e0c83721af0220c00554e9c4e" class="ref">cchar</a> *str, int radix, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> max, char **end, <a href="osdep.html#osdep_8h_1a168afaa12b2c08e4ae1d11ea4c296e64" class="ref">int64</a> *value)
+  </div>
+  <div class="apiDetail">
+<p>Parse a non-negative integer strictly.</p>
+    <dl><dt><b>Description</b>:</dt><dd>Parse a run of digits in the given radix with no leading sign, no leading whitespace and no silent saturation. Unlike stoix, this reports failure rather than returning a clamped value: a string that is not a plain run of digits, or whose value exceeds &quot;max&quot;, is rejected. <br/><br/>
+ Wire formats need this. strtol-family conversions skip whitespace, accept a sign and saturate at the type limit while setting errno, and callers that ignore errno accept out-of-range input as though it were valid - which for a length prefix is a framing divergence from any peer that parses it correctly.</dd></dl>
+    <dl><dt>Parameters:</dt><dd>
+    <table class="parameters" title="Parameters">
+    <tr><td class="param">str</td><td>String to parse.</td></tr>
+    <tr><td class="param">radix</td><td>Numeric radix, 10 or 16.</td></tr>
+    <tr><td class="param">max</td><td>Largest acceptable value, inclusive.</td></tr>
+    <tr><td class="param">end</td><td>If non-null, set to the first character not consumed. The caller decides whether a non-empty remainder is acceptable.</td></tr>
+    <tr><td class="param">value</td><td>Receives the parsed value on success.</td></tr>
+    </table></dd></dl>
+    <dl><dt>Returns:</dt><dd>Zero on success, or a negative R_ERR code if the string is not a run of digits in the given radix, or the value exceeds max.</dd></dl>
     <dl><dt><b>API</b> Stability:</dt><dd>Evolving.</dd></dl>
   </div>
 </div>
@@ -5097,7 +5475,7 @@ This is a secure verion of printf that can handle null args
 Tokens are ${variable} references
     <dl><dt>Parameters:</dt><dd>
     <table class="parameters" title="Parameters">
-    <tr><td class="param">str</td><td>String to expand.</td></tr>
+    <tr><td class="param">str</td><td>String to expand. An unterminated ${ (no closing brace before the end of the string) is copied to the output literally.</td></tr>
     <tr><td class="param">tokens</td><td>Hash table of token values to use.</td></tr>
     </table></dd></dl>
     <dl><dt>Returns:</dt><dd>An expanded string. May return the original string if no &quot;$&quot; references are present.</dd></dl>
