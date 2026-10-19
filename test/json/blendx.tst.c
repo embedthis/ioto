@@ -144,7 +144,7 @@ static void jsonBlendNullTest()
 
 /*
     A container in an object position with no key used to parse into a nameless
-    property, which jsonBlend then dereferenced under JSON_COMBINE. Issue 15.
+    property, which jsonBlend then dereferenced under JSON_COMBINE.
  */
 static void jsonBlendNullNameTest()
 {
@@ -180,7 +180,7 @@ static void jsonBlendNullNameTest()
 
 /*
     Growing the destination node array reallocates it, invalidating every
-    JsonNode pointer into that tree. Issue 21.
+    JsonNode pointer into that tree.
  */
 static void jsonBlendReallocTest()
 {

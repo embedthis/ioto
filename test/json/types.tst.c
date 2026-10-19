@@ -161,7 +161,7 @@ static void jsonSleuthTypes()
 }
 
 /*
-    "undefined" is a JSON5 primitive with no JSON representation. Issue 14.
+    "undefined" is a JSON5 primitive with no JSON representation.
  */
 static void jsonUndefinedDialectTest()
 {
@@ -206,7 +206,7 @@ static void jsonUndefinedDialectTest()
 }
 
 /*
-    A token is a number only if it matches the RFC 7159 number grammar. Issue 10.
+    A token is a number only if it matches the RFC 7159 number grammar.
  */
 static void jsonNumberGrammarTest()
 {

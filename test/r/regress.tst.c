@@ -275,7 +275,7 @@ static void directoryEnumeration()
 
 
 /*
-    Issue 1. rInsertItemAt(lp, INT_MAX, item) computed "index + 1" for the required capacity, which
+    rInsertItemAt(lp, INT_MAX, item) computed "index + 1" for the required capacity, which
     wrapped to INT_MIN. rGrowList read the negative size as "already large enough" and returned
     success without growing, and the store then wrote to lp->items[INT_MAX]. Aborted before the fix.
  */
@@ -292,7 +292,7 @@ static void insertItemBound()
 }
 
 /*
-    Issue 2. A negative "*" width was negated, but negating INT_MIN is undefined and leaves the
+    A negative "*" width was negated, but negating INT_MIN is undefined and leaves the
     width negative. In outNum the "fill < 0" clamp then never fired; in outString the width was
     cast to size_t and became ~2^63. Either way the pad loop ran long enough to stall the whole
     single-threaded event loop - 9 seconds for %d, unbounded for %s. The pin is the elapsed time:
@@ -325,7 +325,7 @@ static void extremePadWidth()
 }
 
 /*
-    Issue 3. rJoinFileBuf reserved one byte where the separator path needs two, so a buffer that
+    rJoinFileBuf reserved one byte where the separator path needs two, so a buffer that
     was exactly one short passed the check, took the truncating scopy, and was returned non-NULL
     with no null terminator.
  */
@@ -346,7 +346,7 @@ static void joinFileBufBound()
 }
 
 /*
-    Issue 10. svalue guarded only positive overflow in its suffix multiply, so a negative magnitude
+    svalue guarded only positive overflow in its suffix multiply, so a negative magnitude
     multiplied straight through and overflowed.
  */
 static void valueSuffixOverflow()
@@ -358,7 +358,7 @@ static void valueSuffixOverflow()
 }
 
 /*
-    Issue 11. ssub never validated offset against the string length, so &str[offset] pointed past
+    ssub never validated offset against the string length, so &str[offset] pointed past
     the end and sncopy scanned it with slen.
  */
 static void subStringOffset()
@@ -379,7 +379,7 @@ static void subStringOffset()
 }
 
 /*
-    Issue 12. outFloatE stripped trailing zeros for %g by walking ctx->end back without also
+    outFloatE stripped trailing zeros for %g by walking ctx->end back without also
     decrementing ctx->len, so the reported length exceeded the string actually produced. outFloat
     had the decrement; outFloatE did not.
  */
@@ -399,7 +399,7 @@ static void floatExponentLength()
 }
 
 /*
-    Issue 13. rPutIntToBuf dereferenced a null buffer, and rAddIntName formatted into 16 bytes -
+    rPutIntToBuf dereferenced a null buffer, and rAddIntName formatted into 16 bytes -
     two short of INT64_MIN - so sitosbuf returned null and the name was silently stored as "".
  */
 static void nullAndWidthGuards()
@@ -445,7 +445,7 @@ int main(void)
 /*
     Not pinned here, and why:
 
-    rRunEvent relink (this session)  - needs the event loop, so its pin lives in event.tst.c
+    rRunEvent relink                 - needs the event loop, so its pin lives in event.tst.c
                                        where the fiber and loop are already running.
     8c4cda9, CRL enforcement         - needs a revoked certificate and a live handshake, so it
                                        is pinned in tls-verify.tst.c instead. test/prep.sh now
@@ -453,18 +453,18 @@ int main(void)
     acbea21, peer verification       - pinned by tls-verify.tst.c, which shipped with the fix.
     67c712a, printf wrapper          - PRINTF_ATTRIBUTE is a compile-time check. The pin is that
     attribution                        the build stays warning-free, not a runtime assertion.
-    Issue 4, rFreeSocket reentrancy  - needs a fiber blocked in rWaitForIO on the socket being
+    rFreeSocket reentrancy           - needs a fiber blocked in rWaitForIO on the socket being
                                        freed. Reproducing it means driving the event loop from
                                        two fibers; socket.tst.c is where that machinery lives.
-    Issue 5, 6, 7, TLS               - loadKey, handshake and rConfigTls all need a live
+    TLS key and handshake states     - loadKey, handshake and rConfigTls all need a live
                                        handshake. tls-verify.tst.c covers the observable
                                        behaviour; the internal states here are not reachable
                                        from a test without a malformed key or a peer that
                                        aborts mid-handshake.
-    Issue 8, errno collision         - the return values only differ on a socket error that is
+    errno collision                  - the return values only differ on a socket error that is
                                        neither EAGAIN nor ECONNRESET. Provoking one reliably
                                        needs a peer under test control.
-    Issue 9, rSendFile deadline      - a signature change. The pin is that every caller passes a
+    rSendFile deadline               - a signature change. The pin is that every caller passes a
                                        deadline and the build stays clean.
 
     Copyright (c) Michael O'Brien. All Rights Reserved.

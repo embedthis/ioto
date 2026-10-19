@@ -135,7 +135,7 @@ static void jsonSetGetAgreeTest()
 }
 
 /*
-    An array index past the end fills the gap so the value lands where asked. Issue 17.
+    An array index past the end fills the gap so the value lands where asked.
  */
 static void jsonSparseArrayTest()
 {
@@ -186,7 +186,7 @@ static void jsonSparseArrayTest()
 }
 
 /*
-    A quoted term inside brackets is a property name, not an index. Issue 18.
+    A quoted term inside brackets is a property name, not an index.
  */
 static void jsonQuotedSelectorTest()
 {
@@ -223,13 +223,13 @@ static void jsonQuotedSelectorTest()
     checkValue(json, "a['q']", "X");
     jsonFree(json);
 
-    //  An empty term is rejected on write, as it already is on read. Issue 25.
+    //  An empty term is rejected on write, as it already is on read.
     json = parse("{a: 1}");
     ttrue(jsonSet(json, 0, "obj['']", "S", JSON_STRING) < 0);
     ttrue(jsonSet(json, 0, "a[\"\"]", "S", JSON_STRING) < 0);
     jsonFree(json);
 
-    //  A lone quote is not a matched pair. Issue 24.
+    //  A lone quote is not a matched pair.
     json = parse("{a: 1}");
     ttrue(jsonSet(json, 0, "]bd.']bd.2", "S", JSON_STRING) >= 0);
     checkValue(json, "]bd.']bd.2", "S");
@@ -238,7 +238,7 @@ static void jsonQuotedSelectorTest()
 
 /*
     A non-numeric bracket term on an array is a lookup by value, which names no
-    slot to create. Issue 22.
+    slot to create.
  */
 static void jsonValueLookupTest()
 {
@@ -257,7 +257,7 @@ static void jsonValueLookupTest()
     rFree(s);
 
     //  And when the term matches, the write would destroy the value that named
-    //  it, so it is rejected too and the element is untouched. Issue 26.
+    //  it, so it is rejected too and the element is untouched.
     ttrue(jsonSet(json, 0, "arr[two]", "S", JSON_STRING) < 0);
     ttrue(jsonSet(json, 0, "arr.two", "S", JSON_STRING) < 0);
     ttrue(jsonSet(json, 0, "arr[two", "S", JSON_STRING) < 0);
@@ -274,7 +274,7 @@ static void jsonValueLookupTest()
 }
 
 /*
-    A scalar parent is converted to an object to hold a property. Issue 23.
+    A scalar parent is converted to an object to hold a property.
  */
 static void jsonScalarParentTest()
 {
@@ -301,7 +301,7 @@ static void jsonScalarParentTest()
 
 /*
     A path write that changes a node's type must not strand its children as
-    nameless siblings. Issue 27.
+    nameless siblings.
  */
 static void jsonTypeChangeTest()
 {

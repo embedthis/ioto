@@ -56,7 +56,7 @@ static void jsonComments()
 
 
 /*
-    A comment abutting a value must terminate it, as white space does. Issue 16.
+    A comment abutting a value must terminate it, as white space does.
  */
 static void jsonAbuttingComments()
 {

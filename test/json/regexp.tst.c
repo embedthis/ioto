@@ -36,7 +36,7 @@ static void jsonRegExp()
 
 
 /*
-    A regular expression has no JSON representation. Issue 20.
+    A regular expression has no JSON representation.
  */
 static void jsonRegExpDialect()
 {
