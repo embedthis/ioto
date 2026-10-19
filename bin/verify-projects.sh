@@ -22,7 +22,7 @@ set -e
 unset CDPATH
 
 TOP=$(cd "$(dirname "$0")/.." && pwd)
-APPS="ai blank blink http unit"
+APPS="blank blink http unit"
 
 if ! command -v premake5 >/dev/null 2>&1 ; then
     echo "      [Skip] premake5 not installed - cannot verify the generated makefiles" >&2

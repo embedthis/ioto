@@ -7,7 +7,6 @@
 #	aws.crt 	- AWS root certificate to use when validating talking to AWS cloud endpoints
 #	ca.crt 		- Local test certificate authority
 #	ec.crt		- Eliptic curve certificate for use by the Ioto web server
-#	roots.crt	- Top level root certificates to validate connecting to public internet sites
 #	self.crt	- Self-signed certificate for use by the Ioto web server
 #	test.crt	- Test certficate signed by the ca.crt for use by the Ioto web server
 #	
@@ -49,10 +48,6 @@ if [ ! -f certs/test.crt ] ; then
 	openssl ecparam -genkey -name prime256v1 -out ec.key
 	openssl req -new -key ec.key -out ec.csr <ec.ans
 	openssl req -x509 -days 3650 -key ec.key -in ec.csr -out ec.crt
-
-	echo ; echo
-	echo Get root certificates
-	curl https://raw.githubusercontent.com/bagder/ca-bundle/master/ca-bundle.crt >roots.crt
 ) >certs.log 2>&1
 fi
 

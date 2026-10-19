@@ -2,14 +2,14 @@
     "name": "ioto",
     "title": "Ioto",
     "description": "Ioto Device agent",
-    "version": "3.1.0",
+    "version": "3.3.0",
     "keywords": [
         "ioto",
         "Embedthis"
     ],
     "homepage": "https://www.embedthis.com/",
     "author": {
-        "name": "Embedthis Software.",
+        "name": "Embedthis Pty Ltd.",
         "email": "dev@embedthis.com",
         "url": "https://www.embedthis.com/"
     },

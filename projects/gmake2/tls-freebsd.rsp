@@ -1,0 +1,1 @@
+-DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -I/usr/include -L/usr/lib -Wl,-rpath,/usr/lib -Wl,--no-as-needed -lssl -lcrypto

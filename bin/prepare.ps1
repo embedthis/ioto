@@ -29,6 +29,8 @@ if (-not (Test-Path "apps\$APP")) {
 #
 Push-Location "apps\$APP"
 
+New-Item -ItemType Directory -Force -Path "state" | Out-Null
+& (Join-Path $TOP "bin\make-private.ps1") -Path "state"
 New-Item -ItemType Directory -Force -Path "state\config" | Out-Null
 New-Item -ItemType Directory -Force -Path "state\db" | Out-Null
 
@@ -65,8 +67,8 @@ if (Test-Path "schema.json5") {
     }
     if ($shouldBlend) {
         Write-Host "     [Blend] schema.json5 -> state\config\schema.json5"
-        & $JSON --blend schema.json5 | Out-File -FilePath $dest -Encoding utf8
-        if ((Get-Item $dest).Length -eq 0) {
+        & $JSON --blend --out $dest schema.json5
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $dest) -or (Get-Item $dest).Length -eq 0) {
             Write-Host "Error blending schema.json5"
             Pop-Location
             exit 255
@@ -103,12 +105,32 @@ if (Test-Path "signatures.json5") {
         $supportQuery = Join-Path $TOP "schemas\parts\SupportQuery.json5"
         $queryFile = Join-Path $TOP "schemas\parts\Query.json5"
         $matchFile = Join-Path $TOP "schemas\parts\Match.json5"
-        & make-sig `
+        #
+        #   make-sig is a Node script with a Unix shebang, which Windows cannot execute by name.
+        #   Run it through bun, which the test tooling already requires, or node if that is what
+        #   the machine has.
+        #
+        $makeSig = Join-Path $TOP "bin\make-sig"
+        if (Get-Command bun -ErrorAction SilentlyContinue) {
+            $runner = "bun"
+        } elseif (Get-Command node -ErrorAction SilentlyContinue) {
+            $runner = "node"
+        } else {
+            Write-Host "Error: bun or node is required to run bin\make-sig"
+            Pop-Location
+            exit 255
+        }
+        & $runner $makeSig `
             --blend "Schema=$schemaFile" `
             --blend "SupportQuery=$supportQuery" `
             --blend "Query=$queryFile" `
             --blend "Match=$matchFile" `
             signatures.json5 $dest
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: make-sig failed"
+            Pop-Location
+            exit 255
+        }
     }
 }
 

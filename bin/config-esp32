@@ -2,33 +2,64 @@
 #
 #   config-esp32 - Update the configuration based on the menuconfig sdkconfig
 #
-#   The ioto.json5 is updated and the config.h is regenerated.
+#   The ioto.json5 is updated and the config.h is regenerated. Invoked from the agent top
+#   directory (via "make config-esp32") with the selected app and the ESP-IDF project
+#   directory as arguments.
 #
-APP=$1
-SERVICES="database keys logs mqtt provision register serialize shadow sync update url web"
-CONFIG=state/config
+#   "config-esp32 --stamp-version MANIFEST..." only writes the product version from package.json
+#   into the given ESP-IDF component manifests. package.json is the one version source: the apps'
+#   idf_component.yml files carry no version of their own.
+#
+stampVersion() {
+    local version manifest
+    version=$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' package.json | head -1)
+    if [ -z "${version}" ] ; then
+        echo "config-esp32: cannot read the version from package.json" >&2
+        return 1
+    fi
+    for manifest in "$@" ; do
+        awk -v v="${version}" '/^version:/ { next } { print } /^description:/ { print "version: " v }' \
+            "${manifest}" >"${manifest}.tmp" && mv "${manifest}.tmp" "${manifest}" || return 1
+    done
+}
 
-SPEC=../../sdkconfig
+if [ "$1" = "--stamp-version" ] ; then
+    shift
+    stampVersion "$@"
+    exit $?
+fi
+
+APP=$1
+ESPTOP=$2
+SERVICES="database keys logs mqtt provision register serialize shadow sync update url web"
+CONFIG=apps/${APP}/state/config
+JSON=build/bin/json
+
+SPEC=${ESPTOP}/sdkconfig
 if [ ! -f ${SPEC} ] ; then
-    SPEC=../../sdkconfig.defaults
+    SPEC=${ESPTOP}/sdkconfig.defaults
 fi
 
 for service in ${SERVICES} ; do
     value=`grep -i CONFIG_IOTO_${service} ${SPEC} | grep -v '^# ' | \
         sed 's/.*=//' | sed 's/"//g'`
     if [ "${value}" = "y" ] ; then
-        ./build/bin/json --overwrite services.${service}=true ${CONFIG}/ioto.json5
-    elif [ "${value}" != "" ] ; then
-        ./build/bin/json --overwrite services.${service}=${value} ${CONFIG}/ioto.json5
+        ${JSON} --overwrite services.${service}=true ${CONFIG}/ioto.json5
+    elif [ "${value}" = "n" -o "${value}" = "" ] ; then
+        ${JSON} --overwrite services.${service}=false ${CONFIG}/ioto.json5
     else
-        ./build/bin/json --overwrite services.${service}=false ${CONFIG}/ioto.json5
+        ${JSON} --overwrite services.${service}=${value} ${CONFIG}/ioto.json5
     fi
 done
 
 rm -f include/config.h
 echo "  [Generate] config.h"
-./build/bin/json --header services ${CONFIG}/ioto.json5 >include/config.h
+${JSON} --header services ${CONFIG}/ioto.json5 >include/config.h
 
-cp ${CONFIG}/ioto.json5 ../../state/config
+cp ${CONFIG}/ioto.json5 ${ESPTOP}/state/config
+
+if [ -f ${ESPTOP}/main/idf_component.yml ] ; then
+    stampVersion ${ESPTOP}/main/idf_component.yml || exit 2
+fi
 
 exit 0

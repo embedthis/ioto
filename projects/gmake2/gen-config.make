@@ -46,11 +46,11 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-macosx-debug
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=1
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=1 -DME_WEB_TEST_ACTIONS=1
 INCLUDES += -I../../include -I/opt/homebrew/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-LIBS += ../../build/bin/libioto.a -ldl -lpthread -lm -lssl -lcrypto
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -ldl -lpthread -lm
 ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/opt/homebrew/lib -g -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
 
 else ifeq ($(config),debug_linux)
@@ -65,12 +65,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-linux-debug
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1 -DME_WEB_TEST_ACTIONS=1
 INCLUDES += -I../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -pie -fPIE
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -pie -fPIE
-LIBS += ../../build/bin/libioto.a -lrt -ldl -lpthread -lm -lssl -lcrypto
-ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -g -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -lrt -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -g -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 
 else ifeq ($(config),debug_freebsd)
 ifeq ($(origin CC), default)
@@ -84,12 +84,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-freebsd-debug
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=1 -DME_WEB_TEST_ACTIONS=1
 INCLUDES += -I../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-LIBS += ../../build/bin/libioto.a -ldl -lpthread -lm -lssl -lcrypto
-ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -g
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O0 -g -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -g -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack
 
 else ifeq ($(config),release_macosx)
 ifeq ($(origin CC), default)
@@ -103,12 +103,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-macosx-release
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\"
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/opt/homebrew\" -DME_DEBUG=0
 INCLUDES += -I../../include -I/opt/homebrew/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-sign-conversion -Wno-unused-parameter -Wno-unused-result -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-LIBS += ../../build/bin/libioto.a -ldl -lpthread -lm -lssl -lcrypto
-ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/opt/homebrew/lib -s -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wshorten-64-to-32 -Wall -Wno-unknown-warning-option -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/opt/homebrew/lib -Wl,-no_warn_duplicate_libraries -Wl,-rpath,@executable_path/ -Wl,-rpath,@loader_path/ -Wl,-x
 
 else ifeq ($(config),release_linux)
 ifeq ($(origin CC), default)
@@ -122,12 +122,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-linux-release
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=0
 INCLUDES += -I../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -pie -fPIE
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare -pie -fPIE
-LIBS += ../../build/bin/libioto.a -lrt -ldl -lpthread -lm -lssl -lcrypto
-ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -s -s -Wl,-z,relro,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries -Wl,--no-warn-execstack
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -lrt -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -s -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 
 else ifeq ($(config),release_freebsd)
 ifeq ($(origin CC), default)
@@ -141,12 +141,12 @@ ifeq ($(origin AR), default)
 endif
 RESCOMP = windres
 OBJDIR = ../../build/obj/gen-config-freebsd-release
-DEFINES += -DME_VERSION=\"3.1.0\" -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\"
+DEFINES += -DME_VERSION=\"3.3.0\" -DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -DME_COM_MBEDTLS_PATH=\"/usr\" -DME_COM_OPENSSL_PATH=\"/usr\" -DME_DEBUG=0
 INCLUDES += -I../../include -I/usr/include
-ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wno-unused-parameter -Wno-unused-result -Wall -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wsign-compare
-LIBS += ../../build/bin/libioto.a -ldl -lpthread -lm -lssl -lcrypto
-ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -s -s
+ALL_CFLAGS += $(CFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -std=gnu11 -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+ALL_CXXFLAGS += $(CXXFLAGS) $(ALL_CPPFLAGS) -O2 -Wall -Wextra -Wsign-conversion -Wall -fstack-protector-strong -Wformat -Wformat-security -Wsign-compare -fPIE -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
+LIBS += ../../build/bin/libioto.a -lssl -lcrypto -ldl -lpthread -lm
+ALL_LDFLAGS += $(LDFLAGS) -L../../build/bin -L/usr/lib -s -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack
 
 endif
 

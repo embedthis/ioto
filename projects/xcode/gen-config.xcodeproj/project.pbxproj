@@ -237,11 +237,13 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_VERSION=\\\"3.3.0\\\"",
+					"ME_COM_SSL=1",
 					"ME_COM_OPENSSL=1",
 					"ME_COM_MBEDTLS=0",
 					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
 					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
+					"ME_DEBUG=0",
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -253,30 +255,26 @@
 				OBJROOT = "../../build/obj/gen-config-macosx-release";
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
-					"-Wno-unused-parameter",
-					"-Wno-unused-result",
+					"-Wsign-conversion",
 					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
-					"--param=ssp-buffer-size=4",
+					"-fstack-protector-strong",
 					"-Wformat",
 					"-Wformat-security",
 					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
+					"-lssl",
+					"-lcrypto",
 					"-ldl",
 					"-lpthread",
 					"-lm",
-					"-lssl",
-					"-lcrypto",
-					"-s",
 					"-Wl,-no_warn_duplicate_libraries",
 					"-Wl,-rpath,@executable_path/",
 					"-Wl,-rpath,@loader_path/",
+					"-Wl,-x",
 				);
-				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
 				SYMROOT = ../../build/bin;
 				USER_HEADER_SEARCH_PATHS = (
 					../../include,
@@ -296,12 +294,14 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"ME_VERSION=\\\"3.1.0\\\"",
+					"ME_VERSION=\\\"3.3.0\\\"",
+					"ME_COM_SSL=1",
 					"ME_COM_OPENSSL=1",
 					"ME_COM_MBEDTLS=0",
 					"ME_COM_MBEDTLS_PATH=\\\"/usr\\\"",
 					"ME_COM_OPENSSL_PATH=\\\"/opt/homebrew\\\"",
 					"ME_DEBUG=1",
+					"ME_WEB_TEST_ACTIONS=1",
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -313,30 +313,26 @@
 				OBJROOT = "../../build/obj/gen-config-macosx-debug";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
-					"-Wno-sign-conversion",
-					"-Wno-unused-parameter",
-					"-Wno-unused-result",
+					"-Wsign-conversion",
 					"-Wshorten-64-to-32",
 					"-Wall",
 					"-Wno-unknown-warning-option",
-					"-fstack-protector",
-					"--param=ssp-buffer-size=4",
+					"-fstack-protector-strong",
 					"-Wformat",
 					"-Wformat-security",
 					"-Wsign-compare",
 				);
 				OTHER_LDFLAGS = (
+					"-lssl",
+					"-lcrypto",
 					"-ldl",
 					"-lpthread",
 					"-lm",
-					"-lssl",
-					"-lcrypto",
 					"-g",
 					"-Wl,-no_warn_duplicate_libraries",
 					"-Wl,-rpath,@executable_path/",
 					"-Wl,-rpath,@loader_path/",
 				);
-				STANDARD_C_PLUS_PLUS_LIBRARY_TYPE = static;
 				SYMROOT = ../../build/bin;
 				USER_HEADER_SEARCH_PATHS = (
 					../../include,

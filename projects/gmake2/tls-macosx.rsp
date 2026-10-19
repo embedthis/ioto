@@ -1,0 +1,1 @@
+-DME_COM_SSL=1 -DME_COM_OPENSSL=1 -DME_COM_MBEDTLS=0 -I/opt/homebrew/include -L/opt/homebrew/lib -Wl,-rpath,/opt/homebrew/lib -lssl -lcrypto

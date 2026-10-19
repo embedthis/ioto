@@ -26,6 +26,11 @@ fi
 #
 cd apps/${APP}
 
+#
+#   Web requires the state directory holding its uploads to be private, whatever the caller's umask
+#
+mkdir -p state
+chmod 700 state
 mkdir -p state/config state/db
 
 #
@@ -46,8 +51,8 @@ done
 if [ -f schema.json5 ] ; then
     if [ ! -f state/config/schema.json5 -o schema.json5 -nt state/config/schema.json5 ] ; then
         echo "     [Blend] schema.json5 -> state/config/schema.json5"
-        ${JSON} --blend schema.json5 > state/config/schema.json5
-        if [ ! -s state/config/schema.json5 ] ; then
+        #   json writes the file itself, as bin/prepare.ps1 must on Windows
+        if ! ${JSON} --blend --out state/config/schema.json5 schema.json5 || [ ! -s state/config/schema.json5 ] ; then
             echo "Error blending schema.json5"
             exit 255
         fi
