@@ -2,12 +2,12 @@
 #
 #   exit.tst.sh - The unit app's test action must actually stop the agent when exit=1
 #
-#   Bug 10073: unitTestAction (apps/unit/src/unit.c) read count/delay/exit with webGetVar, which
+#   unitTestAction (apps/unit/src/unit.c) read count/delay/exit with webGetVar, which
 #   only sees form/body variables. A GET has no body, so "?name=health&exit=1" always read exit as
 #   its default "0" and rStop() was never called - the agent kept serving. name had a fallback to
 #   webGetQueryVar; count, delay and exit did not.
 #
-#   This calls the exit endpoint the way the ticket's steps to reproduce do - a session-authenticated
+#   This calls the exit endpoint the way the defect was reproduced - a session-authenticated
 #   GET - and then requires both symptoms of "the agent kept running" to be gone: the pidfile's
 #   process must exit on its own (not merely be killable) and the port must stop answering. Must
 #   fail before the fix and pass after.

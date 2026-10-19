@@ -18,7 +18,7 @@ Two kinds of group live here. The **vendored** groups are copies of the sibling 
 | [log/](log/) | agent | Where the agent sends its log for each `log.path` |
 | [link/](link/) | agent | Linking the agent library into an application |
 | [guard/](guard/) | agent | The vendored copies match their sources |
-| [sec/](sec/) | agent | Security fuzzing harness, maintained by `sec-scan` |
+| [sec/](sec/) | agent | Security fuzzing harness |
 | [soak/](soak/) | agent | A sustained mixed workload through the assembled agent, with resource figures |
 | [stress/](stress/) | agent | Request sizes and counts that scale with depth |
 
@@ -72,6 +72,5 @@ The soak samples the agent's resident set, open descriptors, database size and l
 
 ## See Also
 
-- [Feature plan for the soak and stress groups](../doc/features/scenario-tests/feature.md)
-- [Development procedures](../doc/operations/development-procedures.md)
+- [Ioto documentation](https://www.embedthis.com/doc/)
 - [Ioto Agent Documentation](../README.md)
