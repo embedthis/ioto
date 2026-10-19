@@ -1,5 +1,15 @@
+/*
+    web.json5 - webAllocHost expects web.listen and web.routes under a web object.
+
+    Actions registered with webAddAction run only on a route with the action handler.
+ */
 {
     web: {
-        listen: [ "http://:80" ]
-    }
+        documents: 'site',
+        listen: ['http://127.0.0.1:8080'],
+        routes: [
+            {match: '/test', handler: 'action'},
+            {},
+        ],
+    },
 }

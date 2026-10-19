@@ -14,7 +14,7 @@ PUBLIC int ioStart(void)
 {
     char   *data;
 
-    data = urlGet("http://www.example.com/", NULL);
+    data = urlGet("https://www.example.com/", NULL);
     printf("Got response:\n%s\n", data);
     rFree(data);
 
@@ -26,6 +26,6 @@ PUBLIC int ioStart(void)
 PUBLIC void ioStop(void) {}
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

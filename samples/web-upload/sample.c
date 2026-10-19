@@ -36,11 +36,12 @@ static void upload(Web *web)
     */
     for (ITERATE_NAME_DATA(web->uploads, np, upload)) {
         if (upload->filename) {
-            printf("Upload %s to %s size %zd\n", upload->clientFilename, upload->filename, upload->size);
+            rInfo("app", "Upload %s to %s size %lld", upload->clientFilename, upload->filename,
+                  (long long) upload->size);
             // Process
             unlink(upload->filename);
         } else {
-            printf("Upload form var %s = %s\n", upload->name, webGetVar(web, upload->name, "null"));
+            rInfo("app", "Upload form var %s = %s", upload->name, webGetVar(web, upload->name, "null"));
         }
     }
     webWriteResponse(web, 200, "Done");
@@ -50,6 +51,6 @@ static void upload(Web *web)
 PUBLIC void ioStop(void) {}
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -1,6 +1,36 @@
+/*
+    web.json5 - Web server configuration for a sample built on the Ioto agent
+
+    Top-level keys, NOT wrapped in "web: { }". This sample links the agent (ioStart/ioStop), and
+    the agent's loader blends this file *under* "web", so every key here becomes web.<key>. A
+    "web:" wrapper lands the configuration at web.web.* where nothing reads it - the server then
+    starts with no routes at all and serves the whole documents tree unauthenticated.
+
+    The standalone "bin/web" command is the other consumer and does want the wrapper; see
+    test/web/web.json5 for that shape.
+
+    No account ships with this sample. Create one with the password command from the Ioto build
+    and add its output to "users" below:
+
+        password --algorithm bcrypt --realm web --password 'CHOOSE-A-PASSWORD' alice
+
+    The realm is part of the hash, so the --realm given to the password command must match "realm".
+ */
 {
-    web: {
-        listen: ['http://:80'],
-        routes: [{match: '/login.html'}, {match: '/', role: 'user'}],
+    documents: 'site',
+    listen: ['http://127.0.0.1:8080'],
+    auth: {
+        realm: 'web',
+        roles: {
+            public: [],
+            user: [],
+            admin: ['user'],
+        },
+        users: {},
     },
+    routes: [
+        {match: '/auth/', handler: 'action', methods: ['POST'], role: 'public'},
+        {match: '/login.html', role: 'public'},
+        {match: '', role: 'user'},
+    ],
 }

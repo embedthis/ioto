@@ -21,7 +21,9 @@ To run:
     make run
 
 Then browse to:
-    http://localhost/test
+    http://127.0.0.1:8080/upload.html
+
+The server listens on the loopback interface only. Uploaded files are stored in `state/uploads`, a private directory the server creates with mode 0700. Do not set `upload.dir` to a shared directory such as `/tmp`.
 
 Code:
 ---

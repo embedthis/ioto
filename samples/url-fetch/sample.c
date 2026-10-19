@@ -50,15 +50,15 @@ static void start(void *arg)
     up = urlAlloc(0);
 
     /*
-        Set roots so we can verify the peer certificate.
-        Alternatively, turn off verifyIssuer via: urlSetVerify(up, 0, 0);
+        Verify the peer against the agent's root CA bundle. This sample does not call ioInit(),
+        so the tls.authority configured in ioto.json5 is not applied for it.
     */
-    urlSetCerts(up, NULL, NULL, "url.ca", NULL);
+    urlSetCerts(up, "../../certs/roots.crt", NULL, NULL, NULL);
 
     if (!url) {
-        url = "http://www.example.com/index.html";
+        url = "https://www.example.com/";
     }
-    status = urlFetch(up, url, "GET", NULL, -1, NULL);
+    status = urlFetch(up, "GET", url, NULL, 0, NULL);
     if (status != 200) {
         printf("Error fetching, status %d, response:\n%s\n", status, urlGetResponse(up));
     } else {
@@ -79,6 +79,6 @@ static void start(void *arg)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -5,7 +5,7 @@ This sample demonstrates the urlGet API to get a URL from example.com.
 
 This sample does not provide its own main().
 
-It uses a url.ca to verify the accessed web site's certificate.
+It verifies the web site's certificate against the root CA bundle configured by `tls.authority` in `ioto.json5` (by default `certs/roots.crt`).
 
 Requirements
 ---

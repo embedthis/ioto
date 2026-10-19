@@ -22,7 +22,7 @@ To run:
     make run
 
 Then browse to:
-    http://localhost/index.html
+    http://127.0.0.1:8080/index.html
 
 Code:
 ---

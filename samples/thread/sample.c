@@ -47,6 +47,6 @@ static cchar *cooperatingThread(void)
 PUBLIC void ioStop(void) {}
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

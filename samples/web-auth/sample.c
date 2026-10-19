@@ -26,19 +26,24 @@ PUBLIC int ioStart(void)
 }
 
 
+/*
+    Verify the password against the user's stored hash, then log in with the role the server holds
+    for that user. The role never comes from the request.
+ */
 static void login(Web *web)
 {
-    cchar *password, *username;
+    WebUser *user;
+    cchar   *password, *username;
 
     username = webGetVar(web, "username", 0);
     password = webGetVar(web, "password", 0);
 
-    if (smatch(password, "demo")) {
-        webLogin(web, username, password);
-        webRedirect(web, 302, "/welcome.html");
+    if (username && password && webVerifyUserPassword(web->host, username, password) &&
+        (user = webLookupUser(web->host, username)) != 0 && webLogin(web, username, user->role)) {
+        webRedirectLocal(web, 302, "/welcome.html");
     } else {
         rError("app", "Login failed");
-        webRedirect(web, 401, "/");
+        webError(web, 401, "Login failed");
     }
 }
 
@@ -46,7 +51,7 @@ static void login(Web *web)
 static void logout(Web *web)
 {
     webLogout(web);
-    webRedirect(web, 302, "/");
+    webRedirectLocal(web, 302, "/login.html");
 }
 
 
@@ -54,6 +59,6 @@ PUBLIC void ioStop(void) {}
 
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

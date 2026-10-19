@@ -1,5 +1,10 @@
+/*
+    web.json5 - webAllocHost expects web.listen and web.routes under a web object.
+ */
 {
     web: {
-        listen: [ "http://:80" ]
-    }
+        documents: 'site',
+        listen: ['http://127.0.0.1:8080'],
+        routes: [{}],
+    },
 }

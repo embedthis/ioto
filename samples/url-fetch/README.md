@@ -5,6 +5,7 @@ This sample demonstrates the urlFetch API to fetch a URL from a web site.
 
 This sample provides its own main() so it can parse the command line.
 This sample does not initialize Ioto services (does not call ioInit()).
+It verifies the web site's certificate against the agent's root CA bundle, `certs/roots.crt`.
 
 Requirements
 ---

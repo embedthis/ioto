@@ -1,9 +1,18 @@
+/*
+    web.json5 - Top-level keys, not wrapped in "web: { }".
+
+    This sample links the Ioto agent, whose loader blends this file under "web". See
+    samples/web-auth/web.json5 for why the wrapper shape is a silent authorization failure here.
+
+    upload.dir is deliberately not set: the default is a private directory under the application
+    state area that the server creates with mode 0700. Never point it at a shared directory such
+    as /tmp.
+ */
 {
-    web: {
-        listen: [ "http://:80" ]
-        upload: {
-            dir: '/tmp',
-            remove: true,
-        }
-    }
+    documents: 'site',
+    listen: ['http://127.0.0.1:8080'],
+    routes: [
+        {match: '/api/', handler: 'action', methods: ['POST']},
+        {},
+    ],
 }

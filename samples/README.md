@@ -25,6 +25,8 @@ Directory | Description
 [web-static](web-static/README.md)                    | How to create a web server to serve static requests
 [web-upload](web-upload/README.md)                    | How to receive file upload requests
 
+The web samples listen on http://127.0.0.1:8080, the loopback interface only. web-static and web-dynamic provide their own main() and use the wrapped `web: { }` configuration shape; web-auth and web-upload use the Ioto main() and the agent's bare shape.
+
 ### Building
 
 You will need to download and build Ioto and then modify the defines.mk to point to your Ioto directory.
@@ -56,5 +58,5 @@ Support is available via the Builder portal at:
 
 ### Copyright
 
-Copyright (c) Embedthis Software. All Rights Reserved. Embedthis and Appweb are trademarks of
-Embedthis Software, LLC. Other brands and their products are trademarks of their respective holders.
+Copyright (c) Embedthis Pty Ltd. All Rights Reserved. Embedthis and Appweb are trademarks of
+Embedthis Pty Ltd. Other brands and their products are trademarks of their respective holders.

@@ -1,0 +1,17 @@
+/*
+    ioto.json5 - Run only the web service. Because this file is in the sample directory, the agent
+    reads it and web.json5 from here.
+ */
+{
+    app: 'web-auth',
+    log: {
+        path: 'stdout',
+        format: '%S: %M',
+        types: 'error,info',
+        sources: 'all,!mbedtls',
+    },
+    services: {
+        database: false,
+        web: true,
+    },
+}
