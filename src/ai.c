@@ -24,7 +24,7 @@ PUBLIC int ioInitAI(void)
             return 0;
         }
     }
-    endpoint = jsonGet(ioto->config, 0, "endpoint", "https://api.openai.com/v1");
+    endpoint = jsonGet(ioto->config, 0, "ai.endpoint", "https://api.openai.com/v1");
 
     show = ioto->cmdAIShow ? ioto->cmdAIShow : jsonGet(ioto->config, 0, "log.show", 0);
     if (!show || !*show) {
@@ -49,6 +49,6 @@ PUBLIC void ioTermAI(void)
 #endif /* SERVICES_AI */
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -72,7 +72,12 @@ PUBLIC int ioSetTime(bool wait)
     if (wait) {
         time_t    now = 0;
         struct tm timeinfo = { 0 };
+        Ticks     deadline = rGetTicks() + IO_TIME_SYNC_TIMEOUT;
         while (timeinfo.tm_year < (2023 - 1900)) {
+            if (rGetTicks() > deadline) {
+                rError("ioto", "Cannot set the system time via SNTP, TLS certificate dates cannot be verified");
+                return R_ERR_TIMEOUT;
+            }
             time(&now);
             localtime_r(&now, &timeinfo);
             rPrintf("Waiting for system time to be set...\n");
@@ -84,6 +89,6 @@ PUBLIC int ioSetTime(bool wait)
 
 #endif /* ESP32 */
 /*
-    Copyright (c) EmbedThis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

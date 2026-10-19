@@ -30,6 +30,9 @@ PUBLIC int ioInitConfig(void)
     Json   *json;
     size_t stackInitial, stackMax, stackGrow, stackReset;
     int    maxFibers, poolMin, poolMax;
+#if FREERTOS
+    size_t fiberCost;
+#endif
 
     assert(rIsMain());
 
@@ -48,8 +51,26 @@ PUBLIC int ioInitConfig(void)
     json = ioto->config;
     ioConfig(json);
 
-    // Configure the fiber pool. A value of zero keeps the default.
-    maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "4"));
+    /*
+        Derive the fiber limit from web connections plus background capacity. Honor explicit limits; zero keeps the default.
+     */
+#if SERVICES_WEB
+    maxFibers = webGetFiberLimit(json, IO_FIBER_RESERVE);
+#if FREERTOS && defined(CONFIG_LWIP_MAX_SOCKETS)
+    /*
+        Each fiber is a FreeRTOS task in internal RAM, and lwIP refuses connections beyond its sockets,
+        so a derived ceiling admits no more connections than there are sockets
+     */
+    if (svaluei(jsonGet(json, 0, "limits.fibers", "0")) == 0) {
+        maxFibers = min(maxFibers, CONFIG_LWIP_MAX_SOCKETS + IO_FIBER_RESERVE);
+    }
+#endif
+#else
+    maxFibers = svaluei(jsonGet(json, 0, "limits.fibers", "0"));
+    if (maxFibers == 0) {
+        maxFibers = IO_FIBER_DEFAULT;
+    }
+#endif
     poolMin = svaluei(jsonGet(json, 0, "limits.fiberPoolMin", "0"));
     poolMax = svaluei(jsonGet(json, 0, "limits.fiberPoolMax", "4"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
@@ -108,6 +129,12 @@ PUBLIC int ioInitConfig(void)
     ioUpdateLog(0);
     rInfo("ioto", "Starting Ioto %s, with \"%s\" app %s, using \"%s\" profile",
           ME_VERSION, ioto->app, ioto->version, ioto->profile);
+#if FREERTOS
+    //  Each fiber task holds its stack, control block and three semaphores in internal RAM
+    fiberCost = rGetFiberStackSize() + sizeof(StaticTask_t) + 3 * sizeof(StaticSemaphore_t);
+    rInfo("ioto", "Fiber ceiling %d, each a task of about %d bytes of internal RAM, %d KB at the ceiling",
+          maxFibers, (int) fiberCost, (int) ((size_t) maxFibers * fiberCost / 1024));
+#endif
     enableServices();
     return 0;
 }
@@ -415,7 +442,7 @@ static void reset(void)
     path = rGetFilePath("@db/device.db.reset");
     if (rAccessFile(path, R_OK) == 0) {
         dest = rGetFilePath("@db/device.db");
-        rCopyFile(path, dest, 0664);
+        rCopyFile(path, dest, 0600);
         rFree(dest);
     } else {
         removeFile("@db/device.db");
@@ -441,6 +468,6 @@ PUBLIC void *JsonRef = jsonAlloc;
 #endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

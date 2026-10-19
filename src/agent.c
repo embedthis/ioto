@@ -160,6 +160,8 @@ PUBLIC void ioStopRuntime(void)
  */
 PUBLIC int ioRun(void *fn)
 {
+    (void) fn;
+
     rSleep(0);
 
     while (rGetState() < R_STOPPING) {
@@ -285,6 +287,10 @@ PUBLIC int ioUpdateLog(bool force)
         return 0;
 #endif
     }
+    if (smatch(path, "stdout") || smatch(path, "stderr")) {
+        //  The console streams are not files in the log directory
+        dir = 0;
+    }
     /*
         SECURITY Acceptable: - the log path is provided by the developer log.path and is deemed secure
      */
@@ -320,6 +326,6 @@ PUBLIC char *ioExpand(cchar *str)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

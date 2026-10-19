@@ -105,12 +105,12 @@ static int   verifyPeer = 0;           /* Validate server certs */
 static int   verifyIssuer = 0;         /* Validate the issuer. Permits self-signed certs if false. */
 static int   zero;                     /* Exit with zero status for any valid HTTP response code  */
 static int   webSockets;               /* Upgrade to websockets */
+static size_t webSocketsReceived = 0;   /* Size of last received web sockets packet */
 
 #if ME_COM_WEBSOCK
 static cchar *webSocketsBuffer;        /* Buffer*/
 static cchar *webSocketsProtocol;      /* Use the websockets sub-protocol. Defaults to "chat". */
 static size_t webSocketsSize = 0;       /* Size of data to send when using --webSockets */
-static size_t webSocketsReceived = 0;   /* Size of last received web sockets packet */
 #endif /* ME_COM_WEBSOCK */
 
 /***************************** Forward Declarations ***************************/
@@ -121,7 +121,9 @@ static void fiberMain(void *data);
 static char *formatOutput(char *response, size_t *count);
 static bool isPort(cchar *name);
 static int  parseArgs(int argc, char **argv);
+#if ME_COM_WEBSOCK
 static char *prepBuffer(size_t size);
+#endif
 static char *prepHeaders(int count);
 static void progress(Url *up);
 static void report(Time start);
@@ -191,6 +193,8 @@ static int usage(void)
 
 int main(int argc, char **argv, char **envp)
 {
+    (void) envp;
+
     if (rInit(NULL, NULL) < 0) {
         rFprintf(stderr, "Cannot initialize runtime");
         exit(2);
@@ -486,6 +490,7 @@ static int parseArgs(int argc, char **argv)
             rPrintf("%s\n", ME_VERSION);
             exit(0);
 
+#if ME_COM_WEBSOCK
         } else if (smatch(argp, "--webSockets") || smatch(argp, "-w")) {
             webSockets = 1;
 
@@ -505,6 +510,7 @@ static int parseArgs(int argc, char **argv)
                 webSocketsSize = (size_t) svalue(argv[++nextArg]);
                 webSocketsBuffer = prepBuffer(webSocketsSize);
             }
+#endif /* ME_COM_WEBSOCK */
 
         } else if (smatch(argp, "--zero")) {
             zero++;
@@ -684,22 +690,11 @@ static char *prepHeaders(int count)
     return rBufToStringAndFree(buf);
 }
 
-static char *prepBuffer(size_t size)
-{
-    char *buf, *cp, *letters;
-
-    letters = "abcdefghijklmnopqrstuvwxyz";
-    buf = rAlloc(size + 1);
-    for (cp = buf; cp < buf + size; cp++) {
-        *cp = letters[rand() % (uchar) (sizeof(letters) - 1)];
-    }
-    *cp = '\0';
-    return buf;
-}
-
 #if URL_SSE
 static void sseCallback(Url *up, ssize id, cchar *event, cchar *data, void *arg)
 {
+    (void) arg;
+
     rInfo("url", "SSE Event: %zd, name %s, data: %s", id, event, data);
     if (benchmark) {
         progress(up);
@@ -708,9 +703,26 @@ static void sseCallback(Url *up, ssize id, cchar *event, cchar *data, void *arg)
 #endif
 
 #if ME_COM_WEBSOCK
+static char *prepBuffer(size_t size)
+{
+    static cchar letters[] = "abcdefghijklmnopqrstuvwxyz";
+    char         *buf, *cp;
+
+    buf = rAlloc(size + 1);
+    for (cp = buf; cp < buf + size; cp++) {
+        *cp = letters[rand() % (int) (sizeof(letters) - 1)];
+    }
+    *cp = '\0';
+    return buf;
+}
+
 static void webSocketCallback(WebSocket *ws, int event, cchar *data, size_t len, void *arg)
 {
     Url *up = (Url*) arg;
+
+    (void) event;
+    (void) data;
+
     if (++completed < iterations) {
         if (webSocketsSize > 0) {
             rDebug("url", "Sending: %zd bytes", webSocketsSize);
@@ -736,6 +748,8 @@ static void fiberMain(void *data)
     char  *headers;
     int   authRetried, redirects;
 
+    (void) data;
+
     if (show == 0) {
         show = URL_SHOW_RESP_BODY;
     }
@@ -750,11 +764,13 @@ static void fiberMain(void *data)
     }
 #endif /* URL_SSE */
     urlSetProtocol(up, protocol);
+#if ME_COM_SSL
     if (caFile || keyFile || certFile) {
         rSetSocketDefaultCerts(caFile, keyFile, certFile, NULL);
     }
     rSetSocketDefaultVerify(verifyPeer, verifyIssuer);
     rSetSocketDefaultCiphers(ciphers);
+#endif
 
 #if URL_AUTH
     // Set authentication credentials if provided
@@ -772,7 +788,8 @@ static void fiberMain(void *data)
             urlError(up, "Cannot start request");
 
         } else if (upload) {
-            if (urlUpload(up, files, forms, headers) < 0) {
+            //  headers is a prepared string, not a format
+            if (urlUpload(up, files, forms, "%s", headers) < 0) {
                 urlError(up, "Cannot upload files");
             }
 
@@ -792,10 +809,12 @@ static void fiberMain(void *data)
         if (up->error) {
             success = 0;
 
+#if ME_COM_WEBSOCK
         } else if (webSockets) {
             if (urlGetStatus(up) == URL_CODE_OK) {
                 webSocketRun(urlGetWebSocket(up), (WebSocketProc) webSocketCallback, up, up->rx, up->timeout);
             }
+#endif /* ME_COM_WEBSOCK */
 #if URL_SSE
         } else if (sse) {
             if (urlGetStatus(up) == URL_CODE_OK) {
@@ -888,10 +907,12 @@ static void getResponse(Url *up, bool showBody)
 
     if (saveFd >= 0) {
         if (len > 0) {
-            write(saveFd, response, (uint) len);
+            if (write(saveFd, response, (uint) len) != (ssize) len) {
+                urlError(up, "Cannot save response");
+            }
 #if ME_UNIX_LIKE
-            if (isatty(saveFd)) {
-                write(saveFd, "\n", 1);
+            if (isatty(saveFd) && write(saveFd, "\n", 1) != 1) {
+                urlError(up, "Cannot save response");
             }
 #endif
         }
@@ -1004,7 +1025,8 @@ static void progress(Url *up)
                 len = rGetBufLength(response);
             }
         }
-        rPrintf("%p %7d %4s  %5d %7lld  %s\n", rGetFiber(), completed - 1, method, up->status, len, uri);
+        rPrintf("%p %7d %4s  %5d %7lld  %s\n", rGetFiber(), completed - 1, method, up->status,
+                (long long) len, uri);
     }
 }
 
@@ -1031,7 +1053,7 @@ static void report(Time start)
     rPrintf("Requests per second: %13.4f\n\n", completed * 1.0 / (elapsed / 1000.0));
 }
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

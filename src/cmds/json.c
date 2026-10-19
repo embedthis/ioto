@@ -26,6 +26,8 @@
         json --out output.json input.json5          # Write to output file
 
     Advanced:
+        cat config.json | json --stdin user.name    # Query a property from stdin
+        json --profile prod config.json5            # Merge the prod branch of conditional[]
         json --blend config.json                    # Merge files from blend[] array
         json --expand config.json                   # Expand ${var} templates
         json --env config.json                      # Output as shell environment variables
@@ -139,7 +141,7 @@ static int strict = 0;                                                          
 
 static int blendFiles(Json *json);
 static int bumpVersion(Json *json, cchar *property);
-static int mergeConditionals(Json *json, cchar *property);
+static int mergeConditionals(Json *json);
 static void cleanup(void);
 static int error(cchar *fmt, ...);
 static char *makeName(cchar *name);
@@ -182,7 +184,7 @@ static int usage(void)
              "  --quiet          # Quiet mode with no error messages.\n"
              "  --remove         # Remove queried property.\n"
              "  --single         # Use single quotes (default with JSON5).\n"
-             "  --stdin          # Read from stdin (default if no file specified).\n"
+             "  --stdin          # Read from stdin. Required to also give a command.\n"
              "  --strict         # Perform strict JSON standard parsing of input.\n"
              "\n"
              "  Commands:\n"
@@ -195,6 +197,8 @@ static int usage(void)
 int main(int argc, char **argv, char **envp)
 {
     int rc;
+
+    (void) envp;
 
     if (rInit(NULL, NULL) < 0) {
         rFprintf(stderr, "Cannot initialize runtime");
@@ -374,10 +378,11 @@ static int parseArgs(int argc, char **argv)
         //  No args
         cmd = JSON_CMD_CONVERT;
         stdinput = 1;
-    } else if (argc == nextArg + 1) {
+    } else if (argc == nextArg + 1 && !stdinput) {
         //  File only
         cmd = JSON_CMD_CONVERT;
     } else {
+        //  With --stdin the sole remaining argument is the command, not the file
         property = sclone(argv[nextArg++]);
         if (property == NULL) {
             return error("Cannot allocate memory for property");
@@ -458,7 +463,7 @@ static int run()
         }
     }
     if (profile) {
-        if (mergeConditionals(json, profile) < 0) {
+        if (mergeConditionals(json) < 0) {
             return R_ERR_CANT_READ;
         }
     }
@@ -598,6 +603,7 @@ static int blendFiles(Json *json)
     JsonNode *item;
     char     *dir, *err, *file;
     char     *toBlend;
+    int      rc;
 
     /*
         Extract the blend[] array from the input JSON as we can't iterate while mutating the JSON
@@ -605,9 +611,8 @@ static int blendFiles(Json *json)
     if ((toBlend = jsonToString(json, 0, "blend", 0)) == NULL) {
         return 0;
     }
-    blend = jsonParseKeep(toBlend, 0);
-    if (blend == NULL) {
-        rFree(toBlend);
+    //  jsonParseKeep takes ownership of the text and frees it, even when parsing fails
+    if ((blend = jsonParseKeep(toBlend, 0)) == NULL) {
         return error("Cannot parse blended properties");
     }
     for (ITERATE_JSON_KEY(blend, 0, NULL, item, nid)) {
@@ -623,13 +628,21 @@ static int blendFiles(Json *json)
         } else {
             file = sclone(item->value);
         }
+        err = 0;
         if ((inc = jsonParseFile(file, &err, 0)) == 0) {
+            rc = error("Cannot parse %s: %s", file, err);
+            rFree(err);
             rFree(file);
-            return error("Cannot parse %s: %s", file, err);
+            jsonFree(blend);
+            return rc;
         }
-        if (jsonBlend(json, 0, 0, inc, 0, 0, JSON_COMBINE) < 0) {
+        rc = jsonBlend(json, 0, 0, inc, 0, 0, JSON_COMBINE);
+        jsonFree(inc);
+        if (rc < 0) {
+            rc = error("Cannot blend %s", file);
             rFree(file);
-            return error("Cannot blend %s", file);
+            jsonFree(blend);
+            return rc;
         }
         rFree(file);
     }
@@ -638,30 +651,29 @@ static int blendFiles(Json *json)
     return 0;
 }
 
-static int mergeConditionals(Json *json, cchar *property)
+/*
+    Merge the selected branch of each collection in the root conditional{} block into the
+    document root. The "profile" collection selects on --profile, or on the document's own
+    profile property. Any other collection selects on the document property of that name.
+ */
+static int mergeConditionals(Json *json)
 {
     Json     *conditional;
     JsonNode *collection;
     cchar    *value;
     char     *text;
-    int      id, rootId;
+    int      id;
 
-    rootId = jsonGetId(json, 0, property);
-    if (rootId < 0) {
-        return 0;
-    }
     /*
-        Extract the conditional set as we can't iterate while mutating the JSON
+        Extract the conditional set as we can't iterate while mutating the JSON.
+        jsonParseKeep takes ownership of the text and frees it, even when parsing fails.
      */
-    if ((text = jsonToString(json, rootId, "conditional", 0)) == NULL) {
+    if ((text = jsonToString(json, 0, "conditional", 0)) == NULL) {
         return 0;
     }
-    conditional = jsonParseKeep(text, 0);
-    if (conditional == NULL) {
-        rFree(text);
+    if ((conditional = jsonParseKeep(text, 0)) == NULL) {
         return error("Cannot parse conditional properties");
     }
-
     for (ITERATE_JSON(conditional, NULL, collection, nid)) {
         //  Collection name: profile
         value = 0;
@@ -676,13 +688,14 @@ static int mergeConditionals(Json *json, cchar *property)
         if (value) {
             id = jsonGetId(conditional, jsonGetNodeId(conditional, collection), value);
             if (id >= 0) {
-                if (jsonBlend(json, 0, property, conditional, id, 0, JSON_COMBINE) < 0) {
+                if (jsonBlend(json, 0, 0, conditional, id, 0, JSON_COMBINE) < 0) {
+                    jsonFree(conditional);
                     return error("Cannot blend %s", collection->name);
                 }
             }
         }
     }
-    jsonRemove(json, rootId, "conditional");
+    jsonRemove(json, 0, "conditional");
     jsonFree(conditional);
     return 0;
 }
@@ -820,6 +833,8 @@ static void outputProperty(Json *json, cchar *name, cchar *value, int type)
 {
     char *exp, *property;
 
+    (void) json;
+
     property = makeName(name);
     if (format == JSON_FORMAT_ENV) {
         exp = export ? "export " : "";
@@ -903,7 +918,7 @@ static int error(cchar *fmt, ...)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

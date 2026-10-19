@@ -34,6 +34,8 @@ static void setEvent(cchar *event);
 
 static void showUsage(int line)
 {
+    (void) line;
+
     rPrintf("\nIoto Agent usage:\n\n"
             "  ioto [options]\n"
             "  Options:\n"
@@ -69,18 +71,14 @@ PUBLIC int main(int argc, char **argv, char **envp)
     cchar *argp, *home, *show;
     int   argind, background;
 
+    (void) envp;
+
     background = 0;
     home = 0;
 
     /*
-        Initialize the safe runtime
-     */
-    if (rInit(NULL, NULL) < 0) {
-        rFprintf(stderr, "Cannot initialize runtime");
-        exit(2);
-    }
-    /*
-        Allocate the primary Ioto control object
+        Allocate the primary Ioto control object. The runtime is initialized after daemonizing,
+        so argument parsing must only use allocation and string helpers.
      */
     ioAlloc();
 
@@ -260,13 +258,25 @@ PUBLIC int main(int argc, char **argv, char **envp)
     }
 #endif
 
-    setEvent(exitEvent);
-
     if (home && chdir(home) < 0) {
         rFprintf(stderr, "ioto: Cannot change directory to %s\n", home);
         exit(1);
     }
     umask(077);
+
+#if ME_UNIX_LIKE
+    /*
+        Daemonize before the runtime exists: the event notifier and threads do not survive fork
+     */
+    if (background) {
+        rDaemonize();
+    }
+#endif
+    if (rInit(NULL, NULL) < 0) {
+        rFprintf(stderr, "Cannot initialize runtime");
+        exit(2);
+    }
+    setEvent(exitEvent);
 
     /*
         Logging specified in ioto.json5 may be overridden via the command line.
@@ -278,11 +288,6 @@ PUBLIC int main(int argc, char **argv, char **envp)
             exit(1);
         }
         rSetLogFormat(TRACE_FORMAT, 1);
-    }
-    if (background) {
-#if ME_UNIX_LIKE
-        rDaemonize();
-#endif
     }
     /*
         Service events until instructed to stop. Handles restarts.
@@ -321,6 +326,9 @@ static void setEvent(cchar *event)
  */
 static void onExit(void *data, void *arg)
 {
+    (void) data;
+    (void) arg;
+
 #if SERVICES_SYNC
     ioFlushSync(1);
 #endif
@@ -330,6 +338,6 @@ static void onExit(void *data, void *arg)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

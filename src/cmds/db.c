@@ -70,7 +70,7 @@ PUBLIC int main(int argc, char *argv[])
             break;
         }
         if (smatch(argp, "--load")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             load = argv[++argind];
@@ -82,7 +82,7 @@ PUBLIC int main(int argc, char *argv[])
             reset = 1;
 
         } else if (smatch(argp, "--schema")) {
-            if (argind >= argc) {
+            if (argind + 1 >= argc) {
                 usage();
             }
             schema = argv[++argind];
@@ -97,8 +97,8 @@ PUBLIC int main(int argc, char *argv[])
     if (argind >= argc) {
         usage();
     }
-    if (!schema && !load && !reset) {
-        rFprintf(stderr, "db: Must specify --schema, --load or --reset\n");
+    if (!schema) {
+        rFprintf(stderr, "db: Must specify --schema\n");
         exit(1);
     }
     if (rInit(0, 0) < 0) {
@@ -167,8 +167,10 @@ PUBLIC int main(int argc, char *argv[])
                 }
             }
             if (update) {
-                if ((item = dbUpdate(db, model->name, props, DB_PARAMS(.upsert = 1))) == NULL) {
-                    rFatal("db", "Cannot update %s", model->name);
+                //  Merge into an existing item, otherwise create it. An upsert would replace it in full.
+                if ((item = dbUpdate(db, model->name, props, NULL)) == NULL &&
+                    (item = dbCreate(db, model->name, props, NULL)) == NULL) {
+                    rFatal("db", "Cannot update %s: %s", model->name, dbGetError(db));
                 }
                 if (show) {
                     emit(item);
@@ -185,7 +187,7 @@ PUBLIC int main(int argc, char *argv[])
                         jsonBlend(result, 0, "[$]", dbJson(item), 0, 0, 0);
                     }
                     rPrintf("%s\n", jsonString(result, JSON_HUMAN));
-                    rFree(result);
+                    jsonFree(result);
                 }
             }
         }
@@ -210,14 +212,13 @@ static void emit(const DbItem *item)
             rPrintf("%s\n", dbField(item, field));
         }
     } else {
-        json = jsonParse(item->value, 0);
+        json = (Json*) dbJson(item);
         jsonPrint(json);
-        jsonFree(json);
     }
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */

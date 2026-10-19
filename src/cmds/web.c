@@ -10,6 +10,13 @@
 
 #include "web.h"
 
+#if MACOSX
+//  Darwin declares the initgroups group as int
+    #define INITGROUPS_GID(gid) ((int) (gid))
+#else
+    #define INITGROUPS_GID(gid) (gid)
+#endif
+
 /*********************************** Locals ***********************************/
 
 /*
@@ -19,17 +26,8 @@
 #define TRACE_VERBOSE_FILTER "stderr:raw,error,info,trace,!debug:all,!mbedtls"
 #define TRACE_DEBUG_FILTER   "stderr:all:all,!mbedtls"
 #define TRACE_FORMAT         "%S: %T: %M"
-#define DEFAULT_CONFIG \
-        "{\
-    web: {\
-        documents: 'web',\
-        listen: ['http://:80', 'https://:443'],\
-        routes: [\
-            { match: '', handler: 'file' }\
-        ],\
-        show: 'hH'\
-    }\
-}"
+
+#define WEB_FIBER_RESERVE    8      /* Fibers reserved beyond web.limits.connections */
 
 static WebHost *host;               /* Single serving host */
 static cchar   *trace = 0;          /* Module trace logging specification */
@@ -41,10 +39,16 @@ static bool    background;          /* Run as background daemon process */
 static char    *homeDir;            /* Working directory to change to on startup */
 static char    *configPath;         /* Custom path to web.json5 config file */
 static char    *profile;            /* Execution profile (dev, prod) for config selection */
+static int     exitStatus;          /* Process exit status, set non-zero when the host cannot start */
+#if ME_WEB_TEST_ACTIONS
+static bool testActions;            /* Register the unauthenticated /test action table */
+#endif
 
 /*********************************** Forwards *********************************/
 
+#if ME_UNIX_LIKE
 static void dropPrivileges(cchar *username, cchar *groupname);
+#endif
 static void onExit(void *data, void *arg);
 static int parseShow(cchar *arg);
 static void setEvent(void);
@@ -67,6 +71,9 @@ static int usage(void)
              "    --profile profile        # Select execution profile for web.json5 (dev,prod)\n"
              "    --quiet                  # Don't output headers. Alias for --show ''\n"
              "    --show [HBhb]            # Show request headers/body (HB) and response headers/body (hb).\n"
+#if ME_WEB_TEST_ACTIONS
+             "    --test-actions           # Register the UNAUTHENTICATED /test routes. Never on a network.\n"
+#endif
              "    --timeouts               # Disable timeouts for debugging\n"
              "    --trace file[:type:from] # Trace to file (stdout:all:all)\n"
              "    --verbose                # Verbose operation. Alias for --show Hhb plus module trace.\n"
@@ -148,6 +155,11 @@ int main(int argc, char **argv)
                 show = parseShow(argv[++argind]);
             }
 
+#if ME_WEB_TEST_ACTIONS
+        } else if (smatch(argp, "--test-actions")) {
+            testActions = 1;
+#endif
+
         } else if (smatch(argp, "--timeouts") || smatch(argp, "-T")) {
             //  Disable timeouts for debugging
             rSetTimeouts(0);
@@ -201,7 +213,7 @@ int main(int argc, char **argv)
     rFree(endpoint);
     stop();
     rTerm();
-    return 0;
+    return exitStatus;
 }
 
 /*
@@ -211,24 +223,23 @@ int main(int argc, char **argv)
 static void start(void)
 {
     cchar  *path;
+    char   *errorMsg = 0;
     size_t stackInitial, stackMax, stackGrow, stackReset;
     int    maxFibers, poolMin, poolMax;
 
-    //  Load configuration from file or use defaults
+    //  A missing or unparseable config is fatal. Its routes are the only authorization gate.
     path = configPath ? configPath : "web.json5";
-    if ((config = jsonParseFile(path, NULL, 0)) == NULL) {
-        if ((config = jsonParse(DEFAULT_CONFIG, 0)) == 0) {
-            rError("web", "Cannot parse config file \"%s\"", path);
-            exit(1);
-        }
+    if ((config = jsonParseFile(path, &errorMsg, 0)) == NULL) {
+        rError("web", "Cannot load config file \"%s\": %s", path, errorMsg ? errorMsg : "cannot read file");
+        rFree(errorMsg);
+        exit(1);
     }
 
     //  Set execution profile (dev, prod) if specified
     if (profile) {
         jsonSetString(config, 0, "profile", profile);
     }
-    //  Configure fiber limits if specified in config. A value of zero uses the default values
-    maxFibers = (int) svalue(jsonGet(config, 0, "limits.fibers", "4"));
+    maxFibers = webGetFiberLimit(config, WEB_FIBER_RESERVE);
     poolMin = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMin", "2"));
     poolMax = (int) svalue(jsonGet(config, 0, "limits.fiberPoolMax", "4"));
     rSetFiberLimits(maxFibers, poolMin, poolMax);
@@ -267,27 +278,47 @@ static void start(void)
         exit(1);
     }
 
-#if ME_DEBUG
-    //  Initialize test routes for debug builds
-    webTestInit(host, "/test");
+    /*
+        The /test action table is unauthenticated by construction - every action is added with a
+        null role - and it dumps request headers including Authorization and Cookie, crashes the
+        process on demand, and writes uploads relative to the working directory.
+
+        It used to be registered whenever ME_DEBUG was set, which the documented "make" defaults
+        to, so building this tool the ordinary way and running it produced a server exposing all
+        of that to any unauthenticated client. Being compiled in is not a reason to be reachable:
+        it now takes an explicit --test-actions, and the test suite calls webTestInit itself.
+     */
+#if ME_WEB_TEST_ACTIONS
+    if (testActions) {
+        rError("web", "Registering the UNAUTHENTICATED /test routes - do not expose this server");
+        webTestInit(host, "/test");
+    }
 #endif
 
     //  Start listening and accepting connections
     if (webStartHost(host) < 0) {
         rError("web", "Cannot start host");
+
+        exitStatus = 1;
         rStop();
         return;
     }
 
 #if ME_UNIX_LIKE
-    //  Drop root privileges after binding to privileged ports
-    if (getuid() == 0) {
-        cchar *user = jsonGet(config, 0, "web.user", "nobody");
-        cchar *group = jsonGet(config, 0, "web.group", "nobody");
+    //  Drop root privileges after binding to privileged ports. A setuid-root start has euid 0 only.
+    if (geteuid() == 0) {
+        cchar *user = jsonGet(config, 0, "web.user", ME_WEB_USER);
+        //  No default group: an unconfigured group is the user's own, which dropPrivileges resolves
+        cchar *group = jsonGet(config, 0, "web.group", NULL);
         if (user || group) {
-            rInfo("web", "Dropping privileges to %s:%s", user, group);
+            rInfo("web", "Dropping privileges to %s:%s", user, group ? group : "the user's own group");
             dropPrivileges(user, group);
         }
+    }
+#else
+
+    if (jsonGet(config, 0, "web.user", NULL) || jsonGet(config, 0, "web.group", NULL)) {
+        rError("web", "web.user and web.group are not supported on this platform and are NOT applied");
     }
 #endif
 }
@@ -394,6 +425,9 @@ static int parseShow(cchar *arg)
  */
 static void onExit(void *data, void *arg)
 {
+    (void) data;
+    (void) arg;
+
     rInfo("main", "Exiting");
     rWatchOff(event, (RWatchProc) onExit, 0);
     rStop();
@@ -403,40 +437,64 @@ static void onExit(void *data, void *arg)
     Drop root privileges to specified user and group
     Should be called after binding to privileged ports (< 1024)
  */
+#if ME_UNIX_LIKE
 static void dropPrivileges(cchar *username, cchar *groupname)
 {
-#if !ME_WIN_LIKE
     struct group  *grp;
     struct passwd *pwd;
+    gid_t         gid;
+    bool          haveGid;
 
-    if (groupname) {
-        grp = getgrnam(groupname);
-        if (grp == NULL) {
-            rError("web", "Cannot find group '%s'", groupname);
-            exit(1);
-        }
-        if (setgid(grp->gr_gid) < 0) {
-            rError("web", "Cannot set group to '%s'. See error %d", groupname, errno);
-            exit(1);
-        }
-    }
+    pwd = NULL;
+    gid = 0;
+    haveGid = 0;
+
     if (username) {
-        pwd = getpwnam(username);
-        if (pwd == NULL) {
+        if ((pwd = getpwnam(username)) == NULL) {
             rError("web", "Cannot find user '%s'", username);
             exit(1);
         }
-        if (setuid(pwd->pw_uid) < 0) {
-            rError("web", "Cannot set user to '%s'. See error %d", username, errno);
+        /*
+            An unconfigured group is the user's own primary group, not a group that happens to
+            share the user's name. Debian and Ubuntu give "nobody" the group "nogroup" and define
+            no "nobody" group at all, so assuming the latter stopped a root-started server from
+            starting on the commonest Linux family. Red Hat and the BSDs do define nobody:nobody,
+            which is why it went unnoticed.
+         */
+        gid = pwd->pw_gid;
+        haveGid = 1;
+    }
+    if (groupname) {
+        if ((grp = getgrnam(groupname)) == NULL) {
+            rError("web", "Cannot find group '%s'", groupname);
             exit(1);
         }
+        gid = grp->gr_gid;
+        haveGid = 1;
     }
-#else
-    rError("web", "Cannot drop privileges on this platform");
-#endif
+    /* Replace root's supplementary groups before dropping privileges. */
+    if (pwd ? initgroups(pwd->pw_name, INITGROUPS_GID(gid)) < 0 : (haveGid && setgroups(1, &gid) < 0)) {
+        rError("web", "Cannot set supplementary groups. See error %d", errno);
+        exit(1);
+    }
+    //  Group first: after setuid the process can no longer change its group
+    if (haveGid && setgid(gid) < 0) {
+        rError("web", "Cannot set group to gid %d. See error %d", (int) gid, errno);
+        exit(1);
+    }
+    if (pwd && setuid(pwd->pw_uid) < 0) {
+        rError("web", "Cannot set user to '%s'. See error %d", username, errno);
+        exit(1);
+    }
+    //  The drop must be irreversible
+    if (pwd && pwd->pw_uid != 0 && setuid(0) == 0) {
+        rError("web", "Privileges could be regained after dropping to '%s'", username);
+        exit(1);
+    }
 }
+#endif
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This is proprietary software and requires a commercial license from the author.
  */

@@ -11,9 +11,7 @@
 #define ME_COM_R    1
 #define ME_COM_JSON 1
 
-#include    "r.h"
-#include    "crypt.h"
-#include    "json.h"
+#include    "web.h"
 
 /********************************* Forwards ***********************************/
 
@@ -30,8 +28,13 @@ static void usage(void)
     rFprintf(stderr, "usage: password [--algorithm algorithm] [--password password] [--realm realm] user\n"
              "Options:\n"
              "    --algorithm md5|sha256|sha512|bcrypt  Select the hash algorithm. Defaults to sha256\n"
+             "    --cipher                              Alias for --algorithm. 'blowfish' is bcrypt\n"
              "    --password password                   Use the specified password\n"
-             "    --realm realm                         Authentication realm (default: 'example.com')\n"
+             "    --realm realm                         Authentication realm (default: '" WEB_REALM "', the server's\n"
+             "                                          realm when web.auth.realm and web.name are unset)\n"
+             "\n"
+             "The username and realm are part of the hash: the user must log in with this username, and the\n"
+             "realm must equal the server's realm (web.auth.realm, else web.name, else '" WEB_REALM "').\n"
              "\n"
              "Algorithms:\n"
              "    md5      - Legacy MD5 (insecure, for compatibility only)\n"
@@ -47,6 +50,7 @@ static void usage(void)
              "    password alice\n"
              "    password --algorithm md5 --realm 'Test Realm' bob\n"
              "    password --algorithm bcrypt --password secret123 alice\n"
+             "    password --cipher blowfish --realm web --password secret123 admin\n"
              "\n");
     exit(1);
 }
@@ -62,7 +66,7 @@ PUBLIC int main(int argc, char *argv[])
     errflg = 0;
     password = 0;
     algorithm = "sha256";
-    realm = "example.com";
+    realm = WEB_REALM;
 
     for (i = 1; i < argc && !errflg; i++) {
         if (argv[i][0] != '-') {
@@ -151,10 +155,11 @@ PUBLIC int main(int argc, char *argv[])
         rPrintf("# Generated password hash for user '%s' with realm '%s' using %s\n", username, realm, "sha512");
 
     } else if (scaselessmatch(algorithm, "bcrypt") || scaselessmatch(algorithm, "blowfish")) {
-        // Bcrypt uses 16 bytes salt and 128 rounds by default (same as appweb)
-        encodedPassword = cryptMakePassword(hashInput, 16, 128);
+        encodedPassword = cryptMakePassword(hashInput, CRYPT_BLOWFISH_SALT_LENGTH, CRYPT_BLOWFISH_ROUNDS);
         rPrintf("# Generated password hash for user '%s' with realm '%s' using bcrypt\n", username, realm);
-        rPrintf("# Note: Bcrypt is for session-based auth, not HTTP digest auth\n");
+        rPrintf("# Note: Bcrypt is for Basic and session-based auth, not HTTP digest auth\n");
+        rPrintf("# For a database User table (db.json5):\n");
+        rPrintf("{ username: '%s', password: '%s', role: 'user' }\n", username, encodedPassword);
 
     } else {
         rFprintf(stderr, "Unknown algorithm: %s\n", algorithm);
@@ -164,7 +169,7 @@ PUBLIC int main(int argc, char *argv[])
     rPrintf("# Add this to your web.json5 users section:\n");
     rPrintf("%s: {\n", username);
     rPrintf("    password: '%s',\n", encodedPassword);
-    rPrintf("    role: 'user'  # Change as needed\n");
+    rPrintf("    role: 'user'  // Change as needed\n");
     rPrintf("}\n");
 
     rTerm();
@@ -186,7 +191,7 @@ static char *getPassword(void)
 }
 
 /*
-    Copyright (c) Embedthis Software. All Rights Reserved.
+    Copyright (c) Embedthis Pty Ltd. All Rights Reserved.
     This software is distributed under a commercial license. Consult the LICENSE.md
     distributed with this software for full details and copyrights.
  */
