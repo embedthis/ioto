@@ -3,6 +3,11 @@
 #   Exercise the hook in a scratch tree without network access.
 set -u
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+#   .pak-hook.sh runs during pak sync, which a source distribution does not do, so it is not shipped.
+if [ ! -f "$ROOT/.pak-hook.sh" ] ; then
+    echo "✓ pak-hook-certs: skipped, .pak-hook.sh is not present in this tree"
+    exit 0
+fi
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/pak-hook-certs.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 status=0

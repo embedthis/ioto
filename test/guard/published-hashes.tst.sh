@@ -15,11 +15,12 @@ if [ ! -d "$ROOT/apps" ] || [ ! -d "$ROOT/test" ]; then
     exit 1
 fi
 #   In a checkout, scan what is committed: generated test state is rebuilt from the fixtures on each run.
-#   In a source archive, there is no index, so scan the files.
+#   In a source archive, there is no index, so scan the files. Skip devices: a test run leaves a FIFO in
+#   test/web/site, and reading it blocks forever.
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     found=$(cd "$ROOT" && git ls-files -z apps test samples | xargs -0 grep -lE "$SALTS" 2>/dev/null)
 else
-    found=$(cd "$ROOT" && grep -rlE "$SALTS" apps test samples 2>/dev/null)
+    found=$(cd "$ROOT" && grep -rlE -D skip "$SALTS" apps test samples 2>/dev/null)
 fi
 found=$(echo "$found" | grep -v "^test/guard/published-hashes.tst.sh$" | grep -v '^$')
 if [ -n "$found" ]; then
